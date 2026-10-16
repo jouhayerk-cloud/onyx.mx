@@ -63,6 +63,7 @@ import {
     inventoryArtifactConfigAtom,
     isPackingNFCWizardOpenAtom,
     isPackingCrateWizardOpenAtom,
+    isCratePackingManagerOpenAtom,
     isPaymentWizardOpenAtom,
     workbookVersionAtom,
     isBatchActionsModalOpenAtom,
@@ -254,7 +255,9 @@ export const UniversalToolsBar: React.FC = () => {
     // Batch & Print Actions
     const setPrintWizardOpen = useSetAtom(isPackingPrintWizardOpenAtom);
     const setNFCOpen = useSetAtom(isPackingNFCWizardOpenAtom);
-    const setPackOpen = useSetAtom(isPackingCrateWizardOpenAtom);
+    const [isPackOpen, setPackOpen] = useAtom(isPackingCrateWizardOpenAtom);
+    const isCratePackingManagerOpen = useAtomValue(isCratePackingManagerOpenAtom);
+    const isPackModalActive = isPackOpen || isCratePackingManagerOpen;
     const setPayOpen = useSetAtom(isPaymentWizardOpenAtom);
     const setIsBatchModalOpen = useSetAtom(isBatchActionsModalOpenAtom);
     const setBatchItemsData = useSetAtom(batchActionItemsDataAtom);
@@ -531,9 +534,19 @@ export const UniversalToolsBar: React.FC = () => {
                     <Nfc size={18} strokeWidth={2} />
                     <span className="utb-label-desktop">NFC</span>
                 </button>
-                <button onClick={() => setPackOpen(true)} className="utb-control" title={tr("Pack Items")} aria-label={tr("Pack Items")}>
-                    <Package size={18} strokeWidth={2} />
-                    <span className="utb-label-desktop">{tr("PACK")}</span>
+                <button 
+                    onClick={() => setPackOpen(true)} 
+                    className="utb-control text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:border-emerald-400/60 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.15)] transition-all font-black group/pack" 
+                    title={tr("Pack Items")} 
+                    aria-label={tr("Pack Items")}
+                >
+                    <Package size={18} strokeWidth={2.5} className="text-emerald-400 group-hover/pack:rotate-[-6deg] transition-transform" />
+                    <span className="utb-label-desktop tracking-wide font-black">{tr("PACK")}</span>
+                    {selectedIds.length > 0 && (
+                        <span className="ml-1 px-1.5 py-0.5 text-[10px] font-black tabular-nums rounded-full bg-emerald-500/30 text-cyan-200 border border-emerald-400/40 shadow-[0_0_8px_rgba(6,182,212,0.3)]">
+                            {selectedIds.length}
+                        </span>
+                    )}
                 </button>
                 <button onClick={() => setPayOpen(true)} className="utb-control text-green-400" title={tr("Payment Workflow")} aria-label={tr("Payment Workflow")}>
                     <DollarSign size={18} strokeWidth={2} />
@@ -680,7 +693,7 @@ export const UniversalToolsBar: React.FC = () => {
         if (isInventory && isInvViewSliderOpen) docks.push(<SubmenuCard key="inv-view" id="inv-view" title={tr("View")} hideTitle onClose={() => setIsInvViewSliderOpen(false)}>{renderInvView()}</SubmenuCard>);
         if (isInventory && isInvFiltersOpen) docks.push(<SubmenuCard key="inv-filters" id="inv-filters" title={tr("Filters")} hideTitle onClose={() => setIsInvFiltersOpen(false)}><InventoryFiltersPanel /></SubmenuCard>);
         if (isInventory && smartOpen) docks.push(<SubmenuCard key="inv-smart" id="inv-smart" title={tr("Smart Filters")} onClose={() => setSmartOpen(false)}><InventorySmartFiltersPanel /></SubmenuCard>);
-        if (isInventory && isSelectionMode) docks.push(<SubmenuCard key="inv-select" id="inv-select" title={tr("Batch Management")} headless onClose={() => setIsSelectionMode(false)}>{renderInvSelection()}</SubmenuCard>);
+        if (isInventory && isSelectionMode && !isPackModalActive) docks.push(<SubmenuCard key="inv-select" id="inv-select" title={tr("Batch Management")} headless onClose={() => setIsSelectionMode(false)}>{renderInvSelection()}</SubmenuCard>);
         if (isFinance && isFinSearchOpen) docks.push(<SubmenuCard key="fin-search" id="fin-search" title={tr("Search Payments")} onClose={() => setIsFinSearchOpen(false)}>{renderFinSearch()}</SubmenuCard>);
         if (isFinance && isFinFiltersOpen) docks.push(<SubmenuCard key="fin-filters" id="fin-filters" title={tr("Filters")} onClose={() => setIsFinFiltersOpen(false)}>{renderFinFilters()}</SubmenuCard>);
         if (isFinance && isFinActionOpen) docks.push(<SubmenuCard key="fin-action" id="fin-action" title={tr("Requested Payments")} onClose={() => setIsFinActionOpen(false)}>{renderFinAction()}</SubmenuCard>);
@@ -705,7 +718,7 @@ export const UniversalToolsBar: React.FC = () => {
                 </div>
             )}
 
-            {!islandEnabled && isInventory && isSelectionMode && (
+            {!islandEnabled && isInventory && isSelectionMode && !isPackModalActive && (
                 <div className="w-full border-t border-white/5 animate-in slide-in-from-top duration-500 overflow-hidden px-4 bg-white/[0.02]">
                     {renderInvSelection()}
                 </div>

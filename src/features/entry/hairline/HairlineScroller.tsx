@@ -144,6 +144,49 @@ export const HairlineScroller: React.FC<HairlineScrollerProps> = ({
     const dragStartScrollLeftRef = useRef(0);
     const hasDraggedRef = useRef(false);
 
+    // Interactive Auto-Scroll for mobile / touch / expanded discovery
+    const isInteractingRef = useRef(false);
+    const autoScrollIdleTimerRef = useRef<number | null>(null);
+
+    const pauseAutoScroll = useCallback(() => {
+        isInteractingRef.current = true;
+        if (autoScrollIdleTimerRef.current) clearTimeout(autoScrollIdleTimerRef.current);
+        autoScrollIdleTimerRef.current = window.setTimeout(() => {
+            isInteractingRef.current = false;
+        }, 4000);
+    }, []);
+
+    useEffect(() => {
+        if (!isExpanded || !hasOverflow || disabled) return;
+        const el = trackRef.current;
+        if (!el) return;
+
+        const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduced) return;
+
+        let raf = 0;
+        let dir = 1;
+        const speed = 0.35;
+
+        const step = () => {
+            if (!isInteractingRef.current && el) {
+                const maxScroll = el.scrollWidth - el.clientWidth;
+                if (maxScroll > 6) {
+                    el.scrollLeft += dir * speed;
+                    if (el.scrollLeft >= maxScroll - 2) {
+                        dir = -1;
+                    } else if (el.scrollLeft <= 2) {
+                        dir = 1;
+                    }
+                }
+            }
+            raf = requestAnimationFrame(step);
+        };
+
+        raf = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(raf);
+    }, [isExpanded, hasOverflow, disabled]);
+
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
         if (e.button !== 0 || disabled) return;
         isDraggingRef.current = true;
@@ -298,6 +341,7 @@ export const HairlineScroller: React.FC<HairlineScrollerProps> = ({
 
     const rootClass = [
         'hl-scroller',
+        'ui-root',
         `hl-scroller--${size}`,
         isExpanded ? 'is-expanded' : 'is-collapsed',
     ].join(' ');
@@ -371,11 +415,21 @@ export const HairlineScroller: React.FC<HairlineScrollerProps> = ({
                         aria-label={label}
                         aria-orientation="horizontal"
                         tabIndex={-1}
-                        onPointerDown={handlePointerDown}
+                        onTouchStart={pauseAutoScroll}
+                        onWheel={pauseAutoScroll}
+                        onMouseEnter={pauseAutoScroll}
+                        onFocus={pauseAutoScroll}
+                        onPointerDown={(e) => {
+                            pauseAutoScroll();
+                            handlePointerDown(e);
+                        }}
                         onPointerMove={handlePointerMove}
                         onPointerUp={handlePointerUp}
                         onPointerCancel={handlePointerCancel}
-                        onKeyDown={handleKeyDown}
+                        onKeyDown={(e) => {
+                            pauseAutoScroll();
+                            handleKeyDown(e);
+                        }}
                     >
                         {items.map((item, index) => {
                             const isChosen = item.key === value;
@@ -393,6 +447,7 @@ export const HairlineScroller: React.FC<HairlineScrollerProps> = ({
                                     tabIndex={isExpanded && isFocused ? 0 : -1}
                                     disabled={disabled}
                                     className={`hl-scroller__tile ${isChosen ? 'is-active' : ''}`}
+                                    style={{ '--tile-idx': index } as React.CSSProperties}
                                     onClick={() => handleSelect(item.key)}
                                     onFocus={() => setFocusedIndex(index)}
                                 >
@@ -422,6 +477,7 @@ export const HairlineScroller: React.FC<HairlineScrollerProps> = ({
                                 tabIndex={isExpanded && focusedIndex === items.length ? 0 : -1}
                                 disabled={disabled}
                                 className={`hl-scroller__tile hl-scroller__tile--free ${!value ? 'is-active' : ''}`}
+                                style={{ '--tile-idx': items.length } as React.CSSProperties}
                                 onClick={handleFree}
                                 onFocus={() => setFocusedIndex(items.length)}
                             >

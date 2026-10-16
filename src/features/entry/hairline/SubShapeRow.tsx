@@ -119,7 +119,7 @@ export const SubShapeRow: React.FC<SubShapeRowProps> = ({
     };
 
     return (
-        <div className="ssr-root" role="group" aria-label={tr(subShapes.label)}>
+        <div className="ssr-root ui-root" role="group" aria-label={tr(subShapes.label)}>
             {showPrimary && (
                 <div className="ssr-axis" role="group" aria-label={tr(subShapes.label)}>
                     <div className="ssr-head">

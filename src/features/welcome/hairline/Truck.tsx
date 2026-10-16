@@ -8,7 +8,7 @@ import { type Cam, VB_W, VB_H, prism, rectY, rectX, discY, pathOf, proj, unproj,
  * up and shows the crates. A click opens Trucking.
  */
 
-const CAM: Cam = { S: 5, cx: 150, cy: 172 };
+const CAM: Cam = { S: 5, cx: 170, cy: 172 };
 const BOX = { x0: 0, x1: 22, y0: 0, y1: 11, z0: 3.4, z1: 17 };
 const OPENING = { x0: 3, x1: 19, z0: 5, z1: 15 };
 const WHEELS = [4.5, 11.5, 26.5];
@@ -115,13 +115,39 @@ export const Truck: React.FC<{
         const onRoad = gy > -5 && gy < 17;
         // the rest pose is the hit target (rule 1): the cargo box where the truck rests, not where it has got to
         const overCargo = bx > BOX.x0 + REST_OFFSET - 2 && bx < BOX.x1 + REST_OFFSET + 2 && by > BOX.y0 - 3 && by < BOX.y1 + 3;
-        pos.current.t = Math.max(TRAVEL[0], Math.min(TRAVEL[1], REST_OFFSET + (gx - (BOX.x1 / 2 + REST_OFFSET)) * (0.35 + 0.35 * k)));
-        door.current.set(overCargo ? 1 : REST_OPEN);
+        const targetPos = Math.max(TRAVEL[0], Math.min(TRAVEL[1], REST_OFFSET + (gx - (BOX.x1 / 2 + REST_OFFSET)) * (0.35 + 0.35 * k)));
+        const targetDoor = overCargo ? 1 : REST_OPEN;
+        const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (reducedMotion) {
+            pos.current.x = targetPos;
+            pos.current.t = targetPos;
+            door.current.value = targetDoor;
+            door.current.to = targetDoor;
+            paint();
+        } else {
+            pos.current.t = targetPos;
+            door.current.set(targetDoor);
+            wake(tick);
+        }
         say(overCargo ? 'cargo' : onRoad ? 'road' : 'rest');
-        wake(tick);
     };
 
-    const leave = () => { pos.current.t = REST_OFFSET; door.current.set(REST_OPEN); say('rest'); wake(tick); };
+    const leave = () => {
+        const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reducedMotion) {
+            pos.current.x = REST_OFFSET;
+            pos.current.t = REST_OFFSET;
+            door.current.value = REST_OPEN;
+            door.current.to = REST_OPEN;
+            paint();
+        } else {
+            pos.current.t = REST_OFFSET;
+            door.current.set(REST_OPEN);
+            wake(tick);
+        }
+        say('rest');
+    };
 
     return (
         <div

@@ -1,29 +1,23 @@
 /* ==========================================================================
    SHAPE + TYPE PICKER: hairline tiles in the Add Entry form
    --------------------------------------------------------------------------
-   Scoped under .stp. Dark is the default; html.theme-aqua is the light theme.
-   The tile plate and the figure plate are the same flat colour (--stp-tile),
-   and the figure's --hl-* and --hairline-* colours are mapped from --stp-*
-   here so the figures draw in the same ink as the welcome page's tiles.
-   Text meets 4.5:1 against the tile in both themes.
+   Scoped under .stp.ui-root. Dark is the default; html.theme-aqua is the light theme.
+   Modern Liquid Glass & Apple HIG precision controls.
    ========================================================================== */
 
 .stp {
-    /* Every colour comes from the theme tokens (styles/ui.css), so the selector follows Rock, Talan and Aqua instead of a fixed blue.
-       The tiles are translucent (the form's own surface shows through); the figure plates are almost the ground colour so hidden
-       edges stay faint; the outline is the theme's ink and the one bright mark is the theme's accent. */
-    --stp-ink: var(--ui-ink, #eef1f5);
-    --stp-ink-2: var(--ui-dim, #aeb7c3);
+    --stp-ink: var(--ui-ink, #f1f5f9);
+    --stp-ink-2: var(--ui-dim, #94a3b8);
     --stp-line: var(--ui-edge-hi, rgba(255, 255, 255, 0.16));
-    --stp-tile: var(--ui-raise, rgba(255, 255, 255, 0.05));
-    --stp-plate: color-mix(in srgb, var(--ui-ground, #0a0a0f) 72%, transparent);
-    --stp-accent: var(--ui-accent, #4fb3ff);
+    --stp-tile: var(--ui-raise, rgba(255, 255, 255, 0.04));
+    --stp-plate: color-mix(in srgb, var(--ui-ground, #0a0e17) 75%, transparent);
+    --stp-accent: var(--ui-accent, #00f0ff);
     --stp-focus: var(--ui-focus, var(--stp-accent));
     --stp-edge: color-mix(in srgb, var(--stp-ink) 80%, transparent);
     --stp-hi: var(--stp-accent);
-    --stp-mid: color-mix(in srgb, var(--stp-ink) 48%, transparent);
-    --stp-lo: color-mix(in srgb, var(--stp-ink) 28%, transparent);
-    --stp-lo-fill: color-mix(in srgb, var(--stp-ink) 8%, transparent);
+    --stp-mid: color-mix(in srgb, var(--stp-ink) 55%, transparent);
+    --stp-lo: color-mix(in srgb, var(--stp-ink) 30%, transparent);
+    --stp-lo-fill: color-mix(in srgb, var(--stp-ink) 10%, transparent);
 
     --hl-plate: var(--stp-plate);
     --hl-edge: var(--stp-edge);
@@ -31,22 +25,14 @@
     --hl-mid: var(--stp-mid);
     --hl-lo: var(--stp-lo);
     --hl-lo-fill: var(--stp-lo-fill);
-    --hl-stroke: 1.1;
-    --hairline-plate: var(--hl-plate);
-    --hairline-hi: var(--hl-hi);
-    --hairline-edge: var(--hl-edge);
-    --hairline-mid: var(--hl-mid);
-    --hairline-lo: var(--hl-lo);
-    --hairline-stroke: var(--hl-stroke);
+    --hl-stroke: 1.15;
 
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 14px;
     min-width: 0;
     color: var(--stp-ink);
 }
-
-/* html.theme-aqua needs no override: the tokens above change with the theme. */
 
 /* ── header: title and search ───────────────────────────────────────────── */
 .stp-head {
@@ -54,7 +40,7 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 8px 12px;
+    gap: 10px 14px;
 }
 
 .stp .stp-title {
@@ -62,18 +48,35 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--stp-ink);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stp .stp-title::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--stp-accent);
+    box-shadow: 0 0 8px var(--stp-accent);
 }
 
 .stp .stp-search {
-    flex: 1 1 180px;
-    max-width: 280px;
-    min-height: 36px;
-    padding: 0 10px;
-    border: 1px solid var(--stp-line);
-    border-radius: 8px;
-    background: var(--stp-tile);
+    flex: 1 1 200px;
+    max-width: 320px;
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 10px !important;
+    background: radial-gradient(135% 135% at 20% 15%, rgba(255, 255, 255, 0.06) 0%, rgba(10, 14, 22, 0.6) 100%) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3) !important;
     color: var(--stp-ink);
-    font: 500 16px/1.2 var(--ui-font-body);
+    font: 500 15px/1.2 var(--ui-font-body);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stp .stp-search::placeholder {
@@ -81,8 +84,11 @@
 }
 
 .stp .stp-search:focus-visible {
-    outline: 2px solid var(--stp-focus);
-    outline-offset: 2px;
+    border-color: var(--stp-accent) !important;
+    outline: none !important;
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.3),
+        0 0 16px -2px var(--stp-accent) !important;
 }
 
 .stp .stp-search:disabled {
@@ -92,8 +98,8 @@
 /* ── grid of tiles ──────────────────────────────────────────────────────── */
 .stp .stp-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
 }
 
 .stp .stp-tile {
@@ -102,20 +108,30 @@
     flex-direction: column;
     gap: 6px;
     min-width: 0;
-    min-height: 44px;
+    min-height: 48px;
     margin: 0;
-    padding: 6px 6px 8px;
-    border: 1px solid var(--stp-line);
-    border-radius: 12px;
-    background: var(--stp-tile);
+    padding: 8px 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 14px !important;
+    background: radial-gradient(135% 135% at 20% 15%, rgba(255, 255, 255, 0.08) 0%, rgba(10, 14, 22, 0.45) 100%) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     color: var(--stp-ink);
     text-align: left;
     cursor: pointer;
-    transition: border-color 160ms ease;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.stp .stp-tile:hover {
+    transform: translateY(-3px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.35) !important;
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 0 16px -2px var(--stp-accent) !important;
 }
 
 .stp .stp-tile[aria-checked="true"] {
-    border-color: var(--stp-accent);
+    border-color: var(--stp-accent) !important;
+    background: radial-gradient(135% 135% at 20% 15%, color-mix(in srgb, var(--stp-accent) 24%, transparent) 0%, rgba(10, 14, 22, 0.6) 100%) !important;
+    box-shadow: 0 10px 28px -4px rgba(0, 0, 0, 0.6), 0 0 24px -2px var(--stp-accent) !important;
 }
 
 .stp .stp-tile:disabled {
@@ -128,13 +144,13 @@
     outline-offset: 2px;
 }
 
-/* The figure box is 5:4. It lifts by --sf-lift, which the loop sets on the tile. */
+/* The figure box is 5:4. */
 .stp .stp-fig {
     display: block;
     aspect-ratio: 5 / 4;
     overflow: hidden;
-    border-radius: 8px;
-    background: var(--stp-tile);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.2);
     transform: translateY(calc(var(--sf-lift, 0) * -6px));
 }
 
@@ -149,17 +165,17 @@
     flex-direction: column;
     gap: 2px;
     min-width: 0;
-    padding: 0 2px;
+    padding: 0 4px;
 }
 
 .stp .stp-shape {
-    font: 700 15px/1.25 var(--ui-font-body);
+    font: 800 15px/1.25 var(--ui-font-body);
     color: var(--stp-ink);
     overflow-wrap: anywhere;
 }
 
 .stp .stp-type {
-    font: 500 14.5px/1.3 var(--ui-font-body);
+    font: 600 13.5px/1.3 var(--ui-font-body);
     color: var(--stp-ink-2);
     overflow-wrap: anywhere;
 }
@@ -180,22 +196,37 @@
 .stp .stp-save,
 .stp .stp-chip {
     min-height: 36px;
-    padding: 0 12px;
-    border: 1px solid var(--stp-line);
-    border-radius: 8px;
-    background: transparent;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     color: var(--stp-ink);
-    font: 700 15px/1 var(--ui-font-display);
+    font: 700 14px/1 var(--ui-font-display);
     cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.stp .stp-more:hover,
+.stp .stp-chip:hover {
+    transform: translateY(-1px);
+    border-color: var(--stp-accent) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff;
 }
 
 .stp .stp-save {
-    border-color: var(--stp-accent);
-    color: var(--stp-accent);
+    border-color: var(--stp-accent) !important;
+    color: var(--stp-accent) !important;
+}
+.stp .stp-save:hover {
+    background: color-mix(in srgb, var(--stp-accent) 20%, transparent) !important;
+    box-shadow: 0 0 14px var(--stp-accent) !important;
 }
 
 .stp .stp-chip {
-    font: 500 15px/1.2 var(--ui-font-body);
+    font: 500 14px/1.2 var(--ui-font-body);
     color: var(--stp-ink-2);
 }
 
@@ -216,7 +247,7 @@
 .stp .stp-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
 }
 
 /* ── the add-to-library row and quiet text ──────────────────────────────── */
@@ -224,14 +255,15 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px 12px;
-    padding: 8px 10px;
-    border: 1px dashed var(--stp-line);
-    border-radius: 10px;
+    gap: 10px 14px;
+    padding: 10px 14px;
+    border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.02) !important;
 }
 
 .stp .stp-quiet {
     margin: 0;
-    font: 500 15px/1.4 var(--ui-font-body);
+    font: 500 14px/1.4 var(--ui-font-body);
     color: var(--stp-ink-2);
 }

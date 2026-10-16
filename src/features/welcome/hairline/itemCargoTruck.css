@@ -1,0 +1,78 @@
+/* Authentic Hairline ItemCargoTruck Shipping Figure Styles */
+
+.hl-truck-stage {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  user-select: none;
+  cursor: pointer;
+}
+
+.hl-truck-stage svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hl-truck-stage path {
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.hl-truck {
+  will-change: transform;
+}
+
+.hl-shutter {
+  will-change: transform;
+}
+
+.hl-truck-crate {
+  will-change: transform;
+  cursor: pointer;
+}
+
+.hl-truck-crate .hl-crate-body {
+  fill: var(--c);
+  stroke: color-mix(in srgb, var(--c) 72%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-truck-crate .hl-crate-crease {
+  fill: none;
+  stroke: color-mix(in srgb, var(--c) 55%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-truck-crate.is-active .hl-crate-body {
+  stroke: var(--hl-hi, #fff);
+  stroke-width: calc(var(--hl-stroke, 1.1px) * 1.8);
+  filter: drop-shadow(0 -3px 6px color-mix(in srgb, var(--c) 50%, transparent));
+}
+
+/* Light / Aqua Theme Adaptations */
+html.theme-aqua .hl-truck-crate .hl-crate-body {
+  stroke: color-mix(in srgb, var(--c) 55%, #000);
+}
+html.theme-aqua .hl-truck-crate.is-active .hl-crate-body {
+  stroke: #071d24;
+  stroke-width: calc(var(--hl-stroke, 1.1px) * 2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-truck,
+  .hl-shutter,
+  .hl-truck-crate {
+    will-change: auto;
+    transition: none !important;
+  }
+}

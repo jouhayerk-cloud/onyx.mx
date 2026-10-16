@@ -3558,4 +3558,13 @@ export const esCatalog: Record<string, string> = {
   'Workbook V2': 'Workbook V2',
   'All items, full finance ledger (Rare Earth Format)': 'Todos los artículos, libro financiero completo (Formato Rare Earth)',
   'Workbook 826 items only, finance ledger from September 2026': 'Solo artículos del Workbook 826, libro financiero desde septiembre de 2026',
+  'Colibrì Local MoE Streaming Engine (Windows Desktop)': 'Motor de Streaming MoE Local Colibrì (Windows Desktop)',
+  'Colibrì Local MoE Active • Direct NVMe Weight Streaming': 'Colibrì Local MoE Activo • Streaming Directo de Pesos desde NVMe',
+  'On-Device NVMe Streaming': 'Streaming MoE Local en NVMe',
+  'Local daemon endpoint (default: http://127.0.0.1:8082)': 'Punto de enlace del demonio local (predeterminado: http://127.0.0.1:8082)',
+  'Zero Cloud Latency • Direct NVMe Model Streaming (No API key needed)': 'Cero Latencia en la Nube • Streaming Directo de Modelos por NVMe (Sin clave API)',
+  'Test Connection': 'Probar Conexión',
+  'Connected to Colibrì local daemon.': 'Conectado al demonio local de Colibrì.',
+  'Colibrì daemon responded with an error or is unreachable.': 'El demonio de Colibrì respondió con un error o es inaccesible.',
+  'Cannot reach Colibrì daemon at ': 'No se puede conectar con el demonio de Colibrì en ',
 };

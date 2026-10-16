@@ -28,15 +28,31 @@ struct OnyxMainView: View {
 
     @ViewBuilder
     private var statusLine: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(statusIndicatorColor)
-                .frame(width: 8, height: 8)
+        HStack(spacing: 12) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(statusIndicatorColor(for: modelStore.state))
+                    .frame(width: 8, height: 8)
 
-            Text(statusMessage)
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
+                Text(embeddingStatusText)
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
+            Divider()
+                .frame(height: 12)
+
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(statusIndicatorColor(for: modelStore.chatState))
+                    .frame(width: 8, height: 8)
+
+                Text(chatStatusText)
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
 
             Spacer()
         }
@@ -45,8 +61,8 @@ struct OnyxMainView: View {
         .background(Color(UIColor.systemBackground).opacity(0.95))
     }
 
-    private var statusIndicatorColor: Color {
-        switch modelStore.state {
+    private func statusIndicatorColor(for state: ModelStore.State) -> Color {
+        switch state {
         case .ready:
             return .green
         case .downloading:
@@ -56,15 +72,27 @@ struct OnyxMainView: View {
         }
     }
 
-    private var statusMessage: String {
+    private var embeddingStatusText: String {
         switch modelStore.state {
         case .ready(let url):
-            return "LiteRT Model: \(url.lastPathComponent)"
+            return "Embed: \(url.lastPathComponent)"
         case .downloading(let progress):
             let pct = Int(progress * 100)
-            return "Downloading model... \(pct)%"
+            return "Embed: \(pct)%"
         case .missing:
-            return "Model missing: copy .litertlm to Documents/Models via USB"
+            return "Embed: Missing"
+        }
+    }
+
+    private var chatStatusText: String {
+        switch modelStore.chatState {
+        case .ready(let url):
+            return "Chat: \(url.lastPathComponent)"
+        case .downloading(let progress):
+            let pct = Int(progress * 100)
+            return "Chat: \(pct)%"
+        case .missing:
+            return "Chat: Missing"
         }
     }
 }

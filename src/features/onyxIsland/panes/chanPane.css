@@ -63,6 +63,72 @@
   color: var(--isl-ink-2);
 }
 
+/* Local on-device SLM pill */
+.chan-local-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  min-height: 22px;
+  border-radius: var(--isl-radius-chip);
+  border: 1px solid var(--isl-line-strong);
+  background: var(--isl-fill-1);
+  color: var(--isl-ink-2);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.chan-local-pill:hover {
+  background: var(--isl-fill-2);
+  color: var(--isl-ink);
+}
+
+.chan-local-pill--active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.chan-local-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--isl-ink-3);
+}
+
+.chan-local-pill--active .chan-local-dot {
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+/* Colibrì telemetry pill in header */
+.chan-colibri-telemetry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--isl-ink-3);
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--isl-radius-chip);
+  padding: 1px 6px;
+  letter-spacing: 0.02em;
+}
+
+.chan-telemetry-chip {
+  color: #10b981;
+  font-weight: 700;
+}
+
+.chan-telemetry-stat {
+  font-family: monospace;
+  opacity: 0.75;
+}
+
 .chan-status-right {
   display: flex;
   align-items: center;

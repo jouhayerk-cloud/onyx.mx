@@ -1,0 +1,93 @@
+/* Authentic Hairline Finances ATM & Vault Figure Styles */
+
+.hl-atm-stage {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  user-select: none;
+  cursor: pointer;
+}
+
+.hl-atm-stage svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hl-atm-stage path {
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.hl-atm-note {
+  will-change: transform;
+  cursor: pointer;
+}
+
+.hl-atm-note .hl-note-body {
+  fill: var(--c);
+  stroke: color-mix(in srgb, var(--c) 72%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-atm-note .hl-note-crease {
+  fill: none;
+  stroke: color-mix(in srgb, var(--c) 55%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-atm-note .hl-note-tab {
+  fill: color-mix(in srgb, var(--c) 80%, #fff);
+  stroke: color-mix(in srgb, var(--c) 70%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-atm-note.is-active .hl-note-body {
+  stroke: var(--hl-hi, #fff);
+  stroke-width: calc(var(--hl-stroke, 1.1px) * 1.8);
+  filter: drop-shadow(0 -3px 6px color-mix(in srgb, var(--c) 50%, transparent));
+}
+
+.hl-atm-note.is-active .hl-note-tab {
+  stroke: var(--hl-hi, #fff);
+  fill: color-mix(in srgb, var(--c) 60%, #fff);
+}
+
+/* Bolts retraction */
+.hl-atm-bolt {
+  will-change: transform;
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Dial rotation */
+.hl-atm-dial {
+  will-change: transform;
+  cursor: pointer;
+}
+
+/* Light / Aqua Theme Adaptations */
+html.theme-aqua .hl-atm-note .hl-note-body {
+  stroke: color-mix(in srgb, var(--c) 55%, #000);
+}
+html.theme-aqua .hl-atm-note.is-active .hl-note-body {
+  stroke: #071d24;
+  stroke-width: calc(var(--hl-stroke, 1.1px) * 2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-atm-note,
+  .hl-atm-bolt,
+  .hl-atm-dial {
+    will-change: auto;
+    transition: none !important;
+  }
+}

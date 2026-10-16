@@ -24,6 +24,11 @@ public final class ModelStore: NSObject, ObservableObject, URLSessionDownloadDel
     private static let minimumModelSizeBytes: Int64 = 1_000_000
 
     @Published public private(set) var state: State = .missing
+    @Published public private(set) var chatState: State = .missing
+
+    public var embeddingState: State {
+        return state
+    }
 
     private var downloadTask: URLSessionDownloadTask?
     private var resumeData: Data?
@@ -37,67 +42,173 @@ public final class ModelStore: NSObject, ObservableObject, URLSessionDownloadDel
         refresh()
     }
 
-    /// Scans Documents/Models and Bundle for a valid .litertlm file.
+    /// Scans Documents/Models and Bundle for valid embedding and chat .litertlm files.
     public func refresh() {
-        if let modelURL = locateModelFile() {
-            state = .ready(url: modelURL)
+        // 1. Resolve Embedding Model
+        if let embedURL = locateEmbeddingModelFile() {
+            state = .ready(url: embedURL)
         } else if !Self.defaultDownloadURLString.isEmpty {
             startDownloadIfPossible()
         } else {
             state = .missing
         }
+
+        // 2. Resolve Chat / SLM Model
+        if let chatURL = locateChatModelFile() {
+            chatState = .ready(url: chatURL)
+        } else {
+            chatState = .missing
+        }
     }
 
-    /// Resolves the current model URL if available.
+    /// Resolves the current embedding model URL if available (backwards-compatible).
     public func currentModelURL() -> URL? {
+        return currentEmbeddingModelURL()
+    }
+
+    /// Resolves the current embedding model URL if available.
+    public func currentEmbeddingModelURL() -> URL? {
         if case .ready(let url) = state {
             return url
         }
-        return locateModelFile()
+        return locateEmbeddingModelFile()
+    }
+
+    /// Resolves the current chat / generative SLM model URL if available.
+    public func currentChatModelURL() -> URL? {
+        if case .ready(let url) = chatState {
+            return url
+        }
+        return locateChatModelFile()
+    }
+
+    /// Returns all discovered chat model URLs.
+    public func availableChatModels() -> [URL] {
+        return findAllChatModelFiles()
     }
 
     // MARK: - File Discovery
 
-    private func locateModelFile() -> URL? {
-        if let docModel = findInDocuments() {
+    private func locateEmbeddingModelFile() -> URL? {
+        if let docModel = findEmbeddingInDocuments() {
             return docModel
         }
-        if let bundleModel = findInBundle() {
+        if let bundleModel = findEmbeddingInBundle() {
             return bundleModel
         }
         return nil
     }
 
-    private func findInDocuments() -> URL? {
+    private func locateChatModelFile() -> URL? {
+        if let docModel = findChatInDocuments() {
+            return docModel
+        }
+        if let bundleModel = findChatInBundle() {
+            return bundleModel
+        }
+        return nil
+    }
+
+    private func getModelsDirectory() -> URL? {
         guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             return nil
         }
         let modelsDir = documentsURL.appendingPathComponent("Models", isDirectory: true)
-
-        // Ensure Models directory exists for iTunes File Sharing discovery
         if !FileManager.default.fileExists(atPath: modelsDir.path) {
             try? FileManager.default.createDirectory(at: modelsDir, withIntermediateDirectories: true)
         }
+        return modelsDir
+    }
 
-        guard let urls = try? FileManager.default.contentsOfDirectory(
-            at: modelsDir,
-            includingPropertiesForKeys: [.fileSizeKey],
-            options: [.skipsHiddenFiles]
-        ) else {
-            return nil
+    private func findEmbeddingInDocuments() -> URL? {
+        guard let modelsDir = getModelsDirectory() else { return nil }
+        let embedSubdir = modelsDir.appendingPathComponent("embeddings", isDirectory: true)
+
+        var candidates: [URL] = []
+        if let urls = try? FileManager.default.contentsOfDirectory(at: embedSubdir, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) {
+            candidates.append(contentsOf: urls.filter { $0.pathExtension.lowercased() == "litertlm" })
         }
 
-        let candidates = urls.filter { $0.pathExtension.lowercased() == "litertlm" }
+        if let urls = try? FileManager.default.contentsOfDirectory(at: modelsDir, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) {
+            let rootModels = urls.filter { $0.pathExtension.lowercased() == "litertlm" }
+            for u in rootModels {
+                let name = u.lastPathComponent.lowercased()
+                let size = (try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                // Match explicit embed naming or size threshold (< 800 MB)
+                if name.contains("embed") || (size > Self.minimumModelSizeBytes && size < 800_000_000 && !name.contains("qwen") && !name.contains("chat")) {
+                    candidates.append(u)
+                }
+            }
+        }
         return pickLargestValidModel(from: candidates)
     }
 
-    private func findInBundle() -> URL? {
+    private func findChatInDocuments() -> URL? {
+        guard let modelsDir = getModelsDirectory() else { return nil }
+        let chatSubdir = modelsDir.appendingPathComponent("chat", isDirectory: true)
+
         var candidates: [URL] = []
-        if let bundleURLs = Bundle.main.urls(forResourcesWithExtension: "litertlm", subdirectory: nil) {
+        if let urls = try? FileManager.default.contentsOfDirectory(at: chatSubdir, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) {
+            candidates.append(contentsOf: urls.filter { $0.pathExtension.lowercased() == "litertlm" })
+        }
+
+        if let urls = try? FileManager.default.contentsOfDirectory(at: modelsDir, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) {
+            let rootModels = urls.filter { $0.pathExtension.lowercased() == "litertlm" }
+            for u in rootModels {
+                let name = u.lastPathComponent.lowercased()
+                let size = (try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                // Match chat keywords or size threshold (>= 800 MB)
+                if name.contains("qwen") || name.contains("instruct") || name.contains("chat") || (size >= 800_000_000 && !name.contains("embed")) {
+                    candidates.append(u)
+                }
+            }
+        }
+        return pickLargestValidModel(from: candidates)
+    }
+
+    private func findAllChatModelFiles() -> [URL] {
+        var all: [URL] = []
+        guard let modelsDir = getModelsDirectory() else { return all }
+        let chatSubdir = modelsDir.appendingPathComponent("chat", isDirectory: true)
+
+        if let urls = try? FileManager.default.contentsOfDirectory(at: chatSubdir, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) {
+            all.append(contentsOf: urls.filter { $0.pathExtension.lowercased() == "litertlm" })
+        }
+
+        if let urls = try? FileManager.default.contentsOfDirectory(at: modelsDir, includingPropertiesForKeys: [.fileSizeKey], options: [.skipsHiddenFiles]) {
+            let rootModels = urls.filter { $0.pathExtension.lowercased() == "litertlm" }
+            for u in rootModels {
+                let name = u.lastPathComponent.lowercased()
+                let size = (try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                if name.contains("qwen") || name.contains("instruct") || name.contains("chat") || (size >= 800_000_000 && !name.contains("embed")) {
+                    if !all.contains(u) { all.append(u) }
+                }
+            }
+        }
+        return all
+    }
+
+    private func findEmbeddingInBundle() -> URL? {
+        var candidates: [URL] = []
+        if let bundleURLs = Bundle.main.urls(forResourcesWithExtension: "litertlm", subdirectory: "embeddings") {
             candidates.append(contentsOf: bundleURLs)
         }
-        if let modelsSubdir = Bundle.main.urls(forResourcesWithExtension: "litertlm", subdirectory: "Models") {
-            candidates.append(contentsOf: modelsSubdir)
+        if let bundleURLs = Bundle.main.urls(forResourcesWithExtension: "litertlm", subdirectory: nil) {
+            candidates.append(contentsOf: bundleURLs.filter { $0.lastPathComponent.lowercased().contains("embed") })
+        }
+        return pickLargestValidModel(from: candidates)
+    }
+
+    private func findChatInBundle() -> URL? {
+        var candidates: [URL] = []
+        if let bundleURLs = Bundle.main.urls(forResourcesWithExtension: "litertlm", subdirectory: "chat") {
+            candidates.append(contentsOf: bundleURLs)
+        }
+        if let bundleURLs = Bundle.main.urls(forResourcesWithExtension: "litertlm", subdirectory: nil) {
+            candidates.append(contentsOf: bundleURLs.filter {
+                let n = $0.lastPathComponent.lowercased()
+                return n.contains("qwen") || n.contains("instruct") || n.contains("chat")
+            })
         }
         return pickLargestValidModel(from: candidates)
     }

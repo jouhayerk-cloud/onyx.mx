@@ -1680,11 +1680,21 @@ export const UnifiedInventoryView = () => {
                     String(item.data.weightKg || ''),
                 ].join(' ').toLowerCase();
 
-                // Space = OR between groups; + = AND within a group
+                // Space = OR between groups; + = AND within a group; * = wildcard
                 const groups = deferredSearchTerm.trim().split(/\s+/).filter(Boolean);
                 const matchesAnyGroup = groups.some(group => {
                     const tokens = group.toLowerCase().split('+').filter(Boolean);
-                    return tokens.every(t => searchStr.includes(t));
+                    return tokens.every(t => {
+                        if (t.includes('*')) {
+                            const regexStr = t.split('*').map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+                            try {
+                                return new RegExp(regexStr).test(searchStr);
+                            } catch {
+                                return searchStr.includes(t.replace(/\*/g, ''));
+                            }
+                        }
+                        return searchStr.includes(t);
+                    });
                 });
                 if (!matchesAnyGroup) return false;
             }

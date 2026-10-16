@@ -290,33 +290,70 @@
         }), e(this, "handleMouseUp", () => {
           this.isMouseDown = !1
         }), e(this, "triggerBurst", () => {
-            this.burstDuration = 3000;
-            this.burstEndTime = Date.now() + this.burstDuration;
+            const now = performance.now();
+            this.burstDuration = 3000; // 3s total animation duration
+            this.burstEndTime = now + this.burstDuration; // Reset to 3s from latest click
+            this.minOpacity = 0.325; // 50% resting baseline (faded out only 50%)
+            this.targetOpacity = 0.65; // Peak opacity
+
+            // Velocity stacking: speed up on each click without resetting or jumping opacity
+            const prevSpeed = (typeof this.burstSpeed === 'number' && this.burstSpeed > 0.5) ? this.burstSpeed : 3.0;
+            this.burstSpeed = Math.min(8.5, prevSpeed + 2.5);
+
             if (!this.conf.playing) {
                 this.conf.playing = true;
-                this.last = performance.now();
+                this.last = now;
                 requestAnimationFrame(this.animate);
             }
         }), e(this, "animate", e => {
           if (!this.shouldSkipFrame(e) || this.isMouseDown || this.conf.playing) {
-            let timeDelta = Math.min(e - this.last, 1e3 / 15);
+            let timeDelta = this.last ? Math.min(e - this.last, 1e3 / 15) : 16;
             
-            let speedMultiplier = 3;
             if (this.burstEndTime && this.conf.playing && !this.isMouseDown) {
-                let timeLeft = this.burstEndTime - Date.now();
+                let timeLeft = this.burstEndTime - e;
+
                 if (timeLeft <= 0) {
                     this.conf.playing = false;
+                    this.burstSpeed = 0;
+                    this.currentOpacity = this.minOpacity;
+                    if (this.el) this.el.style.opacity = this.minOpacity.toFixed(3);
                 } else {
-                    // Ease out cubic: (timeLeft / totalDuration)^2.5
-                    let progress = timeLeft / this.burstDuration;
-                    speedMultiplier = 3 * Math.max(0.01, Math.pow(progress, 2.5));
+                    // 1. Continuous Opacity Interpolation (immune to click-restart flickers)
+                    if (this.el) {
+                        if (timeLeft > 1000) {
+                            // Rise smoothly towards peak 0.65
+                            const cur = typeof this.currentOpacity === 'number' ? this.currentOpacity : this.minOpacity;
+                            this.currentOpacity = Math.min(this.targetOpacity, cur + 0.04);
+                        } else {
+                            // Final 1.0s ease-out: fade down only 50% to resting baseline (0.325)
+                            let p = Math.max(0, timeLeft / 1000);
+                            let ease = p * p * (3 - 2 * p);
+                            let target = this.minOpacity + ease * (this.targetOpacity - this.minOpacity);
+                            const cur = typeof this.currentOpacity === 'number' ? this.currentOpacity : target;
+                            this.currentOpacity = cur + (target - cur) * 0.15;
+                        }
+                        this.el.style.opacity = this.currentOpacity.toFixed(3);
+                    }
+
+                    // 2. Continuous Fluid Velocity & Speed Deceleration
+                    if (timeLeft > 1000) {
+                        // Maintain active speed, smoothly decaying towards high-flow 5.5
+                        this.burstSpeed = Math.max(5.0, this.burstSpeed * 0.99);
+                    } else {
+                        // Smooth ease-out deceleration in final 1.0s
+                        let p = Math.max(0, timeLeft / 1000);
+                        let ease = p * p * (3 - 2 * p);
+                        this.burstSpeed = ease * 5.0;
+                    }
                 }
             }
 
-            this.t += timeDelta * speedMultiplier;
+            if (this.burstSpeed > 0.001) {
+                this.t += timeDelta * this.burstSpeed;
+                this.mesh.material.uniforms.u_time.value = this.t;
+                this.minigl.render();
+            }
             this.last = e;
-            this.mesh.material.uniforms.u_time.value = this.t;
-            this.minigl.render();
           }
 
           if (0 !== this.last && this.isStatic) return this.minigl.render(), void this.disconnect();

@@ -135,9 +135,9 @@ html.style-slab.theme-aqua {
 
 /* TALAN — warm dark stone */
 html.style-slab.theme-talan {
-    --slab:      #191614;
-    --slab-hi:   #241F1B;
-    --slab-sh:   #0B0908;
+    --slab:      #1e2120;
+    --slab-hi:   #272c2d;
+    --slab-sh:   #121414;
     --slab-ink:  #F5F5F0;
     --slab-dim:  #B4AEA2;
     --slab-edge: rgba(245, 245, 240, 0.13);
@@ -183,27 +183,111 @@ html.style-slab [class*="bg-gradient"] {
    Translucency and blur are what ROCK is; a single opaque material is what
    SLAB is. Everything resolves to the one surface colour. */
 
-html.style-slab [class*="backdrop-blur"]:not(:where(.ui-root, .ui-root *)),
-html.style-slab .glass-panel,
-html.style-slab .glass-sm,
-html.style-slab .glass-md,
-html.style-slab .glass-lg,
-html.style-slab .glass-tile {
+html.style-slab [class*="backdrop-blur"]:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .glass-panel:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .glass-sm:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .glass-md:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .glass-lg:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .glass-tile:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)) {
     backdrop-filter: none !important;
 }
 
-html.style-slab .glass-panel::before {
+html.style-slab .glass-panel:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+))::before {
     display: none !important;
 }
 
-html.style-slab [class*="bg-white/"]:not(:where(.ui-root, .ui-root *)),
-html.style-slab [class*="bg-black/"]:not(:where(.ui-root, .ui-root *)),
-html.style-slab [class*="backdrop-blur"]:not(:where(.ui-root, .ui-root *)) {
+html.style-slab [class*="bg-white/"]:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab [class*="bg-black/"]:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab [class*="backdrop-blur"]:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)) {
     background-color: var(--slab) !important;
 }
 
-html.style-slab [class*="border-white/"]:not(:where(.ui-root, .ui-root *)),
-html.style-slab [class*="border-black/"]:not(:where(.ui-root, .ui-root *)) {
+html.style-slab [class*="border-white/"]:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab [class*="border-black/"]:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)) {
     border-color: var(--slab-edge) !important;
 }
 
@@ -217,19 +301,97 @@ html.style-slab [class*="border-black/"]:not(:where(.ui-root, .ui-root *)) {
    WCAG badly on a mid-tone ground; collapsing them to one legible dim tone is
    the single highest-value correction in this file. */
 
-html.style-slab .text-white,
-html.style-slab .text-white\/90,
-html.style-slab .text-white\/80 {
+html.style-slab .text-white:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .text-white\/90:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .text-white\/80:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)) {
     color: var(--slab-ink) !important;
 }
 
-html.style-slab .text-white\/10,
-html.style-slab .text-white\/20,
-html.style-slab .text-white\/30,
-html.style-slab .text-white\/40,
-html.style-slab .text-white\/50,
-html.style-slab .text-white\/60,
-html.style-slab .text-white\/70 {
+html.style-slab .text-white\/10:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .text-white\/20:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .text-white\/30:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .text-white\/40:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .text-white\/50:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .text-white\/60:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab .text-white\/70:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab [class*="text-white/"]:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)) {
     color: var(--slab-dim) !important;
 }
 
@@ -698,19 +860,97 @@ html.style-slab .toast-liquid-glass {
    same top-left light source produces a correct dark bevel.
    ========================================================================== */
 
-html.style-slab.theme-talan .text-white,
-html.style-slab.theme-talan .text-white\/90,
-html.style-slab.theme-talan .text-white\/80 {
+html.style-slab.theme-talan .text-white:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab.theme-talan .text-white\/90:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab.theme-talan .text-white\/80:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)) {
     color: var(--slab-ink) !important;
 }
 
-html.style-slab.theme-talan .text-white\/10,
-html.style-slab.theme-talan .text-white\/20,
-html.style-slab.theme-talan .text-white\/30,
-html.style-slab.theme-talan .text-white\/40,
-html.style-slab.theme-talan .text-white\/50,
-html.style-slab.theme-talan .text-white\/60,
-html.style-slab.theme-talan .text-white\/70 {
+html.style-slab.theme-talan .text-white\/10:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab.theme-talan .text-white\/20:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab.theme-talan .text-white\/30:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab.theme-talan .text-white\/40:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab.theme-talan .text-white\/50:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab.theme-talan .text-white\/60:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab.theme-talan .text-white\/70:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)),
+html.style-slab.theme-talan [class*="text-white/"]:not(:where(
+    .ui-root, .ui-root *,
+    .warehouse-dark-glass, .warehouse-dark-glass *,
+    .pack-wizard-root, .pack-wizard-root *,
+    .liquid-glass-obsidian, .liquid-glass-obsidian *,
+    .logistics-glass, .logistics-glass *,
+    .logistics-obsidian-card, .logistics-obsidian-card *
+)) {
     color: var(--slab-dim) !important;
 }
 
@@ -1846,4 +2086,74 @@ html.style-slab .inv-sheet-close {
         border: 0;
         border-radius: 0;
     }
+}
+
+/* ── Logistics Obsidian Glass Card Utility & Protected Substrates ───────────
+   Utility classes ensuring that dark obsidian Liquid Glass cards, Warehouse,
+   and Pack Wizard surfaces retain their deep dark substrate, crisp white text,
+   and high-contrast cyan/emerald/amber badges across ALL themes including Slab. */
+
+.logistics-obsidian-card {
+    background-color: rgba(10, 15, 29, 0.88) !important;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0.45) 100%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(1.9) !important;
+    backdrop-filter: blur(28px) saturate(1.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+}
+
+/* ui-root compatibility mapping for protected surfaces */
+.logistics-obsidian-card,
+.liquid-glass-obsidian,
+.warehouse-dark-glass,
+.pack-wizard-root,
+.logistics-glass {
+    --text-color: #ffffff;
+    --text-color-primary: #ffffff;
+    --text-color-secondary: rgba(255, 255, 255, 0.7);
+    --border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Explicit high-contrast preservation for obsidian cards in Slab mode */
+html.style-slab .logistics-obsidian-card,
+html.style-slab .liquid-glass-obsidian,
+html.style-slab .warehouse-dark-glass,
+html.style-slab .pack-wizard-root,
+html.style-slab .logistics-glass {
+    color: #ffffff !important;
+}
+
+html.style-slab .logistics-obsidian-card .text-white,
+html.style-slab .liquid-glass-obsidian .text-white,
+html.style-slab .warehouse-dark-glass .text-white,
+html.style-slab .pack-wizard-root .text-white,
+html.style-slab .logistics-glass .text-white {
+    color: #ffffff !important;
+}
+
+html.style-slab .logistics-obsidian-card [class*="text-white/"],
+html.style-slab .liquid-glass-obsidian [class*="text-white/"],
+html.style-slab .warehouse-dark-glass [class*="text-white/"],
+html.style-slab .pack-wizard-root [class*="text-white/"],
+html.style-slab .logistics-glass [class*="text-white/"] {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+html.style-slab .logistics-obsidian-card [class*="text-cyan-"],
+html.style-slab .logistics-obsidian-card [class*="text-emerald-"],
+html.style-slab .logistics-obsidian-card [class*="text-amber-"],
+html.style-slab .liquid-glass-obsidian [class*="text-cyan-"],
+html.style-slab .liquid-glass-obsidian [class*="text-emerald-"],
+html.style-slab .liquid-glass-obsidian [class*="text-amber-"],
+html.style-slab .warehouse-dark-glass [class*="text-cyan-"],
+html.style-slab .warehouse-dark-glass [class*="text-emerald-"],
+html.style-slab .warehouse-dark-glass [class*="text-amber-"],
+html.style-slab .pack-wizard-root [class*="text-cyan-"],
+html.style-slab .pack-wizard-root [class*="text-emerald-"],
+html.style-slab .pack-wizard-root [class*="text-amber-"],
+html.style-slab .logistics-glass [class*="text-cyan-"],
+html.style-slab .logistics-glass [class*="text-emerald-"],
+html.style-slab .logistics-glass [class*="text-amber-"] {
+    filter: drop-shadow(0 0 8px currentColor);
 }

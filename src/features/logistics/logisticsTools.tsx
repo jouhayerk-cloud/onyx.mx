@@ -19,6 +19,7 @@ import {
     truckShowExportModalAtom,
     truckShowReadyWizardAtom,
     isCrateCreationModalOpenAtom,
+    isCratePackingManagerOpenAtom,
     isWarehouseSelectionModeAtom,
     warehouseSelectedIdsAtom,
     showWarehouseExportWizardAtom,
@@ -51,6 +52,7 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
     const setShowReadyWizard = useSetAtom(truckShowReadyWizardAtom);
     const setIsCrateModalOpen = useSetAtom(isCrateCreationModalOpenAtom);
+    const setIsPackingManagerOpen = useSetAtom(isCratePackingManagerOpenAtom);
     const [isWarehouseSelectionMode, setIsWarehouseSelectionMode] = useAtom(isWarehouseSelectionModeAtom);
     const warehouseSelectedIds = useAtomValue(warehouseSelectedIdsAtom);
     const setShowWarehouseExportWizard = useSetAtom(showWarehouseExportWizardAtom);
@@ -59,9 +61,9 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
     const moduleId = activeView || 'logistics';
 
     const tabs = activeView === 'warehouse' ? [
-        { id: 'empty', label: 'Empty', icon: 'package' },
-        { id: 'packed', label: 'Packed', icon: 'boxes' },
-        { id: 'packing', label: 'Packing', icon: 'package-open' },
+        { id: 'packed', label: tr('Packed Crates'), icon: 'boxes' },
+        { id: 'empty', label: tr('Available Units'), icon: 'package' },
+        { id: 'boxes', label: tr('Boxes.py Studio'), icon: 'layers' },
     ] : activeView === 'trucking' ? [
         { id: 'shipping', label: 'PLAN', icon: 'truck' },
         { id: 'deployed', label: 'DPLYD', icon: 'history' },
@@ -88,6 +90,21 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
                 onSelect={(id: string) => {
                     setSubTab(id as any);
                     if (id !== 'packing') setSearch('');
+                    if (activeView === 'warehouse') {
+                        if (id === 'boxes') {
+                            const btns = Array.from(document.querySelectorAll('header button, [data-warehouse-tab]'));
+                            const btn = btns.find(b => b.textContent?.includes('Laser Stencils') || b.textContent?.includes('Boxes.py')) as HTMLElement;
+                            if (btn) btn.click();
+                        } else if (id === 'packed') {
+                            const btns = Array.from(document.querySelectorAll('header button, [data-warehouse-tab]'));
+                            const btn = btns.find(b => b.textContent?.includes('Packed Crates')) as HTMLElement;
+                            if (btn) btn.click();
+                        } else if (id === 'empty') {
+                            const btns = Array.from(document.querySelectorAll('header button, [data-warehouse-tab]'));
+                            const btn = btns.find(b => b.textContent?.includes('Available to Pack')) as HTMLElement;
+                            if (btn) btn.click();
+                        }
+                    }
                 }}
                 accentColor="var(--color-logistics)"
             />
@@ -119,15 +136,16 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
 
     if (activeView === 'warehouse') {
         tools.push({
-            id: 'warehouse.create-crate',
+            id: 'warehouse.launch-packing-studio',
             moduleId,
-            label: tr('New Unit'),
-            title: tr('Initialize Storage Protocol'),
-            icon: PackagePlus,
+            label: tr('Packing Studio'),
+            title: tr('Launch Interactive Packing Studio'),
+            icon: PackageOpen,
             kind: 'action',
             group: tr('Warehouse'),
-            order: 30,
-            run: () => setIsCrateModalOpen(true)
+            order: 25,
+            pinned: true,
+            run: () => setIsPackingManagerOpen(true)
         });
 
         tools.push({
@@ -137,7 +155,7 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
             icon: Search,
             kind: 'widget',
             group: tr('Find'),
-            order: 40,
+            order: 30,
             pinned: true,
             render: () => (
                 <widgets.DeployableSearch
@@ -149,6 +167,18 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
                     placeholder={tr("FIND UNITS...")}
                 />
             )
+        });
+
+        tools.push({
+            id: 'warehouse.create-crate',
+            moduleId,
+            label: tr('New Unit'),
+            title: tr('Initialize Storage Protocol'),
+            icon: PackagePlus,
+            kind: 'action',
+            group: tr('Warehouse'),
+            order: 35,
+            run: () => setIsCrateModalOpen(true)
         });
 
         if (subTab === 'packed') {

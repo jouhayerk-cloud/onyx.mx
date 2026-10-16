@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSetAtom } from 'jotai/react';
-import { FileText, FileSpreadsheet, Tag, Search, ArrowRight, Printer } from 'lucide-react';
+import { FileText, FileSpreadsheet, Tag, Search, ArrowRight, Printer, Scissors } from 'lucide-react';
 import { tr } from '../../lib/i18n';
 import { activeViewAtom } from '../../lib/atoms';
 import { isPrintCenterOpenAtom } from './printState';
 import { TEMPLATE_CATALOGUE, TemplateEntry, getTemplate, listTemplatesByModule } from './templateCatalogue';
 import { getRecentTracked } from './jobTracking';
 import { listDocumentJobs } from '../../lib/documentJobs';
+import { LaserStencilModal } from './LaserStencilModal';
 
 const viewMapping: Record<string, string> = {
     inventory: 'inventory',
@@ -38,6 +39,11 @@ export const TemplatesTabContent: React.FC = () => {
     const [search, setSearch] = useState('');
     const [selectedKind, setSelectedKind] = useState<string | null>(null);
     const [recentJobs, setRecentJobs] = useState<any[]>([]);
+    const [laserModalState, setLaserModalState] = useState<{ isOpen: boolean; templateId: string }>({ 
+        isOpen: false, 
+        templateId: 'fmt-crate-lasercut-svg' 
+    });
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         async function fetchJobs() {
@@ -50,7 +56,7 @@ export const TemplatesTabContent: React.FC = () => {
             }
         }
         fetchJobs();
-    }, []);
+    }, [refreshKey]);
 
     const handleGoToModule = (mod: string) => {
         const view = viewMapping[mod];
@@ -73,9 +79,12 @@ export const TemplatesTabContent: React.FC = () => {
         byModule[mod] = filteredTemplates.filter(t => t.module === mod);
     }
 
-    const tracked = getRecentTracked();
+    const tracked = useMemo(() => getRecentTracked(), [refreshKey]);
 
-    const getKindIcon = (kind: string) => {
+    const getKindIcon = (kind: string, templateId?: string) => {
+        if (templateId === 'fmt-crate-lasercut-svg' || templateId === 'fmt-crate-stencil-lbrn2' || templateId === 'fmt-crate-dividers-svg') {
+            return <Scissors className="w-4 h-4 text-cyan-400" />;
+        }
         switch (kind) {
             case 'xlsx': return <FileSpreadsheet className="w-4 h-4 text-green-400" />;
             case 'csv': return <FileText className="w-4 h-4 text-green-300" />;
@@ -126,12 +135,13 @@ export const TemplatesTabContent: React.FC = () => {
                                     const onlineJob = recentJobs.find(j => j.template_id === t.id);
                                     
                                     const lastJobAt = trackedJob?.at || onlineJob?.client_created_at || onlineJob?.created_at;
+                                    const isLaserTemplate = t.id === 'fmt-crate-lasercut-svg' || t.id === 'fmt-crate-stencil-lbrn2' || t.id === 'fmt-crate-dividers-svg';
                                     
                                     return (
                                         <div key={t.id} className="pc-glass-card ui-root flex flex-col p-4 gap-3 relative">
                                             <div className="flex justify-between items-start">
                                                 <div className="flex items-center gap-2">
-                                                    {getKindIcon(t.kind)}
+                                                    {getKindIcon(t.kind, t.id)}
                                                     <span className="font-bold text-base">{t.label}</span>
                                                 </div>
                                                 <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${t.status === 'tracked' ? 'bg-green-500/20 text-green-400' : t.status === 'hub' ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400'}`}>
@@ -150,12 +160,33 @@ export const TemplatesTabContent: React.FC = () => {
                                                     <span>{tr("Last run:")}</span>
                                                     <span>{lastJobAt ? new Date(lastJobAt).toLocaleDateString() : tr("Never")}</span>
                                                 </div>
-                                                <button 
-                                                    onClick={() => handleGoToModule(t.module)}
-                                                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm font-semibold"
-                                                >
-                                                    {tr("Go to module")} <ArrowRight className="w-4 h-4" />
-                                                </button>
+
+                                                {isLaserTemplate ? (
+                                                    <div className="flex flex-col gap-1.5 w-full">
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setLaserModalState({ isOpen: true, templateId: t.id })}
+                                                            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-500/20 via-sky-500/25 to-amber-500/20 hover:from-cyan-500/35 hover:via-sky-500/40 hover:to-amber-500/35 text-cyan-200 border border-cyan-400/40 shadow-[0_0_15px_rgba(6,182,212,0.25)] transition-all text-sm font-bold tracking-wide active:scale-[0.98] isl-btn isl-btn--primary group"
+                                                        >
+                                                            <Scissors className="w-4 h-4 text-cyan-400 group-hover:rotate-12 transition-transform" />
+                                                            <span>{tr("Open Laser Studio")}</span>
+                                                        </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handleGoToModule(t.module)}
+                                                            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xs font-medium text-gray-400 hover:text-gray-200"
+                                                        >
+                                                            <span>{tr("Go to module")}</span> <ArrowRight className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => handleGoToModule(t.module)}
+                                                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm font-semibold"
+                                                    >
+                                                        {tr("Go to module")} <ArrowRight className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -165,6 +196,17 @@ export const TemplatesTabContent: React.FC = () => {
                     );
                 })}
             </div>
+
+            {/* Laser Stencil Studio Sheet Modal */}
+            <LaserStencilModal
+                isOpen={laserModalState.isOpen}
+                onClose={() => setLaserModalState(prev => ({ ...prev, isOpen: false }))}
+                initialTemplateId={laserModalState.templateId}
+                onJobRecorded={() => {
+                    setRefreshKey(k => k + 1);
+                    listDocumentJobs({ limit: 200 }).then(setRecentJobs).catch(console.error);
+                }}
+            />
         </div>
     );
 };

@@ -1,0 +1,88 @@
+/* Authentic Hairline Logistics Band & Conveyor Figure Styles */
+
+.hl-logistics-stage {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  user-select: none;
+  cursor: pointer;
+}
+
+.hl-logistics-stage svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hl-logistics-stage path {
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.hl-cargo-item {
+  will-change: transform;
+  cursor: pointer;
+}
+
+.hl-cargo-item .hl-cargo-body {
+  fill: var(--c);
+  stroke: color-mix(in srgb, var(--c) 72%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-cargo-item .hl-cargo-crease {
+  fill: none;
+  stroke: color-mix(in srgb, var(--c) 55%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-cargo-item .hl-cargo-lid {
+  fill: color-mix(in srgb, var(--c) 82%, #fff);
+  stroke: color-mix(in srgb, var(--c) 70%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-cargo-item.is-active .hl-cargo-body {
+  stroke: var(--hl-hi, #fff);
+  stroke-width: calc(var(--hl-stroke, 1.1px) * 1.8);
+  filter: drop-shadow(0 -3px 6px color-mix(in srgb, var(--c) 50%, transparent));
+}
+
+.hl-cargo-item.is-active .hl-cargo-lid {
+  stroke: var(--hl-hi, #fff);
+  fill: color-mix(in srgb, var(--c) 65%, #fff);
+}
+
+/* Laser Scanning Arch */
+.hl-laser-fan {
+  fill: color-mix(in srgb, var(--hl-accent, #35d0a2) 18%, transparent);
+  stroke: var(--hl-accent, #35d0a2);
+  stroke-width: 0.8px;
+  stroke-dasharray: 2 3;
+}
+
+/* Light / Aqua Theme Adaptations */
+html.theme-aqua .hl-cargo-item .hl-cargo-body {
+  stroke: color-mix(in srgb, var(--c) 55%, #000);
+}
+html.theme-aqua .hl-cargo-item.is-active .hl-cargo-body {
+  stroke: #071d24;
+  stroke-width: calc(var(--hl-stroke, 1.1px) * 2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-cargo-item,
+  .hl-laser-fan {
+    will-change: auto;
+    transition: none !important;
+  }
+}

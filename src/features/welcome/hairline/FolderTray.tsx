@@ -12,7 +12,7 @@ import './folderTray.css';
  */
 
 const TOP_CODES = ['JM', 'EM', 'CA', 'AN', 'SU', 'TE', 'DH', 'ML'] as const;
-const CAM: Cam = { S: 5.0, cx: 188, cy: 172 };
+const CAM: Cam = { S: 5.2, cx: 145, cy: 163 };
 const W = 54, D = 22, Z0 = 3.5;
 const N = TOP_CODES.length + 1; // 8 top vendors + 1 grey overflow folder for all vendors
 const FOLDER_H = 13.5;
@@ -110,9 +110,10 @@ export interface FolderTrayProps {
     onOpen: (vendor: string | null) => void;
     onRead?: ((label: string | null) => void) | ((label: string) => void);
     intensity?: number;
+    focused?: boolean;
 }
 
-export const FolderTray: React.FC<FolderTrayProps> = ({ onOpen, onRead, intensity = 0.65 }) => {
+export const FolderTray: React.FC<FolderTrayProps> = ({ onOpen, onRead, intensity = 0.65, focused = false }) => {
     const g = useMemo(geometry, []);
     const svgRef = useRef<SVGSVGElement | null>(null);
     const folderRefs = useRef<(SVGGElement | null)[]>([]);
@@ -204,6 +205,25 @@ export const FolderTray: React.FC<FolderTrayProps> = ({ onOpen, onRead, intensit
         return () => { sleep(tick); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Focus-driven auto-animation for mobile carousel and keyboard focus
+    useEffect(() => {
+        if (!focused) {
+            aim(null);
+            return;
+        }
+        let step = 0;
+        aim(step);
+        const timer = window.setInterval(() => {
+            step = (step + 1) % N;
+            aim(step);
+        }, 1150);
+        return () => {
+            window.clearInterval(timer);
+            aim(null);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [focused]);
 
     const indexAt = (e: { clientX: number; clientY: number }): number | null => {
         const svg = svgRef.current;

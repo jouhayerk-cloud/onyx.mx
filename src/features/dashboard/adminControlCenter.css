@@ -1,0 +1,325 @@
+/* ==========================================================================
+   Onyx Admin Control Center — Apple Human Interface Guidelines (LiquidOnyx)
+   Grounded in Apple HIG Two-Layer Glass Model, 4.5:1 contrast, and tactile feedback.
+   ========================================================================== */
+
+/* ── Two-Layer Functional Glass Cards ── */
+.acc-glass-panel {
+  background: rgba(18, 22, 28, 0.55);
+  backdrop-filter: blur(28px) saturate(1.8);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 12px 40px -10px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.acc-glass-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  pointer-events: none;
+}
+
+.acc-glass-panel:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 16px 48px -12px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+}
+
+/* ── HUD Metric Ring / Pill ── */
+.acc-hud-card {
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.acc-hud-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Apple HIG Segmented Control Switcher ── */
+.acc-segmented-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(10, 14, 20, 0.65);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.acc-segmented-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 18px;
+  min-height: 36px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.65);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .acc-segmented-item {
+    min-height: 44px; /* Apple HIG 44x44pt touch targets on mobile */
+    padding: 10px 14px;
+    font-size: 11px;
+    gap: 6px;
+  }
+}
+
+.acc-segmented-item:hover:not(.active) {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.acc-segmented-item.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* ── Vibrant Status Accents ── */
+.acc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.acc-dot-emerald {
+  background: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
+}
+
+.acc-dot-amber {
+  background: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+}
+
+.acc-dot-cyan {
+  background: #00aeef;
+  box-shadow: 0 0 10px rgba(0, 174, 239, 0.7);
+}
+
+.acc-dot-purple {
+  background: #a855f7;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.7);
+}
+
+.acc-dot-rose {
+  background: #ef4444;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+}
+
+/* ── Pulsing Beacon Animation ── */
+@keyframes acc-pulse-emerald {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.acc-pulse-emerald {
+  animation: acc-pulse-emerald 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+@keyframes acc-pulse-cyan {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 174, 239, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(0, 174, 239, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 174, 239, 0);
+  }
+}
+
+.acc-pulse-cyan {
+  animation: acc-pulse-cyan 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+/* ── User & Device Cards ── */
+.acc-device-card {
+  background: rgba(22, 27, 34, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.acc-device-card:hover {
+  background: rgba(30, 36, 45, 0.55);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Badges & Chips ── */
+.acc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.acc-badge-root {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.acc-badge-admin {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.acc-badge-operator {
+  background: rgba(0, 174, 239, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(0, 174, 239, 0.3);
+}
+
+.acc-badge-mesh {
+  background: rgba(0, 174, 239, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(0, 174, 239, 0.25);
+  box-shadow: 0 0 12px rgba(0, 174, 239, 0.2);
+}
+
+.acc-badge-relay {
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.acc-badge-view {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ── Tactile Buttons ── */
+.acc-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  min-height: 32px;
+  min-width: 32px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .acc-action-btn {
+    min-height: 44px; /* Apple HIG Mobile 44x44pt touch target */
+    min-width: 44px;
+    padding: 10px 16px;
+  }
+}
+
+.acc-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.acc-action-btn:active {
+  transform: scale(0.97);
+}
+
+.acc-action-btn-primary {
+  background: rgba(0, 174, 239, 0.18);
+  border-color: rgba(0, 174, 239, 0.4);
+  color: #38bdf8;
+}
+
+.acc-action-btn-primary:hover {
+  background: rgba(0, 174, 239, 0.28);
+  border-color: rgba(0, 174, 239, 0.6);
+  color: #ffffff;
+}
+
+/* ── Accessibility & Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .acc-glass-panel,
+  .acc-segmented-item,
+  .acc-device-card,
+  .acc-action-btn {
+    transition: none !important;
+    animation: none !important;
+  }
+  .acc-pulse-emerald,
+  .acc-pulse-cyan {
+    animation: none !important;
+  }
+}

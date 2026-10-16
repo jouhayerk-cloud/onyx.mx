@@ -18,7 +18,7 @@ import {
     X, AlertCircle, LogOut,
     Shield, Palette, Zap,
     Wifi, WifiOff, Layers, Box, Languages,
-    Check, ChevronRight, ChevronLeft
+    Check, ChevronRight, ChevronLeft, Bot, Cpu
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
@@ -28,6 +28,7 @@ import changelogText from '../../assets/CHANGELOG.md?raw';
 import { SiriAccessPanel } from './SiriAccessPanel';
 import { McpAccessPanel } from './McpAccessPanel';
 import { AiProvidersPanel } from './AiProvidersPanel';
+import { ColibriSettingsCard } from './ColibriSettingsCard';
 import { siriTokenPendingAtom } from './siriState';
 import { tr } from '../../lib/i18n';
 import { TactileSwitch } from '../../components/TactileSwitch';
@@ -94,6 +95,7 @@ export const StudioSettingsPortal: React.FC = () => {
 
     const [colorsOpen, setColorsOpen]     = useState(false);
     const [colorValues, setColorValues]   = useState<Record<string, string>>({});
+    const [showAllProviders, setShowAllProviders] = useState(false);
     
     const [logsExpanded, setLogsExpanded] = useState<Record<string, boolean>>({});
     const [showAllLogs, setShowAllLogs]   = useState(false);
@@ -432,7 +434,37 @@ export const StudioSettingsPortal: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Siri Shortcuts */}
+                            {/* AI & Local Intelligence */}
+                            <div className="flex flex-col">
+                                <span className="ss-section-caption">{tr("AI & Local Intelligence")}</span>
+                                <ColibriSettingsCard />
+
+                                {/* All AI Providers & Job Routing Drawer */}
+                                <div className="ss-card mt-3">
+                                    <button
+                                        type="button"
+                                        className="ss-row ss-row-clickable justify-between w-full text-left"
+                                        onClick={() => setShowAllProviders(!showAllProviders)}
+                                        aria-expanded={showAllProviders}
+                                    >
+                                        <span className="flex items-center gap-4">
+                                            <span className="ss-icon-tile bg-purple-500/10 text-purple-400"><Bot size={16}/></span>
+                                            <div className="flex flex-col">
+                                                <span className="text-[16px] text-(--ss-fg)">{tr("All AI Providers & Routing")}</span>
+                                                <span className="text-[12px] text-(--ss-fg2)">{tr("Gemini, Anthropic, OpenAI, Compatible & Job Routing")}</span>
+                                            </div>
+                                        </span>
+                                        <ChevronRight size={20} className={`text-(--ss-fg3) transition-transform ${showAllProviders ? 'rotate-90' : ''}`} />
+                                    </button>
+                                    {showAllProviders && (
+                                        <div className="p-4 border-t border-(--ss-sep)">
+                                            <AiProvidersPanel />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Siri Shortcuts / MCP */}
                             {import.meta.env.VITE_SIRI_TOKENS === 'true' && (
                                 <>
                                 <div className="ss-siri">
@@ -440,9 +472,6 @@ export const StudioSettingsPortal: React.FC = () => {
                                 </div>
                                 <div className="ss-siri">
                                     <McpAccessPanel />
-                                </div>
-                                <div className="ss-siri">
-                                    <AiProvidersPanel />
                                 </div>
                                 </>
                             )}

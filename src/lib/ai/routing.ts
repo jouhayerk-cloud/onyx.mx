@@ -12,7 +12,7 @@ export interface Route { provider: ProviderId; model?: string }
 
 const STORAGE_KEY = 'ONYX_AI_ROUTES';
 const DEFAULT_ROUTE: Route = { provider: 'gemini' };
-const PROVIDERS: readonly ProviderId[] = ['gemini', 'anthropic', 'openai', 'compat'];
+const PROVIDERS: readonly ProviderId[] = ['gemini', 'anthropic', 'openai', 'compat', 'companion', 'colibri'];
 
 const readAll = (): Partial<Record<RouteJob, Route>> => {
     try {

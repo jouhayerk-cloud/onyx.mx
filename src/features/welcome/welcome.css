@@ -1,212 +1,1287 @@
-/* Welcome page: four hairline figures around the Onyx Chan face. */
+/* Welcome Page: Organic Liquid Glass Bubbles & Apple HIG Info Panel for Onyx */
 
 .wl-root {
-  --wl-ink: #fff;
-  --wl-ink-2: rgba(255, 255, 255, 0.58);
-  --wl-line: rgba(255, 255, 255, 0.13);
+  --wl-ink: #ffffff;
+  --wl-ink-2: rgba(255, 255, 255, 0.72);
+  --wl-ink-muted: rgba(255, 255, 255, 0.48);
+  --wl-btn-ink: #ffffff;
+  --wl-line: rgba(255, 255, 255, 0.14);
+  --wl-glass-bg: rgba(255, 255, 255, 0.05);
+  --wl-glass-border: rgba(255, 255, 255, 0.16);
+  --wl-glass-rim: rgba(255, 255, 255, 0.45);
+  --wl-dot-idle: rgba(255, 255, 255, 0.25);
+  --wl-toggle-bg: rgba(255, 255, 255, 0.07);
+  --wl-toggle-border: rgba(255, 255, 255, 0.14);
+  --wl-toggle-ink: rgba(255, 255, 255, 0.85);
+  --wl-read-bg: rgba(255, 255, 255, 0.08);
+  --wl-read-ink: #ffffff;
+  --wl-read-border: rgba(255, 255, 255, 0.18);
+  background: transparent;
 }
+
 html.theme-aqua .wl-root {
-  --wl-ink: #0b2a33;
-  --wl-ink-2: rgba(11, 42, 51, 0.68);
-  --wl-line: rgba(11, 42, 51, 0.16);
+  --wl-ink: #071d24;
+  --wl-ink-2: rgba(7, 29, 36, 0.78);
+  --wl-ink-muted: rgba(7, 29, 36, 0.52);
+  --wl-btn-ink: #071d24;
+  --wl-line: rgba(7, 29, 36, 0.14);
+  --wl-glass-bg: rgba(255, 255, 255, 0.65);
+  --wl-glass-border: rgba(255, 255, 255, 0.9);
+  --wl-glass-rim: rgba(255, 255, 255, 0.95);
+  --wl-dot-idle: rgba(7, 29, 36, 0.25);
+  --wl-toggle-bg: rgba(255, 255, 255, 0.82);
+  --wl-toggle-border: rgba(7, 29, 36, 0.16);
+  --wl-toggle-ink: #071d24;
+  --wl-read-bg: rgba(7, 29, 36, 0.08);
+  --wl-read-ink: #071d24;
+  --wl-read-border: rgba(7, 29, 36, 0.18);
+  background: transparent;
 }
 
-.wl-grid {
-  display: grid;
-  gap: 18px;
-  width: 100%;
-  max-width: 1100px;
-  /* centred when it fits, scrolled from its top when it does not (justify-content: center would crop the top) */
-  margin-block: auto;
-  grid-template-columns: minmax(0, 1fr);
-}
-.wl-face { grid-column: 1 / -1; order: -1; }
-@media (min-width: 640px) {
-  .wl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (min-width: 1024px) {
-  .wl-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 300px) minmax(0, 1fr);
-    grid-template-areas: "inv face fin" "log face shp";
-    gap: 20px 24px;
-  }
-  .wl-face { grid-area: face; grid-column: auto; order: 0; }
-  .wl-tile[data-area="inv"] { grid-area: inv; }
-  .wl-tile[data-area="fin"] { grid-area: fin; }
-  .wl-tile[data-area="log"] { grid-area: log; }
-  .wl-tile[data-area="shp"] { grid-area: shp; }
-}
-
-/* ── the face ───────────────────────────────────────────────────────────── */
-.wl-face {
+/* ── 1. Organic Spatial Layout (No squared card containers) ─────────────── */
+.wl-organic-layout {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  text-align: center;
-  padding: 8px 0;
+  gap: 28px;
+  width: 100%;
+  max-width: 1240px;
+  margin-block: auto;
 }
+
+/* Flanks for left and right orbiting bubbles */
+.wl-flank {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+}
+
+.wl-center-core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  width: 100%;
+  max-width: 440px;
+  z-index: 10;
+}
+
+/* Desktop 3-Column Organic Architecture */
+@media (min-width: 1024px) {
+  .wl-organic-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) minmax(360px, 480px) minmax(220px, 320px);
+    align-items: center;
+    justify-content: center;
+    gap: 32px 36px;
+  }
+
+  .wl-flank {
+    flex-direction: column;
+    gap: 36px;
+  }
+
+  .wl-flank--left {
+    align-items: flex-end;
+  }
+
+  .wl-flank--right {
+    align-items: flex-start;
+  }
+}
+
+/* ── 2. Chan Sprite Animation Bubble (.wl-halo) ─────────────────────────── */
+.wl-face-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
 .wl-halo {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: clamp(190px, 22vw, 250px);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: clamp(164px, 17.5vw, 204px);
   aspect-ratio: 1;
+  border-radius: 50%;
+  padding: 0;
+  box-sizing: border-box;
+  background: radial-gradient(135% 135% at 28% 22%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.035) 45%, rgba(255, 255, 255, 0.01) 100%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 8px 0 rgba(0, 0, 0, 0.35),
+    0 16px 36px -8px rgba(0, 0, 0, 0.45),
+    0 0 28px 0 color-mix(in srgb, var(--main-color, #00aeef) 22%, transparent);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease, border-color 0.3s ease;
+  overflow: hidden;
 }
-.wl-halo::before,
+
+@media (max-width: 1024px) {
+  .wl-halo {
+    width: clamp(144px, 18vw, 172px);
+  }
+}
+
+@media (max-width: 768px) {
+  .wl-halo {
+    width: clamp(124px, 32vw, 148px) !important;
+    height: clamp(124px, 32vw, 148px) !important;
+  }
+}
+
+/* Specular curved highlight along top arc */
+.wl-halo::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.08) 26%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Outer liquid glass orbit ring */
 .wl-halo::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: -10px;
   border-radius: 50%;
-  border: 1px solid var(--wl-line);
+  border: 1px solid color-mix(in srgb, var(--main-color, #00aeef) 32%, transparent);
   pointer-events: none;
+  opacity: 0.65;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
-.wl-halo::after { inset: -14px; border-color: color-mix(in srgb, var(--wl-line) 55%, transparent); }
-/* the mascot is a button: the slab styles would paint a dark square behind the sprite */
-.wl-halo > button {
-  background: transparent !important;
-  border: 0 !important;
+
+.wl-halo:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow:
+    inset 0 2px 3px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -3px 8px 0 rgba(0, 0, 0, 0.4),
+    0 20px 40px -6px rgba(0, 0, 0, 0.55),
+    0 0 36px 0 color-mix(in srgb, var(--main-color, #00aeef) 35%, transparent);
+}
+.wl-halo:hover::after {
+  opacity: 0.9;
+  transform: scale(1.03);
+}
+
+/* Eliminate any button borders, square outlines or backgrounds inside the halo */
+.wl-halo > button,
+.wl-halo button,
+.chan-mascot-sprite {
+  border: none !important;
+  outline: none !important;
   box-shadow: none !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
+  background: transparent !important;
   border-radius: 50% !important;
+  overflow: hidden !important;
 }
-.wl-hello { color: var(--wl-ink); font-weight: 900; letter-spacing: -0.03em; line-height: 1.04; font-size: clamp(1.9rem, 3.2vw, 2.7rem); }
-.wl-hello b { color: var(--main-color, #00aeef); font-weight: 900; }
-.wl-lede { color: var(--wl-ink-2); font-weight: 500; font-size: 0.95rem; max-width: 26ch; }
 
-/* ── a tile ─────────────────────────────────────────────────────────────── */
-.wl-tile {
-  --hl-accent: #00aeef;
-  --hl-plate: #0d1015;
-  --hl-edge: var(--hl-accent);
-  --hl-hi: color-mix(in srgb, var(--hl-accent) 38%, #fff);
-  --hl-mid: color-mix(in srgb, var(--hl-accent) 58%, var(--hl-plate));
-  --hl-lo: color-mix(in srgb, var(--hl-accent) 30%, var(--hl-plate));
-  --hl-lo-fill: color-mix(in srgb, var(--hl-accent) 9%, #000);
-  --hl-stroke: 1.1;
-  /* the package's own figures read the same colours */
-  --hairline-plate: var(--hl-plate);
-  --hairline-hi: var(--hl-hi);
-  --hairline-edge: var(--hl-edge);
-  --hairline-mid: var(--hl-mid);
-  --hairline-lo: var(--hl-lo);
-  --hairline-stroke: var(--hl-stroke);
+.wl-halo > .chan-mascot-sprite,
+.wl-halo .chan-mascot-sprite {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  aspect-ratio: 1 !important;
+  margin: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0;
+}
 
+/* ── 3. The Central Info Bubble Panel (.wl-info-panel) ──────────────────── */
+/* Compact Liquid Glass Chat Bubble below Chan's face */
+.wl-info-panel {
+  --panel-accent: var(--main-color, #00aeef);
   position: relative;
+  width: 100%;
+  max-width: 290px; /* Default Compact Mode */
+  min-height: auto;
+  border-radius: 18px;
+  padding: 9px 14px 11px;
+  background: radial-gradient(125% 125% at 50% 0%, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.025) 100%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 6px 0 rgba(0, 0, 0, 0.3),
+    0 14px 32px -8px rgba(0, 0, 0, 0.4),
+    0 0 20px -4px color-mix(in srgb, var(--panel-accent) 25%, transparent);
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  border-radius: 24px;
-  border: 1px solid var(--wl-line);
-  background: color-mix(in srgb, var(--hl-accent) 4%, transparent);
-  overflow: hidden;
-  transition: border-color 0.25s ease, background-color 0.25s ease;
-  animation: wl-in 0.6s cubic-bezier(0.32, 0.72, 0, 1) both;
-}
-.wl-tile:hover,
-.wl-tile:focus-within {
-  border-color: color-mix(in srgb, var(--hl-accent) 70%, transparent);
-  background: color-mix(in srgb, var(--hl-accent) 8%, transparent);
-}
-.wl-tile[data-area="inv"] { --hl-accent: #00aeef; animation-delay: 0.05s; }
-.wl-tile[data-area="fin"] { --hl-accent: #f2b53c; animation-delay: 0.12s; }
-.wl-tile[data-area="log"] { --hl-accent: #35d0a2; animation-delay: 0.19s; }
-.wl-tile[data-area="shp"] { --hl-accent: #ff7a45; animation-delay: 0.26s; }
-@keyframes wl-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .wl-tile { animation: none; } }
-
-html.theme-aqua .wl-tile {
-  --hl-plate: #f6f1e6;
-  --hl-hi: color-mix(in srgb, var(--hl-accent) 70%, #000);
-  --hl-edge: color-mix(in srgb, var(--hl-accent) 85%, #000);
-  --hl-mid: color-mix(in srgb, var(--hl-accent) 70%, var(--hl-plate));
-  --hl-lo: color-mix(in srgb, var(--hl-accent) 40%, var(--hl-plate));
-  --hl-lo-fill: color-mix(in srgb, var(--hl-accent) 14%, var(--hl-plate));
-  background: rgba(255, 255, 255, 0.34);
+  justify-content: center;
+  text-align: center;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
 }
 
-.wl-fig {
-  position: relative;
-  margin: 10px 10px 0;
-  aspect-ratio: 5 / 4;
-  border-radius: 16px;
-  background: var(--hl-plate);
-  border: 1px solid color-mix(in srgb, var(--hl-accent) 22%, transparent);
-  overflow: hidden;
-  cursor: pointer;
+.wl-info-panel--expanded {
+  max-width: 350px;
+  padding: 12px 18px 14px;
+  border-radius: 20px;
 }
-.wl-fig > :not(.wl-read) { width: 100%; height: 100%; }
-.wl-read {
+
+@media (max-width: 768px) {
+  .wl-info-panel {
+    max-width: 254px;
+    padding: 8px 12px 10px;
+    border-radius: 16px;
+  }
+  .wl-info-panel--expanded {
+    max-width: 290px;
+    padding: 10px 14px 12px;
+    border-radius: 18px;
+  }
+}
+
+/* Specular sheen on top rounded edge of the Info Bubble */
+.wl-info-panel::before {
+  content: "";
   position: absolute;
-  left: 12px;
-  bottom: 9px;
-  z-index: 2;
-  max-width: calc(100% - 24px);
-  font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--hl-hi);
+  inset: 1px 1px auto 1px;
+  height: 40%;
+  border-radius: 17px 17px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, transparent 100%);
   pointer-events: none;
 }
 
-.wl-meta {
+/* Subtle speech indicator notch pointing up toward Chan's face */
+.wl-info-panel::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(24px);
+  pointer-events: none;
+  transition: border-color 0.35s ease, background 0.35s ease;
+}
+
+.wl-info-panel--active {
+  border-color: color-mix(in srgb, var(--panel-accent) 65%, rgba(255, 255, 255, 0.3));
+  box-shadow:
+    inset 0 2px 3px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 6px 0 rgba(0, 0, 0, 0.35),
+    0 16px 36px -8px rgba(0, 0, 0, 0.45),
+    0 0 28px 0 color-mix(in srgb, var(--panel-accent) 35%, transparent);
+  transform: translateY(-2px);
+}
+.wl-info-panel--active::after {
+  border-left-color: color-mix(in srgb, var(--panel-accent) 65%, rgba(255, 255, 255, 0.3));
+  border-top-color: color-mix(in srgb, var(--panel-accent) 65%, rgba(255, 255, 255, 0.3));
+}
+
+@keyframes wl-chat-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.wl-info-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  animation: wl-chat-pop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.wl-info-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 18px 16px;
+  width: 100%;
+  gap: 6px;
 }
-.wl-title { color: var(--wl-ink); font-weight: 800; font-size: 1.18rem; letter-spacing: -0.01em; line-height: 1.1; }
-.wl-sub { color: var(--wl-ink-2); font-size: 0.8rem; margin-top: 4px; line-height: 1.3; }
-.wl-go {
-  flex: none;
+
+.wl-info-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wl-ink-2);
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wl-info-tag-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.wl-info-live-read {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.60rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--wl-read-ink);
+  background: var(--wl-read-bg);
+  padding: 1.5px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--wl-read-border);
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Micro Compact Toggle Button */
+.wl-info-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--wl-ink-2);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1px 6px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.wl-info-toggle-btn:hover {
+  color: var(--wl-ink);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.wl-info-title {
+  color: var(--wl-ink);
+  font-size: clamp(0.88rem, 1.4vw, 1.04rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.wl-info-sub {
+  color: var(--wl-ink-2);
+  font-size: 0.71rem;
+  line-height: 1.35;
+  margin: 0;
+  max-width: 30ch;
+  cursor: pointer;
+}
+
+.wl-info-panel:not(.wl-info-panel--expanded) .wl-info-sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.wl-info-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.wl-info-action-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--hl-accent) 55%, transparent);
-  background: transparent;
-  color: color-mix(in srgb, var(--hl-accent) 80%, var(--wl-ink));
-  font-weight: 800;
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  padding: 4px 11px;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--wl-btn-ink);
+  border: 1px solid var(--wl-glass-border);
   cursor: pointer;
-  transition: background-color 0.2s ease, gap 0.2s ease, color 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
-.wl-go:hover,
-.wl-go:focus-visible { background: color-mix(in srgb, var(--hl-accent) 18%, transparent); gap: 10px; outline: none; }
-html.theme-aqua .wl-go { color: color-mix(in srgb, var(--hl-accent) 70%, #000); }
+.wl-info-action-btn:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+  filter: brightness(1.15);
+}
 
-/* ── the drawn figures (cabinet, truck) ─────────────────────────────────── */
-.hl-stage { width: 100%; height: 100%; outline: none; touch-action: manipulation; }
-.hl-stage:focus-visible { box-shadow: inset 0 0 0 2px var(--hl-hi); border-radius: 16px; }
-.hl-stage svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.hl-stage path { vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
-.hl-plate { fill: var(--hl-plate); stroke: var(--hl-edge); stroke-width: var(--hl-stroke); }
-.hl-face { fill: var(--hl-plate); stroke: var(--hl-mid); stroke-width: var(--hl-stroke); }
-.hl-slot { fill: var(--hl-lo-fill); stroke: var(--hl-lo); stroke-width: var(--hl-stroke); }
-.hl-crease { fill: none; stroke: var(--hl-mid); stroke-width: var(--hl-stroke); }
-.hl-dash { fill: none; stroke: var(--hl-lo); stroke-width: var(--hl-stroke); }
-.hl-spoke { fill: none; stroke: var(--hl-mid); stroke-width: var(--hl-stroke); }
-.hl-mark { fill: var(--hl-edge); stroke: none; }
-.hl-bright { fill: var(--hl-hi); }
+.wl-info-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.64rem;
+  color: var(--wl-ink-2);
+  opacity: 0.75;
+}
 
-.hl-folder { will-change: transform; }
-.hl-folder-body { fill: color-mix(in srgb, var(--hl-plate) 68%, var(--c)); stroke: var(--c); stroke-width: var(--hl-stroke); }
-.hl-folder-crease { fill: none; stroke: color-mix(in srgb, var(--c) 60%, var(--hl-plate)); stroke-width: var(--hl-stroke); }
-.hl-folder-tab { fill: var(--c); stroke: var(--c); stroke-width: var(--hl-stroke); }
-.hl-folder.is-active .hl-folder-body { stroke: var(--hl-hi); stroke-width: calc(var(--hl-stroke) * 1.7); fill: color-mix(in srgb, var(--hl-plate) 50%, var(--c)); }
-.hl-folder.is-active .hl-folder-tab { stroke: var(--hl-hi); }
+/* Greeting State in Info Panel */
+.wl-info-greeting-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--main-color, #00aeef);
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+}
 
-/* Aqua: the vendor colours need more body on the cream plate */
-html.theme-aqua .hl-folder-body { fill: color-mix(in srgb, var(--hl-plate) 50%, var(--c)); }
-html.theme-aqua .hl-folder.is-active .hl-folder-body { fill: color-mix(in srgb, var(--hl-plate) 36%, var(--c)); }
-html.theme-aqua .hl-folder-crease { stroke: color-mix(in srgb, var(--c) 80%, #000); }
+.wl-info-hello {
+  color: var(--wl-ink);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  margin: 0;
+}
+.wl-info-hello b {
+  color: var(--main-color, #00aeef);
+  font-weight: 900;
+}
+
+.wl-info-lede {
+  color: var(--wl-ink-2);
+  font-weight: 500;
+  font-size: 0.71rem;
+  max-width: 32ch;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.wl-info-idle-hint {
+  font-size: 0.64rem;
+  color: var(--wl-ink-2);
+  opacity: 0.65;
+  margin-top: 2px;
+}
+
+/* ── 4. Pure Round Floating Liquid Glass Bubbles (.wl-bubble) ───────────── */
+@keyframes wl-bubble-float {
+  0%, 100% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-5px) translateX(2px) rotate(0.6deg);
+  }
+  50% {
+    transform: translateY(2px) translateX(-2px) rotate(-0.4deg);
+  }
+  75% {
+    transform: translateY(-4px) translateX(-1.5px) rotate(0.4deg);
+  }
+}
+
+.wl-bubble-unit {
+  --bubble-accent: #00aeef;
+  --bubble-glow: rgba(0, 174, 239, 0.35);
+  --bubble-rim: rgba(0, 174, 239, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  outline: none;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  animation: wl-bubble-float calc(4.2s + var(--float-idx, 0) * 0.3s) ease-in-out infinite;
+  animation-delay: calc(var(--float-idx, 0) * -0.9s);
+  will-change: transform;
+}
+
+.wl-bubble-unit:hover,
+.wl-bubble-unit--focused,
+.wl-bubble-unit:focus-within {
+  animation-play-state: paused;
+}
+
+.wl-bubble-unit[data-area="inv"] {
+  --bubble-accent: #00aeef;
+  --bubble-glow: rgba(0, 174, 239, 0.4);
+  --bubble-rim: rgba(0, 174, 239, 0.6);
+}
+.wl-bubble-unit[data-area="fin"] {
+  --bubble-accent: #f2b53c;
+  --bubble-glow: rgba(242, 181, 60, 0.4);
+  --bubble-rim: rgba(242, 181, 60, 0.6);
+}
+.wl-bubble-unit[data-area="add"] {
+  --bubble-accent: #b85bf8;
+  --bubble-glow: rgba(184, 91, 248, 0.45);
+  --bubble-rim: rgba(184, 91, 248, 0.65);
+}
+.wl-bubble-unit[data-area="log"] {
+  --bubble-accent: #35d0a2;
+  --bubble-glow: rgba(53, 208, 162, 0.4);
+  --bubble-rim: rgba(53, 208, 162, 0.6);
+}
+.wl-bubble-unit[data-area="shp"] {
+  --bubble-accent: #ff7a45;
+  --bubble-glow: rgba(255, 122, 69, 0.4);
+  --bubble-rim: rgba(255, 122, 69, 0.6);
+}
+
+.wl-bubble {
+  position: relative;
+  width: clamp(160px, 16.5vw, 196px);
+  aspect-ratio: 1 !important;
+  border-radius: 50% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(130% 130% at 30% 20%, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.028) 48%, rgba(255, 255, 255, 0.008) 100%) !important;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow:
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2px 6px 0 rgba(0, 0, 0, 0.35),
+    0 12px 28px -4px rgba(0, 0, 0, 0.4),
+    0 0 24px -2px var(--bubble-glow) !important;
+  overflow: hidden !important;
+  cursor: pointer;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+  outline: none;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .wl-bubble {
+    width: clamp(140px, 17vw, 168px);
+  }
+}
+
+@media (max-width: 768px) {
+  .wl-bubble {
+    width: clamp(160px, 46vw, 196px) !important;
+    height: clamp(160px, 46vw, 196px) !important;
+  }
+}
+
+/* Specular curved highlight along the top arc */
+.wl-bubble::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 50% 6%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.08) 28%, transparent 62%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Soft glowing rim */
+.wl-bubble::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50% !important;
+  border: 1px solid var(--bubble-rim) !important;
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  z-index: 2;
+}
+
+/* Hover & Focus Interactions for Bubbles */
+.wl-bubble-unit:hover .wl-bubble,
+.wl-bubble-unit--focused .wl-bubble,
+.wl-bubble:focus-visible {
+  transform: translateY(-4px) scale(1.05);
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  box-shadow:
+    inset 0 2px 3px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -3px 8px 0 rgba(0, 0, 0, 0.45),
+    0 18px 36px -6px rgba(0, 0, 0, 0.5),
+    0 0 32px 0 var(--bubble-glow) !important;
+}
+
+.wl-bubble-unit:hover .wl-bubble::after,
+.wl-bubble-unit--focused .wl-bubble::after {
+  opacity: 0.95;
+  transform: scale(1.03);
+  border-color: var(--bubble-accent) !important;
+}
+
+/* Add Entry Bubble Special Size / Presence */
+.wl-bubble--add {
+  width: clamp(160px, 16.5vw, 196px);
+  aspect-ratio: 1 !important;
+  border-radius: 50% !important;
+}
+@media (max-width: 1024px) {
+  .wl-bubble--add {
+    width: clamp(140px, 17vw, 168px);
+  }
+}
+@media (max-width: 768px) {
+  .wl-bubble--add {
+    width: clamp(160px, 46vw, 196px) !important;
+    height: clamp(160px, 46vw, 196px) !important;
+  }
+}
+
+/* Hairline vector container inside the bubble - strictly circular and transparent */
+.wl-bubble > svg,
+.wl-bubble > div,
+.wl-bubble div,
+.wl-bubble button,
+.atm-machine-container,
+.logistics-band-container,
+.plus-tower-container,
+.item-cargo-truck-container,
+.hl-tray-stage,
+.hl-stage {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: auto;
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+}
+
+.wl-bubble .hl-stage svg {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  overflow: visible !important;
+  transform: scale(1.12);
+  transform-origin: 50% 50%;
+  pointer-events: auto;
+}
+
+/* Suppress all labels and readout badges inside/under hairline bubbles */
+.wl-bubble-label,
+.wl-read {
+  display: none !important;
+}
+
+@keyframes wl-read-in {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ── 5. Sleek Monochromatic Floating Bubble Label Pill ──────────────────── */
+.wl-bubble-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--wl-ink-2);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.wl-bubble-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.wl-bubble-unit:hover .wl-bubble-label,
+.wl-bubble-unit--focused .wl-bubble-label {
+  color: var(--wl-ink);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.wl-bubble-label--add {
+  background: radial-gradient(120% 120% at 50% 0%, rgba(184, 91, 248, 0.16) 0%, rgba(184, 91, 248, 0.04) 100%);
+  border-color: rgba(184, 91, 248, 0.35);
+}
+
+/* ── 6. AQUA Theme Adaptation ───────────────────────────────────────────── */
+html.theme-aqua .wl-halo {
+  background: radial-gradient(135% 135% at 28% 22%, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.45) 45%, rgba(255, 255, 255, 0.22) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow:
+    inset 0 1.5px 3px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2px 6px 0 rgba(11, 42, 51, 0.08),
+    0 12px 32px -4px rgba(11, 42, 51, 0.12),
+    0 0 24px 0 color-mix(in srgb, var(--main-color, #00aeef) 25%, transparent);
+}
+html.theme-aqua .wl-halo::before {
+  background: radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.3) 30%, transparent 65%);
+}
+
+html.theme-aqua .wl-info-panel {
+  background: radial-gradient(125% 125% at 50% 0%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.6) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
+    0 14px 32px -6px rgba(11, 42, 51, 0.12),
+    0 0 24px -2px color-mix(in srgb, var(--panel-accent) 25%, transparent);
+}
+html.theme-aqua .wl-info-panel::after {
+  background: rgba(255, 255, 255, 0.75);
+  border-left-color: rgba(255, 255, 255, 0.9);
+  border-top-color: rgba(255, 255, 255, 0.9);
+}
+
+html.theme-aqua .wl-bubble {
+  background: radial-gradient(130% 130% at 30% 20%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 48%, rgba(255, 255, 255, 0.25) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2px 6px 0 rgba(11, 42, 51, 0.08),
+    0 12px 28px -4px rgba(11, 42, 51, 0.14),
+    0 0 20px -2px var(--bubble-glow);
+}
+
+html.theme-aqua .wl-bubble-label {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px -2px rgba(11, 42, 51, 0.08);
+}
+
+/* ── 7. Hairline Vector & Interactive Theme Architecture ────────────────── */
+.wl-bubble-unit {
+  --hl-plate: #101216;
+  --hl-edge: #8fa1b4;
+  --hl-hi: #ffffff;
+  --hl-mid: #4a5a6a;
+  --hl-lo: #242e38;
+  --hl-lo-fill: #080b0e;
+  --hl-stroke: 1.1px;
+}
+
+.wl-bubble-unit[data-area="inv"] {
+  --hl-accent: #00aeef;
+  --hl-hi: #7ee0cf;
+  --hl-mid: #3b7080;
+  --hl-edge: #76c5db;
+}
+
+.wl-bubble-unit[data-area="fin"] {
+  --hl-accent: #f2b53c;
+  --hl-hi: #ffd580;
+  --hl-mid: #856a2e;
+  --hl-edge: #e6b74e;
+}
+
+.wl-bubble-unit[data-area="add"] {
+  --hl-accent: #b85bf8;
+  --hl-hi: #e2a8ff;
+  --hl-mid: #6f3b94;
+  --hl-edge: #b875ea;
+}
+
+.wl-bubble-unit[data-area="log"] {
+  --hl-accent: #35d0a2;
+  --hl-hi: #7efbd4;
+  --hl-mid: #2c6e5a;
+  --hl-edge: #52cba7;
+}
+
+.wl-bubble-unit[data-area="shp"] {
+  --hl-accent: #ff7a45;
+  --hl-hi: #ffae85;
+  --hl-mid: #85472e;
+  --hl-edge: #e67d55;
+}
+
+html.theme-aqua .wl-bubble-unit {
+  --hl-plate: #f6f1e6;
+  --hl-edge: #2d454f;
+  --hl-hi: #071d24;
+  --hl-mid: #718a94;
+  --hl-lo: #d4ccb8;
+  --hl-lo-fill: #e8e1cf;
+  --hl-stroke: 1.15px;
+}
+html.theme-aqua .wl-bubble-unit[data-area="inv"] {
+  --hl-accent: #0087ba;
+  --hl-hi: #071d24;
+  --hl-edge: #0087ba;
+  --hl-mid: #4d9cb3;
+}
+html.theme-aqua .wl-bubble-unit[data-area="fin"] {
+  --hl-accent: #b88014;
+  --hl-hi: #071d24;
+  --hl-edge: #b88014;
+  --hl-mid: #997839;
+}
+html.theme-aqua .wl-bubble-unit[data-area="add"] {
+  --hl-accent: #8b31cc;
+  --hl-hi: #071d24;
+  --hl-edge: #8b31cc;
+  --hl-mid: #845a9e;
+}
+html.theme-aqua .wl-bubble-unit[data-area="log"] {
+  --hl-accent: #178a66;
+  --hl-hi: #071d24;
+  --hl-edge: #178a66;
+  --hl-mid: #4a8f79;
+}
+html.theme-aqua .wl-bubble-unit[data-area="shp"] {
+  --hl-accent: #c44714;
+  --hl-hi: #071d24;
+  --hl-edge: #c44714;
+  --hl-mid: #9c5c41;
+}
+
+/* Hairline Generic Figure Elements */
+.hl-stage {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.hl-stage svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hl-stage path {
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.hl-plate {
+  fill: var(--hl-plate);
+  stroke: var(--hl-edge);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-face {
+  fill: color-mix(in srgb, var(--hl-accent, #00aeef) 12%, var(--hl-plate));
+  stroke: var(--hl-edge);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-slot {
+  fill: var(--hl-lo-fill);
+  stroke: var(--hl-edge);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-crease {
+  fill: none;
+  stroke: var(--hl-mid);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-dash {
+  fill: none;
+  stroke: var(--hl-edge);
+  stroke-dasharray: 4 4;
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-spoke {
+  fill: none;
+  stroke: var(--hl-hi);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-mark {
+  fill: var(--hl-edge);
+  stroke: none;
+}
+
+.hl-bright {
+  stroke: var(--hl-hi) !important;
+  fill: color-mix(in srgb, var(--hl-accent, #00aeef) 40%, #ffffff) !important;
+  filter: drop-shadow(0 0 6px var(--hl-accent, #00aeef));
+}
+
+/* Full-color hairline item styles */
+.hl-color-gold {
+  fill: #f2b53c;
+  stroke: #c48c1f;
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+.hl-color-green {
+  fill: #35d0a2;
+  stroke: #1e8768;
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+.hl-color-cyan {
+  fill: #00aeef;
+  stroke: #007bb0;
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+.hl-color-purple {
+  fill: #b85bf8;
+  stroke: #812ec4;
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+.hl-color-orange {
+  fill: #ff7a45;
+  stroke: #bf4d1f;
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+/* ── 8. Mobile Vertical Auto-Scrolling Floating Bubbles Carousel ────────── */
+.wl-mobile-carousel {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  max-height: calc(100dvh - 80px);
+  overflow: hidden;
+  gap: 6px;
+  padding: 4px 12px 12px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .wl-root {
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+  .wl-root > div.flex-1 {
+    padding: 6px 10px 10px !important;
+    overflow: hidden !important;
+    height: 100% !important;
+  }
+  .wl-desktop-layout {
+    display: none !important;
+  }
+  .wl-mobile-carousel {
+    display: flex;
+  }
+}
+
+/* Orbiting Satellite Rails around Chan's face */
+.wl-face-orbit-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  gap: 14px;
+}
+
+.wl-satellite-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  z-index: 12;
+}
+
+.wl-satellite-rail--left {
+  align-items: flex-end;
+}
+
+.wl-satellite-rail--right {
+  align-items: flex-start;
+}
+
+/* 42px Liquid Onyx Mini Glass Bubble */
+.wl-mini-lucide-bubble {
+  --mini-accent: #00aeef;
+  position: relative;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(135% 135% at 30% 20%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.01) 100%);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 4px 0 rgba(0, 0, 0, 0.35),
+    0 8px 20px -4px rgba(0, 0, 0, 0.45),
+    0 0 14px -1px color-mix(in srgb, var(--mini-accent) 45%, transparent);
+  color: var(--mini-accent);
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  transition: opacity 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
+  touch-action: manipulation;
+}
+
+/* Specular curved rim for mini bubble */
+.wl-mini-lucide-bubble::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.08) 32%, transparent 65%);
+  pointer-events: none;
+}
+
+/* Outer accent glow border */
+.wl-mini-lucide-bubble::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border: 1px solid var(--mini-accent);
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.wl-mini-lucide-bubble.is-visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.wl-mini-lucide-bubble.is-hidden {
+  opacity: 0;
+  transform: scale(0.4);
+  pointer-events: none;
+}
+
+.wl-mini-lucide-bubble:hover,
+.wl-mini-lucide-bubble:focus-visible {
+  transform: scale(1.12);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    inset 0 2px 3px 0 rgba(255, 255, 255, 0.75),
+    0 12px 24px -4px rgba(0, 0, 0, 0.55),
+    0 0 22px 0 var(--mini-accent);
+}
+
+.wl-mini-lucide-bubble:hover::after,
+.wl-mini-lucide-bubble:focus-visible::after {
+  opacity: 0.95;
+  transform: scale(1.06);
+}
+
+.wl-mini-icon {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--mini-accent) 60%, transparent));
+  transition: transform 0.25s ease;
+}
+
+.wl-mini-lucide-bubble:hover .wl-mini-icon {
+  transform: scale(1.1);
+}
+
+/* Aqua Theme Mini Bubble */
+html.theme-aqua .wl-mini-lucide-bubble {
+  background: radial-gradient(135% 135% at 30% 20%, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.35) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.98),
+    inset 0 -2px 4px 0 rgba(7, 29, 36, 0.08),
+    0 8px 20px -4px rgba(7, 29, 36, 0.15),
+    0 0 16px -2px color-mix(in srgb, var(--mini-accent) 35%, transparent);
+}
+html.theme-aqua .wl-mini-lucide-bubble::before {
+  background: radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.25) 35%, transparent 68%);
+}
+
+.wl-carousel-track-container {
+  position: relative;
+  width: 100%;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+  padding-block: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 8%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 8%, #000 88%, transparent 100%);
+}
+
+.wl-carousel-track-container::before,
+.wl-carousel-track-container::after {
+  display: none !important;
+  content: none !important;
+}
+
+.wl-carousel-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-top: calc(26vh - 84px);
+  padding-bottom: 120px;
+  padding-inline: 0;
+  touch-action: pan-y;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+.wl-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* 3D Vertical Depth in Mobile Carousel */
+.wl-carousel-track .wl-bubble-unit {
+  opacity: 0.62;
+  transform: scale(0.85);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.wl-carousel-track .wl-bubble-unit.is-centered {
+  opacity: 1;
+  transform: scale(1.14);
+  z-index: 5;
+}
+.wl-carousel-track .wl-bubble-unit.is-centered .wl-bubble {
+  border-color: rgba(255, 255, 255, 0.65) !important;
+  box-shadow:
+    inset 0 2px 3px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -3px 8px 0 rgba(0, 0, 0, 0.45),
+    0 20px 44px -6px rgba(0, 0, 0, 0.55),
+    0 0 36px 0 var(--bubble-glow) !important;
+}
+
+/* Carousel Micro Navigation Controls - Positioned at z-index 5 behind Onyx Island (10050) */
+.wl-carousel-nav {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 320px;
+  padding: 6px 14px;
+  margin-top: 2px;
+  margin-inline: auto;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--wl-glass-bg);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  border: 1px solid var(--wl-glass-border);
+  box-shadow:
+    inset 0 1px 1px 0 var(--wl-glass-rim),
+    0 8px 24px -4px rgba(0, 0, 0, 0.25);
+}
+
+.wl-carousel-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wl-carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wl-dot-idle);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.wl-carousel-dot.is-active {
+  width: 16px;
+  border-radius: 9999px;
+  background: var(--main-color, #00aeef);
+  box-shadow: 0 0 8px var(--main-color, #00aeef);
+}
+
+.wl-carousel-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--wl-toggle-ink);
+  background: var(--wl-toggle-bg);
+  border: 1px solid var(--wl-toggle-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.wl-carousel-toggle:hover {
+  color: var(--wl-ink);
+  background: var(--wl-glass-bg);
+}
+.wl-carousel-toggle.is-active {
+  color: var(--wl-btn-ink);
+  border-color: color-mix(in srgb, var(--main-color, #00aeef) 50%, var(--wl-line));
+}
+
+/* ── 9. Reduced Motion Support ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .wl-halo,
+  .wl-info-panel,
+  .wl-bubble,
+  .wl-bubble-label,
+  .wl-info-action-btn,
+  .wl-bubble-unit {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}

@@ -4481,8 +4481,8 @@ export function MainHeader() {
     // Global tools: what the right-hand cluster of this bar used to hold, now in the island (every view).
     const MenuLogoIcon = PanelLeftOpen;   // a menu glyph: the Onyx mark is the face, a second logo beside it was redundant
     useRegisterTools('global', [
-        ...(sentTruckId ? [{ id: 'global.crate', moduleId: 'global', label: tr('Crate'), title: tr('Active Crate Deployment'), icon: Truck, kind: 'action' as const, group: tr('Navigate'), order: 5, pinned: true, badge: '•', run: () => setView('trucking') }] : []),
-        ...(artifactConfig.itemIds.length > 0 ? [{ id: 'global.manifest', moduleId: 'global', label: tr('Manifest'), title: tr('Toggle Neural Manifest'), icon: Package, kind: 'toggle' as const, group: tr('Navigate'), order: 6, pinned: true, pressed: artifactConfig.isOpen, run: () => setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen })) }] : []),
+        ...(sentTruckId ? [{ id: 'global.crate', moduleId: 'global', label: tr('Crate'), title: tr('Active Crate Deployment'), icon: Truck, kind: 'action' as const, group: tr('Navigate'), order: 5, pinned: activeView !== 'welcome', badge: '•', run: () => setView('trucking') }] : []),
+        ...(artifactConfig.itemIds.length > 0 ? [{ id: 'global.manifest', moduleId: 'global', label: tr('Manifest'), title: tr('Toggle Neural Manifest'), icon: Package, kind: 'toggle' as const, group: tr('Navigate'), order: 6, pinned: activeView !== 'welcome', pressed: artifactConfig.isOpen, run: () => setArtifactConfig(prev => ({ ...prev, isOpen: !prev.isOpen })) }] : []),
         ...(selectedIds.length > 0 ? [{ id: 'global.shopify', moduleId: 'global', label: tr('Shopify'), title: tr('Download Shopify XLSX'), icon: ShoppingBag, kind: 'action' as const, group: tr('Export'), order: 5, disabled: isShopifyExporting, run: handleShopifyExportXLSX }] : []),
         ...(activeView === 'onyx' ? [
             { id: 'onyx.language', moduleId: 'onyx', label: appLanguage.toUpperCase(), title: tr('Toggle Neural Language'), icon: Languages, kind: 'action' as const, group: tr('Onyx'), order: 10, run: () => setAppLanguage(prev => prev === 'en' ? 'es' : 'en') },

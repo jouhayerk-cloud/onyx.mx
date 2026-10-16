@@ -1,3 +1,34 @@
+/* Island safe area helper rules: allows views, sticky headers, or modals to effortlessly clear the floating Onyx Island */
+:root {
+  --island-safe-top: 64px;
+  --island-reserve: 0px;
+  --island-bg: rgba(14, 18, 24, 0.48);
+  --island-wing-bg: rgba(15, 20, 28, 0.38);
+}
+
+html.theme-aqua {
+  --island-bg: rgba(248, 246, 240, 0.46);
+  --island-wing-bg: rgba(255, 255, 255, 0.55);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --island-safe-top: 0px;
+  }
+}
+
+.island-safe-pt {
+  padding-top: var(--island-safe-top, 64px) !important;
+}
+
+.island-safe-mt {
+  margin-top: var(--island-safe-top, 64px) !important;
+}
+
+.island-safe-top {
+  top: var(--island-safe-top, 64px) !important;
+}
+
 /* In-flow placeholder inside the top bar: reserves the row and is measured by IslandBand.
    The island itself is drawn in .onyx-island-layer, a portal on <body>, so the bar's sticky,
    blurred stacking context can no longer crop or cover it. */
@@ -6,6 +37,12 @@
   height: var(--island-reserve, 0px);   /* the island floats over the page; raise this variable to reserve a strip */
   width: 100%;
   pointer-events: none;
+  min-height: 0;
+  transition: height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.onyx-island-band--reserved {
+  --island-reserve: 56px;
 }
 
 .onyx-island-layer {
@@ -35,26 +72,26 @@
   /* MOBILE BOTTOM: overridden in media query */ pointer-events: none; }
 .onyx-island-layer .onyx-island-surface { pointer-events: auto; }
 
-/* Liquid glass: a translucent tint over a strong backdrop blur, a lit rim, a specular sheen from the
-   top-left and a pool of the accent colour at the lower edge. Nothing here is opaque. */
-.onyx-island-surface {
+/* Liquid glass: translucent free-floating Liquid Glass surface for the Onyx Island pill across ALL modes (rest, peek, card, surface) */
+.onyx-island-surface,
+html.style-slab .onyx-island-surface {
   position: relative;
   isolation: isolate;
-  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
-  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.07) 100%)) !important;
+  background-color: rgba(14, 18, 28, 0.28) !important;
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.06) 38%, rgba(255, 255, 255, 0.01) 62%, rgba(255, 255, 255, 0.10) 100%) !important;
   -webkit-backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
   backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
+  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.22)) !important;
   box-shadow:
     inset 0 1px 0.5px rgba(255, 255, 255, 0.55),
     inset 0 -1px 1px rgba(255, 255, 255, 0.12),
     inset 0 0 18px rgba(255, 255, 255, 0.07),
     0 14px 40px rgba(2, 6, 16, 0.38),
-    0 1px 3px rgba(2, 6, 16, 0.30);
-  border-radius: var(--island-r, 28px);
+    0 1px 3px rgba(2, 6, 16, 0.30) !important;
+  border-radius: var(--island-r, 18px);
   overflow: hidden;
   max-width: calc(100vw - 24px);
-  /* no background-size here: the sidebar panel paints the sheen at its natural size, and a 200% wide sheen left most of the pill flat */
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), height 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.25s ease;
 }
 
 @keyframes onyx-sweep {
@@ -71,6 +108,7 @@
   animation: onyx-sweep 1.2s ease-out forwards;
 }
 
+/* Radial sheen layer inside the glass */
 .onyx-island-surface::before {
   content: '';
   position: absolute;
@@ -78,35 +116,126 @@
   z-index: -1;
   border-radius: inherit;
   pointer-events: none;
-  /* the same two layers as the sidebar panel (.isb-panel::before in islandSidebar.css) */
   background:
     radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.26), transparent 55%),
     radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 34%, transparent), transparent 62%);
-  opacity: 0.85;   /* static: an endless animation over backdrop-filter re-blurs the page every frame */
+  opacity: 0.85;
 }
 
-/* Free-floating face: no container at all. Docked (page figures beside the face) it is the glass pill. */
+/* Light / Aqua mode: translucent liquid glass (never solid white) */
+html.theme-aqua .onyx-island-surface,
+html.style-slab.theme-aqua .onyx-island-surface {
+  background-color: rgba(255, 255, 255, 0.28) !important;
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.12) 42%, rgba(255, 255, 255, 0.02) 65%, rgba(255, 255, 255, 0.22) 100%) !important;
+  border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
+  color: #0b2a33 !important;
+  box-shadow: 
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.80),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.05),
+    0 14px 40px rgba(11, 42, 51, 0.15),
+    0 1px 3px rgba(11, 42, 51, 0.10) !important;
+}
+
+html.theme-aqua .onyx-island-surface::before {
+  background:
+    radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.60), transparent 55%),
+    radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 15%, transparent), transparent 62%) !important;
+  opacity: 0.75;
+}
+
+/* Rest Mode — Free-Floating Glass Orb (Solo / Undocked, e.g. Home view) */
 .onyx-island--rest:not(.onyx-island--docked) .onyx-island-surface {
-  background: transparent;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  border-color: transparent;
-  box-shadow: none;
-}
-.onyx-island--rest:not(.onyx-island--docked) .onyx-island-surface::before { display: none; }
-
-/* Docked layout: [figures] [face] [figures], the face always on the bar's centre line. */
-.onyx-island-dock {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  width: 68px !important;
+  height: 68px !important;
+  border-radius: 50% !important;
+  display: flex;
   align-items: center;
-  width: 100%;
-  height: 100%;
-  padding-inline: 6px;
+  justify-content: center;
 }
-.onyx-island-dock-side { display: flex; align-items: center; min-width: 0; }
-.onyx-island-dock-side--left { justify-self: end; }
-.onyx-island-dock-side--right { justify-self: start; }
+
+/* Rest Mode — Free-Floating Glass Capsule (Docked, e.g. Inventory View, Add Entry View) */
+.onyx-island--rest.onyx-island--docked .onyx-island-surface {
+  min-height: 54px !important;
+  border-radius: var(--island-r, 20px) !important;
+}
+
+/* Docked layout: [figures/tools] [Chan face] [figures/tools]
+   Unified SVG-displaced Liquid Glass capsule with breathing space around tools and Chan face */
+.onyx-island-dock {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  column-gap: 6px !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 5px 12px !important;
+  box-sizing: border-box !important;
+}
+
+.onyx-island-dock-side {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  min-width: 0;
+}
+
+.onyx-island-dock-side:empty {
+  display: none !important;
+}
+
+.onyx-island-dock-side .isl-sep {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.15);
+  margin-inline: 4px;
+  flex: none;
+}
+html.theme-aqua .onyx-island-dock-side .isl-sep {
+  background: rgba(11, 42, 51, 0.15);
+}
+
+/* Inside the dock, the Chan face button is transparent so the outer island glass surface refracts and blurs */
+.isl-dock-face {
+  position: relative;
+  width: 56px !important;
+  height: 56px !important;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 65%, transparent 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.25) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
+}
+
+.isl-dock-face:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.35) !important;
+}
+
+.isl-dock-face:active {
+  transform: scale(0.96);
+}
+
+.isl-dock-face:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2), 0 0 0 4px var(--main-color, #00aeef) !important;
+}
+
+html.theme-aqua .isl-dock-face {
+  background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.50) 0%, rgba(255, 255, 255, 0.20) 65%, transparent 100%) !important;
+  border: 1px solid rgba(11, 42, 51, 0.14) !important;
+  box-shadow: 0 4px 12px -2px rgba(11, 42, 51, 0.10) !important;
+}
 
 /* Buttons inside the island are part of the glass, not keys of their own: slab.css gives every <button> a bevel
    and a fill with !important. The repeated class only raises specificity above those rules. */
@@ -268,7 +397,7 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 
 /* AQUA PASS: Light theme text contrast and states */
 html.theme-aqua .onyx-island-surface {
-  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.70)) !important;
+  background-color: rgba(255, 255, 255, 0.28) !important;
   border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
   color: #0b2a33 !important; /* Text on glass needs 4.5:1 contrast */
   box-shadow: 

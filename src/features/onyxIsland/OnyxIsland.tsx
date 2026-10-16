@@ -24,8 +24,7 @@ import './islandTokens.css';
 import './islandShell.css';
 import './islandGlass.css';
 import './islandRefraction.css';
-// The Chromium refraction map (IslandRefraction.tsx) is switched off: the island uses the same plain blur as the sidebar panel,
-// and the url() backdrop filter made the island look transparent instead of blurred on some machines.
+import { IslandRefractionDefs, useIslandRefraction } from './IslandRefraction';
 import './islandDeploy.css';
 
 const InboxPane = lazy(() => import('./panes/InboxPane').then(m => ({ default: m.InboxPane })));
@@ -155,6 +154,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
 
   useGaze(islandRef);
   const surfaceRef = useRef<HTMLDivElement>(null);
+  useIslandRefraction(surfaceRef);
   const isIdle = useIdleTimer(10 * 60 * 1000);
 
   const xl = useMediaQuery('(min-width: 1280px)');
@@ -400,11 +400,13 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
 
   const sheet = useSheetDrag(() => setMode('rest'));
 
-  let radius = '24px';
-  // a second row (phone: children of Tools and Actions) makes the island two rows tall: a full pill radius would round it like a bubble
-  if (mode === 'rest') radius = docked ? (subRow.length > 0 ? '16px' : isShelfVisible ? '20px' : '999px') : '50%';
-  else if (mode === 'peek') radius = '28px';
-  else if (isSheet) radius = '24px 24px 0 0';
+  let radius = '18px';
+  // a second row (phone: children of Tools and Actions) or open shelf makes the island tall: use 16px; docked wide bar: 20px; solo orb: 50%
+  if (mode === 'rest') radius = docked ? (subRow.length > 0 || isShelfVisible ? '16px' : '20px') : '50%';
+  else if (mode === 'peek') radius = '18px';
+  else if (mode === 'card') radius = '18px';
+  else if (mode === 'surface') radius = isSheet ? '18px 18px 0 0' : '18px';
+  else if (isSheet) radius = '18px 18px 0 0';
 
   const swipeProps = (mode === 'peek' && !isReduced) ? {
     drag: 'y' as const,
@@ -504,6 +506,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   return (
     <LazyMotion features={domMax} strict>
       <div id="onyx-island-announcer" aria-live="polite" className="onyx-sr-only" />
+      <IslandRefractionDefs />
       <m.div
         ref={islandRef}
         layout

@@ -188,7 +188,7 @@ export const ShapeTypePicker: React.FC<ShapeTypePickerProps> = ({
     }, [typedType, typedShape, hasSubShapes, chosen, chosenTypeId, activeVariant, activeTop, dims, holesCount]);
 
     return (
-        <div className="stp" onKeyDown={onKeyDown}>
+        <div className="stp ui-root" onKeyDown={onKeyDown}>
             {/* Header: title and search */}
             <div className="stp-head">
                 <span id={`${uid}-title`} className="stp-title">{tr('Pick a type')}</span>

@@ -219,7 +219,7 @@ html.style-slab #catalog .cat-modal {
 /* Bars and headers sit over scrolling content and carry the densest text, so
    they take the stronger tint and a wider blur. */
 html.style-slab .main-header,
-html.style-slab .app-topbar,
+html.style-slab .app-topbar:not(.app-topbar--island),
 html.style-slab .sidebar,
 html.style-slab #trucking .trk-hub > *,
 html.style-slab #process .proc-hud {
@@ -228,7 +228,7 @@ html.style-slab #process .proc-hud {
 }
 
 /* The band behind the status bar: the app's own chrome, edge to edge. */
-html.style-slab .app-topbar {
+html.style-slab .app-topbar:not(.app-topbar--island) {
     border-bottom: 1px solid var(--slab-glass-rim);
 }
 
@@ -463,21 +463,36 @@ html.style-slab .threed-scrim {
    there. It therefore takes the LOWEST tint of anything in this file and
    leans entirely on blur for legibility — .app-topbar carries the band, and
    .main-header inside it must not paint a second, denser layer on top. */
-html.style-slab .app-topbar,
-html.style-slab .app-topbar .main-header,
-html.style-slab .app-topbar .universal-tools-bar,
-html.style-slab .app-topbar > * {
+html.style-slab .app-topbar:not(.app-topbar--island),
+html.style-slab .app-topbar:not(.app-topbar--island) .main-header,
+html.style-slab .app-topbar:not(.app-topbar--island) .universal-tools-bar,
+html.style-slab .app-topbar:not(.app-topbar--island) > * {
     background-color: var(--slab-glass-band) !important;
     backdrop-filter: blur(48px) saturate(1.9) !important;
 }
 
 /* Only the band itself paints; the header and tools bar inside it are
    transparent, or three stacked tints add back the opacity just removed. */
-html.style-slab .app-topbar .main-header,
-html.style-slab .app-topbar .universal-tools-bar,
-html.style-slab .app-topbar > * {
+html.style-slab .app-topbar:not(.app-topbar--island) .main-header,
+html.style-slab .app-topbar:not(.app-topbar--island) .universal-tools-bar,
+html.style-slab .app-topbar:not(.app-topbar--island) > * {
     background-color: transparent !important;
     backdrop-filter: none !important;
+}
+
+/* Island active: the topbar is 100% transparent and paints NO band or blur behind the Onyx Island */
+html.style-slab .app-topbar.app-topbar--island,
+html.style-slab .app-topbar.app-topbar--island *,
+.app-topbar.app-topbar--island,
+.app-topbar.app-topbar--island * {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
 }
 
 /* ── When quick-liquid is driving the bar ─────────────────────────────────

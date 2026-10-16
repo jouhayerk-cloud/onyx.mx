@@ -6,19 +6,40 @@ import {
     inventoryAtom,
     exchangeRateAtom,
     isCratePackingManagerOpenAtom,
-    packingManagerTargetCrateIdAtom, CrateStatus, toCrateStatus } from '../../lib/atoms';
-import { X, ChevronRight, Search, Info, Loader2, PackagePlus, ArrowLeft, Layers, Weight, Maximize2, Zap, LayoutGrid, Rotate3d } from 'lucide-react';
+    packingManagerTargetCrateIdAtom,
+    CrateStatus,
+    toCrateStatus 
+} from '../../lib/atoms';
+import { 
+    X, ChevronRight, Search, Info, Loader2, PackagePlus, ArrowLeft, 
+    Layers, Weight, Maximize2, Zap, LayoutGrid, Rotate3d, Sparkles, 
+    Box, CheckCircle2, MapPin, SlidersHorizontal, Scissors, Cpu, 
+    Check, ArrowUpRight
+} from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
 import { supabase } from '../../lib/supabase';
-import { normalizeInventoryData, getCleanImageUrl, calculateCodesAndPrices, getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
+import { 
+    normalizeInventoryData, 
+    getCleanImageUrl, 
+    calculateCodesAndPrices, 
+    getCrateInternalVolume, 
+    getItemPaddedVolume 
+} from '../../lib/utils';
 import { vendors } from '../../lib/consts';
-import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
+import { 
+    computeBoxesParams, 
+    computeCutTelemetry, 
+    PackedItemSpec, 
+    BoxesGeneratorParams, 
+    CutTelemetry 
+} from '../../lib/logistics/boxesBridge';
 
 type WizardStep = 'SELECT_CRATE' | 'REVIEW_PACK';
+type ContainerTaxonomy = 'all' | 'crates' | 'pallets' | 'boxes' | 'empty' | 'best_fit';
 
 interface CrateRecord {
     id: string;
@@ -33,6 +54,7 @@ interface CrateRecord {
     description?: string;
     updated_at?: string;
     sent_date?: string;
+    location?: string;
 }
 
 // Derive vendor color from prefix code
@@ -55,7 +77,6 @@ function getCrateVendors(crate: CrateRecord, allInventory: any[]): { prefix: str
         if (inv?.data) {
             const norm = normalizeInventoryData(inv.data);
             const raw = (norm.itemId || norm.tag_id || '').toUpperCase();
-            // Try longest prefix first
             const keys = Object.keys(vendors).sort((a, b) => b.length - a.length);
             for (const k of keys) {
                 if (raw.startsWith(k) && !seen.has(k)) {
@@ -70,20 +91,49 @@ function getCrateVendors(crate: CrateRecord, allInventory: any[]): { prefix: str
 }
 
 function getTextContrast(hex: string): string {
+    if (!hex || hex.length < 7) return '#ffffff';
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
     const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return lum > 0.5 ? '#000' : '#fff';
+    return lum > 0.5 ? '#000000' : '#ffffff';
 }
 
-function CheckCircle2(props: any) {
-    return (
-        <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-            <path d="m9 12 2 2 4-4" />
-        </svg>
-    );
+// Classify container into Crates, Pallets, or Boxes
+function getContainerCategory(c: CrateRecord): {
+    category: 'crate' | 'pallet' | 'box';
+    label: string;
+    badgeStyle: string;
+    icon: string;
+} {
+    const typeStr = (c.type || '').toLowerCase();
+    const idStr = (c.id || '').toUpperCase();
+    const h = c.height_cm || 0;
+    const w = c.width_cm || 0;
+    const l = c.length_cm || 0;
+
+    if (typeStr === 'pallet' || (h <= 40 && (w >= 70 || l >= 70))) {
+        return {
+            category: 'pallet',
+            label: 'FREIGHT PALLET',
+            badgeStyle: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+            icon: '🪵',
+        };
+    }
+    if (typeStr === 'box' || idStr.startsWith('BOX') || idStr.startsWith('LBL') || (h <= 30 && w <= 50 && l <= 50)) {
+        return {
+            category: 'box',
+            label: 'CARDBOARD / LASER BOX',
+            badgeStyle: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+            icon: '📐',
+        };
+    }
+    return {
+        category: 'crate',
+        label: 'WOOD CRATE',
+        badgeStyle: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+        icon: '📦',
+    };
 }
 
 export const PackWizard: React.FC = () => {
@@ -98,18 +148,106 @@ export const PackWizard: React.FC = () => {
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const [isLoadingCrates, setIsLoadingCrates] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedTaxonomy, setSelectedTaxonomy] = useState<ContainerTaxonomy>('all');
     const [selectedCrate, setSelectedCrate] = useState<CrateRecord | null>(null);
+    const [crateLocation, setCrateLocation] = useState('');
     const [isPacking, setIsPacking] = useState(false);
     const [packQuantities, setPackQuantities] = useState<Record<string, number>>({});
 
+    // Staged items data normalized
     const selectedItems = useMemo(() =>
-        inventory.filter(item => selectedIds.includes(item.row)).map(item => {
+        inventory.filter(item => 
+            selectedIds.includes(item.row) || 
+            selectedIds.includes(String(item.row)) || 
+            selectedIds.includes(item.data?.id)
+        ).map(item => {
             const norm = normalizeInventoryData(item.data);
             const codes = calculateCodesAndPrices(item.data, exchangeRate, '326');
             return { ...item, norm, codes };
         }),
         [inventory, selectedIds, exchangeRate]
     );
+
+    // Staged telemetry metrics
+    const stagedMetrics = useMemo(() => {
+        let volCm3 = 0;
+        let weightKg = 0;
+        let maxW = 0;
+        let maxL = 0;
+        let maxH = 0;
+        let totalUnits = 0;
+
+        selectedItems.forEach(item => {
+            const qty = packQuantities[item.row] ?? (item.norm.quantity || 1);
+            totalUnits += qty;
+            volCm3 += getItemPaddedVolume(item.data, qty);
+            weightKg += (Number(item.norm.weightKg) || 0) * qty;
+            maxW = Math.max(maxW, Number(item.norm.widthCm) || 0);
+            maxL = Math.max(maxL, Number(item.norm.lengthCm) || 0);
+            maxH = Math.max(maxH, Number(item.norm.heightCm) || 0);
+        });
+
+        const volLiters = volCm3 / 1000;
+        return { volCm3, volLiters, weightKg, maxW, maxL, maxH, totalUnits };
+    }, [selectedItems, packQuantities]);
+
+    // Custom Boxes.py Parametric auto-fit container generator
+    const customBoxesCrate = useMemo(() => {
+        if (selectedItems.length === 0) return null;
+        const { maxW, maxL, maxH, volCm3, totalUnits } = stagedMetrics;
+        
+        let w = Math.max(16, Math.ceil(maxW + 4));
+        let l = Math.max(16, Math.ceil(maxL + 4));
+        let h = Math.max(10, Math.ceil(maxH + 3));
+
+        const targetVol = volCm3 * 1.25;
+        if (w * l * h < targetVol) {
+            const scale = Math.cbrt(targetVol / Math.max(1, w * l * h));
+            w = Math.max(w, Math.ceil(w * scale));
+            l = Math.max(l, Math.ceil(l * scale));
+            h = Math.max(h, Math.ceil(h * scale));
+        }
+
+        const generator: 'TypeTray' | 'UniversalBox' = totalUnits > 1 && h <= 30 ? 'TypeTray' : 'UniversalBox';
+
+        const packedSpecs: PackedItemSpec[] = selectedItems.map((item, idx) => ({
+            id: String(item.row),
+            name: item.norm.shortDescription || item.norm.itemId || `Item ${idx + 1}`,
+            xCm: (idx % 2) * (item.norm.widthCm || 10),
+            yCm: 0,
+            zCm: Math.floor(idx / 2) * (item.norm.lengthCm || 10),
+            widthCm: item.norm.widthCm || 10,
+            lengthCm: item.norm.lengthCm || 10,
+            heightCm: item.norm.heightCm || 10,
+        }));
+
+        const boxesParams: BoxesGeneratorParams = computeBoxesParams(
+            { widthCm: w, lengthCm: l, heightCm: h, thicknessMm: 6, burnMm: 0.09 },
+            generator === 'TypeTray' ? packedSpecs : undefined
+        );
+
+        const cutTelemetry: CutTelemetry = computeCutTelemetry(
+            { widthCm: w, lengthCm: l, heightCm: h, thicknessMm: 6, burnMm: 0.09 },
+            generator === 'TypeTray' ? packedSpecs : undefined
+        );
+
+        const tareWeight = Number((cutTelemetry.totalAreaMm2 * 0.000001 * 6 * 0.7).toFixed(1));
+
+        const record: CrateRecord = {
+            id: `BOX-PY-AUTOFIT`,
+            type: 'box',
+            status: 'Empty',
+            width_cm: w,
+            length_cm: l,
+            height_cm: h,
+            weight_kg: Math.max(0.8, tareWeight),
+            inventory_ids: '',
+            description: `Auto-Fit Boxes.py Parametric ${generator} (6mm Baltic Birch · Kerf 0.09mm)`,
+            location: 'Laser Fab Bed',
+        };
+
+        return { record, boxesParams, cutTelemetry, generator };
+    }, [selectedItems, stagedMetrics]);
 
     const fetchCrates = async () => {
         setIsLoadingCrates(true);
@@ -125,44 +263,140 @@ export const PackWizard: React.FC = () => {
     };
 
     useEffect(() => {
-        if (isOpen) { fetchCrates(); setStep('SELECT_CRATE'); setSelectedCrate(null); setPackQuantities({}); }
+        if (isOpen) { 
+            fetchCrates(); 
+            setStep('SELECT_CRATE'); 
+            setSelectedCrate(null); 
+            setPackQuantities({}); 
+            setCrateLocation('');
+        }
     }, [isOpen]);
 
+    // Calculate capacity & fit for any crate
+    const getCrateMetrics = useMemo(() => {
+        return (crate: CrateRecord) => {
+            const internalVol = getCrateInternalVolume(crate);
+            let existingVol = 0;
+            let existingWeight = 0;
+            const existingIds = (crate.inventory_ids || '').split(',').filter(Boolean);
+            existingIds.forEach(entry => {
+                const [id, qtyStr] = entry.split(':');
+                const qty = qtyStr ? parseInt(qtyStr) : 1;
+                const inv = findInventoryByRow(inventory, id);
+                if (inv?.data) {
+                    existingVol += getItemPaddedVolume(inv.data, qty);
+                    existingWeight += (Number(normalizeInventoryData(inv.data).weightKg) || 0) * qty;
+                }
+            });
+
+            const currentFillPct = internalVol > 0 ? (existingVol / internalVol) * 100 : 0;
+            const totalVol = existingVol + stagedMetrics.volCm3;
+            const totalWeight = existingWeight + stagedMetrics.weightKg;
+            const projectedFillPct = internalVol > 0 ? (totalVol / internalVol) * 100 : 0;
+            const deltaFillPct = projectedFillPct - currentFillPct;
+            const fitsStaged = internalVol > 0 && projectedFillPct <= 100;
+            const isOverCapacity = internalVol > 0 && projectedFillPct > 100;
+            const isRecommended = fitsStaged && (projectedFillPct >= 20 || internalVol <= stagedMetrics.volCm3 * 2.5);
+
+            return {
+                internalVol,
+                existingVol,
+                existingWeight,
+                totalVol,
+                totalWeight,
+                currentFillPct,
+                projectedFillPct,
+                deltaFillPct,
+                fitsStaged,
+                isOverCapacity,
+                isRecommended,
+                itemCount: existingIds.length
+            };
+        };
+    }, [inventory, stagedMetrics]);
+
+    // Active metrics for currently selected container
+    const activeSelectedMetrics = useMemo(() => {
+        if (!selectedCrate) return null;
+        return getCrateMetrics(selectedCrate);
+    }, [selectedCrate, getCrateMetrics]);
+
+    // Compute Taxonomy Filter Counts
+    const taxonomyCounts = useMemo(() => {
+        const available = crates.filter(c => (c.status === 'Empty' || c.status === 'Partial') && !c.sent_date);
+        let cratesCount = 0;
+        let palletsCount = 0;
+        let boxesCount = 0;
+        let emptyCount = 0;
+        let bestFitCount = 0;
+
+        available.forEach(c => {
+            const tax = getContainerCategory(c);
+            if (tax.category === 'crate') cratesCount++;
+            if (tax.category === 'pallet') palletsCount++;
+            if (tax.category === 'box') boxesCount++;
+
+            const itemCount = (c.inventory_ids || '').split(',').filter(Boolean).length;
+            if (itemCount === 0 || c.status === 'Empty') emptyCount++;
+
+            const metrics = getCrateMetrics(c);
+            if (metrics.isRecommended) bestFitCount++;
+        });
+
+        return {
+            all: available.length,
+            crates: cratesCount,
+            pallets: palletsCount,
+            boxes: boxesCount,
+            empty: emptyCount,
+            bestFit: bestFitCount,
+        };
+    }, [crates, getCrateMetrics]);
+
+    // Filter and search container records
     const filteredCrates = useMemo(() => {
         const term = searchTerm.toLowerCase().trim();
-        // Only show Empty and Partial — Packed and In Transit (deployed) are locked
         return crates
             .filter(c => c.status === 'Empty' || c.status === 'Partial')
-            .filter(c => !c.sent_date)  // exclude deployed crates
-            .filter(c => !term ||
-                (c.id || '').toLowerCase().includes(term) ||
-                (c.description || '').toLowerCase().includes(term) ||
-                (c.contents_summary || '').toLowerCase().includes(term)
-            );
-    }, [crates, searchTerm]);
+            .filter(c => !c.sent_date)
+            .filter(c => {
+                if (!term) return true;
+                const dimsStr = `${c.width_cm}x${c.length_cm}x${c.height_cm}`.toLowerCase();
+                const tax = getContainerCategory(c);
+                return (
+                    (c.id || '').toLowerCase().includes(term) ||
+                    (c.description || '').toLowerCase().includes(term) ||
+                    (c.contents_summary || '').toLowerCase().includes(term) ||
+                    tax.label.toLowerCase().includes(term) ||
+                    dimsStr.includes(term)
+                );
+            })
+            .filter(c => {
+                const tax = getContainerCategory(c);
+                const metrics = getCrateMetrics(c);
+                const itemCount = (c.inventory_ids || '').split(',').filter(Boolean).length;
 
-    const logisticsMetrics = useMemo(() => {
-        if (!selectedCrate) return null;
-        const internalVol = getCrateInternalVolume(selectedCrate);
-        let existingVol = 0, existingWeight = 0;
-        const existingIds = (selectedCrate.inventory_ids || '').split(',').filter(Boolean);
-        existingIds.forEach(entry => {
-            const [id, qtyStr] = entry.split(':');
-            const qty = qtyStr ? parseInt(qtyStr) : 1;
-            const inv = inventory.find(i => String(i.row) === id);
-            if (inv) {
-                existingVol += getItemPaddedVolume(inv.data, qty);
-                existingWeight += (Number(normalizeInventoryData(inv.data).weightKg) || 0) * qty;
-            }
-        });
-        const newVol = selectedItems.reduce((acc, item) => acc + getItemPaddedVolume(item.data, packQuantities[item.row] ?? (item.norm.quantity || 1)), 0);
-        const newWeight = selectedItems.reduce((acc, item) => acc + (Number(item.norm.weightKg) || 0) * (packQuantities[item.row] ?? (item.norm.quantity || 1)), 0);
-        const totalVol = existingVol + newVol;
-        const totalWeight = existingWeight + newWeight;
-        const fillPct = internalVol > 0 ? (totalVol / internalVol) * 100 : 0;
-        return { internalVol, totalVol, fillPct, totalWeight, itemCount: existingIds.length + selectedItems.length };
-    }, [selectedCrate, selectedItems, inventory]);
+                if (selectedTaxonomy === 'crates') return tax.category === 'crate';
+                if (selectedTaxonomy === 'pallets') return tax.category === 'pallet';
+                if (selectedTaxonomy === 'boxes') return tax.category === 'box';
+                if (selectedTaxonomy === 'empty') return itemCount === 0 || c.status === 'Empty';
+                if (selectedTaxonomy === 'best_fit') return metrics.isRecommended;
+                return true;
+            });
+    }, [crates, searchTerm, selectedTaxonomy, getCrateMetrics]);
 
+    // Handle Quick Launch into 3D / Boxes Studio
+    const handleLaunch3DStudio = (crateId?: string) => {
+        const targetId = crateId || selectedCrate?.id;
+        if (targetId) {
+            setManagerTargetCrateId(targetId);
+        }
+        setIsManagerOpen(true);
+        setIsOpen(false);
+        toast.success(tr("Entering 3D / Boxes.py Studio"), { icon: '📐' });
+    };
+
+    // Confirm pack manifest sync
     const handleConfirmPack = async () => {
         if (!selectedCrate) return;
         setIsPacking(true);
@@ -172,22 +406,46 @@ export const PackWizard: React.FC = () => {
             const newIds = selectedItems.map(item => `${item.row}:${packQuantities[item.row] ?? (item.norm.quantity || 1)}`);
             const updatedIds = [...existingIds, ...newIds].join(',');
             
-            // 1. Update crate in logistics table
-            const { error: crateError } = await supabase.from('logistics').update({
-                inventory_ids: updatedIds, status: 'Packed', updated_at: new Date().toISOString()
-            }).eq('id', selectedCrate.id);
-            if (crateError) throw crateError;
+            let targetCrateId = selectedCrate.id;
 
-            // 2. Update packing_status and crate_id in inventory table for packed items
+            // If user selected the virtual Auto-Fit Boxes.py container, persist it to logistics table
+            if (selectedCrate.id === 'BOX-PY-AUTOFIT' || selectedCrate.id.startsWith('BOX-PY-')) {
+                const newId = `BOX-PY-${Date.now().toString().slice(-5)}`;
+                targetCrateId = newId;
+
+                const { error: insError } = await supabase.from('logistics').insert({
+                    id: newId,
+                    type: 'box',
+                    status: 'Packed',
+                    width_cm: selectedCrate.width_cm,
+                    length_cm: selectedCrate.length_cm,
+                    height_cm: selectedCrate.height_cm,
+                    weight_kg: selectedCrate.weight_kg,
+                    inventory_ids: updatedIds,
+                    description: selectedCrate.description || 'Auto-Fit Boxes.py Parametric Laser Container',
+                    location: crateLocation || 'Laser Fab Bed',
+                    updated_at: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                });
+                if (insError) throw insError;
+            } else {
+                // Update existing container in logistics table
+                const { error: crateError } = await supabase.from('logistics').update({
+                    inventory_ids: updatedIds,
+                    status: 'Packed',
+                    location: crateLocation || selectedCrate.location,
+                    updated_at: new Date().toISOString()
+                }).eq('id', selectedCrate.id);
+                if (crateError) throw crateError;
+            }
+
+            // Update packing_status, crate_id, and pack_date in inventory table
             const inventoryRowsToUpdate = selectedItems.map(item => item.row ?? item.data.id);
             if (inventoryRowsToUpdate.length > 0) {
                 const { error: invError } = await supabase.from('inventory')
                     .update({
                         packing_status: 'Packed',
-                        crate_id: selectedCrate.id,
-                        // Processing stamp. packing_status records THAT an item is
-                        // packed; pack_date records when, which is what the season
-                        // reports need and what nothing was recording before.
+                        crate_id: targetCrateId,
                         pack_date: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
                     })
@@ -195,8 +453,7 @@ export const PackWizard: React.FC = () => {
                 if (invError) throw invError;
             }
 
-
-            toast.success(`Packed ${selectedItems.length} items into ${selectedCrate.id}`, { id: tid });
+            toast.success(`Successfully packed ${selectedItems.length} items into ${targetCrateId}`, { id: tid });
             setIsOpen(false);
         } catch (e: any) {
             toast.error(`Packing failed: ${e.message}`, { id: tid });
@@ -208,351 +465,786 @@ export const PackWizard: React.FC = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="absolute inset-0 z-[2000] flex flex-col pointer-events-none animate-in fade-in duration-700 overflow-hidden">
-            <div className="absolute inset-0 backdrop-blur-xl bg-black/40 pointer-events-auto" onClick={() => setIsOpen(false)} />
-            <div className="relative w-full h-full flex flex-col pointer-events-auto overflow-hidden bg-black/10 backdrop-blur-3xl">
+        <div className="fixed inset-0 z-[10060] ui-root flex flex-col bg-[#0b0d0e]/95 backdrop-blur-3xl animate-in fade-in duration-300 overflow-hidden select-none">
+            
+            {/* ━━ 1. TOP FUNCTIONAL HEADER BAR (Two-Layer Liquid Glass) ━━ */}
+            <div className="shrink-0 border-b border-white/10 bg-[#111416]/90 backdrop-blur-2xl px-6 pt-12 pb-4 sm:px-10 flex flex-wrap items-center justify-between gap-4 z-20">
+                {/* Left: Step indicator + Title + Telemetry summary */}
+                <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-2xl bg-(--main-color) flex items-center justify-center text-black shadow-[0_0_25px_rgba(var(--main-color-rgb),0.35)] shrink-0">
+                        {step === 'SELECT_CRATE' ? <LayoutGrid size={22} strokeWidth={2.5} /> : <PackagePlus size={22} strokeWidth={2.5} />}
+                    </div>
 
-                {/* Floating Close Button - Studio Standard */}
-                <button 
-                    onClick={() => setIsOpen(false)} 
-                    className="fixed top-6 right-6 md:top-10 md:right-10 z-[20002] flex items-center justify-center w-14 h-14 md:w-20 md:h-20 bg-white/5 backdrop-blur-3xl rounded-full border border-white/10 text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_80px_rgba(0,0,0,0.8)] group active:scale-95"
-                >
-                    <X size={32} className="md:w-[48px] md:h-[48px] group-hover:rotate-90 transition-transform duration-700" strokeWidth={1} />
-                </button>
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black tracking-[0.25em] uppercase text-white/50">
+                                {step === 'SELECT_CRATE' ? 'STEP 1 · SELECT CONTAINER' : 'STEP 2 · REVIEW & CONFIRM MANIFEST'}
+                            </span>
+                        </div>
+                        <h1 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase leading-tight">
+                            {tr("Pack Staged Inventory")}
+                        </h1>
+                    </div>
 
-            {/* Header - Studio Style */}
-            <div className="flex justify-between items-start px-8 md:px-16 pt-12 md:pt-16 mb-8 md:mb-12 shrink-0 relative z-10">
-                <div className="flex flex-col gap-5">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-(--main-color) flex items-center justify-center text-black shadow-[0_0_30px_rgba(var(--main-color-rgb),0.4)]">
-                            {step === 'SELECT_CRATE' ? <LayoutGrid size={24} strokeWidth={2.5} /> : <PackagePlus size={24} strokeWidth={2.5} />}
-                        </div>
-                        <div className="flex flex-col">
-                            <h2 className="text-3xl font-black text-white tracking-[0.3em] uppercase leading-none">{tr("PACK")}</h2>
-                            <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.5em] mt-3 flex items-center gap-3">
-                                <span className={step === 'SELECT_CRATE' ? 'text-(--main-color)' : ''}>{tr("01 Container")}</span>
-                                <ChevronRight size={10} strokeWidth={3} />
-                                <span className={step === 'REVIEW_PACK' ? 'text-(--main-color)' : ''}>{tr("02 Manifest")}</span>
-                            </p>
-                        </div>
+                    {/* Staged Telemetry Pill */}
+                    <div className="hidden lg:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-white/80 ml-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-white font-black">{stagedMetrics.totalUnits} Units</span>
+                        <span className="text-white/30">·</span>
+                        <span>{stagedMetrics.weightKg.toFixed(1)} kg</span>
+                        <span className="text-white/30">·</span>
+                        <span className="text-cyan-400 font-mono font-bold">{stagedMetrics.volLiters.toFixed(1)} L Required</span>
                     </div>
                 </div>
-                <div className="flex flex-col items-end">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[1em] mb-2">{tr("STAGED_UNITS")}</span>
-                    <span className="text-6xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter">{selectedIds.length}</span>
+
+                {/* Right: Quick action 3D Studio button + 40x40 Close button */}
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => handleLaunch3DStudio()}
+                        className="h-10 px-4 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 cursor-pointer shadow-sm"
+                        title={tr("Open 3D / Boxes.py Studio directly")}
+                    >
+                        <Rotate3d size={15} className="text-cyan-400" />
+                        <span className="hidden sm:inline">{tr("Open 3D / Boxes.py Studio")}</span>
+                        <span className="sm:hidden">{tr("3D Studio")}</span>
+                        <ArrowUpRight size={13} className="text-cyan-400/60" />
+                    </button>
+
+                    <button
+                        onClick={() => setIsOpen(false)}
+                        className="w-10 h-10 rounded-full border border-white/15 bg-white/5 hover:bg-white/15 text-white/40 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-lg group"
+                        title={tr("Close Pack Wizard")}
+                    >
+                        <X size={20} className="group-hover:rotate-90 transition-transform duration-300" strokeWidth={2} />
+                    </button>
                 </div>
             </div>
 
-            {/* Main */}
+            {/* ━━ 2. FILTER & SEARCH CONTROL BAR (Step 1 Only) ━━ */}
+            {step === 'SELECT_CRATE' && (
+                <div className="shrink-0 px-6 sm:px-10 py-3 bg-[#14181a]/80 border-b border-white/8 flex flex-wrap items-center justify-between gap-3 z-10">
+                    {/* Obsidian Glass Search Box */}
+                    <div className="relative flex-1 min-w-[260px] max-w-md group">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-(--main-color) transition-colors" size={16} />
+                        <input
+                            type="text"
+                            placeholder={tr("Search container ID, vendor, dimensions...")}
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="w-full bg-black/50 border border-white/10 focus:border-cyan-500/50 rounded-xl pl-10 pr-9 py-2 text-xs text-white focus:outline-none transition-all placeholder:text-white/25 uppercase font-medium tracking-wider"
+                        />
+                        {searchTerm && (
+                            <button 
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Taxonomy Filter Pills */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                        <button
+                            onClick={() => setSelectedTaxonomy('all')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 ${
+                                selectedTaxonomy === 'all'
+                                    ? 'bg-white text-black border-white shadow-md'
+                                    : 'bg-white/5 text-white/50 border-white/8 hover:bg-white/10 hover:text-white'
+                            }`}
+                        >
+                            All Containers ({taxonomyCounts.all})
+                        </button>
+
+                        <button
+                            onClick={() => setSelectedTaxonomy('crates')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
+                                selectedTaxonomy === 'crates'
+                                    ? 'bg-amber-400 text-black border-amber-300 shadow-md'
+                                    : 'bg-white/5 text-amber-300/70 border-white/8 hover:bg-amber-500/10 hover:text-amber-300'
+                            }`}
+                        >
+                            <span>📦</span> Crates ({taxonomyCounts.crates})
+                        </button>
+
+                        <button
+                            onClick={() => setSelectedTaxonomy('pallets')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
+                                selectedTaxonomy === 'pallets'
+                                    ? 'bg-sky-400 text-black border-sky-300 shadow-md'
+                                    : 'bg-white/5 text-sky-300/70 border-white/8 hover:bg-sky-500/10 hover:text-sky-300'
+                            }`}
+                        >
+                            <span>🪵</span> Pallets ({taxonomyCounts.pallets})
+                        </button>
+
+                        <button
+                            onClick={() => setSelectedTaxonomy('boxes')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
+                                selectedTaxonomy === 'boxes'
+                                    ? 'bg-cyan-400 text-black border-cyan-300 shadow-md'
+                                    : 'bg-white/5 text-cyan-300/70 border-white/8 hover:bg-cyan-500/10 hover:text-cyan-300'
+                            }`}
+                        >
+                            <span>📐</span> Boxes & Laser ({taxonomyCounts.boxes})
+                        </button>
+
+                        <button
+                            onClick={() => setSelectedTaxonomy('empty')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
+                                selectedTaxonomy === 'empty'
+                                    ? 'bg-white/90 text-black border-white'
+                                    : 'bg-white/5 text-white/50 border-white/8 hover:bg-white/10 hover:text-white'
+                            }`}
+                        >
+                            <span>✨</span> Empty ({taxonomyCounts.empty})
+                        </button>
+
+                        <button
+                            onClick={() => setSelectedTaxonomy('best_fit')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
+                                selectedTaxonomy === 'best_fit'
+                                    ? 'bg-emerald-400 text-black border-emerald-300 shadow-md'
+                                    : 'bg-white/5 text-emerald-300/70 border-white/8 hover:bg-emerald-500/10 hover:text-emerald-300'
+                            }`}
+                        >
+                            <span>🟢</span> Best Fit ({taxonomyCounts.bestFit})
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ━━ 3. MAIN CONTENT LAYER ━━ */}
             <div className="flex-1 overflow-hidden flex flex-col relative z-10">
 
-                {/* STEP 1: SELECT CRATE */}
+                {/* ── STEP 1: SELECT CONTAINER ── */}
                 {step === 'SELECT_CRATE' && (
-                    <div className="flex-1 flex flex-col px-8 md:px-16 overflow-hidden">
-                        {/* Search */}
-                        <div className="relative group mb-8 shrink-0">
-                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-(--main-color) transition-colors" size={18} />
-                            <input
-                                type="text"
-                                placeholder={tr("SEARCH CONTAINER · VENDOR · ID")}
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="w-full bg-white/[0.04] border-0 border-b border-white/10 focus:border-(--main-color)/60 pl-12 pr-6 py-4 text-sm text-white focus:outline-none transition-all font-black uppercase tracking-[0.2em] bg-transparent placeholder:text-white/20"
-                            />
-                        </div>
+                    <div className="flex-1 overflow-y-auto px-6 sm:px-10 pt-6 pb-36">
+                        {isLoadingCrates ? (
+                            <div className="flex flex-col items-center justify-center h-80 gap-4 opacity-40">
+                                <Loader2 className="animate-spin text-cyan-400" size={44} />
+                                <span className="text-xs font-black uppercase tracking-[0.4em] text-white">
+                                    {tr("Scanning Logistics Registry...")}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                                
+                                {/* 🌟 SPECIAL FIRST CARD: Auto-Fit Boxes.py Parametric Container */}
+                                {customBoxesCrate && (
+                                    <div
+                                        onClick={() => setSelectedCrate(customBoxesCrate.record)}
+                                        className={`relative flex flex-col p-5 rounded-3xl border-2 border-dashed transition-all duration-300 text-left cursor-pointer group ${
+                                            selectedCrate?.id === customBoxesCrate.record.id
+                                                ? 'border-cyan-400 bg-cyan-950/40 shadow-[0_0_40px_rgba(6,182,212,0.3)] scale-[1.02]'
+                                                : 'border-cyan-500/40 bg-cyan-950/15 hover:bg-cyan-950/30 hover:border-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.1)]'
+                                        }`}
+                                    >
+                                        {/* Top Accent Strip */}
+                                        <div className="absolute top-0 left-6 right-6 h-[2px] bg-linear-to-r from-transparent via-cyan-400 to-transparent opacity-80" />
 
-                        {/* Crate Grid */}
-                        <div className="flex-1 overflow-y-auto no-scrollbar">
-                            {isLoadingCrates ? (
-                                <div className="flex flex-col items-center justify-center h-64 gap-4 opacity-20">
-                                    <Loader2 className="animate-spin" size={48} />
-                                    <span className="text-[11px] font-black uppercase tracking-[0.5em]">{tr("Scanning Registry")}</span>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 md:gap-3 pb-32">
-                                    {filteredCrates.map(crate => {
-                                        const crateVendors = getCrateVendors(crate, inventory);
-                                        const isSelected = selectedCrate?.id === crate.id;
-                                        const primaryColor = crateVendors[0]?.color || 'var(--main-color)';
-                                        const itemCount = (crate.inventory_ids || '').split(',').filter(Boolean).length;
+                                        {/* Header Badges */}
+                                        <div className="flex items-start justify-between gap-2 mb-3">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Sparkles size={14} className="text-cyan-400 animate-pulse" />
+                                                    <span className="text-[9px] font-black tracking-widest uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                                        AUTO-FIT BOXES.PY
+                                                    </span>
+                                                </div>
+                                                <span className="text-[8px] font-bold tracking-wider text-cyan-400/70 uppercase">
+                                                    {customBoxesCrate.generator} · Baltic Birch
+                                                </span>
+                                            </div>
 
-                                        return (
-                                            <button
-                                                key={crate.id}
-                                                onClick={() => setSelectedCrate(crate)}
-                                                className={`group relative flex flex-col items-center p-5 md:p-7 rounded-3xl transition-all duration-500 text-left ${
-                                                    isSelected
-                                                        ? 'scale-[1.03] z-10'
-                                                        : 'hover:bg-white/[0.04]'
-                                                }`}
-                                                style={isSelected ? {
-                                                    background: `${primaryColor}18`,
-                                                    boxShadow: `0 0 60px ${primaryColor}30, inset 0 0 0 1px ${primaryColor}40`
-                                                } : {}}
-                                            >
-                                                {/* Vendor color bar — top accent */}
-                                                {crateVendors.length > 0 && (
-                                                    <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-3xl overflow-hidden flex">
-                                                        {crateVendors.slice(0, 4).map(v => (
-                                                            <div key={v.prefix} className="flex-1 h-full" style={{ backgroundColor: v.color }} />
-                                                        ))}
-                                                    </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[8px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                                    100% TAILORED
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Wireframe Preview */}
+                                        <div className="my-2 py-2 flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
+                                            <WireframeCrate
+                                                w={customBoxesCrate.record.width_cm}
+                                                l={customBoxesCrate.record.length_cm}
+                                                h={customBoxesCrate.record.height_cm}
+                                                type="box"
+                                                selected={selectedCrate?.id === customBoxesCrate.record.id}
+                                                size={75}
+                                                vibrant={true}
+                                            />
+                                        </div>
+
+                                        {/* Spec details */}
+                                        <div className="flex flex-col gap-1.5 mt-auto pt-3 border-t border-cyan-500/20">
+                                            <div className="flex items-baseline justify-between">
+                                                <span className="text-[11px] font-mono font-black text-white">
+                                                    {customBoxesCrate.record.width_cm}×{customBoxesCrate.record.length_cm}×{customBoxesCrate.record.height_cm} CM
+                                                </span>
+                                                <span className="text-[9px] font-mono font-bold text-cyan-300">
+                                                    {customBoxesCrate.cutTelemetry.estCutTimeSec}s cut
+                                                </span>
+                                            </div>
+
+                                            <p className="text-[8px] font-bold text-white/40 uppercase tracking-tight truncate">
+                                                Kerf 0.09mm · {customBoxesCrate.cutTelemetry.panelCount} panels · {customBoxesCrate.cutTelemetry.nestingEfficiencyPct}% bed eff
+                                            </p>
+
+                                            {/* Action bar inside card */}
+                                            <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-cyan-500/20">
+                                                <span className="text-[9px] font-black text-cyan-400 uppercase tracking-wider flex items-center gap-1">
+                                                    {selectedCrate?.id === customBoxesCrate.record.id ? (
+                                                        <><Check size={12} strokeWidth={3} /> Selected</>
+                                                    ) : (
+                                                        'Select Custom Box'
+                                                    )}
+                                                </span>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleLaunch3DStudio(customBoxesCrate.record.id);
+                                                    }}
+                                                    className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-[8px] font-black uppercase tracking-wider flex items-center gap-1 transition-all"
+                                                    title={tr("Open in 3D & 2D Stencil Studio")}
+                                                >
+                                                    <Rotate3d size={11} /> 3D Studio
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* EXISTING CONTAINERS (Crates, Pallets, Boxes) */}
+                                {filteredCrates.map(crate => {
+                                    const isSelected = selectedCrate?.id === crate.id;
+                                    const crateVendors = getCrateVendors(crate, inventory);
+                                    const primaryColor = crateVendors[0]?.color || 'var(--main-color)';
+                                    const tax = getContainerCategory(crate);
+                                    const metrics = getCrateMetrics(crate);
+
+                                    return (
+                                        <div
+                                            key={crate.id}
+                                            onClick={() => setSelectedCrate(crate)}
+                                            className={`group relative flex flex-col p-5 rounded-3xl transition-all duration-300 text-left cursor-pointer border ${
+                                                isSelected
+                                                    ? 'border-(--main-color) bg-white/[0.08] shadow-[0_0_40px_rgba(var(--main-color-rgb),0.25)] scale-[1.02]'
+                                                    : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20'
+                                            }`}
+                                        >
+                                            {/* Vendor color accent bar on top */}
+                                            {crateVendors.length > 0 && (
+                                                <div className="absolute top-0 left-6 right-6 h-[3px] rounded-t-3xl overflow-hidden flex">
+                                                    {crateVendors.slice(0, 4).map(v => (
+                                                        <div key={v.prefix} className="flex-1 h-full" style={{ backgroundColor: v.color }} />
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Header: Type Badge + Semantic Status Badge */}
+                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                                <span className={`text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded border ${tax.badgeStyle}`}>
+                                                    {tax.icon} {tax.label}
+                                                </span>
+
+                                                {/* Semantic Status Badge: Neutral Slate if empty, Emerald if packed */}
+                                                {metrics.itemCount === 0 || crate.status === 'Empty' ? (
+                                                    <span className="text-[8px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-white/8 text-white/60 border border-white/12">
+                                                        AVAILABLE · EMPTY
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[8px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                                        PACKED · {metrics.itemCount} ITEMS
+                                                    </span>
                                                 )}
+                                            </div>
 
-                                                {/* Wireframe */}
-                                                <div className="mb-4 mt-2 transition-transform duration-500 group-hover:scale-110">
-                                                    <WireframeCrate
-                                                        w={crate.width_cm}
-                                                        l={crate.length_cm}
-                                                        h={crate.height_cm}
-                                                        type={crate.type}
-                                                        selected={isSelected}
-                                                        size={80}
-                                                        vibrant={isSelected}
-                                                    />
+                                            {/* Wireframe Representation */}
+                                            <div className="my-2 py-1 flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
+                                                <WireframeCrate
+                                                    w={crate.width_cm}
+                                                    l={crate.length_cm}
+                                                    h={crate.height_cm}
+                                                    type={tax.category}
+                                                    selected={isSelected}
+                                                    size={75}
+                                                    vibrant={isSelected}
+                                                />
+                                            </div>
+
+                                            {/* Container ID & Vendor Tags */}
+                                            <div className="mt-auto">
+                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                    <h3 className="text-xs font-black text-white uppercase tracking-wider truncate">
+                                                        {crate.id}
+                                                    </h3>
+                                                    <span className="text-[10px] font-mono font-bold text-white/50">
+                                                        {crate.width_cm}×{crate.length_cm}×{crate.height_cm} CM
+                                                    </span>
                                                 </div>
 
-                                                {/* Vendor name tags — color coded chips */}
-                                                {crateVendors.length > 0 ? (
-                                                    <div className="flex flex-wrap justify-center gap-1 mb-3">
+                                                {/* Vendor chips if present */}
+                                                {crateVendors.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mb-2">
                                                         {crateVendors.slice(0, 3).map(v => (
                                                             <span
                                                                 key={v.prefix}
-                                                                className="text-[9px] font-black uppercase tracking-widest px-2 py-[3px] rounded-sm leading-none"
+                                                                className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded leading-none"
                                                                 style={{ backgroundColor: v.color, color: getTextContrast(v.color) }}
                                                             >
                                                                 {v.prefix}
                                                             </span>
                                                         ))}
                                                         {crateVendors.length > 3 && (
-                                                            <span className="text-[9px] font-black text-white/30 px-1">+{crateVendors.length - 3}</span>
+                                                            <span className="text-[8px] font-black text-white/40">+{crateVendors.length - 3}</span>
                                                         )}
                                                     </div>
-                                                ) : (
-                                                    <div className="mb-3">
-                                                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-[3px] rounded-sm ${
-                                                            crate.status === 'Empty' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/40'
-                                                        }`}>
-                                                            {el(crate.status)}
+                                                )}
+
+                                                {/* Smart Fit Recommendation Badge */}
+                                                <div className="mb-2">
+                                                    {metrics.isOverCapacity ? (
+                                                        <span className="inline-block text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                                                            OVER CAPACITY (+{(metrics.projectedFillPct - 100).toFixed(0)}%)
+                                                        </span>
+                                                    ) : metrics.isRecommended ? (
+                                                        <span className="inline-block text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                                                            RECOMMENDED FIT (+{metrics.deltaFillPct.toFixed(0)}% FILL)
+                                                        </span>
+                                                    ) : metrics.fitsStaged ? (
+                                                        <span className="inline-block text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                                            FITS STAGED (+{metrics.deltaFillPct.toFixed(0)}%)
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+
+                                                {/* Visual Capacity Gauge */}
+                                                <div className="flex flex-col gap-1 pt-2 border-t border-white/5">
+                                                    <div className="flex items-center justify-between text-[8px] font-mono text-white/40">
+                                                        <span>Fill: {metrics.currentFillPct.toFixed(0)}%</span>
+                                                        <span className={metrics.projectedFillPct > 100 ? 'text-rose-400 font-bold' : 'text-cyan-300 font-bold'}>
+                                                            Projected: {metrics.projectedFillPct.toFixed(0)}%
                                                         </span>
                                                     </div>
-                                                )}
 
-                                                {/* Dims */}
-                                                <p className="text-[9px] font-mono font-bold uppercase tracking-wider text-white/30 mb-1">
-                                                    {crate.width_cm}×{crate.length_cm}×{crate.height_cm}
-                                                </p>
-
-                                                {/* Item count */}
-                                                {itemCount > 0 && (
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-white/20">
-                                                        {itemCount} items
-                                                    </p>
-                                                )}
-
-                                                {isSelected && (
-                                                    <div className="absolute top-3 right-3" style={{ color: primaryColor }}>
-                                                        <CheckCircle2 width={18} height={18} />
+                                                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden flex relative">
+                                                        {/* Current Fill */}
+                                                        {metrics.currentFillPct > 0 && (
+                                                            <div 
+                                                                className="h-full bg-white/30" 
+                                                                style={{ width: `${Math.min(100, metrics.currentFillPct)}%` }} 
+                                                            />
+                                                        )}
+                                                        {/* Projected Added Staged Fill */}
+                                                        <div 
+                                                            className={`h-full ${
+                                                                metrics.projectedFillPct > 100 
+                                                                    ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' 
+                                                                    : 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]'
+                                                            }`} 
+                                                            style={{ width: `${Math.min(100 - metrics.currentFillPct, metrics.deltaFillPct)}%` }} 
+                                                        />
                                                     </div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Top-Right Selection Indicator */}
+                                            {isSelected && (
+                                                <div className="absolute top-4 right-4 text-(--main-color)">
+                                                    <CheckCircle2 size={18} strokeWidth={2.5} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
 
-                {/* STEP 2: REVIEW */}
-                {step === 'REVIEW_PACK' && selectedCrate && (() => {
+                {/* ── STEP 2: REVIEW MANIFEST ── */}
+                {step === 'REVIEW_PACK' && selectedCrate && activeSelectedMetrics && (() => {
                     const crateVendors = getCrateVendors(selectedCrate, inventory);
                     const primaryColor = crateVendors[0]?.color || 'var(--main-color)';
+                    const tax = getContainerCategory(selectedCrate);
+                    const isCustomBox = selectedCrate.id === 'BOX-PY-AUTOFIT' || selectedCrate.id.startsWith('BOX-PY-');
+
                     return (
-                        <div className="flex-1 flex flex-col lg:flex-row min-h-0 px-8 md:px-16">
-                            {/* Items list */}
-                            <div className="w-full lg:w-1/2 flex flex-col pr-0 lg:pr-12 overflow-hidden">
-                                <div className="flex justify-between items-end pb-5 shrink-0">
-                                    <div>
-                                        <h3 className="text-xl font-black text-white tracking-tighter uppercase">{tr("Staging List")}</h3>
-                                        <p className="text-[9px] text-white/30 font-black uppercase tracking-[0.3em] mt-1">{tr("Ready for insertion")}</p>
-                                    </div>
-                                    <span className="text-4xl font-black tabular-nums leading-none" style={{ color: primaryColor }}>{selectedItems.length}</span>
-                                </div>
-                                <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-32">
-                                    {selectedItems.map(item => {
-                                        const rawId = (item.norm.itemId || item.norm.tag_id || '').toUpperCase();
-                                        const vendorKey = Object.keys(vendors).sort((a, b) => b.length - a.length).find(k => rawId.startsWith(k));
-                                        const vColor = vendorKey ? getVendorColor(vendorKey) : '#555';
-                                        return (
-                                            <div key={item.row} className="flex items-center gap-4 group">
-                                                <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: vColor }} />
-                                                <div className="w-14 h-14 rounded-xl bg-black/40 overflow-hidden shrink-0">
-                                                    <img src={getCleanImageUrl(item.norm.mediaUrls?.split(',')[0])} className="w-full h-full object-cover grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-0.5">
-                                                        {vendorKey && <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-[2px] rounded-sm" style={{ backgroundColor: vColor, color: getTextContrast(vColor) }}>{vendorKey}</span>}
-                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{item.norm.itemId}</span>
-                                                    </div>
-                                                    <h5 className="text-xs font-black text-white uppercase truncate">{item.norm.shortDescription || tr("Inventory Item")}</h5>
-                                                    <p className="text-[8px] font-bold text-white/25 uppercase tracking-tight mt-0.5">
-                                                        {item.norm.widthCm}×{item.norm.lengthCm}×{item.norm.heightCm} {tr("CM ·")} {item.norm.weightKg} KG
-                                                    </p>
-                                                </div>
-                                                
-                                                {/* Quantity Selector */}
-                                                <div className="flex flex-col items-end gap-1 shrink-0 ml-4">
-                                                    <div className="flex items-center gap-3 bg-white/5 rounded-lg px-2 py-1">
-                                                        <button 
-                                                            onClick={() => setPackQuantities(prev => ({ ...prev, [item.row]: Math.max(1, (prev[item.row] ?? (item.norm.quantity || 1)) - 1) }))}
-                                                            className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all"
-                                                        >
-                                                            -
-                                                        </button>
-                                                        <span className="text-xs font-black w-6 text-center tabular-nums">{packQuantities[item.row] ?? (item.norm.quantity || 1)}</span>
-                                                        <button 
-                                                            onClick={() => setPackQuantities(prev => ({ ...prev, [item.row]: Math.min(item.norm.quantity || 1, (prev[item.row] ?? (item.norm.quantity || 1)) + 1) }))}
-                                                            className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all disabled:opacity-20"
-                                                            disabled={(packQuantities[item.row] ?? (item.norm.quantity || 1)) >= (item.norm.quantity || 1)}
-                                                        >
-                                                            +
-                                                        </button>
-                                                    </div>
-                                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest mr-1">
-                                                        {item.norm.quantity || 1} {tr("Tot ·")} {Math.max(0, (item.norm.quantity || 1) - (packQuantities[item.row] ?? (item.norm.quantity || 1)))} {tr("Left")}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Logistics HUB */}
-                            <div className="w-full lg:w-1/2 flex flex-col justify-center pb-32 pl-0 lg:pl-12 border-t lg:border-t-0 lg:border-l border-white/5 mt-4 lg:mt-0 pt-8 lg:pt-0">
-                                {/* Crate ID + vendor tags */}
-                                <div className="mb-12">
-                                    <p className="text-[9px] font-black uppercase tracking-[0.5em] mb-3" style={{ color: primaryColor }}>{tr("Target Container")}</p>
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <WireframeCrate w={selectedCrate.width_cm} l={selectedCrate.length_cm} h={selectedCrate.height_cm} type={selectedCrate.type} selected vibrant size={90} />
+                        <div className="flex-1 flex flex-col lg:flex-row min-h-0 px-6 sm:px-10 pt-6 pb-36 gap-8 overflow-hidden">
+                            
+                            {/* LEFT COLUMN: Target Container Specs + Wireframe Preview + Boxes Telemetry */}
+                            <div className="w-full lg:w-1/2 flex flex-col overflow-y-auto no-scrollbar gap-6 pr-0 lg:pr-6 border-b lg:border-b-0 lg:border-r border-white/10 pb-8 lg:pb-0">
+                                
+                                {/* Target Container Header Card */}
+                                <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 flex flex-col gap-4">
+                                    <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <div className="flex flex-wrap gap-1 mb-3">
-                                                {crateVendors.map(v => (
-                                                    <span key={v.prefix} className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-sm" style={{ backgroundColor: v.color, color: getTextContrast(v.color) }}>
-                                                        {v.prefix}
-                                                    </span>
-                                                ))}
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded border ${tax.badgeStyle}`}>
+                                                    {tax.icon} {tax.label}
+                                                </span>
+                                                <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
+                                                    Target Destination
+                                                </span>
                                             </div>
-                                            <p className="text-[9px] font-mono font-bold text-white/30 uppercase">
-                                                {selectedCrate.width_cm}×{selectedCrate.length_cm}×{selectedCrate.height_cm} CM
-                                            </p>
+                                            <h2 className="text-2xl font-black text-white uppercase tracking-wider">
+                                                {selectedCrate.id}
+                                            </h2>
                                         </div>
+
+                                        <div className="shrink-0">
+                                            <WireframeCrate 
+                                                w={selectedCrate.width_cm} 
+                                                l={selectedCrate.length_cm} 
+                                                h={selectedCrate.height_cm} 
+                                                type={tax.category} 
+                                                selected 
+                                                vibrant 
+                                                size={85} 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Dimensions & Tare Specs */}
+                                    <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/8 text-center">
+                                        <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                                            <span className="block text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Dimensions</span>
+                                            <span className="text-xs font-mono font-bold text-white">
+                                                {selectedCrate.width_cm}×{selectedCrate.length_cm}×{selectedCrate.height_cm} CM
+                                            </span>
+                                        </div>
+
+                                        <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                                            <span className="block text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Tare Weight</span>
+                                            <span className="text-xs font-mono font-bold text-white">
+                                                {(selectedCrate.weight_kg || 1).toFixed(1)} KG
+                                            </span>
+                                        </div>
+
+                                        <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                                            <span className="block text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Internal Volume</span>
+                                            <span className="text-xs font-mono font-bold text-cyan-400">
+                                                {(activeSelectedMetrics.internalVol / 1000).toFixed(1)} L
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Warehouse / Pallet Rack Location Input */}
+                                    <div className="flex flex-col gap-1.5 pt-2">
+                                        <label className="text-[9px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+                                            <MapPin size={12} className="text-amber-400" />
+                                            {tr("Warehouse / Pallet Location (Optional)")}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={crateLocation}
+                                            onChange={e => setCrateLocation(e.target.value)}
+                                            placeholder={selectedCrate.location || "e.g. Rack A-04, Bay 2, Dock 1"}
+                                            className="w-full bg-black/40 border border-white/10 focus:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none transition-all placeholder:text-white/20 font-medium"
+                                        />
                                     </div>
                                 </div>
 
-                                {/* Metrics */}
-                                <div className="grid grid-cols-2 gap-8 border-t border-white/5 pt-10">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Layers className="text-blue-400" size={14} />
-                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{tr("Volumetric Fill")}</span>
-                                        </div>
-                                        <div className="flex items-baseline gap-1 mb-2">
-                                            <span className={`text-5xl font-black tabular-nums ${logisticsMetrics!.fillPct > 90 ? 'text-rose-500' : 'text-white'}`}>
-                                                {logisticsMetrics!.fillPct.toFixed(0)}
+                                {/* Boxes.py Laser Cutfile Telemetry Card (if custom box or laser container) */}
+                                {customBoxesCrate && (
+                                    <div className="p-6 rounded-3xl bg-cyan-950/20 border border-cyan-500/30 flex flex-col gap-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Scissors size={16} className="text-cyan-400" />
+                                                <h4 className="text-xs font-black text-cyan-300 uppercase tracking-widest">
+                                                    Boxes.py Cutfile Telemetry
+                                                </h4>
+                                            </div>
+                                            <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">
+                                                {customBoxesCrate.generator}
                                             </span>
-                                            <span className="text-lg font-black text-white/20">%</span>
                                         </div>
-                                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                            <div className={`h-full transition-all duration-1000 ${logisticsMetrics!.fillPct > 90 ? 'bg-rose-500' : 'bg-blue-400'}`}
-                                                style={{ width: `${Math.min(100, logisticsMetrics!.fillPct)}%` }} />
+
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                                            <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20">
+                                                <span className="block text-[8px] font-bold text-cyan-400/60 uppercase">Perimeter</span>
+                                                <span className="text-xs font-mono font-bold text-white">
+                                                    {(customBoxesCrate.cutTelemetry.totalPerimeterMm / 10).toFixed(0)} cm
+                                                </span>
+                                            </div>
+
+                                            <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20">
+                                                <span className="block text-[8px] font-bold text-cyan-400/60 uppercase">Cut Time</span>
+                                                <span className="text-xs font-mono font-bold text-white">
+                                                    {customBoxesCrate.cutTelemetry.estCutTimeSec}s
+                                                </span>
+                                            </div>
+
+                                            <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20">
+                                                <span className="block text-[8px] font-bold text-cyan-400/60 uppercase">Thickness</span>
+                                                <span className="text-xs font-mono font-bold text-white">
+                                                    6.0 mm
+                                                </span>
+                                            </div>
+
+                                            <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20">
+                                                <span className="block text-[8px] font-bold text-cyan-400/60 uppercase">Nesting</span>
+                                                <span className="text-xs font-mono font-bold text-emerald-400">
+                                                    {customBoxesCrate.cutTelemetry.nestingEfficiencyPct}%
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-[9px] text-cyan-400/80 pt-2 border-t border-cyan-500/20">
+                                            <span>Material: Baltic Birch / Plywood</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleLaunch3DStudio(selectedCrate.id)}
+                                                className="text-cyan-300 hover:text-white underline font-bold flex items-center gap-1"
+                                            >
+                                                Inspect 2D / 3D Layout <ArrowUpRight size={11} />
+                                            </button>
                                         </div>
                                     </div>
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Weight className="text-emerald-400" size={14} />
-                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{tr("Total Weight")}</span>
+                                )}
+
+                                {/* Volumetric & Weight Gauges */}
+                                <div className="grid grid-cols-2 gap-4 p-6 rounded-3xl bg-white/[0.03] border border-white/10">
+                                    {/* Volume Gauge */}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <Layers className="text-cyan-400" size={15} />
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                                {tr("Volumetric Fill")}
+                                            </span>
                                         </div>
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-5xl font-black tabular-nums text-white">{logisticsMetrics!.totalWeight.toFixed(1)}</span>
-                                            <span className="text-lg font-black text-white/20">KG</span>
+                                            <span className={`text-4xl font-black tabular-nums ${activeSelectedMetrics.projectedFillPct > 100 ? 'text-rose-500' : 'text-white'}`}>
+                                                {activeSelectedMetrics.projectedFillPct.toFixed(0)}
+                                            </span>
+                                            <span className="text-sm font-black text-white/30">%</span>
                                         </div>
+                                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                            <div 
+                                                className={`h-full transition-all duration-700 ${
+                                                    activeSelectedMetrics.projectedFillPct > 100 ? 'bg-rose-500' : 'bg-cyan-400'
+                                                }`}
+                                                style={{ width: `${Math.min(100, activeSelectedMetrics.projectedFillPct)}%` }} 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Weight Gauge */}
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <Weight className="text-emerald-400" size={15} />
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                                {tr("Total Weight")}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-4xl font-black tabular-nums text-white">
+                                                {activeSelectedMetrics.totalWeight.toFixed(1)}
+                                            </span>
+                                            <span className="text-sm font-black text-white/30">KG</span>
+                                        </div>
+                                        <span className="text-[8px] font-mono text-white/40 uppercase">
+                                            Payload + {(selectedCrate.weight_kg || 0).toFixed(1)}kg tare
+                                        </span>
                                     </div>
                                 </div>
 
-                                {logisticsMetrics!.fillPct > 100 && (
-                                    <div className="mt-8 p-5 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-4 animate-pulse">
-                                        <Maximize2 className="text-rose-500 shrink-0" size={20} />
-                                        <div>
-                                            <p className="text-sm font-black text-rose-500 uppercase">{tr("Volume Overload")}</p>
-                                            <p className="text-[9px] text-rose-400/60 font-bold uppercase tracking-tight">
-                                                {(logisticsMetrics!.fillPct - 100).toFixed(0)}{tr("% over capacity")}
+                                {activeSelectedMetrics.projectedFillPct > 100 && (
+                                    <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center gap-3 text-rose-400">
+                                        <Maximize2 className="shrink-0" size={18} />
+                                        <div className="text-xs">
+                                            <p className="font-black uppercase">{tr("Volume Overload")}</p>
+                                            <p className="text-[10px] text-rose-300/80">
+                                                {(activeSelectedMetrics.projectedFillPct - 100).toFixed(0)}% {tr("over capacity. Items may not fit safely.")}
                                             </p>
                                         </div>
                                     </div>
                                 )}
+                            </div>
+
+                            {/* RIGHT COLUMN: Staged Items Manifest with Quantity Steppers */}
+                            <div className="w-full lg:w-1/2 flex flex-col min-h-0 overflow-hidden">
+                                <div className="flex items-center justify-between pb-4 shrink-0 border-b border-white/10 mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-black text-white uppercase tracking-wider">
+                                            {tr("Staging List")}
+                                        </h3>
+                                        <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">
+                                            {selectedItems.length} {tr("Items")} · {stagedMetrics.totalUnits} {tr("Total Units to Pack")}
+                                        </p>
+                                    </div>
+                                    <span className="text-3xl font-black tabular-nums text-white/80">
+                                        {selectedItems.length}
+                                    </span>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto no-scrollbar space-y-2.5 pb-20">
+                                    {selectedItems.map(item => {
+                                        const rawId = (item.norm.itemId || item.norm.tag_id || '').toUpperCase();
+                                        const vendorKey = Object.keys(vendors).sort((a, b) => b.length - a.length).find(k => rawId.startsWith(k));
+                                        const vColor = vendorKey ? getVendorColor(vendorKey) : '#555';
+                                        const currentPackQty = packQuantities[item.row] ?? (item.norm.quantity || 1);
+                                        const maxAvailableQty = item.norm.quantity || 1;
+
+                                        return (
+                                            <div 
+                                                key={item.row} 
+                                                className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/8 transition-all group"
+                                            >
+                                                <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: vColor }} />
+                                                
+                                                <div className="w-12 h-12 rounded-xl bg-black/40 overflow-hidden shrink-0 border border-white/5">
+                                                    <img 
+                                                        src={getCleanImageUrl(item.norm.mediaUrls?.split(',')[0])} 
+                                                        className="w-full h-full object-cover grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all" 
+                                                        alt={item.norm.itemId}
+                                                    />
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                        {vendorKey && (
+                                                            <span 
+                                                                className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded leading-none" 
+                                                                style={{ backgroundColor: vColor, color: getTextContrast(vColor) }}
+                                                            >
+                                                                {vendorKey}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-[9px] font-black text-white/50 uppercase tracking-wider font-mono">
+                                                            {item.norm.itemId}
+                                                        </span>
+                                                    </div>
+
+                                                    <h5 className="text-xs font-bold text-white uppercase truncate">
+                                                        {item.norm.shortDescription || tr("Inventory Item")}
+                                                    </h5>
+
+                                                    <p className="text-[8px] font-mono text-white/30 uppercase mt-0.5">
+                                                        {item.norm.widthCm}×{item.norm.lengthCm}×{item.norm.heightCm} CM · {item.norm.weightKg} KG
+                                                    </p>
+                                                </div>
+                                                
+                                                {/* Quantity Selector Stepper */}
+                                                <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                                                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-2 py-1">
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setPackQuantities(prev => ({ 
+                                                                ...prev, 
+                                                                [item.row]: Math.max(1, (prev[item.row] ?? (item.norm.quantity || 1)) - 1) 
+                                                            }))}
+                                                            className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all cursor-pointer"
+                                                        >
+                                                            -
+                                                        </button>
+
+                                                        <span className="text-xs font-black w-5 text-center tabular-nums text-white">
+                                                            {currentPackQty}
+                                                        </span>
+
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setPackQuantities(prev => ({ 
+                                                                ...prev, 
+                                                                [item.row]: Math.min(maxAvailableQty, (prev[item.row] ?? (item.norm.quantity || 1)) + 1) 
+                                                            }))}
+                                                            className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all disabled:opacity-20 cursor-pointer"
+                                                            disabled={currentPackQty >= maxAvailableQty}
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+
+                                                    <span className="text-[8px] font-mono font-bold text-white/30 uppercase">
+                                                        Max: {maxAvailableQty}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
                     );
                 })()}
             </div>
 
-            {/* Footer */}
-            <div className="absolute bottom-0 left-0 right-0 z-20 px-8 md:px-16 py-6 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent pointer-events-auto">
-                <div className="flex items-center gap-6">
-                    {step === 'REVIEW_PACK' && (
-                        <button onClick={() => setStep('SELECT_CRATE')} className="flex items-center gap-2 text-[10px] font-black text-white/30 uppercase tracking-[0.3em] hover:text-white transition-all group">
-                            <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                            {tr("Back")}
+            {/* ━━ 4. DEDICATED BOTTOM GLASS ACTION DOCK (Two-Layer Liquid Glass) ━━ */}
+            <div className="shrink-0 border-t border-white/10 bg-[#111416]/95 backdrop-blur-2xl px-6 sm:px-10 py-4 flex flex-wrap items-center justify-between gap-4 z-20">
+                {/* Left: Telemetry status & Back button */}
+                <div className="flex items-center gap-4">
+                    {step === 'REVIEW_PACK' ? (
+                        <button 
+                            onClick={() => setStep('SELECT_CRATE')} 
+                            className="flex items-center gap-2 text-xs font-black text-white/50 uppercase tracking-wider hover:text-white transition-all group cursor-pointer"
+                        >
+                            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                            {tr("Back to Containers")}
                         </button>
+                    ) : (
+                        <div className="flex items-center gap-2 text-white/30 text-[9px] font-black uppercase tracking-widest">
+                            <Info size={13} className="text-cyan-400/60" />
+                            <span>{tr("Persisted to Global Logistics Manifest")}</span>
+                        </div>
                     )}
-                    <div className="hidden lg:flex items-center gap-2 text-white/15 text-[9px] font-black uppercase tracking-widest">
-                        <Info size={12} />
-                        {tr("Persisted to global logistics manifest")}
-                    </div>
                 </div>
 
-                <div className="flex gap-3">
-                    <button onClick={() => setIsOpen(false)} className="px-8 h-14 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-[0.4em] text-white/30 hover:text-white hover:bg-white/5 transition-all active:scale-95">
-                        {tr("Abort")}
+                {/* Right: Tactile Action Buttons */}
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={() => setIsOpen(false)} 
+                        className="px-6 h-12 rounded-xl border border-white/10 text-xs font-black uppercase tracking-wider text-white/40 hover:text-white hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
+                    >
+                        {tr("Cancel / Abort")}
                     </button>
+
+                    {/* Launch 3D Packing Studio Button */}
+                    <button 
+                        onClick={() => handleLaunch3DStudio()}
+                        className="hidden sm:flex items-center gap-2 px-5 h-12 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-sm"
+                        title={tr("Open in 3D Crate Packing & Boxes.py Studio")}
+                    >
+                        <Rotate3d size={16} className="text-cyan-400" />
+                        <span>{tr("3D Studio")}</span>
+                    </button>
+
+                    {/* Primary CTA */}
                     {step === 'SELECT_CRATE' ? (
                         <button
                             onClick={() => setStep('REVIEW_PACK')}
                             disabled={!selectedCrate}
-                            className="px-10 h-14 rounded-full bg-white text-black text-[10px] font-black uppercase tracking-[0.4em] hover:scale-105 active:scale-95 transition-all disabled:opacity-20 flex items-center gap-3"
+                            className="px-8 h-12 rounded-xl bg-white text-black text-xs font-black uppercase tracking-wider hover:scale-105 active:scale-95 transition-all disabled:opacity-20 flex items-center gap-2 shadow-lg cursor-pointer"
                         >
-                            {tr("Review Manifest")} <ChevronRight size={16} strokeWidth={3} />
+                            <span>{tr("Review Manifest")}</span>
+                            <ChevronRight size={16} strokeWidth={2.5} />
                         </button>
                     ) : (
                         <button
                             onClick={handleConfirmPack}
                             disabled={isPacking}
-                            className="px-12 h-14 rounded-full text-black text-[10px] font-black uppercase tracking-[0.4em] hover:scale-105 active:scale-95 transition-all disabled:opacity-30 flex items-center gap-3 shadow-[0_0_50px_rgba(var(--main-color-rgb),0.3)] bg-(--main-color)"
+                            className="px-8 h-12 rounded-xl text-black text-xs font-black uppercase tracking-wider hover:scale-105 active:scale-95 transition-all disabled:opacity-30 flex items-center gap-2 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.35)] bg-(--main-color) cursor-pointer"
                         >
-                            {isPacking ? <><Loader2 className="animate-spin" size={18} />{tr("Syncing...")}</> : <><Zap size={18} />{tr("Confirm Packing")}</>}
+                            {isPacking ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={16} />
+                                    <span>{tr("Packing...")}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Zap size={16} />
+                                    <span>{tr(`Confirm & Pack ${stagedMetrics.totalUnits} Units`)}</span>
+                                </>
+                            )}
                         </button>
                     )}
                 </div>
+            </div>
 
-                {/* Advanced Mode Trigger */}
-                {step === 'REVIEW_PACK' && (
-                    <button 
-                        onClick={() => {
-                            setManagerTargetCrateId(selectedCrate!.id);
-                            setIsManagerOpen(true);
-                            setIsOpen(false);
-                            toast.success(tr("Entering 3D Workspace"), { icon: '📦' });
-                        }}
-                        className="hidden lg:flex items-center gap-3 px-8 h-14 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-[0.4em] text-white/60 hover:text-white hover:bg-white/5 transition-all active:scale-95"
-                    >
-                        <Rotate3d size={18} className="text-blue-400" />
-                        {tr("3D Workspace")}
-                    </button>
-                )}
-            </div>
-            </div>
         </div>
     );
 };

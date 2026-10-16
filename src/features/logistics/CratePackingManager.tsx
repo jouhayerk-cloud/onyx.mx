@@ -16,7 +16,8 @@ import toast from '../onyxIsland/notify/toast';
 import {
     Package, ChevronRight, Check, Loader2, X, CheckCircle2,
     PackagePlus, ListFilter, Inbox, Video, Maximize2, Minus, Plus, Trash2,
-    ArrowUp, ArrowDown, ArrowUpDown, ArrowLeft, Info
+    ArrowUp, ArrowDown, ArrowUpDown, ArrowLeft, Info,
+    Download, Copy, Flame, Layers, Cpu, FileCode, CheckCheck, Sparkles, Scissors, ExternalLink
 } from 'lucide-react';
 import { InventoryItem } from '../../lib/Types';
 import { vendors } from '../../lib/consts';
@@ -28,6 +29,41 @@ import { InventoryArtifactInner } from '../inventory/InventoryArtifact';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
+import { 
+    computeBoxesParams, 
+    computeCutTelemetry, 
+    generateProceduralCrateSvg, 
+    formatBoxesCliCommand,
+    PackedItemSpec,
+    BoxesGeneratorParams
+} from '../../lib/logistics/boxesBridge';
+import { 
+    downloadLaserCutfileSvg, 
+    downloadLightBurnProject, 
+    generateLightBurnProjectXml,
+    getBoxesCliRecipe,
+    BOXES_RUNTIME,
+    BOXES_GENERATORS,
+    BoxesGeneratorType
+} from '../../lib/logistics/boxesCliBridge';
+import { getContainerClassification } from './CrateCutfileStencilView';
+
+// ─── Official Kerf Burn Presets for Laser Cutting (from boxes-py/SKILL.md) ───────
+export interface MaterialPreset {
+    id: string;
+    label: string;
+    thicknessMm: number;
+    burnMm: number;
+    color: string;
+}
+
+export const MATERIAL_PRESETS: MaterialPreset[] = [
+    { id: 'baltic-birch-3', label: 'Baltic Birch 3mm', thicknessMm: 3, burnMm: 0.09, color: '#f59e0b' },
+    { id: 'birch-ply-5', label: 'Birch Plywood 5mm', thicknessMm: 5, burnMm: 0.13, color: '#d97706' },
+    { id: 'structural-ply-6', label: 'Structural Ply 6mm', thicknessMm: 6, burnMm: 0.15, color: '#b45309' },
+    { id: 'cast-acrylic-3', label: 'Cast Acrylic 3mm', thicknessMm: 3, burnMm: 0.07, color: '#06b6d4' },
+    { id: 'marine-ply-12', label: 'Marine Ply 12mm', thicknessMm: 12, burnMm: 0.18, color: '#10b981' },
+];
 
 // ─── Serialization helpers: inventory_ids stores "id:qty,id:qty" ──────────────────
 // Backward compat: entries without ":qty" default to full quantity
@@ -218,7 +254,7 @@ function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[
 }
     
 
-// ─── ActiveCrateHUD (Floating Top Panel) ─────────────────────────────────────────
+// ─── ActiveCrateHUD (Liquid Glass Top Header & Boxes.py CNC Studio Ribbon) ───────
 const ActiveCrateHUD: React.FC<{
     crate: CrateRecord;
     selectedItemIds: Set<string>;
@@ -240,11 +276,25 @@ const ActiveCrateHUD: React.FC<{
     onAddSeparator: () => void;
     onRemoveSeparator: (id: string) => void;
     onUpdateSeparator: (id: string, y: number) => void;
+    viewMode: '3d' | 'stencil' | 'dual';
+    onViewModeChange: (mode: '3d' | 'stencil' | 'dual') => void;
+    selectedMaterialId: string;
+    onSelectMaterial: (preset: MaterialPreset) => void;
+    thicknessMm: number;
+    onUpdateThickness: (val: number) => void;
+    burnMm: number;
+    onUpdateBurn: (val: number) => void;
+    telemetry: ReturnType<typeof computeCutTelemetry>;
+    boxesParams: BoxesGeneratorParams;
+    cutfileSvg: string;
 }> = ({ 
     crate, selectedItemIds, selectedQtys, allInventory, nestedUnits, 
     exchangeRate, onClear, onPack, onUnpack, onUnnest, onDelete, 
     isSaving, itemCount, crates, selectedItemsWithPos, onUpdatePosition,
-    separators, onAddSeparator, onRemoveSeparator, onUpdateSeparator
+    separators, onAddSeparator, onRemoveSeparator, onUpdateSeparator,
+    viewMode, onViewModeChange, selectedMaterialId, onSelectMaterial,
+    thicknessMm, onUpdateThickness, burnMm, onUpdateBurn,
+    telemetry, boxesParams, cutfileSvg
 }) => {
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
@@ -282,105 +332,168 @@ const ActiveCrateHUD: React.FC<{
 
     const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0);
     const totalNested = nestedUnits.length;
+    const crateName = (crate as any).label || (crate as any).name || crate.id.slice(0, 8).toUpperCase();
+
+    const handleDownloadSvg = () => {
+        downloadLaserCutfileSvg(`${crateName}_cutfile.svg`, cutfileSvg);
+        toast.success(tr("Laser cutfile SVG downloaded"));
+    };
+
+    const handleDownloadLightBurn = () => {
+        const lbrnXml = generateLightBurnProjectXml(cutfileSvg, { materialThickness: thicknessMm });
+        downloadLightBurnProject(`${crateName}_project.lbrn2`, lbrnXml);
+        toast.success(tr("LightBurn (.lbrn2) project exported"));
+    };
+
+    const handleCopyCliRecipe = () => {
+        const cmd = getBoxesCliRecipe(boxesParams.generator, {
+            x: boxesParams.x,
+            y: boxesParams.y,
+            h: boxesParams.h,
+            thickness: thicknessMm,
+            burn: burnMm,
+            outside: 1,
+            sx: boxesParams.sx,
+            sy: boxesParams.sy,
+        }, `${crateName}_cutfile.svg`);
+        navigator.clipboard.writeText(cmd);
+        toast.success(tr("Boxes.py C:\\boxes CLI recipe copied ($env:PYTHONUTF8=1)"));
+    };
+
+    const handleLaunchWebServer = () => {
+        navigator.clipboard.writeText(BOXES_RUNTIME.serverCommand);
+        toast.success(tr("Boxes.py server command copied! Opening :8080"));
+        window.open(BOXES_RUNTIME.serverUrl, '_blank', 'noopener,noreferrer');
+    };
 
     return (
-        <div className="sticky top-24 sm:top-28 z-[60] w-full bg-black/60 backdrop-blur-3xl border-b border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            <div className="w-full max-w-screen-2xl mx-auto flex items-center justify-between gap-6 px-6 py-4 sm:px-12 sm:py-6">
-                {/* Left: Crate Info */}
-                <div className="flex items-center gap-6 min-w-0">
-                    <div className="shrink-0 scale-75 sm:scale-100 origin-left">
-                        <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={50} vibrant />
+        <div className="sticky top-20 sm:top-24 z-[60] w-full bg-black/75 dark:bg-black/90 backdrop-blur-3xl border-b border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col">
+            {/* Top Row: Crate Specs, Apple HIG Mode Switcher & Quick Actions */}
+            <div className="w-full max-w-screen-2xl mx-auto flex flex-wrap items-center justify-between gap-4 px-6 py-3 sm:px-8">
+                {/* Left: Crate Identity & Dimensions */}
+                <div className="flex items-center gap-4 min-w-0">
+                    <div className="shrink-0 scale-75 origin-left">
+                        <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={44} vibrant />
                     </div>
                     <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-3 mt-1.5 overflow-x-auto no-scrollbar">
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                             {(() => {
                                 const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(crate, crates, allInventory);
                                 if (!date && !sequence) return (
-                                    <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-widest">{crate.id.slice(0, 8).toUpperCase()}</span>
+                                    <span className="text-[11px] font-mono font-black text-white uppercase tracking-wider">{crateName}</span>
                                 );
                                 return (
-                                    <div className="flex items-center">
+                                    <div className="flex items-center rounded-lg overflow-hidden border border-white/10">
                                         {date && (
-                                            <div className="bg-white/10 px-2 py-1">
-                                                <span className="text-[14px] font-black text-white tracking-[0.1em] leading-none block">{date}</span>
+                                             <div className="bg-white/10 px-2 py-0.5">
+                                                <span className="text-[12px] font-black text-white tracking-[0.05em] leading-none block">{date}</span>
                                             </div>
                                         )}
                                         {vList.map((v) => (
-                                            <div key={v} className="px-2 py-1 bg-(--main-color)">
-                                                <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-black">{v}</span>
+                                            <div key={v} className="px-2 py-0.5 bg-(--main-color)">
+                                                <span className="text-[12px] font-black tracking-[0.05em] leading-none block text-black">{v}</span>
                                             </div>
                                         ))}
                                         {sequence && (
-                                            <div className="px-3 py-1 bg-white/5">
-                                                <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-white/90">{sequence}</span>
+                                            <div className="px-2.5 py-0.5 bg-white/5">
+                                                <span className="text-[12px] font-black tracking-[0.05em] leading-none block text-white/90">{sequence}</span>
                                             </div>
                                         )}
                                     </div>
                                 );
                             })()}
-                            <span className="hidden sm:inline-block px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] font-black uppercase tracking-[0.2em] text-white/40">
-                                {crate.type}
+                            
+                            <span className="px-2 py-0.5 bg-cyan-500/10 border border-cyan-400/20 text-cyan-300 rounded-lg text-[10px] font-mono font-bold tracking-tight">
+                                {crate.width_cm || 60}×{crate.length_cm || 60}×{crate.height_cm || 60} cm
                             </span>
+
+                            {(() => {
+                                const cls = getContainerClassification(crate.type, crate.width_cm, crate.length_cm, crate.height_cm);
+                                return (
+                                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${cls.bg} ${cls.border} ${cls.color}`}>
+                                        {cls.icon} {cls.badge}
+                                    </span>
+                                );
+                            })()}
                         </div>
-                        <div className="flex items-center gap-3 mt-1.5 overflow-x-auto no-scrollbar">
+
+                        <div className="flex items-center gap-2 mt-1">
                             <button 
                                 onClick={onClear} 
-                                className="shrink-0 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[8px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all flex items-center gap-2 group shadow-lg"
+                                className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-wider text-white/60 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                                title={tr("Close Active Crate")}
                             >
-                                <X size={12} className="group-hover:rotate-90 transition-transform" />
+                                <X size={10} />
                                 {tr("Release")}
                             </button>
                             {crate.inventory_ids && (
                                 <button 
                                     onClick={onUnpack} 
                                     disabled={isSaving} 
-                                    className="shrink-0 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 transition-all flex items-center gap-2 group shadow-lg"
+                                    className="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-[9px] font-black uppercase tracking-wider text-rose-400 hover:text-rose-300 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                                    title={tr("Unpack all items from crate")}
                                 >
-                                    <Trash2 size={12} className="group-hover:-translate-y-0.5 transition-transform" />
+                                    <Trash2 size={10} />
                                     {tr("Reset")}
                                 </button>
                             )}
                         </div>
                     </div>
                 </div>
-                {/* Center: Inventory Meta (Added to HUD) */}
-                <div className="hidden lg:flex items-center gap-12">
-                    <div className="flex flex-col items-center gap-1">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">{tr("Staging Sequence")}</span>
-                        <span className="text-xl font-black text-white uppercase tracking-tighter leading-none italic">
-                            {itemCount} <span className="text-(--main-color) ml-1">{tr("Items")}</span>
-                        </span>
-                    </div>
 
-                    {totalNested > 0 && (
-                        <div className="flex items-center gap-4 border-l border-white/5 pl-12">
-                            <div className="flex flex-col items-start gap-1">
-                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">{tr("Nested Units")}</span>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xl font-black text-blue-400 uppercase tracking-tighter leading-none italic">{totalNested}</span>
-                                    <div className="flex -space-x-2">
-                                        {nestedUnits.map(u => (
-                                            <button 
-                                                key={u.id} 
-                                                onClick={() => onUnnest(u.id)}
-                                                title={`Unnest ${u.id.slice(0, 8).toUpperCase()}`}
-                                                className="w-6 h-6 rounded-full bg-blue-500 border-2 border-black flex items-center justify-center text-[8px] font-black hover:scale-110 transition-transform cursor-pointer"
-                                            >
-                                                📦
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                {/* Center: Apple HIG Mode Switcher Pill */}
+                <div className="flex items-center p-1 bg-black/60 backdrop-blur-xl border border-white/15 rounded-full shadow-xl">
+                    {/* 📦 3D Isometric Crate */}
+                    <button
+                        type="button"
+                        onClick={() => onViewModeChange('3d')}
+                        className={`min-h-[36px] px-3.5 py-1.5 rounded-full text-xs transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                            viewMode === '3d'
+                                ? 'bg-white/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.15)] border border-white/30 font-bold'
+                                : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent font-medium'
+                        }`}
+                    >
+                        <span>📦</span>
+                        <span className="hidden sm:inline">{tr("3D Isometric Crate")}</span>
+                        <span className="sm:hidden">3D</span>
+                    </button>
+
+                    {/* 📐 2D Laser Stencil */}
+                    <button
+                        type="button"
+                        onClick={() => onViewModeChange('stencil')}
+                        className={`min-h-[36px] px-3.5 py-1.5 rounded-full text-xs transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                            viewMode === 'stencil'
+                                ? 'bg-amber-500/20 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)] border border-amber-400/40 font-bold'
+                                : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent font-medium'
+                        }`}
+                    >
+                        <span>📐</span>
+                        <span className="hidden sm:inline">{tr("2D Laser Stencil")}</span>
+                        <span className="sm:hidden">2D Stencil</span>
+                    </button>
+
+                    {/* ◫ Dual Split View */}
+                    <button
+                        type="button"
+                        onClick={() => onViewModeChange('dual')}
+                        className={`hidden md:flex min-h-[36px] px-3.5 py-1.5 rounded-full text-xs transition-all duration-200 items-center gap-1.5 cursor-pointer ${
+                            viewMode === 'dual'
+                                ? 'bg-cyan-500/20 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.3)] border border-cyan-400/50 font-bold'
+                                : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent font-medium'
+                        }`}
+                        title={tr("Side-by-side 3D Crate and 2D Laser Stencil")}
+                    >
+                        <span className="text-sm leading-none">◫</span>
+                        <span>{tr("Dual Split View")}</span>
+                    </button>
                 </div>
 
-                {/* Right: Metrics */}
-                <div className="flex items-center gap-8 sm:gap-16 shrink-0">
+                {/* Right: Telemetry Metrics & Pack Action */}
+                <div className="flex items-center gap-4 sm:gap-6 shrink-0">
                     <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1.5">{tr("Brute Weight")}</span>
-                        <div className="flex items-center gap-1.5">
+                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-0.5">{tr("Brute Weight")}</span>
+                        <div className="flex items-center gap-1">
                             <input 
                                 type="number"
                                 step="0.1"
@@ -391,7 +504,6 @@ const ActiveCrateHUD: React.FC<{
                                     if (isNaN(val)) return;
                                     const tid = toast.loading(tr("Syncing weight..."));
                                     try {
-                                        // brute_weight_kg does NOT exist as a Supabase column.
                                         const db = (window as any).onyxDb;
                                         if (db) {
                                             const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
@@ -406,61 +518,169 @@ const ActiveCrateHUD: React.FC<{
                                         toast.error(tr("Sync failed"), { id: tid });
                                     }
                                 }}
-                                className="w-14 bg-white/5 border border-white/10 px-2 py-1 text-xs font-mono text-(--main-color) focus:outline-none focus:border-(--main-color)/50 transition text-right"
+                                className="w-14 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-400/50 transition text-right"
                             />
-                            <span className="text-[9px] font-black text-white/20">KG</span>
+                            <span className="text-[9px] font-black text-white/40">KG</span>
                         </div>
                     </div>
 
                     <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-0.5">{tr("Volumetric Fill")}</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className={`text-xl sm:text-3xl font-black tabular-nums tracking-tighter ${fillPct > 90 ? 'text-rose-500' : 'text-(--main-color)'}`}>
+                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-0.5">{tr("Fill")}</span>
+                        <div className="flex items-baseline gap-0.5">
+                            <span className={`text-xl sm:text-2xl font-black tabular-nums tracking-tighter ${fillPct > 90 ? 'text-rose-400' : 'text-emerald-400'}`}>
                                 {fillPct.toFixed(0)}
                             </span>
-                            <span className="text-[10px] font-black text-white/20">%</span>
+                            <span className="text-[10px] font-black text-white/30">%</span>
                         </div>
                     </div>
 
-                    <div className="hidden sm:flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-0.5">{tr("Units Packed")}</span>
-                        <span className="text-xl sm:text-3xl font-black text-white tabular-nums tracking-tighter">
-                            {totalQty}
-                        </span>
-                    </div>
+                    {/* Staged Items Confirmation Action */}
+                    {selectedItemIds.size > 0 && (
+                        <button
+                            onClick={onPack}
+                            disabled={isSaving}
+                            className="min-h-[44px] px-4 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                            <CheckCircle2 size={16} strokeWidth={2.5} />
+                            <span>{tr("Confirm Pack")} ({selectedItemIds.size})</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
-                    {/* Separator Controls */}
-                    <div className="h-8 w-px bg-white/10" />
-                    <div className="flex flex-col gap-1 min-w-[120px]">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{tr("Active Separators")}</span>
-                        <div className="flex flex-wrap gap-2">
-                            {separators.map(sep => (
-                                <div key={sep.id} className="group/sep relative">
-                                    <input 
-                                        type="number"
-                                        value={sep.y}
-                                        onChange={(e) => onUpdateSeparator(sep.id, parseInt(e.target.value))}
-                                        className="w-10 bg-white/10 border border-white/5 px-1 py-0.5 text-[10px] font-mono text-white rounded"
-                                    />
-                                    <button 
-                                        onClick={() => onRemoveSeparator(sep.id)}
-                                        className="absolute -top-2 -right-2 bg-rose-500 text-white p-0.5 rounded-full opacity-0 group-hover/sep:opacity-100 transition-opacity"
-                                    >
-                                        <X size={8} />
-                                    </button>
-                                </div>
-                            ))}
-                            <button 
-                                onClick={onAddSeparator}
-                                className="p-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded flex items-center justify-center text-white/40 hover:text-white"
-                                title={tr("Add Separator")}
-                            >
-                                <Plus size={12} />
-                            </button>
-                        </div>
+            {/* Bottom Row: Boxes.py CNC Laser Studio HUD Ribbon */}
+            <div className="w-full bg-white/[0.02] border-t border-white/10 px-6 py-2.5 sm:px-8 flex flex-wrap items-center justify-between gap-4 text-xs">
+                {/* Material Presets & Laser Config */}
+                <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-white/30 flex items-center gap-1">
+                        <Layers size={12} className="text-amber-400" />
+                        {tr("Material:")}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                        {MATERIAL_PRESETS.map(preset => {
+                            const isSelected = selectedMaterialId === preset.id;
+                            return (
+                                <button
+                                    key={preset.id}
+                                    onClick={() => onSelectMaterial(preset)}
+                                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                                        isSelected
+                                            ? 'bg-white/15 text-white border-white/30 shadow-sm'
+                                            : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10 hover:text-white'
+                                    }`}
+                                >
+                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: preset.color }} />
+                                    <span>{preset.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="h-4 w-px bg-white/10 hidden sm:block" />
+
+                    {/* Custom Thickness & Kerf Burn */}
+                    <div className="flex items-center gap-2">
+                        <label className="text-[9px] font-mono text-white/40 flex items-center gap-1">
+                            <span>T:</span>
+                            <input
+                                type="number"
+                                step="0.5"
+                                min="1"
+                                max="25"
+                                value={thicknessMm}
+                                onChange={e => onUpdateThickness(parseFloat(e.target.value) || 3)}
+                                className="w-11 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-[10px] font-mono text-white text-center focus:outline-none focus:border-amber-400"
+                            />
+                            <span>mm</span>
+                        </label>
+
+                        <label className="text-[9px] font-mono text-white/40 flex items-center gap-1">
+                            <Flame size={11} className="text-amber-400" />
+                            <span>Kerf:</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="1"
+                                value={burnMm}
+                                onChange={e => onUpdateBurn(parseFloat(e.target.value) || 0.1)}
+                                className="w-12 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-[10px] font-mono text-amber-300 text-center focus:outline-none focus:border-amber-400"
+                            />
+                            <span>mm</span>
+                        </label>
+                    </div>
                 </div>
+
+                {/* CNC Telemetry Badges */}
+                <div className="flex items-center gap-3 overflow-x-auto no-scrollbar font-mono text-[10px]">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
+                        <Cpu size={12} />
+                        <span>{tr("Nesting:")} <strong>{telemetry.nestingEfficiencyPct}%</strong></span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">
+                        <span>{tr("Perimeter:")} <strong>{(telemetry.totalPerimeterMm / 1000).toFixed(2)}m</strong></span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/70">
+                        <span>{tr("Est. Cut:")} <strong>{Math.floor(telemetry.estCutTimeSec / 60)}m {telemetry.estCutTimeSec % 60}s</strong></span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50">
+                        <span>{telemetry.panelCount} {tr("panels")} ({boxesParams.generator})</span>
+                    </div>
+                </div>
+
+                {/* Direct Laser Fabrication Exports & Separators */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleDownloadSvg}
+                        className="min-h-[30px] px-3 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 text-amber-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-sm"
+                        title={tr("Download Boxes.py Vector Stencil (SVG)")}
+                    >
+                        <Download size={12} />
+                        <span>{tr("SVG Stencil")}</span>
+                    </button>
+
+                    <button
+                        onClick={handleDownloadLightBurn}
+                        className="min-h-[30px] px-3 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-cyan-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-sm"
+                        title={tr("Download LightBurn Laser Cut Project (.lbrn2)")}
+                    >
+                        <Flame size={12} />
+                        <span>{tr("LightBurn")}</span>
+                    </button>
+
+                    <button
+                        onClick={handleCopyCliRecipe}
+                        className="min-h-[30px] px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white/80 text-[10px] font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                        title={tr("Copy Windows PowerShell Boxes.py CLI command to clipboard")}
+                    >
+                        <Copy size={11} />
+                        <span className="hidden lg:inline">{tr("CLI Recipe")}</span>
+                    </button>
+
+                    <button
+                        onClick={handleLaunchWebServer}
+                        className="min-h-[30px] px-2.5 py-1 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/30 text-emerald-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-sm"
+                        title={`${tr("Launch local Boxes.py Web Server and copy command to clipboard")}: ${BOXES_RUNTIME.serverCommand}`}
+                    >
+                        <ExternalLink size={12} />
+                        <span className="hidden sm:inline">{tr("Web Server (:8080)")}</span>
+                    </button>
+
+                    {/* Separators Toggle / Add */}
+                    <div className="h-4 w-px bg-white/10 mx-1" />
+                    <button 
+                        onClick={onAddSeparator}
+                        className="min-h-[30px] px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                        title={tr("Add Internal Shelf Separator")}
+                    >
+                        <Plus size={11} />
+                        <span>{tr("Separator")}</span>
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };
@@ -516,18 +736,23 @@ const CrateSelectCard: React.FC<{
             </div>
             
             {/* Metadata Area */}
-            <div className="text-center">
-                <p className={`text-lg font-black uppercase tracking-[0.2em] font-mono mb-2 transition-colors ${isSelected ? 'text-(--main-color)' : 'text-white/80'}`}>
+            <div className="text-center flex flex-col items-center gap-1.5">
+                <p className={`text-lg font-black uppercase tracking-[0.2em] font-mono transition-colors ${isSelected ? 'text-(--main-color)' : 'text-white/80'}`}>
                     {crate.width_cm}×{crate.length_cm}×{crate.height_cm}
                 </p>
-                <div className="flex items-center justify-center gap-3">
-                    <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em]">
-                        {isPallet ? tr("Pallet") : (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) ? tr("Box") : 'Crate'}
-                    </span>
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                    {(() => {
+                        const cls = getContainerClassification(crate.type, crate.width_cm, crate.length_cm, crate.height_cm);
+                        return (
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${cls.bg} ${cls.border} ${cls.color}`}>
+                                {cls.icon} {cls.badge}
+                            </span>
+                        );
+                    })()}
                     {partialCount > 0 && (
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-none bg-amber-400" />
-                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">{tr("Active")}</span>
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 border border-amber-400/20 rounded">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            <span className="text-[8px] font-black text-amber-400 uppercase tracking-widest">{partialCount} {tr("Active")}</span>
                         </div>
                     )}
                 </div>
@@ -728,6 +953,12 @@ export const CratePackingManager: React.FC = () => {
     const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
     const [nestingUnit, setNestingUnit] = useState<CrateRecord | null>(null);
 
+    // Laser Fabrication & Workspace View Mode State
+    const [workspaceViewMode, setWorkspaceViewMode] = useState<'3d' | 'stencil' | 'dual'>('3d');
+    const [selectedMaterialId, setSelectedMaterialId] = useState<string>('plywood-6');
+    const [customThicknessMm, setCustomThicknessMm] = useState<number>(6);
+    const [customBurnMm, setCustomBurnMm] = useState<number>(0.15);
+
     const handleSelectCrate = useCallback((id: string | null) => {
         setSelectedCrateId(id);
         setExpandedIds(new Set());
@@ -743,13 +974,19 @@ export const CratePackingManager: React.FC = () => {
             const ids = new Set(map.keys());
             const qtys: Record<string, number> = {};
             map.forEach((q, iid) => { qtys[iid] = q === -1 ? 1 : q; });
+            
+            // Preserve staged items selected in PackingModule or WarehouseView
+            if (globalSelectedIds && globalSelectedIds.length > 0) {
+                globalSelectedIds.forEach(gid => ids.add(String(gid)));
+            }
+
             setSelectedItemIds(ids);
             setSelectedQtys(qtys);
         } else {
             setSelectedItemIds(new Set());
             setSelectedQtys({});
         }
-    }, [crates]);
+    }, [crates, globalSelectedIds]);
 
     // Handle initial target from simple wizard
     useEffect(() => {
@@ -758,6 +995,16 @@ export const CratePackingManager: React.FC = () => {
             setTargetCrateId(null);
         }
     }, [isOpen, targetCrateId, crates, handleSelectCrate, setTargetCrateId]);
+
+    // Auto-select available crate if opening with global selected items but no target crate
+    useEffect(() => {
+        if (isOpen && !selectedCrateId && !targetCrateId && globalSelectedIds.length > 0 && crates.length > 0) {
+            const firstAvailable = crates.find(c => c.status === 'Empty' || c.status === 'Partial') || crates[0];
+            if (firstAvailable) {
+                handleSelectCrate(firstAvailable.id);
+            }
+        }
+    }, [isOpen, selectedCrateId, targetCrateId, globalSelectedIds.length, crates, handleSelectCrate]);
 
     // Sync local selectedItemIds with global selectedInventoryIdsAtom
     useEffect(() => {
@@ -1235,28 +1482,81 @@ export const CratePackingManager: React.FC = () => {
             };
         }).filter(entry => entry.item);
     }, [selectedItemIds, allInventory, itemPositions]);
+
+    const packedSpecs = useMemo<PackedItemSpec[]>(() => {
+        return itemsWithPositions.map(({ item, position }) => {
+            const norm = normalizeInventoryData(item?.data || {});
+            return {
+                id: String(item?.row || item?.id || 'item'),
+                name: norm.shortDescription || norm.itemId || 'Item',
+                xCm: position?.x || 0,
+                yCm: position?.y || 0,
+                zCm: position?.z || 0,
+                widthCm: Number(norm.widthCm) || 10,
+                lengthCm: Number(norm.lengthCm) || 10,
+                heightCm: Number(norm.heightCm) || 10,
+            };
+        });
+    }, [itemsWithPositions]);
+
+    const activeCrateDims = useMemo(() => ({
+        widthCm: selectedCrate?.width_cm || 60,
+        lengthCm: selectedCrate?.length_cm || 60,
+        heightCm: selectedCrate?.height_cm || 60,
+        thicknessMm: customThicknessMm,
+        burnMm: customBurnMm,
+    }), [selectedCrate?.width_cm, selectedCrate?.length_cm, selectedCrate?.height_cm, customThicknessMm, customBurnMm]);
+
+    const activeTelemetry = useMemo(() => {
+        return computeCutTelemetry(activeCrateDims, packedSpecs);
+    }, [activeCrateDims, packedSpecs]);
+
+    const activeBoxesParams = useMemo(() => {
+        return computeBoxesParams(activeCrateDims, packedSpecs);
+    }, [activeCrateDims, packedSpecs]);
+
+    const activeCutfileSvg = useMemo(() => {
+        return generateProceduralCrateSvg(activeCrateDims, packedSpecs);
+    }, [activeCrateDims, packedSpecs]);
+
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[600] flex flex-col bg-black/60 backdrop-blur-xl select-none animate-in fade-in duration-500">
+        <div className="ui-root fixed inset-0 z-[10060] flex flex-col bg-black/85 backdrop-blur-3xl select-none animate-in fade-in duration-300 pt-16 sm:pt-20 text-white font-sans">
             {/* Header / Top Panel with Close Button */}
-            <div className="absolute top-8 left-8 right-8 z-[700] flex items-center justify-between pointer-events-none">
-                <div className="flex items-center gap-6 pointer-events-auto">
+            <div className="absolute top-4 left-6 right-6 z-[10070] flex items-center justify-between pointer-events-none">
+                <div className="flex items-center gap-4 sm:gap-6 pointer-events-auto">
                     <button 
                         onClick={() => setIsOpen(false)}
-                        className="w-14 h-14 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition-all active:scale-90 shadow-2xl"
+                        className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white transition-all active:scale-90 shadow-2xl cursor-pointer"
                         title={tr("Close Workspace")}
                     >
-                        <X size={24} />
+                        <X size={20} />
                     </button>
                     <div className="flex flex-col">
-                        <h2 className="text-xl font-black text-white uppercase tracking-[0.4em] italic drop-shadow-lg">{tr("Advanced Packing")}</h2>
-                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mt-1">{tr("3D Spatial Manifest Workspace")}</span>
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-[0.4em] italic drop-shadow-lg">{tr("Advanced Packing")}</h2>
+                            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-mono bg-emerald-500/10 border border-emerald-400/30 text-emerald-300">
+                                🟢 Boxes.py C:\boxes Engine Active
+                            </span>
+                        </div>
+                        <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mt-0.5">{tr("3D Spatial Manifest & Laser Fabrication Studio")}</span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3 pointer-events-auto">
-                    {/* Additional header controls can go here */}
+                    <button
+                        onClick={() => {
+                            navigator.clipboard.writeText(BOXES_RUNTIME.serverCommand);
+                            toast.success(tr("Boxes.py server command copied! Opening :8080"));
+                            window.open(BOXES_RUNTIME.serverUrl, '_blank', 'noopener,noreferrer');
+                        }}
+                        className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-mono text-cyan-300 transition-all cursor-pointer shadow-lg active:scale-95"
+                        title={`${tr("Start local Boxes.py Web Server")}: ${BOXES_RUNTIME.serverCommand}`}
+                    >
+                        <ExternalLink size={13} />
+                        <span>Boxes.py Server (:8080)</span>
+                    </button>
                 </div>
             </div>
 
@@ -1272,25 +1572,64 @@ export const CratePackingManager: React.FC = () => {
                     <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full translate-x-1/4 translate-y-1/4 pointer-events-none" />
                     
                     {/* Header Section */}
-                    <div className="px-6 pt-12 pb-10 sm:px-10 shrink-0">
-                        <div className="max-w-7xl mx-auto flex items-center justify-between">
-                            <div className="flex flex-col gap-2">
-                                <h3 className="text-[14px] font-black uppercase tracking-[0.6em] text-(--main-color) italic">
-                                    {activeGroup?.isNestable ? tr("Packed Boxes") : `Available ${activeGroup ? activeGroup.type === 'pallet' ? tr("Pallets") : 'Crates' : tr("Storage Units")}`}
-                                </h3>
-                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] font-mono">
-                                    {activeCrates.length} {activeGroup?.isNestable ? tr("Ready for Nesting") : tr("Precision Units Ready for Assignment")}
-                                </p>
+                    <div className="px-6 pt-12 pb-8 sm:px-10 shrink-0">
+                        <div className="max-w-7xl mx-auto flex flex-col gap-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-col gap-1.5">
+                                    <h3 className="text-[14px] font-black uppercase tracking-[0.6em] text-(--main-color) italic">
+                                        {activeGroup?.isNestable ? tr("Packed Boxes") : `Available ${activeGroup ? activeGroup.type === 'pallet' ? tr("Pallets") : 'Crates' : tr("Storage Units")}`}
+                                    </h3>
+                                    <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] font-mono">
+                                        {activeCrates.length} {activeGroup?.isNestable ? tr("Ready for Nesting") : tr("Precision Units Ready for Assignment")}
+                                    </p>
+                                </div>
+                                {activeGroup && (
+                                    <button
+                                        onClick={() => setActiveGroupKey(null)}
+                                        className="text-[10px] font-black uppercase tracking-[0.2em] text-white hover:text-black px-6 py-2.5 bg-white/5 hover:bg-(--main-color) border border-white/10 hover:border-(--main-color) transition-all cursor-pointer flex items-center gap-2 group font-mono"
+                                    >
+                                        <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                        {tr("Root Catalog")}
+                                    </button>
+                                )}
                             </div>
-                            {activeGroup && (
-                                <button
-                                    onClick={() => setActiveGroupKey(null)}
-                                    className="text-[10px] font-black uppercase tracking-[0.2em] text-white hover:text-black px-8 py-3 bg-white/5 hover:bg-(--main-color) border border-white/10 hover:border-(--main-color) transition-all cursor-pointer flex items-center gap-3 group rounded-none font-mono"
-                                >
-                                    <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                                    {tr("Root Catalog")}
-                                </button>
-                            )}
+
+                            {/* Warehouse Status & Classification Inventory Bar */}
+                            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+                                {(() => {
+                                    const woodCount = crates.filter(c => c.type === 'crate').length;
+                                    const palletCount = crates.filter(c => c.type === 'pallet').length;
+                                    const boxCount = crates.filter(c => c.type === 'cardboard' || (c.width_cm === 38 && c.length_cm === 41 && c.height_cm === 38)).length;
+                                    const emptyCount = crates.filter(c => c.status === 'Empty').length;
+                                    const activeCount = crates.filter(c => c.status === 'Partial').length;
+                                    const packedCount = crates.filter(c => c.status === 'Packed').length;
+
+                                    return (
+                                        <>
+                                            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 rounded-xl text-[10px] font-bold">
+                                                <span>🪵</span>
+                                                <span>{woodCount} {tr("Wood Crates")}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 px-3 py-1 bg-cyan-500/10 border border-cyan-400/20 text-cyan-300 rounded-xl text-[10px] font-bold">
+                                                <span>▤</span>
+                                                <span>{palletCount} {tr("Freight Pallets")}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-400/20 text-amber-300 rounded-xl text-[10px] font-bold">
+                                                <span>⚡</span>
+                                                <span>{boxCount} {tr("Boxes.py Laser Boxes")}</span>
+                                            </div>
+                                            <div className="h-3 w-px bg-white/10 hidden sm:block" />
+                                            <div className="flex items-center gap-2 text-[10px] font-mono text-white/40">
+                                                <span>{emptyCount} {tr("Empty")}</span>
+                                                <span>•</span>
+                                                <span className="text-amber-400">{activeCount} {tr("Active")}</span>
+                                                <span>•</span>
+                                                <span className="text-rose-400">{packedCount} {tr("Packed")}</span>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
                         </div>
                     </div>
 
@@ -1490,6 +1829,21 @@ export const CratePackingManager: React.FC = () => {
                                             onAddSeparator={handleAddSeparator}
                                             onRemoveSeparator={handleRemoveSeparator}
                                             onUpdateSeparator={handleUpdateSeparator}
+                                            viewMode={workspaceViewMode}
+                                            onViewModeChange={setWorkspaceViewMode}
+                                            selectedMaterialId={selectedMaterialId}
+                                            onSelectMaterial={(p) => {
+                                                setSelectedMaterialId(p.id);
+                                                setCustomThicknessMm(p.thicknessMm);
+                                                setCustomBurnMm(p.burnMm);
+                                            }}
+                                            thicknessMm={customThicknessMm}
+                                            onUpdateThickness={setCustomThicknessMm}
+                                            burnMm={customBurnMm}
+                                            onUpdateBurn={setCustomBurnMm}
+                                            telemetry={activeTelemetry}
+                                            boxesParams={activeBoxesParams}
+                                            cutfileSvg={activeCutfileSvg}
                                         />
                                         
                                         <CratePackingWorkspace 
@@ -1500,6 +1854,26 @@ export const CratePackingManager: React.FC = () => {
                                             separators={separators}
                                             onUpdatePosition={(id, pos) => setItemPositions(prev => ({ ...prev, [id]: pos }))}
                                             activeItemId={null}
+                                            crateName={(selectedCrate as any).label || selectedCrate.id || 'Crate'}
+                                            crateType={selectedCrate.type}
+                                            viewMode={workspaceViewMode}
+                                            onViewModeChange={setWorkspaceViewMode}
+                                            hideModeSwitcher={true}
+                                            availableContainers={crates.map(c => ({
+                                                id: c.id,
+                                                name: `${(c as any).label || c.id.slice(0, 8).toUpperCase()} (${fmtDims(c)} cm)`,
+                                                type: (c.type === 'pallet' ? 'pallet' : (c.type === 'cardboard' || (c.width_cm === 38 && c.length_cm === 41 && c.height_cm === 38)) ? 'cardboard' : 'crate'),
+                                                widthCm: c.width_cm || 60,
+                                                lengthCm: c.length_cm || 60,
+                                                heightCm: c.height_cm || 60,
+                                                status: c.status,
+                                            }))}
+                                            selectedContainerId={selectedCrate.id}
+                                            onSelectContainer={(id) => handleSelectCrate(id)}
+                                            thickness={customThicknessMm}
+                                            onThicknessChange={setCustomThicknessMm}
+                                            burn={customBurnMm}
+                                            onBurnChange={setCustomBurnMm}
                                         />
 
                                         {/* Workspace Tooltip */}

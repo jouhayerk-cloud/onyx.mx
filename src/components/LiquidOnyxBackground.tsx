@@ -28,10 +28,10 @@ export const LiquidOnyxBackground: React.FC = () => {
 
         const palettes = {
             talan: { // Dark Stone (Dark Mode)
-                c1: getHex('--onyx-bg-1-dark', '#1F1E1B'), // Deep stone grey
-                c2: getHex('--onyx-bg-2-dark', '#283839'), // Deep slate teal
-                c3: getHex('--onyx-bg-3-dark', '#594A31'), // Dark bronze
-                c4: getHex('--onyx-bg-4-dark', '#1C1612'), // Deep umber
+                c1: getHex('--onyx-bg-1-dark', '#1e2120'), // Less dark mineral slate
+                c2: getHex('--onyx-bg-2-dark', '#222627'), // Refined slate stone
+                c3: getHex('--onyx-bg-3-dark', '#2f3f40'), // Visible subtle teal wave
+                c4: getHex('--onyx-bg-4-dark', '#4a3d2c'), // Warm bronze amber highlight
             },
             aqua: { // Coastal Stone (Light Mode)
                 c1: getHex('--onyx-bg-1-light', '#EEE8DB'), // Soft Cream/Bone
@@ -78,12 +78,12 @@ export const LiquidOnyxBackground: React.FC = () => {
             <canvas 
                 ref={canvasRef} 
                 id="gradient-canvas" 
-                className="w-full h-full opacity-60"
+                className="w-full h-full"
             />
             <div 
-                className="absolute inset-0 pointer-events-none mix-blend-multiply"
+                className="absolute inset-0 pointer-events-none opacity-40"
                 style={{
-                    background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 100%)',
+                    background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.3) 100%)',
                 }}
             />
         </div>

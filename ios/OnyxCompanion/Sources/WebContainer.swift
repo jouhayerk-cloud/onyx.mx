@@ -22,15 +22,22 @@ public struct WebContainer: UIViewRepresentable {
         // Persist localStorage, cookies, and indexedDB across app sessions
         configuration.websiteDataStore = .default()
 
-        // Register script message handler with reply for asynchronous Promise resolution
+        // Register script message handlers with reply for asynchronous Promise resolution
         configuration.userContentController.addScriptMessageHandler(
-            context.coordinator.bridge,
+            context.coordinator.embedBridge,
             contentWorld: .page,
             name: "onyxEmbed"
         )
 
+        configuration.userContentController.addScriptMessageHandler(
+            context.coordinator.chatBridge,
+            contentWorld: .page,
+            name: "onyxChat"
+        )
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
+        context.coordinator.chatBridge.setWebView(webView)
 
         #if DEBUG
         if #available(iOS 16.4, *) {
@@ -49,10 +56,12 @@ public struct WebContainer: UIViewRepresentable {
     }
 
     public final class Coordinator: NSObject, WKNavigationDelegate {
-        let bridge: OnyxEmbedBridge
+        let embedBridge: OnyxEmbedBridge
+        let chatBridge: OnyxChatBridge
 
         init(modelStore: ModelStore) {
-            self.bridge = OnyxEmbedBridge(modelStore: modelStore)
+            self.embedBridge = OnyxEmbedBridge(modelStore: modelStore)
+            self.chatBridge = OnyxChatBridge(modelStore: modelStore)
             super.init()
         }
     }

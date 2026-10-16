@@ -3,7 +3,7 @@
  * Gemini stays the default and keeps its own caller (client.ts); other providers implement AiProviderImpl.
  * Text and vision JSON jobs (content, segmentation, translate) can be routed to any provider; image and video jobs stay Gemini only.
  */
-export type ProviderId = 'gemini' | 'anthropic' | 'openai' | 'compat';
+export type ProviderId = 'gemini' | 'anthropic' | 'openai' | 'compat' | 'companion' | 'colibri';
 
 export interface ProviderInfo {
     id: ProviderId;

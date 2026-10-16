@@ -6,7 +6,8 @@ import {
     isPackingPrintWizardOpenAtom, packingExportPDFTriggerAtom, 
     packingExportXLSXTriggerAtom, packingExportJSONTriggerAtom,
     isPackingFiltersOpenAtom, isPackingNFCWizardOpenAtom,
-    packingSortKeyAtom, packingSortOrderAtom, packingSelectedIdsAtom
+    packingSortKeyAtom, packingSortOrderAtom, packingSelectedIdsAtom,
+    isCratePackingManagerOpenAtom, selectedInventoryIdsAtom
 } from '../../lib/atoms';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import ExcelJS from 'exceljs';
@@ -20,7 +21,7 @@ import { NFCTagCard } from '../../components/LabelVisuals';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Barcode from 'react-barcode';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, collectAllImages } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, collectAllImages, getItemPaddedVolume } from '../../lib/utils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -388,6 +389,8 @@ export const PackingModule: React.FC = () => {
     const deferredSearch = React.useDeferredValue(globalSearchTerm);
 
     const [selectedIds, setSelectedIds] = useAtom(packingSelectedIdsAtom);
+    const setIsPackingManagerOpen = useSetAtom(isCratePackingManagerOpenAtom);
+    const setSelectedInventoryIds = useSetAtom(selectedInventoryIdsAtom);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [isExportingXLSX, setIsExportingXLSX] = useState(false);
     const [isSendingToDesigner, setIsSendingToDesigner] = useState(false);
@@ -525,6 +528,23 @@ export const PackingModule: React.FC = () => {
         () => processedItems.filter(item => selectedIds.has(String(item.row))),
         [processedItems, selectedIds]
     );
+
+    // Volumetric Crate Estimator for selected items
+    const selectedPaddedVolumeCm3 = useMemo(() => {
+        let vol = 0;
+        for (const item of selectedItems) {
+            vol += getItemPaddedVolume(item.normData || (item as any).rawDoc?.data || (item as any).data || {}, Number(item.normData?.quantity || 1));
+        }
+        return vol;
+    }, [selectedItems]);
+
+    const recommendedPackingCrate = useMemo(() => {
+        if (selectedPaddedVolumeCm3 <= 45000) return { dims: '38×41×38 cm', fillPct: Math.round(selectedPaddedVolumeCm3 / 45000 * 100) };
+        if (selectedPaddedVolumeCm3 <= 150000) return { dims: '60×60×60 cm', fillPct: Math.round(selectedPaddedVolumeCm3 / 216000 * 100) };
+        if (selectedPaddedVolumeCm3 <= 400000) return { dims: '80×80×80 cm', fillPct: Math.round(selectedPaddedVolumeCm3 / 512000 * 100) };
+        return { dims: '120×100×120 cm', fillPct: Math.round(selectedPaddedVolumeCm3 / 1440000 * 100) };
+    }, [selectedPaddedVolumeCm3]);
+
     const activeItem = selectedItems[activeItemIndex] || null;
 
     // Clamp index when selection changes
@@ -820,7 +840,7 @@ export const PackingModule: React.FC = () => {
     }, [exportJSONTrigger]);
 
     return (
-        <div className="flex-1 flex flex-col relative bg-transparent">
+        <div className="ui-root flex-1 flex flex-col relative bg-transparent">
             
             {/* ── UNIFIED EXPORT WIZARD ── */}
             <ExportWizard 
@@ -1042,31 +1062,66 @@ export const PackingModule: React.FC = () => {
             )}
 
 
-            {/* ── MINIMAL FIXED BOTTOM ACTION BAR ── */}
+            {/* ── LIQUID GLASS ACTION DOCK ── */}
             {selectedIds.size > 0 && (
-                <div className="sticky bottom-0 left-0 right-0 z-[100] animate-in slide-in-from-bottom duration-500 mt-auto pointer-events-none">
-                    <div className="bg-white/[0.02] backdrop-blur-3xl border-t border-white/5 px-8 py-3 flex items-center justify-around shadow-2xl relative overflow-hidden pointer-events-auto">
+                <div className="sticky bottom-4 left-0 right-0 z-[100] animate-in slide-in-from-bottom duration-300 mt-auto pointer-events-none px-4 flex justify-center">
+                    <div className="bg-black/70 dark:bg-black/85 backdrop-blur-3xl border border-white/15 px-6 py-3 rounded-3xl flex items-center gap-4 sm:gap-6 shadow-2xl relative overflow-hidden pointer-events-auto max-w-4xl w-full justify-between">
                         <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent opacity-20 pointer-events-none" />
                         
-                        <button 
-                            onClick={() => setIsPrintablesWizardOpen(true)}
-                            className="relative z-10 flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-all active:scale-90 hover:scale-110 shadow-lg cursor-pointer"
-                            style={{ background: 'var(--secondary-color)', color: 'black' }}
-                            title={tr("Print Labels")}
-                        >
-                            <Printer size={28} strokeWidth={2} />
-                        </button>
+                        {/* Selected info & Volumetric Telemetry */}
+                        <div className="flex items-center gap-3 relative z-10 flex-wrap">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                                <span className="text-sm font-black tracking-tight text-white">
+                                    {selectedIds.size} <span className="text-white/60 font-semibold">{tr("Selected")}</span>
+                                </span>
+                            </div>
 
-                        <div className="w-px h-8 bg-white/5 relative z-10" />
+                            <div className="h-5 w-px bg-white/15 hidden sm:block" />
 
-                        <button 
-                            onClick={() => setIsNFCWizardOpen(true)}
-                            className="relative z-10 flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all active:scale-95 hover:scale-110 shadow-xl cursor-pointer"
-                            style={{ background: 'var(--main-color)', color: 'black' }}
-                            title={tr("NFC Wizard")}
-                        >
-                            <Nfc size={30} strokeWidth={2.5} />
-                        </button>
+                            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[11px] text-white/80 font-mono">
+                                <Package size={14} className="text-cyan-400 shrink-0" />
+                                <span>{(selectedPaddedVolumeCm3 / 1000).toFixed(1)}L</span>
+                                <span className="text-white/30">•</span>
+                                <span className="text-amber-400 font-bold">{recommendedPackingCrate.dims}</span>
+                                <span className="text-white/40">({recommendedPackingCrate.fillPct}% vol)</span>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 relative z-10">
+                            {/* Launch Packing Studio Button */}
+                            <button
+                                onClick={() => {
+                                    setSelectedInventoryIds(Array.from(selectedIds));
+                                    setIsPackingManagerOpen(true);
+                                }}
+                                className="min-h-[44px] px-5 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer"
+                                title={tr("Open 3D Crate Packing & Boxes.py Studio")}
+                            >
+                                <Package size={16} strokeWidth={2.5} />
+                                <span className="hidden sm:inline">{tr("Launch Packing Studio")}</span>
+                                <span className="sm:hidden">{tr("Pack")}</span>
+                            </button>
+
+                            <div className="w-px h-6 bg-white/15" />
+
+                            <button 
+                                onClick={() => setIsPrintablesWizardOpen(true)}
+                                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-all active:scale-90 shadow-md cursor-pointer border border-white/10"
+                                title={tr("Print Labels")}
+                            >
+                                <Printer size={18} strokeWidth={2} />
+                            </button>
+
+                            <button 
+                                onClick={() => setIsNFCWizardOpen(true)}
+                                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl bg-amber-500 hover:bg-amber-400 text-black transition-all active:scale-90 shadow-md cursor-pointer border border-amber-400/30 font-bold"
+                                title={tr("NFC Wizard")}
+                            >
+                                <Nfc size={18} strokeWidth={2.5} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

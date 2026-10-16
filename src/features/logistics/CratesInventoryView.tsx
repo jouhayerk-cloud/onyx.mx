@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
 import type { Database } from '../../lib/database.types';
-import { useAtom, useAtomValue } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowLeft, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler, Shield, Check, FolderUp } from 'lucide-react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { Box, Plus, Search, Package, ArrowLeft, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler, Shield, Check, FolderUp, Printer } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase, useNotify } from '../../lib/hooks';
-import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom, financeDataAtom, isWarehouseSelectionModeAtom, warehouseSelectedIdsAtom, showWarehouseExportWizardAtom, CrateStatus} from '../../lib/atoms';
+import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom, financeDataAtom, isWarehouseSelectionModeAtom, warehouseSelectedIdsAtom, showWarehouseExportWizardAtom, isCratePackingManagerOpenAtom, packingManagerTargetCrateIdAtom, CrateStatus} from '../../lib/atoms';
+import { computeCutTelemetry, generateProceduralCrateSvg, type PackedItemSpec } from '../../lib/logistics/boxesBridge';
+import { downloadLaserCutfileSvg, downloadLightBurnProject, generateLightBurnProjectXml } from '../../lib/logistics/boxesCliBridge';
 import { getCrateInternalVolume, getItemPaddedVolume, getCleanImageUrl, normalizeInventoryData, calculateCodesAndPrices, getCrateDisplayName } from '../../lib/utils';
 import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '../../lib/crateManifesto';
 import { ExportWizard } from '../../components/ExportWizard';
@@ -16,11 +18,23 @@ import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
 import { el } from '../../lib/i18nEnums';
 
+// ─── Container Kind Classifier ────────────────────────────────────────────────
+export function getCrateKind(crate: { type?: string; width_cm?: number; length_cm?: number; height_cm?: number }): 'crate' | 'pallet' | 'box' {
+    const isPallet = crate.type === 'pallet' || ((crate.height_cm || 0) <= 40 && crate.type !== 'cardboard' && !(crate.width_cm === 38 && crate.length_cm === 41 && crate.height_cm === 38));
+    if (isPallet) return 'pallet';
+    const isBox = crate.type === 'cardboard' || (crate.width_cm === 38 && crate.length_cm === 41 && crate.height_cm === 38);
+    if (isBox) return 'box';
+    return 'crate';
+}
+
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
 export const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number; fillPct?: number }> = ({
     w = 60, l = 60, h = 60, status = 'Empty', type = 'crate', count = 1, fillPct = 0
 }) => {
-    const visH = type === 'pallet' ? 15 : h;
+    const kind = getCrateKind({ type, width_cm: w, length_cm: l, height_cm: h });
+    const isPallet = kind === 'pallet';
+    const isBox = kind === 'box';
+    const visH = isPallet ? 14 : h;
     const maxDim = Math.max(w, l, visH, 1);
     const scale = 56 / maxDim;
     const dw = Math.round(w * scale);
@@ -28,11 +42,16 @@ export const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; stat
     const dh = Math.round(visH * scale);
     const depth = Math.round(dl * 0.38);
 
-    const accentColor =
-        status === 'Packed' ? '#f87171'
-        : status === 'Partial' ? '#fbbf24'
-        : type === 'cardboard' ? '#d97706' // Cardboard brown
-        : 'var(--main-color)';
+    // Dynamic accent color: Pallet = Sky-Blue, Box/Laser = Cyan, Crate = Amber/Gold
+    const accentColor = isPallet
+        ? '#38bdf8'
+        : isBox
+        ? '#06b6d4'
+        : status === 'Packed'
+        ? '#10b981'
+        : status === 'Partial'
+        ? '#f59e0b'
+        : '#fbbf24';
 
     const maxCount = Math.min(count, 5);
     const svgW = dw + depth + 6;
@@ -59,26 +78,27 @@ export const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; stat
                 return (
                     <g key={i}>
                         {/* Back dashed edges */}
-                        <line x1={x0 + dx} y1={y0 + dy} x2={x0 + dx} y2={y3 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
-                        <line x1={x0 + dx} y1={y0 + dy} x2={x1 + dx} y2={y1 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
-                        <line x1={x0 + dx} y1={y3 + dy} x2={x1 + dx} y2={y2 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
+                        <line x1={x0 + dx} y1={y0 + dy} x2={x0 + dx} y2={y3 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.35" />
+                        <line x1={x0 + dx} y1={y0 + dy} x2={x1 + dx} y2={y1 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.35" />
+                        <line x1={x0 + dx} y1={y3 + dy} x2={x1 + dx} y2={y2 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.35" />
 
                         {/* Top face */}
                         <polygon
                             points={`${x0},${y0} ${x0+dx},${y0+dy} ${x1+dx},${y1+dy} ${x1},${y1}`}
-                            fill={`${accentColor}08`}
+                            fill={`${accentColor}12`}
                             stroke={accentColor} strokeWidth="1"
                         />
                         {/* Right face */}
                         <polygon
                             points={`${x1},${y1} ${x1+dx},${y1+dy} ${x1+dx},${y2+dy} ${x1},${y2}`}
-                            fill={`${accentColor}05`}
+                            fill={`${accentColor}08`}
                             stroke={accentColor} strokeWidth="1"
                         />
                         {/* Front face */}
                         <rect x={x0} y={y0} width={dw} height={dh}
-                            fill={`${accentColor}07`}
+                            fill={`${accentColor}0e`}
                             stroke={accentColor} strokeWidth="1.2"
+                            rx={isBox ? 1 : 0}
                         />
                         
                         {/* Fill Visualization (Front face overlay) */}
@@ -89,17 +109,36 @@ export const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; stat
                                 width={dw - 3} 
                                 height={(dh * (fillPct / 100)) - 3}
                                 fill={accentColor}
-                                fillOpacity="0.25"
+                                fillOpacity="0.3"
                                 rx="1"
                                 className="animate-pulse"
                             />
                         )}
 
-                        {/* Cross braces */}
-                        {type !== 'pallet' && (
+                        {/* Freight Pallet Structure: Runners and Fork entry slots */}
+                        {isPallet && (
                             <>
-                                <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
-                                <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
+                                <line x1={x0} y1={y0 + dh * 0.42} x2={x1} y2={y0 + dh * 0.42} stroke={accentColor} strokeWidth="0.8" opacity="0.6" />
+                                <rect x={x0 + dw * 0.12} y={y0 + dh * 0.42} width={dw * 0.3} height={dh * 0.55} fill={`${accentColor}15`} stroke={accentColor} strokeWidth="0.7" opacity="0.8" rx="0.5" />
+                                <rect x={x0 + dw * 0.58} y={y0 + dh * 0.42} width={dw * 0.3} height={dh * 0.55} fill={`${accentColor}15`} stroke={accentColor} strokeWidth="0.7" opacity="0.8" rx="0.5" />
+                            </>
+                        )}
+
+                        {/* Finger-Joint CNC Box Structure: Notched joints */}
+                        {isBox && (
+                            <>
+                                <line x1={x0} y1={y0} x2={x1} y2={y0} stroke={accentColor} strokeWidth="1.2" strokeDasharray="3,3" />
+                                <line x1={x0} y1={y0 + dh} x2={x1} y2={y0 + dh} stroke={accentColor} strokeWidth="1.2" strokeDasharray="3,3" />
+                                <line x1={x0} y1={y0} x2={x0} y2={y0 + dh} stroke={accentColor} strokeWidth="1.2" strokeDasharray="3,3" />
+                                <line x1={x1} y1={y0} x2={x1} y2={y0 + dh} stroke={accentColor} strokeWidth="1.2" strokeDasharray="3,3" />
+                            </>
+                        )}
+
+                        {/* Wooden Crate Cross braces */}
+                        {!isPallet && !isBox && (
+                            <>
+                                <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={accentColor} strokeWidth="0.6" opacity="0.35" />
+                                <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={accentColor} strokeWidth="0.6" opacity="0.35" />
                             </>
                         )}
                         
@@ -213,15 +252,63 @@ function generateDynamicCrateId(crate: CrateRecord, allCrates: CrateRecord[], al
 }
 
 // --- Status Badge ---
-const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
-    const styles: Record<string, string> = {
-        Empty: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-        Partial: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-        Packed: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    };
+export const StatusBadge = ({ status, itemCount = 0 }: { status: CrateRecord['status']; itemCount?: number }) => {
+    if (status === 'Empty') {
+        return (
+            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-white/5 text-white/50 border border-dashed border-white/25 flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                {tr("AVAILABLE · EMPTY")}
+            </span>
+        );
+    }
+    if (status === 'Partial') {
+        return (
+            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-400/35 flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                {tr("PARTIAL")} {itemCount > 0 ? `· ${itemCount} ${tr("UNITS")}` : ''}
+            </span>
+        );
+    }
+    if (status === 'In Transit' || status === 'Deployed') {
+        return (
+            <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-blue-500/15 text-blue-300 border border-blue-400/35 flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                {tr("IN TRANSIT")}
+            </span>
+        );
+    }
+    // Packed
     return (
-        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${styles[status] || styles.Empty}`}>
-            {el(status)}
+        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-400/35 flex items-center gap-1.5 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            {tr("PACKED")} {itemCount > 0 ? `· ${itemCount} ${tr("UNITS")}` : ''}
+        </span>
+    );
+};
+
+// --- Container Type Badge ---
+export const ContainerTypeBadge = ({ crate }: { crate: CrateRecord }) => {
+    const kind = getCrateKind(crate);
+    if (kind === 'pallet') {
+        return (
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-sky-500/15 text-sky-300 border border-sky-400/30 flex items-center gap-1 shadow-sm">
+                <span>📦</span>
+                <span>{tr("FREIGHT PALLET")}</span>
+            </span>
+        );
+    }
+    if (kind === 'box') {
+        return (
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center gap-1 shadow-sm">
+                <span>📐</span>
+                <span>{tr("BOX / LASER")}</span>
+            </span>
+        );
+    }
+    return (
+        <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-400/30 flex items-center gap-1 shadow-sm">
+            <span>🪵</span>
+            <span>{tr("WOODEN CRATE")}</span>
         </span>
     );
 };
@@ -252,6 +339,8 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
     const [exportStatus, setExportStatus] = useState('');
     const [isExportProgressOpen, setIsExportProgressOpen] = useState(false);
     const liveRate = useAtomValue(liveExchangeRateAtom) || 18.0;
+    const setIsPackingManagerOpen = useSetAtom(isCratePackingManagerOpenAtom);
+    const setTargetCrateId = useSetAtom(packingManagerTargetCrateIdAtom);
 
     const dynamicId = useMemo(() => generateDynamicCrateId(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     
@@ -372,6 +461,34 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
 
     const packedItems = useMemo(() => getItemsRecursive(crate), [crate, getItemsRecursive]);
 
+    const packedSpecs: PackedItemSpec[] = useMemo(() => {
+        return packedItems.map((pi, idx) => {
+            const w = Number(pi.norm?.widthCm || 15);
+            const l = Number(pi.norm?.lengthCm || 15);
+            const h = Number(pi.norm?.heightCm || 15);
+            return {
+                id: pi.id || String(idx),
+                name: pi.norm?.shape || `Item ${idx + 1}`,
+                xCm: 0,
+                yCm: 0,
+                zCm: 0,
+                widthCm: w,
+                lengthCm: l,
+                heightCm: h
+            };
+        });
+    }, [packedItems]);
+
+    const telemetry = useMemo(() => {
+        const w = crate.width_cm || 60;
+        const l = crate.length_cm || 60;
+        const h = crate.height_cm || 60;
+        return computeCutTelemetry(
+            { widthCm: w, lengthCm: l, heightCm: h, thicknessMm: 6, burnMm: 0.1 },
+            packedSpecs
+        );
+    }, [crate.width_cm, crate.length_cm, crate.height_cm, packedSpecs]);
+
     const handleStartExport = async (cfg: any) => {
         if (packedItems.length === 0) return toast.error(tr("Crate is empty"));
         const tid = toast.loading(tr("Generating Manifesto PDF..."));
@@ -440,11 +557,11 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                     onSelect();
                 }
             }}
-            className={`crate-card group relative transition-all w-full flex flex-col p-3 mb-2 ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'is-selected z-10' : ''}`}
+            className={`crate-card ui-root liquid-glass group relative transition-all duration-300 w-full flex flex-col p-5 sm:p-6 mb-4 rounded-3xl border border-white/12 bg-[#121617]/90 hover:bg-[#181e20]/95 hover:border-white/25 backdrop-blur-2xl shadow-xl ${selectionMode ? 'cursor-pointer' : ''} ${isSelected ? 'is-selected ring-2 ring-emerald-400/50 z-10' : ''}`}
         >
             {/* Selection Checkbox Overlay */}
             {selectionMode && (
-                <div className={`absolute top-2 right-2 z-20 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-amber-500 border-amber-500 text-black' : 'border-white/20 bg-black/20 group-hover:border-amber-500/50'}`}>
+                <div className={`absolute top-2 right-2 z-20 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-emerald-500 border-emerald-500 text-black' : 'border-white/20 bg-black/20 group-hover:border-emerald-500/50'}`}>
                     {isSelected && <Check size={16} strokeWidth={4} />}
                 </div>
             )}
@@ -469,7 +586,8 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                         />
                     </div>
                     <div className="absolute top-0 left-0 flex flex-col gap-1 items-start">
-                        <StatusBadge status={crate.status} />
+                        <StatusBadge status={crate.status} itemCount={itemCount} />
+                        <ContainerTypeBadge crate={crate} />
                         {payStatus && (
                             <div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${
                                 payStatus === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
@@ -664,6 +782,20 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                         )}
                     </div>
 
+                    {/* Boxes.py CNC Fabrication Telemetry Pill */}
+                    <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[10px] font-mono shadow-sm mt-2 w-fit">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        <span className="font-semibold text-white/80">Baltic Birch 6mm</span>
+                        <span className="text-white/20">•</span>
+                        <span className="font-bold">{Math.round(telemetry.nestingEfficiencyPct)}% {tr("Nesting")}</span>
+                        <span className="text-white/20">•</span>
+                        <span>0.10mm {tr("Kerf")}</span>
+                        <span className="text-white/20">•</span>
+                        <span>{(telemetry.totalPerimeterMm / 1000).toFixed(1)}m {tr("Cut")}</span>
+                        <span className="text-white/20">•</span>
+                        <span>{Math.floor(telemetry.estCutTimeSec / 60)}m {telemetry.estCutTimeSec % 60}s</span>
+                    </div>
+
                 </div>
 
                 {/* Actions */}
@@ -701,7 +833,6 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                         </button>
                     )}
 
-
                     <button
                         onClick={(e) => { e.stopPropagation(); onEdit(crate); }}
                         className="tool-btn crate-key flex items-center justify-center w-9 h-9 rounded-lg transition-all cursor-pointer hover:text-(--text-color)"
@@ -718,6 +849,105 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                         <Trash2 size={22} />
                     </button>
                 </div>
+            </div>
+
+            {/* Quick Action Pills: Studio, SVG, LightBurn, Print, Pack */}
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-white/10 w-full">
+                {/* 1. Open 3D/2D Studio */}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setTargetCrateId(crate.id);
+                        setIsPackingManagerOpen(true);
+                    }}
+                    className="min-h-[44px] sm:min-h-[32px] px-4 py-1.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 hover:border-cyan-400/60 text-cyan-200 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm cursor-pointer"
+                    title={tr("Open in 3D Isometric / 2D Laser Stencil Studio")}
+                >
+                    <span>🚀</span>
+                    <span>{tr("3D/2D Studio")}</span>
+                </button>
+
+                {/* 2. Download SVG Stencil */}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const w = crate.width_cm || 60;
+                        const l = crate.length_cm || 60;
+                        const h = crate.height_cm || 60;
+                        const svg = generateProceduralCrateSvg(
+                            { widthCm: w, lengthCm: l, heightCm: h, thicknessMm: 6, burnMm: 0.1 },
+                            packedSpecs
+                        );
+                        const cName = dynamicId || crate.id.slice(0, 8);
+                        downloadLaserCutfileSvg(`crate_${cName}_laser_stencil.svg`, svg);
+                        toast.success(tr("Laser Stencil SVG downloaded"), { icon: '📐' });
+                    }}
+                    className="min-h-[44px] sm:min-h-[32px] px-3.5 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/25 hover:border-amber-400/50 text-amber-300 text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                    title={tr("Download 2D Laser Cutfile Stencil (.svg)")}
+                >
+                    <Download size={13} className="text-amber-400" />
+                    <span>{tr("SVG Stencil")}</span>
+                </button>
+
+                {/* 3. Download LightBurn (.lbrn2) */}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const w = crate.width_cm || 60;
+                        const l = crate.length_cm || 60;
+                        const h = crate.height_cm || 60;
+                        const svg = generateProceduralCrateSvg(
+                            { widthCm: w, lengthCm: l, heightCm: h, thicknessMm: 6, burnMm: 0.1 },
+                            packedSpecs
+                        );
+                        const lbrn = generateLightBurnProjectXml(svg, {
+                            cutSpeed: 20,
+                            cutPower: 85,
+                            materialThickness: 6
+                        });
+                        const cName = dynamicId || crate.id.slice(0, 8);
+                        downloadLightBurnProject(`crate_${cName}_lightburn.lbrn2`, lbrn);
+                        toast.success(tr("LightBurn project downloaded"), { icon: '⚡' });
+                    }}
+                    className="min-h-[44px] sm:min-h-[32px] px-3.5 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 border border-rose-400/25 hover:border-rose-400/50 text-rose-300 text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                    title={tr("Download LightBurn Fabrication Project (.lbrn2)")}
+                >
+                    <Download size={13} className="text-rose-400" />
+                    <span>{tr("LightBurn .lbrn2")}</span>
+                </button>
+
+                {/* 4. Pack Items Into This Container / Re-open */}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onPack(crate);
+                    }}
+                    className="min-h-[44px] sm:min-h-[32px] px-3.5 py-1.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/30 hover:border-emerald-400/60 text-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm cursor-pointer"
+                    title={crate.status === 'Packed' ? tr("Re-open Container to Pack More Items") : tr("Pack Items Into This Container")}
+                >
+                    <Package size={13} className="text-emerald-400" />
+                    <span>{crate.status === 'Packed' ? tr("Re-open to Pack") : tr("Pack Items Into This Container")}</span>
+                </button>
+
+                {/* 5. Print Labels / Manifesto */}
+                {crate.status !== 'Empty' && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExportProgressOpen(true);
+                        }}
+                        className="min-h-[44px] sm:min-h-[32px] px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 hover:border-white/30 text-white/80 text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                        title={tr("Print Labels & Manifesto")}
+                    >
+                        <Printer size={13} className="text-white/60" />
+                        <span>{tr("Print Labels")}</span>
+                    </button>
+                )}
             </div>
 
             {/* Expandable Packed Contents List */}
@@ -1415,7 +1645,11 @@ export const CrateEditPanel: React.FC<{
     );
 };
 
-export const CratesInventoryView: React.FC = () => {
+export const CratesInventoryView: React.FC<{
+    forcedTab?: 'empty' | 'packed' | 'boxes' | 'crates' | 'deployed';
+    hideSummaryBar?: boolean;
+    containerTypeFilter?: 'all' | 'crate' | 'pallet' | 'box' | 'empty';
+}> = ({ forcedTab, hideSummaryBar = false, containerTypeFilter = 'all' }) => {
     const db = useDatabase();
     const notify = useNotify();
     const [, setCratesVersion] = useAtom(cratesVersionAtom);
@@ -1442,7 +1676,8 @@ export const CratesInventoryView: React.FC = () => {
         });
     };
 
-    const activeTab = useMemo(() => (subTab === 'packed' || subTab === 'deployed' || subTab === 'crates') ? subTab : 'empty', [subTab]);
+    const effectiveSubTab = forcedTab || subTab;
+    const activeTab = useMemo(() => (effectiveSubTab === 'packed' || effectiveSubTab === 'deployed' || effectiveSubTab === 'crates') ? effectiveSubTab : 'empty', [effectiveSubTab]);
     const isLibraryOrDeployed = activeTab === 'deployed';
 
     useEffect(() => {
@@ -1569,11 +1804,20 @@ export const CratesInventoryView: React.FC = () => {
                 || c.id?.toLowerCase().includes(q)
                 || c.contents_summary?.toLowerCase().includes(q)
                 || c.description?.toLowerCase().includes(q);
+
+            // Filter by container type
+            if (containerTypeFilter && containerTypeFilter !== 'all') {
+                const kind = getCrateKind(c);
+                if (containerTypeFilter === 'crate' && kind !== 'crate') return false;
+                if (containerTypeFilter === 'pallet' && kind !== 'pallet') return false;
+                if (containerTypeFilter === 'box' && kind !== 'box') return false;
+                if (containerTypeFilter === 'empty' && c.status !== 'Empty') return false;
+            }
             
             // Nested units (with parent_id) should NOT show up in the top-level list
             return matchesTab && matchesSearch && !c.parent_id;
         });
-    }, [crates, activeTab, searchQuery]);
+    }, [crates, activeTab, searchQuery, containerTypeFilter]);
 
     const displayCrates = useMemo(() => {
         if (activeTab === 'packed' || activeTab === 'crates' || activeTab === 'deployed') {
@@ -1771,27 +2015,29 @@ export const CratesInventoryView: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col relative">
-            <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-6 border-b border-white/10 bg-black/40 backdrop-blur-3xl sticky top-24 sm:top-28 z-[60] w-full gap-4 lg:gap-8">
-                <div className="flex items-center gap-4 sm:gap-8 shrink-0">
-                    <div className="shrink-0">
-                        <div className="flex items-center gap-5 mt-1">
-                            {[
-                                { label: 'Empty', value: summary.empty, dot: 'bg-emerald-400', color: 'text-emerald-400' },
-                                { label: 'Packed', value: summary.packed, dot: 'bg-rose-400', color: 'text-rose-400' },
-                                { label: tr("Boxes"), value: summary.boxes, dot: 'bg-amber-400', color: 'text-amber-400' },
-                                { label: 'Deployed', value: summary.deployed, dot: 'bg-blue-400', color: 'text-blue-400' },
-                            ].map(s => (
-                                <div key={s.label} className="flex items-center gap-1.5">
-                                    <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color)/30">{s.label}</span>
-                                    <span className={`text-[11px] font-mono font-black ${s.color}`}>{s.value}</span>
-                                </div>
-                            ))}
+        <div className="ui-root flex flex-col relative">
+            {!hideSummaryBar && (
+                <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-6 border-b border-white/10 bg-black/40 backdrop-blur-3xl sticky top-24 sm:top-28 z-[60] w-full gap-4 lg:gap-8">
+                    <div className="flex items-center gap-4 sm:gap-8 shrink-0">
+                        <div className="shrink-0">
+                            <div className="flex items-center gap-5 mt-1">
+                                {[
+                                    { label: 'Empty', value: summary.empty, dot: 'bg-emerald-400', color: 'text-emerald-400' },
+                                    { label: 'Packed', value: summary.packed, dot: 'bg-rose-400', color: 'text-rose-400' },
+                                    { label: tr("Boxes"), value: summary.boxes, dot: 'bg-amber-400', color: 'text-amber-400' },
+                                    { label: 'Deployed', value: summary.deployed, dot: 'bg-blue-400', color: 'text-blue-400' },
+                                ].map(s => (
+                                    <div key={s.label} className="flex items-center gap-1.5">
+                                        <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color)/30">{s.label}</span>
+                                        <span className={`text-[11px] font-mono font-black ${s.color}`}>{s.value}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             <div className="relative">
                 <div className="px-4 lg:px-8 py-4 lg:py-10">

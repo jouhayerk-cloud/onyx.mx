@@ -133,9 +133,14 @@ type ChatRouteSetup =
 function resolveChatRoute(route: Route): ChatRouteSetup {
     const impl = getProvider(route.provider);
     if (!impl?.chat) return { ok: false, message: tr('This provider cannot run the agent chat') };
-    if (!hasProviderKey(route.provider)) return { ok: false, message: tr('Set up the agent chat provider in Settings') };
+    if (!hasProviderKey(route.provider)) {
+        if (route.provider === 'companion') {
+            return { ok: false, message: tr('Onyx iOS Companion shell not detected') };
+        }
+        return { ok: false, message: tr('Set up the agent chat provider in Settings') };
+    }
     const saved = getProviderConfig(route.provider);
-    const model = route.model || saved.model;
+    const model = route.model || saved.model || (route.provider === 'companion' ? 'qwen2.5-1.5b-instruct' : undefined);
     if (!model) return { ok: false, message: tr('Pick a model for the agent chat in Settings') };
     return { ok: true, impl, cfg: { ...saved, model } };
 }

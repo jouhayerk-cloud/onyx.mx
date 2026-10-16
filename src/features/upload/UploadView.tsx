@@ -7,7 +7,7 @@ import { CreateItem } from './CreateItem';
 export function UploadView() {
     return (
         <div className="create-item-shell flex flex-col w-full">
-            <div className="flex-1 flex flex-col w-full px-2 sm:px-6 md:px-12 py-8 animate-in fade-in">
+            <div className="flex-1 flex flex-col w-full px-2 sm:px-6 md:px-12 pt-2 pb-8 animate-in fade-in">
                 <CreateItem />
             </div>
         </div>

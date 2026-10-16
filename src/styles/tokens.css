@@ -61,24 +61,24 @@
 
 /* TALAN (Dark Stone) */
 html.theme-talan {
-  --c1: #0d0b0a;
-  --c2: #161210;
-  --c3: #1a1614;
-  --c4: #221a16;
-  --c5: #0d0d0d;
-  --c6: #000000;
-  --app-bg: rgba(13, 11, 10, 0.25);
-  --app-bg-solid: #0d0b0a;
-  --sidebar-bg: rgba(22, 18, 16, 0.45);
+  --c1: #1e2120;
+  --c2: #222627;
+  --c3: #282c2d;
+  --c4: #2f3436;
+  --c5: #181b1a;
+  --c6: #121413;
+  --app-bg: rgba(30, 33, 32, 0.3);
+  --app-bg-solid: #1e2120;
+  --sidebar-bg: rgba(34, 38, 39, 0.5);
   --main-color: #8da388;
   --secondary-color: #b8860b;
   --text-color: #f5f5f0;
   --text-color-primary: #ffffff;
-  --secondary-text-color: #8a8e85;
-  --text-color-secondary: #8a8e85;
+  --secondary-text-color: #9da29b;
+  --text-color-secondary: #9da29b;
   --border-color: rgba(184, 134, 11, 0.2);
-  --input-color: rgba(0, 0, 0, 0.5);
-  --performance-bg: linear-gradient(135deg, #0d0b0a 0%, #161210 100%);
+  --input-color: rgba(0, 0, 0, 0.4);
+  --performance-bg: linear-gradient(135deg, #1e2120 0%, #222627 100%);
   color-scheme: dark;
 }
 

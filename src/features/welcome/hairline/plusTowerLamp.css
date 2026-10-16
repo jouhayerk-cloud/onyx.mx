@@ -1,0 +1,72 @@
+/* Authentic Hairline Plus Tower Lamp Add Entry Figure Styles */
+
+.hl-plus-stage {
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  user-select: none;
+  cursor: pointer;
+}
+
+.hl-plus-stage svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hl-plus-stage path {
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.hl-tier {
+  will-change: transform;
+  cursor: pointer;
+}
+
+.hl-tier .hl-cross-arm {
+  fill: var(--c);
+  stroke: color-mix(in srgb, var(--c) 72%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-tier .hl-cross-crease {
+  fill: none;
+  stroke: color-mix(in srgb, var(--c) 55%, #000);
+  stroke-width: var(--hl-stroke, 1.1px);
+}
+
+.hl-tier.is-active .hl-cross-arm {
+  stroke: var(--hl-hi, #fff);
+  stroke-width: calc(var(--hl-stroke, 1.1px) * 1.8);
+  filter: drop-shadow(0 -4px 8px color-mix(in srgb, var(--c) 60%, transparent));
+}
+
+.hl-tier.is-active .hl-cross-crease {
+  stroke: color-mix(in srgb, var(--c) 40%, #000);
+}
+
+/* Light / Aqua Theme Adaptations */
+html.theme-aqua .hl-tier .hl-cross-arm {
+  stroke: color-mix(in srgb, var(--c) 55%, #000);
+}
+html.theme-aqua .hl-tier.is-active .hl-cross-arm {
+  stroke: #071d24;
+  stroke-width: calc(var(--hl-stroke, 1.1px) * 2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-tier {
+    will-change: auto;
+    transition: none !important;
+  }
+}

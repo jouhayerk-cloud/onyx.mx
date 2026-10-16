@@ -256,6 +256,9 @@ export async function trackDocumentJob<T>(meta: TrackMeta, run: () => Promise<T>
     return result;
 }
 
-export function recordExport(meta: TrackMeta, result?: unknown): void {
-    processRecord(meta, result).catch(() => {});
+export function recordExport(meta: TrackMeta | string, result?: unknown): void {
+    const trackMeta: TrackMeta = typeof meta === 'string'
+        ? { templateId: meta, kind: 'label' as DocumentKind, fileName: typeof result === 'string' ? result : undefined }
+        : meta;
+    processRecord(trackMeta, result).catch(() => {});
 }

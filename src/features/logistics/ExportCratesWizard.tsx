@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAtomValue } from 'jotai';
 import { 
-    X, Package, Download, FileText, FileSpreadsheet, Globe, Plus, Trash2 
+    X, Package, Download, FileText, FileSpreadsheet, Globe, Plus, Trash2, Scissors 
 } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
 
@@ -14,6 +14,8 @@ import { generateMasterPackingListXlsx } from '../../lib/xlsxRenderer';
 import { findInventoryByRow } from '../../lib/inventoryIndex';
 import { tr } from '../../lib/i18n';
 import { trackDocumentJob, recordExport } from '../print/jobTracking';
+import { generateProceduralCrateSvg, CrateDimensions, PackedItemSpec } from '../../lib/logistics/boxesBridge';
+import { downloadLaserCutfileSvg, downloadLightBurnProject, generateLightBurnProjectXml } from '../../lib/logistics/boxesCliBridge';
 
 export const ExportCard: React.FC<{
     id: string;
@@ -70,8 +72,10 @@ export const ExportCratesWizard: React.FC<{
     onClose: () => void;
 }> = ({ selectedCrates, allCrates, allInventory, onClose }) => {
     const bookRate = useAtomValue(exchangeRateAtom);
-    const [progress, setProgress] = useState({ allCrates: -1, xlsx: -1, html: -1 });
-    const [urls, setUrls] = useState({ allCrates: '', xlsx: '', html: '' });
+    const [progress, setProgress] = useState({ allCrates: -1, xlsx: -1, html: -1, laserCut: -1 });
+    const [urls, setUrls] = useState({ allCrates: '', xlsx: '', html: '', laserCut: '' });
+    const [laserSvgContent, setLaserSvgContent] = useState('');
+    const [laserLbrnContent, setLaserLbrnContent] = useState('');
     const exportTimestamp = useRef(new Date().getTime());
 
     const initSenders = Array.from(new Set(selectedCrates.map(c => {
@@ -257,6 +261,63 @@ export const ExportCratesWizard: React.FC<{
         }
     };
 
+    const handleGenerateLaserCut = async () => {
+        try {
+            setProgress(p => ({ ...p, laserCut: 10 }));
+            if (selectedCrates.length === 0) {
+                toast.error(tr("No valid crates to export"));
+                setProgress(p => ({ ...p, laserCut: -1 }));
+                return;
+            }
+
+            setProgress(p => ({ ...p, laserCut: 40 }));
+            let combinedSvg = '';
+            for (const crate of selectedCrates) {
+                const crateDims: CrateDimensions = {
+                    widthCm: parseFloat(crate.width_cm) || 60,
+                    lengthCm: parseFloat(crate.length_cm) || 60,
+                    heightCm: parseFloat(crate.height_cm) || 40,
+                    thicknessMm: 6,
+                    burnMm: 0.1
+                };
+                const rawItems = getItemsFromCrate(crate);
+                const packedItems: PackedItemSpec[] = rawItems.map((item, idx) => {
+                    const data = item.inv?.data || {};
+                    return {
+                        id: String(item.id || idx),
+                        name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
+                        xCm: 0,
+                        yCm: 0,
+                        zCm: 0,
+                        widthCm: parseFloat(data.widthCm || data.width_cm) || 10,
+                        lengthCm: parseFloat(data.lengthCm || data.length_cm) || 10,
+                        heightCm: parseFloat(data.heightCm || data.height_cm) || 10
+                    };
+                });
+                const svg = generateProceduralCrateSvg(crateDims, packedItems);
+                if (!combinedSvg) {
+                    combinedSvg = svg;
+                }
+            }
+
+            setProgress(p => ({ ...p, laserCut: 80 }));
+            setLaserSvgContent(combinedSvg);
+            const lbrnXml = generateLightBurnProjectXml(combinedSvg);
+            setLaserLbrnContent(lbrnXml);
+
+            const blob = new Blob([combinedSvg], { type: 'image/svg+xml;charset=utf-8' });
+            if (blob) {
+                setUrls(u => ({ ...u, laserCut: URL.createObjectURL(blob) }));
+                setProgress(p => ({ ...p, laserCut: 100 }));
+                recordExport("laserCut", "Laser Cutfile (SVG/LBRN2)");
+                toast.success(tr("Laser Cutfile Ready"));
+            }
+        } catch (err: any) {
+            setProgress(p => ({ ...p, laserCut: -1 }));
+            toast.error(tr("Laser cutfile generation failed"));
+        }
+    };
+
     const triggerDownload = (url: string, filename: string) => { const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); };
 
     return (
@@ -321,6 +382,27 @@ export const ExportCratesWizard: React.FC<{
                         <ExportCard id="html" title={tr("Interactive HTML Manifest")} type="HTML" color="#3b82f6" icon={Globe} prog={progress.html} url={urls.html} onGenerate={generateHtml} onDownload={triggerDownload} filename={`Manifesto_${exportTimestamp.current}.html`} />
                         <ExportCard id="xlsx" title={tr("Master Packing List")} type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} onDownload={triggerDownload} filename={`Master_Packing_List_${exportTimestamp.current}.xlsx`} />
                         <ExportCard id="allCrates" title={tr("All Crates Manifesto")} type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} onDownload={triggerDownload} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
+                        <ExportCard 
+                            id="laserCut" 
+                            title={tr("Laser Cut Stencils & Project")} 
+                            type="SVG / LBRN2" 
+                            desc={tr("Parametric finger-joint crate panels and divider cutfiles for laser cutters (Boxes.py standard)")} 
+                            color="#f59e0b" 
+                            icon={Scissors} 
+                            prog={progress.laserCut} 
+                            url={urls.laserCut} 
+                            onGenerate={handleGenerateLaserCut} 
+                            onDownload={(url, filename) => {
+                                if (filename.endsWith('.lbrn2') && laserLbrnContent) {
+                                    downloadLightBurnProject(filename, laserLbrnContent);
+                                } else if (laserSvgContent) {
+                                    downloadLaserCutfileSvg(filename, laserSvgContent);
+                                } else {
+                                    triggerDownload(url, filename);
+                                }
+                            }} 
+                            filename={`Laser_Cutfile_${exportTimestamp.current}.svg`} 
+                        />
                     </div>
                 </div>
 

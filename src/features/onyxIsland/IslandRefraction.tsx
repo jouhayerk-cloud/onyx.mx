@@ -116,12 +116,16 @@ export function IslandRefractionDefs() {
     
     return (
         <svg aria-hidden="true" style={{ width: 0, height: 0, position: 'absolute', pointerEvents: 'none' }}>
-            {data && (
-                <filter id="isl-refract" filterUnits="userSpaceOnUse" x="0" y="0" width={data.w} height={data.h} colorInterpolationFilters="sRGB">
-                    <feImage href={data.href} result="map" x="0" y="0" width={data.w} height={data.h} />
-                    <feDisplacementMap in="SourceGraphic" in2="map" scale={data.scale} xChannelSelector="R" yChannelSelector="G" />
+            <defs>
+                <filter id="isl-refract" filterUnits="userSpaceOnUse" x="0" y="0" width={data?.w || 100} height={data?.h || 100} colorInterpolationFilters="sRGB">
+                    {data && (
+                        <>
+                            <feImage href={data.href} result="map" x="0" y="0" width={data.w} height={data.h} />
+                            <feDisplacementMap in="SourceGraphic" in2="map" scale={data.scale} xChannelSelector="R" yChannelSelector="G" />
+                        </>
+                    )}
                 </filter>
-            )}
+            </defs>
         </svg>
     );
 }
@@ -134,7 +138,7 @@ export function useIslandRefraction(targetRef: React.RefObject<HTMLElement | nul
         let isChromium = false;
         
         if (nav.userAgentData && nav.userAgentData.brands) {
-            isChromium = nav.userAgentData.brands.some((b: any) => b.brand.includes('Chromium'));
+            isChromium = nav.userAgentData.brands.some((b: any) => b.brand.includes('Chromium') || b.brand.includes('Google Chrome') || b.brand.includes('Microsoft Edge'));
         }
         if (!isChromium) {
             isChromium = /Chrome\/|Edg\//.test(navigator.userAgent);
@@ -185,6 +189,26 @@ export function useIslandRefraction(targetRef: React.RefObject<HTMLElement | nul
             }
         };
 
+        // Immediate measurement and apply on mount
+        const initialW = Math.round(target.offsetWidth);
+        const initialH = Math.round(target.offsetHeight);
+        if (initialW > 0 && initialH > 0) {
+            w = initialW;
+            h = initialH;
+            applyRefraction();
+        }
+
+        const rafId = requestAnimationFrame(() => {
+            if (!target) return;
+            const curW = Math.round(target.offsetWidth);
+            const curH = Math.round(target.offsetHeight);
+            if (curW > 0 && curH > 0 && (curW !== w || curH !== h || target.getAttribute('data-isl-refract') !== 'on')) {
+                w = curW;
+                h = curH;
+                applyRefraction();
+            }
+        });
+
         const observer = new ResizeObserver((entries) => {
             const entry = entries[0];
             if (!entry) return;
@@ -194,28 +218,42 @@ export function useIslandRefraction(targetRef: React.RefObject<HTMLElement | nul
 
             if (newW === w && newH === h) return;
             
-            target.setAttribute('data-isl-refract', 'off');
             w = newW;
             h = newH;
 
             clearTimeout(timeoutId);
             timeoutId = window.setTimeout(() => {
                 applyRefraction();
-            }, 150);
+            }, 60);
         });
 
+        const onTransitionEnd = (e: TransitionEvent) => {
+            if (e.target === target && (e.propertyName === 'width' || e.propertyName === 'height' || e.propertyName === 'transform' || e.propertyName === 'max-height')) {
+                const curW = Math.round(target.offsetWidth);
+                const curH = Math.round(target.offsetHeight);
+                if (curW > 0 && curH > 0) {
+                    w = curW;
+                    h = curH;
+                    applyRefraction();
+                }
+            }
+        };
+
         const handleVisibility = () => {
-            if (document.visibilityState === 'visible' && target.getAttribute('data-isl-refract') === 'off' && w > 0 && h > 0) {
+            if (document.visibilityState === 'visible' && w > 0 && h > 0) {
                 applyRefraction();
             }
         };
 
+        target.addEventListener('transitionend', onTransitionEnd);
         document.addEventListener('visibilitychange', handleVisibility);
         observer.observe(target);
 
         return () => {
+            cancelAnimationFrame(rafId);
             observer.disconnect();
             clearTimeout(timeoutId);
+            target.removeEventListener('transitionend', onTransitionEnd);
             document.removeEventListener('visibilitychange', handleVisibility);
         };
     }, [targetRef, setRefractionData]);

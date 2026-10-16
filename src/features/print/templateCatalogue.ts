@@ -227,6 +227,33 @@ export const TEMPLATE_CATALOGUE: TemplateEntry[] = [
         source: "batchSheet.ts (parseSheet)",
         description: tr("Vendor batch import template"),
         status: "legacy"
+    },
+    {
+        id: "fmt-crate-lasercut-svg",
+        kind: "label",
+        label: tr("Crate Laser Cutfile (SVG)"),
+        module: "logistics",
+        source: "boxesBridge.ts",
+        description: tr("Parametric laser cut crate stencils with finger joints (Boxes.py standard)"),
+        status: "tracked"
+    },
+    {
+        id: "fmt-crate-stencil-lbrn2",
+        kind: "label",
+        label: tr("Crate LightBurn Project (.lbrn2)"),
+        module: "logistics",
+        source: "boxesCliBridge.ts",
+        description: tr("Native LightBurn project with cut and engrave laser layers"),
+        status: "tracked"
+    },
+    {
+        id: "fmt-crate-dividers-svg",
+        kind: "label",
+        label: tr("Crate Dividers & Tray (SVG)"),
+        module: "packing",
+        source: "boxesBridge.ts",
+        description: tr("Interlocking internal slot dividers and compartment trays"),
+        status: "tracked"
     }
 ];
 

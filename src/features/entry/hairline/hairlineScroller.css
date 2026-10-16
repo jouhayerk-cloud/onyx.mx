@@ -12,29 +12,39 @@
     align-items: center;
     width: 100%;
     min-width: 0;
-    transition: max-width 160ms cubic-bezier(0.32, 0.72, 0, 1);
+    transition: max-width 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* Large tiles (owner request, 11 Oct 2026): the drawings are the interface, so they get room. */
 .hl-scroller--type {
-    --hl-tile-w: 148px;
-    --hl-fig-w: 148px;
-    --hl-collapsed-w: 108px;
+    --hl-tile-w: 154px;
+    --hl-fig-w: 154px;
+    --hl-collapsed-w: 116px;
 }
 
 .hl-scroller--sub {
-    --hl-tile-w: 116px;
-    --hl-fig-w: 116px;
-    --hl-collapsed-w: 128px;
+    --hl-tile-w: 124px;
+    --hl-fig-w: 124px;
+    --hl-collapsed-w: 132px;
 }
 
 @media (max-width: 719px) {
-    .hl-scroller--type { --hl-tile-w: 116px; --hl-fig-w: 116px; --hl-collapsed-w: 96px; }
-    .hl-scroller--sub { --hl-tile-w: 96px; --hl-fig-w: 96px; --hl-collapsed-w: 112px; }
+    .hl-scroller--type { --hl-tile-w: 104px; --hl-fig-w: 104px; --hl-collapsed-w: 90px; }
+    .hl-scroller--sub { --hl-tile-w: 88px; --hl-fig-w: 88px; --hl-collapsed-w: 96px; }
+    .hl-scroller__tile {
+        padding: 7px 7px 9px;
+        gap: 5px;
+    }
+    .hl-scroller__tile-label {
+        font-size: 12.5px;
+    }
+    .hl-scroller__tile-meta {
+        font-size: 10.5px;
+    }
 }
 
 .hl-scroller.is-collapsed {
-    max-width: var(--hl-collapsed-w, 84px);
+    max-width: var(--hl-collapsed-w, 92px);
 }
 
 .hl-scroller.is-expanded {
@@ -47,11 +57,11 @@
     align-items: center;
     width: 100%;
     overflow: hidden;
-    transition: max-width 160ms cubic-bezier(0.32, 0.72, 0, 1), opacity 160ms ease;
+    transition: max-width 220ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 180ms ease;
 }
 
 .hl-scroller.is-collapsed .hl-scroller__collapsed-wrap {
-    max-width: 220px;
+    max-width: 240px;
     opacity: 1;
     pointer-events: auto;
 }
@@ -70,22 +80,32 @@
     align-items: center;
     gap: 4px;
     width: 100%;
-    min-width: var(--hl-collapsed-w, 76px);
-    min-height: 44px;
-    padding: 6px 8px;
+    min-width: var(--hl-collapsed-w, 84px);
+    min-height: 48px;
+    padding: 8px 10px;
     margin: 0;
-    border: 1px solid var(--stp-accent);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--stp-accent) 14%, var(--stp-tile));
+    border: 1px solid var(--stp-accent) !important;
+    border-radius: 14px !important;
+    background: radial-gradient(135% 135% at 20% 15%, color-mix(in srgb, var(--stp-accent) 20%, transparent) 0%, rgba(15, 23, 42, 0.6) 100%) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow:
+        inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.35),
+        0 8px 20px -4px rgba(0, 0, 0, 0.5),
+        0 0 16px -2px var(--stp-accent) !important;
     color: var(--stp-ink);
     cursor: pointer;
     text-align: center;
-    transition: border-color 160ms ease, background-color 160ms ease;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 .hl-scroller__collapsed-btn:hover {
-    border-color: var(--stp-accent);
-    background: color-mix(in srgb, var(--stp-accent) 22%, var(--stp-tile));
+    transform: translateY(-2px) scale(1.02);
+    border-color: #ffffff !important;
+    box-shadow:
+        inset 0 2px 3px 0 rgba(255, 255, 255, 0.5),
+        0 12px 28px -4px rgba(0, 0, 0, 0.6),
+        0 0 24px -2px var(--stp-accent) !important;
 }
 
 .hl-scroller__collapsed-btn:focus-visible {
@@ -103,7 +123,7 @@
     width: 100%;
     aspect-ratio: 5 / 4;
     overflow: hidden;
-    border-radius: 6px;
+    border-radius: 8px;
     flex: none;
 }
 
@@ -117,7 +137,7 @@
 }
 
 .hl-scroller__collapsed-label {
-    font: 700 15px/1.2 var(--ui-font-display);
+    font: 800 15px/1.2 var(--ui-font-display);
     color: var(--stp-ink);
     max-width: 100%;
     text-align: center;
@@ -130,7 +150,7 @@
 }
 
 .hl-scroller__collapsed-meta {
-    font: 500 13.5px/1 var(--ui-font-body);
+    font: 600 13px/1 var(--ui-font-body);
     color: var(--stp-ink-2);
     white-space: nowrap;
     overflow: hidden;
@@ -142,21 +162,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    margin-top: 1px;
+    gap: 3px;
+    margin-top: 2px;
     color: var(--stp-accent);
-    font: 600 13px/1 var(--ui-font-display);
-    letter-spacing: 0.04em;
-    opacity: 0.9;
+    font: 700 12.5px/1 var(--ui-font-display);
+    letter-spacing: 0.05em;
+    opacity: 0.95;
 }
 
 .hl-scroller__chevron {
     flex: none;
-    transition: transform 160ms ease;
+    transition: transform 180ms ease;
 }
 
 .hl-scroller__collapsed-btn:hover .hl-scroller__chevron {
-    transform: translateY(1px);
+    transform: translateY(2px);
 }
 
 /* ── Expanded Horizontal Row ────────────────────────────────────────────── */
@@ -167,7 +187,7 @@
     width: 100%;
     min-width: 0;
     overflow: hidden;
-    transition: max-width 160ms cubic-bezier(0.32, 0.72, 0, 1), opacity 160ms ease;
+    transition: max-width 220ms cubic-bezier(0.32, 0.72, 0, 1), opacity 180ms ease;
 }
 
 .hl-scroller.is-expanded .hl-scroller__expanded-wrap {
@@ -183,31 +203,35 @@
     visibility: hidden;
 }
 
-/* Navigation Arrow Buttons (desktop fine pointer) */
+/* Navigation Arrow Buttons */
 .hl-scroller__arrow {
     display: flex;
     align-items: center;
     justify-content: center;
     flex: none;
-    width: 30px;
-    height: 30px;
-    min-width: 30px;
-    min-height: 30px;
-    margin: 0 2px;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    margin: 0 4px;
     padding: 0;
-    border: 1px solid var(--stp-line);
-    border-radius: 50%;
-    background: var(--stp-plate, rgba(10, 10, 15, 0.85));
-    color: var(--stp-ink);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 50% !important;
+    background: radial-gradient(135% 135% at 30% 20%, rgba(255, 255, 255, 0.12) 0%, rgba(10, 14, 22, 0.85) 100%) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+    color: #ffffff;
     cursor: pointer;
-    z-index: 4;
-    transition: background-color 160ms ease, border-color 160ms ease, opacity 160ms ease;
+    z-index: 5;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 
 .hl-scroller__arrow:hover {
-    border-color: var(--stp-accent);
-    background: color-mix(in srgb, var(--stp-accent) 20%, var(--stp-plate));
-    color: var(--stp-ink);
+    transform: scale(1.08);
+    border-color: var(--stp-accent) !important;
+    background: radial-gradient(135% 135% at 30% 20%, color-mix(in srgb, var(--stp-accent) 30%, transparent) 0%, rgba(10, 14, 22, 0.9) 100%) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), 0 0 12px var(--stp-accent) !important;
 }
 
 .hl-scroller__arrow:focus-visible {
@@ -242,9 +266,9 @@
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: stretch;
-    gap: 8px;
+    gap: 12px;
     width: 100%;
-    padding: 4px 6px;
+    padding: 6px 8px 12px;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x proximity;
@@ -263,36 +287,69 @@
     display: none;
 }
 
-/* Tiles */
+/* Enhanced Liquid Glass Tiles */
+@keyframes hl-tile-float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-3.5px);
+    }
+}
+
 .hl-scroller__tile {
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    flex: 0 0 var(--hl-tile-w, 60px);
-    width: var(--hl-tile-w, 60px);
-    min-height: 44px;
-    padding: 10px 8px 10px;
+    gap: 8px;
+    flex: 0 0 var(--hl-tile-w, 120px);
+    width: var(--hl-tile-w, 120px);
+    min-height: 48px;
+    padding: 10px 10px 12px;
     margin: 0;
-    border: 1px solid var(--stp-line);
-    border-radius: 10px;
-    background: var(--stp-tile);
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 14px !important;
+    background: radial-gradient(135% 135% at 20% 15%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 60%, rgba(10, 14, 22, 0.45) 100%) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow:
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.3),
+        0 6px 16px -2px rgba(0, 0, 0, 0.4) !important;
     color: var(--stp-ink);
     cursor: pointer;
     text-align: center;
     scroll-snap-align: start;
-    transition: border-color 160ms ease, background-color 160ms ease;
+    animation: hl-tile-float calc(3.8s + var(--tile-idx, 0) * 0.25s) ease-in-out infinite;
+    will-change: transform;
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.hl-scroller__tile:hover,
+.hl-scroller__tile:focus-visible,
+.hl-scroller__tile.is-active,
+.hl-scroller__tile[aria-checked="true"] {
+    animation-play-state: paused;
 }
 
 .hl-scroller__tile:hover {
-    border-color: var(--stp-accent);
+    transform: translateY(-4px) scale(1.03);
+    border-color: rgba(255, 255, 255, 0.38) !important;
+    box-shadow:
+        inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.45),
+        0 12px 28px -4px rgba(0, 0, 0, 0.55),
+        0 0 18px -2px var(--stp-accent) !important;
 }
 
 .hl-scroller__tile.is-active,
 .hl-scroller__tile[aria-checked="true"] {
-    border-color: var(--stp-accent);
-    background: color-mix(in srgb, var(--stp-accent) 16%, var(--stp-tile));
+    transform: translateY(-4px) scale(1.04);
+    border-color: var(--stp-accent) !important;
+    background: radial-gradient(135% 135% at 20% 15%, color-mix(in srgb, var(--stp-accent) 26%, transparent) 0%, color-mix(in srgb, var(--stp-accent) 10%, rgba(10, 14, 22, 0.6)) 100%) !important;
+    box-shadow:
+        inset 0 2px 3px 0 rgba(255, 255, 255, 0.55),
+        0 14px 32px -4px rgba(0, 0, 0, 0.6),
+        0 0 28px -2px var(--stp-accent) !important;
 }
 
 .hl-scroller__tile:focus-visible {
@@ -301,7 +358,7 @@
 }
 
 .hl-scroller__tile:disabled {
-    opacity: 0.55;
+    opacity: 0.5;
     cursor: default;
 }
 
@@ -310,8 +367,13 @@
     width: 100%;
     aspect-ratio: 5 / 4;
     overflow: hidden;
-    border-radius: 4px;
+    border-radius: 8px;
     flex: none;
+    transition: transform 0.25s ease;
+}
+
+.hl-scroller__tile:hover .hl-scroller__tile-fig {
+    transform: scale(1.02);
 }
 
 .hl-scroller__tile-cap {
@@ -324,16 +386,17 @@
 }
 
 .hl-scroller__tile-label {
-    font: 700 16px/1.2 var(--ui-font-display);
+    font: 800 15px/1.2 var(--ui-font-display);
     color: var(--stp-ink);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100%;
+    letter-spacing: -0.01em;
 }
 
 .hl-scroller__tile-meta {
-    font: 500 15px/1 var(--ui-font-body);
+    font: 600 13px/1 var(--ui-font-body);
     color: var(--stp-ink-2);
     white-space: nowrap;
     overflow: hidden;
@@ -345,19 +408,12 @@
 .hl-scroller__tile--free {
     justify-content: center;
     color: var(--stp-ink-2);
-    border-style: dashed;
+    border-style: dashed !important;
 }
 
 .hl-scroller__tile--free:hover {
     color: var(--stp-ink);
-    border-color: var(--stp-accent);
-}
-
-.hl-scroller__tile--free .hl-scroller__tile-label {
-    font-size: 16px;
-    color: var(--stp-ink-2);
-    white-space: normal;
-    line-height: 1.2;
+    border-color: var(--stp-accent) !important;
 }
 
 /* Edge Fades */
@@ -372,31 +428,27 @@
     transition: opacity 160ms ease;
 }
 
-.hl-scroller__fade.is-active {
-    opacity: 1;
-}
-
 .hl-scroller__fade--left {
     left: 0;
-    background: linear-gradient(to right, var(--stp-plate, rgba(10, 10, 15, 0.9)), transparent);
+    background: linear-gradient(to right, rgba(10, 14, 22, 0.8), transparent);
 }
 
 .hl-scroller__fade--right {
     right: 0;
-    background: linear-gradient(to left, var(--stp-plate, rgba(10, 10, 15, 0.9)), transparent);
+    background: linear-gradient(to left, rgba(10, 14, 22, 0.8), transparent);
 }
 
-/* Reduced Motion Override */
+.hl-scroller__track-container.has-overflow-left .hl-scroller__fade--left {
+    opacity: 1;
+}
+
+.hl-scroller__track-container.has-overflow-right .hl-scroller__fade--right {
+    opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .hl-scroller,
-    .hl-scroller__collapsed-wrap,
-    .hl-scroller__expanded-wrap,
-    .hl-scroller__collapsed-btn,
-    .hl-scroller__chevron,
-    .hl-scroller__arrow,
-    .hl-scroller__tile,
-    .hl-scroller__fade {
-        transition: none !important;
+    .hl-scroller__tile {
         animation: none !important;
+        transition: none !important;
     }
 }

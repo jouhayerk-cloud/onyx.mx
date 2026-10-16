@@ -54,3 +54,41 @@ export const modelChain = (job: AiJob): string[] => {
     const spec = AI_MODELS[job];
     return [spec.model, ...(spec.fallbacks || [])];
 };
+
+/** Colibrì Local MoE models streamed over NVMe */
+export const COLIBRI_MODELS = [
+    'colibri-glm-5.2-moe',
+    'colibri-kimi-k3-moe',
+    'colibri-qwen-2.5-3b',
+] as const;
+
+export type ColibriModel = (typeof COLIBRI_MODELS)[number];
+
+export interface ColibriModelSpec {
+    id: ColibriModel;
+    name: string;
+    description: string;
+    contextLength: number;
+}
+
+export const COLIBRI_MODEL_SPECS: Record<ColibriModel, ColibriModelSpec> = {
+    'colibri-glm-5.2-moe': {
+        id: 'colibri-glm-5.2-moe',
+        name: 'Colibrì GLM-5.2 MoE',
+        description: 'High-throughput local Mixture-of-Experts with NVMe weight streaming',
+        contextLength: 32768,
+    },
+    'colibri-kimi-k3-moe': {
+        id: 'colibri-kimi-k3-moe',
+        name: 'Colibrì Kimi-K3 MoE',
+        description: 'Long-context reasoning MoE optimized for low memory footprint',
+        contextLength: 131072,
+    },
+    'colibri-qwen-2.5-3b': {
+        id: 'colibri-qwen-2.5-3b',
+        name: 'Colibrì Qwen 2.5 3B',
+        description: 'Dense low-latency edge model for fast tool-calling and chat',
+        contextLength: 32768,
+    },
+};
+

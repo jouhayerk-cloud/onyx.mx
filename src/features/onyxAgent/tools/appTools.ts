@@ -1,3 +1,11 @@
+import {
+    computeBoxesParams,
+    formatBoxesCliCommand,
+    generateProceduralCrateSvg,
+    CrateDimensions
+} from '../../../lib/logistics/boxesBridge';
+import { getBoxesCliRecipe } from '../../../lib/logistics/boxesCliBridge';
+
 /**
  * REQUIRED JOTAI WIRING:
  * The caller must wire the following to AppToolContext:
@@ -84,6 +92,32 @@ export const appToolDefinitions = [
             },
             required: ["text"]
         }
+    },
+    {
+        name: "generate_crate_cutfile",
+        description: "Generates laser cut box/crate stencils or divider cutfiles (Boxes.py standard) for a given crate and its packed items. Returns cut dimensions, SVG stencil data, and CLI recipe. When called, include the cutfile JSON block in your answer so Chan renders the interactive LaserCutfileCard.",
+        parameters: {
+            type: "OBJECT",
+            properties: {
+                crate_id: {
+                    type: "STRING",
+                    description: "The ID or display name of the crate to generate cutfiles for."
+                },
+                material_thickness_mm: {
+                    type: "NUMBER",
+                    description: "Material thickness in mm (default: 6)."
+                },
+                burn_mm: {
+                    type: "NUMBER",
+                    description: "Laser kerf burn offset in mm (default: 0.1)."
+                },
+                output_format: {
+                    type: "STRING",
+                    description: "Output format: 'svg', 'lbrn2', or 'cli_recipe'."
+                }
+            },
+            required: ["crate_id"]
+        }
     }
 ];
 
@@ -91,7 +125,8 @@ export const appToolRisk: Record<string, 'read' | 'navigate' | 'robot' | 'write'
     navigate_to_view: 'navigate',
     get_current_view: 'read',
     open_item: 'navigate',
-    search_in_app: 'navigate'
+    search_in_app: 'navigate',
+    generate_crate_cutfile: 'read'
 };
 
 export function createAppToolHandlers(ctx: AppToolContext): Record<string, (args: Record<string, unknown>) => Promise<unknown>> {
@@ -159,6 +194,50 @@ export function createAppToolHandlers(ctx: AppToolContext): Record<string, (args
                 ctx.setInventorySearch(text);
             }
             return { ok: true, searchedFor: text };
+        },
+
+        generate_crate_cutfile: async (args) => {
+            const crateId = typeof args.crate_id === 'string' ? args.crate_id : '';
+            if (!crateId) {
+                return { ok: false, error: 'Invalid or missing crate_id argument.' };
+            }
+
+            const materialThickness = typeof args.material_thickness_mm === 'number' ? args.material_thickness_mm : 6;
+            const burn = typeof args.burn_mm === 'number' ? args.burn_mm : 0.1;
+            const outputFormat = typeof args.output_format === 'string' ? args.output_format : 'svg';
+
+            const crateDims: CrateDimensions = {
+                widthCm: 60,
+                lengthCm: 60,
+                heightCm: 40,
+                thicknessMm: materialThickness,
+                burnMm: burn
+            };
+
+            const params = computeBoxesParams(crateDims);
+            const cliCommand = formatBoxesCliCommand(params, `${crateId}_cutfile.${outputFormat === 'lbrn2' ? 'lbrn2' : 'svg'}`);
+            const svg = generateProceduralCrateSvg(crateDims);
+
+            const cutfileData = {
+                ok: true,
+                crateId,
+                generator: params.generator,
+                dimensionsMm: { x: params.x, y: params.y, h: params.h },
+                materialThicknessMm: materialThickness,
+                burnMm: burn,
+                cliCommand,
+                sampleSvgSnippet: svg.slice(0, 300),
+                fullSvg: svg
+            };
+
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('onyx:cutfile-generated', { detail: cutfileData }));
+            }
+
+            return {
+                ...cutfileData,
+                cutfileData
+            };
         }
     };
 }

@@ -37,6 +37,8 @@ export const AiProvidersPanel: React.FC = () => {
         anthropic: hasProviderKey('anthropic'),
         openai: hasProviderKey('openai'),
         compat: hasProviderKey('compat'),
+        companion: hasProviderKey('companion'),
+        colibri: hasProviderKey('colibri'),
     }));
 
     // Local drafts for editable inputs
@@ -45,6 +47,8 @@ export const AiProvidersPanel: React.FC = () => {
         anthropic: '',
         openai: '',
         compat: '',
+        companion: '',
+        colibri: '',
     });
 
     const [draftBaseUrls, setDraftBaseUrls] = useState<Record<ProviderId, string>>(() => ({
@@ -52,6 +56,8 @@ export const AiProvidersPanel: React.FC = () => {
         anthropic: '',
         openai: '',
         compat: getProviderConfig('compat').baseUrl || '',
+        companion: '',
+        colibri: getProviderConfig('colibri').baseUrl || 'http://127.0.0.1:8082',
     }));
 
     const [draftModels, setDraftModels] = useState<Record<ProviderId, string>>(() => ({
@@ -59,6 +65,8 @@ export const AiProvidersPanel: React.FC = () => {
         anthropic: getProviderConfig('anthropic').model || '',
         openai: getProviderConfig('openai').model || '',
         compat: getProviderConfig('compat').model || '',
+        companion: getProviderConfig('companion').model || 'qwen2.5-1.5b-instruct',
+        colibri: getProviderConfig('colibri').model || 'colibri-glm-5.2-moe',
     }));
 
     const [replacingKey, setReplacingKey] = useState<Record<ProviderId, boolean>>({
@@ -66,6 +74,8 @@ export const AiProvidersPanel: React.FC = () => {
         anthropic: false,
         openai: false,
         compat: false,
+        companion: false,
+        colibri: false,
     });
 
     const [availableModels, setAvailableModels] = useState<Record<ProviderId, string[]>>({
@@ -73,6 +83,8 @@ export const AiProvidersPanel: React.FC = () => {
         anthropic: [],
         openai: [],
         compat: [],
+        companion: ['qwen2.5-1.5b-instruct', 'gemma-2-2b-it'],
+        colibri: ['colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'],
     });
 
     const [loadingModels, setLoadingModels] = useState<Record<ProviderId, boolean>>({
@@ -80,6 +92,8 @@ export const AiProvidersPanel: React.FC = () => {
         anthropic: false,
         openai: false,
         compat: false,
+        companion: false,
+        colibri: false,
     });
 
     const [testing, setTesting] = useState<Record<ProviderId, boolean>>({
@@ -87,6 +101,8 @@ export const AiProvidersPanel: React.FC = () => {
         anthropic: false,
         openai: false,
         compat: false,
+        companion: false,
+        colibri: false,
     });
 
     const [testStatus, setTestStatus] = useState<Record<ProviderId, TestStatus | null>>({
@@ -94,6 +110,8 @@ export const AiProvidersPanel: React.FC = () => {
         anthropic: null,
         openai: null,
         compat: null,
+        companion: null,
+        colibri: null,
     });
 
     // Current routes for each routable job
@@ -110,6 +128,8 @@ export const AiProvidersPanel: React.FC = () => {
             anthropic: hasProviderKey('anthropic'),
             openai: hasProviderKey('openai'),
             compat: hasProviderKey('compat'),
+            companion: hasProviderKey('companion'),
+            colibri: hasProviderKey('colibri'),
         });
 
         setRoutes({
@@ -121,18 +141,23 @@ export const AiProvidersPanel: React.FC = () => {
 
         // Sync stored baseUrl and model if not currently dirty in draft
         const compatCfg = getProviderConfig('compat');
+        const colibriCfg = getProviderConfig('colibri');
         setDraftBaseUrls((prev) => ({
             ...prev,
             compat: prev.compat || compatCfg.baseUrl || '',
+            colibri: prev.colibri || colibriCfg.baseUrl || 'http://127.0.0.1:8082',
         }));
 
         const anthropicCfg = getProviderConfig('anthropic');
         const openaiCfg = getProviderConfig('openai');
+        const companionCfg = getProviderConfig('companion');
         setDraftModels((prev) => ({
             ...prev,
             anthropic: prev.anthropic || anthropicCfg.model || '',
             openai: prev.openai || openaiCfg.model || '',
             compat: prev.compat || compatCfg.model || '',
+            companion: prev.companion || companionCfg.model || 'qwen2.5-1.5b-instruct',
+            colibri: prev.colibri || colibriCfg.model || 'colibri-glm-5.2-moe',
         }));
     }, []);
 
@@ -152,11 +177,11 @@ export const AiProvidersPanel: React.FC = () => {
         if (keyVal) {
             patch.key = keyVal;
         }
-        if (info?.needsBaseUrl) {
-            patch.baseUrl = baseVal;
+        if (info?.needsBaseUrl || id === 'colibri') {
+            patch.baseUrl = baseVal || (id === 'colibri' ? 'http://127.0.0.1:8082' : '');
         }
         if (id !== 'gemini') {
-            patch.model = modelVal;
+            patch.model = modelVal || (id === 'colibri' ? 'colibri-glm-5.2-moe' : '');
         }
 
         setProviderConfig(id, patch);
@@ -200,11 +225,11 @@ export const AiProvidersPanel: React.FC = () => {
 
             const cfg: ProviderConfig = {
                 key: draftKey || currentCfg.key,
-                baseUrl: draftBase || currentCfg.baseUrl,
-                model: draftModel || currentCfg.model,
+                baseUrl: draftBase || currentCfg.baseUrl || (id === 'colibri' ? 'http://127.0.0.1:8082' : undefined),
+                model: draftModel || currentCfg.model || (id === 'colibri' ? 'colibri-glm-5.2-moe' : undefined),
             };
 
-            if (!cfg.key && id !== 'compat') {
+            if (!cfg.key && id !== 'compat' && id !== 'companion' && id !== 'colibri') {
                 setTestStatus((prev) => ({
                     ...prev,
                     [id]: { ok: false, message: tr("Please enter an API key to test.") },
@@ -258,8 +283,8 @@ export const AiProvidersPanel: React.FC = () => {
 
             const cfg: ProviderConfig = {
                 key: draftKey || currentCfg.key,
-                baseUrl: draftBase || currentCfg.baseUrl,
-                model: draftModel || currentCfg.model,
+                baseUrl: draftBase || currentCfg.baseUrl || (id === 'colibri' ? 'http://127.0.0.1:8082' : undefined),
+                model: draftModel || currentCfg.model || (id === 'colibri' ? 'colibri-glm-5.2-moe' : undefined),
             };
 
             const list = await impl.listModels(cfg);
@@ -343,12 +368,16 @@ export const AiProvidersPanel: React.FC = () => {
                         const models = availableModels[info.id] || [];
 
                         const canSave =
+                            info.id === 'companion' ||
+                            info.id === 'colibri' ||
                             keyDraft.trim().length > 0 ||
                             hasKey ||
                             (info.needsBaseUrl && baseUrlDraft.trim().length > 0);
 
                         const canTest =
                             info.id === 'gemini' ||
+                            info.id === 'companion' ||
+                            info.id === 'colibri' ||
                             hasKey ||
                             keyDraft.trim().length > 0 ||
                             (info.needsBaseUrl && baseUrlDraft.trim().length > 0);
@@ -382,35 +411,80 @@ export const AiProvidersPanel: React.FC = () => {
                                     </div>
                                     <div className="ap-provider-meta">
                                         <span className="ap-provider-badge">
-                                            {hasKey ? tr("Key saved") : tr("Not configured")}
+                                            {info.id === 'companion'
+                                                ? (hasKey ? tr("Active (On-Device)") : tr("iOS Companion Only"))
+                                                : info.id === 'colibri'
+                                                    ? tr("On-Device NVMe Streaming")
+                                                    : (hasKey ? tr("Key saved") : tr("Not configured"))}
                                         </span>
                                     </div>
                                 </div>
 
-                                {/* Base URL Input (compat only) */}
-                                {info.needsBaseUrl && (
+                                {/* Base URL Input (compat and colibri) */}
+                                {(info.needsBaseUrl || info.id === 'colibri') && (
                                     <Field
                                         label={tr("Base URL")}
-                                        hint={tr("Endpoint for compatible API")}
+                                        hint={info.id === 'colibri' ? tr("Local daemon endpoint (default: http://127.0.0.1:8082)") : tr("Endpoint for compatible API")}
                                     >
-                                        <Input
-                                            type="url"
-                                            value={baseUrlDraft}
-                                            onChange={(e) =>
-                                                setDraftBaseUrls((prev) => ({
-                                                    ...prev,
-                                                    [info.id]: e.target.value,
-                                                }))
-                                            }
-                                            placeholder={info.defaultBaseUrl || "http://localhost:11434/v1"}
-                                            aria-label={`${info.label} ${tr("Base URL")}`}
-                                            mono
-                                        />
+                                        <div className="flex flex-col gap-1.5 w-full">
+                                            <Input
+                                                type="url"
+                                                value={baseUrlDraft}
+                                                onChange={(e) =>
+                                                    setDraftBaseUrls((prev) => ({
+                                                        ...prev,
+                                                        [info.id]: e.target.value,
+                                                    }))
+                                                }
+                                                placeholder={info.defaultBaseUrl || (info.id === 'colibri' ? "http://127.0.0.1:8082" : "http://localhost:11434/v1")}
+                                                aria-label={`${info.label} ${tr("Base URL")}`}
+                                                mono
+                                            />
+                                            {info.id === 'colibri' && (
+                                                <div className="flex items-center gap-1.5 pt-0.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDraftBaseUrls((prev) => ({ ...prev, colibri: 'http://127.0.0.1:8082' }))}
+                                                        className="px-2 py-0.5 rounded text-[11px] font-mono bg-white/5 hover:bg-white/10 text-white/80 border border-white/10"
+                                                    >
+                                                        🏠 127.0.0.1:8082
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDraftBaseUrls((prev) => ({ ...prev, colibri: 'http://192.0.2.71:8082' }))}
+                                                        className="px-2 py-0.5 rounded text-[11px] font-mono bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30"
+                                                    >
+                                                        🌐 G7 (192.0.2.71)
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDraftBaseUrls((prev) => ({ ...prev, colibri: 'http://192.0.2.67:8082' }))}
+                                                        className="px-2 py-0.5 rounded text-[11px] font-mono bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30"
+                                                    >
+                                                        💻 Martha (192.0.2.67)
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </Field>
                                 )}
 
-                                {/* Key Field: password input or "Key saved" + "Replace key" */}
-                                {hasKey && !isReplacing ? (
+                                {/* Key Field: password input or "Key saved" + "Replace key", or companion/colibri notice */}
+                                {info.id === 'companion' ? (
+                                    <div className="ap-key-saved-row">
+                                        <span className="ap-key-saved">
+                                            <Check size={14} className="ap-check-icon" aria-hidden="true" />
+                                            <span>{hasKey ? tr("On-Device Native Bridge Active (A17 Pro / LiteRT-LM)") : tr("Requires running inside OnyxCompanion iOS app")}</span>
+                                        </span>
+                                    </div>
+                                ) : info.id === 'colibri' ? (
+                                    <div className="ap-key-saved-row">
+                                        <span className="ap-key-saved">
+                                            <Check size={14} className="ap-check-icon" aria-hidden="true" />
+                                            <span>{tr("Zero Cloud Latency • Direct NVMe Model Streaming (No API key needed)")}</span>
+                                        </span>
+                                    </div>
+                                ) : hasKey && !isReplacing ? (
                                     <div className="ap-key-saved-row">
                                         <span className="ap-key-saved">
                                             <Check size={14} className="ap-check-icon" aria-hidden="true" />
@@ -478,24 +552,45 @@ export const AiProvidersPanel: React.FC = () => {
                                         hint={tr("Default model identifier")}
                                     >
                                         <div className="ap-model-row">
-                                            <Input
-                                                list={`ap-models-${info.id}`}
-                                                value={modelDraft}
-                                                onChange={(e) =>
-                                                    setDraftModels((prev) => ({
-                                                        ...prev,
-                                                        [info.id]: e.target.value,
-                                                    }))
-                                                }
-                                                placeholder={tr("Model name")}
-                                                aria-label={`${info.label} ${tr("Model")}`}
-                                                mono
-                                            />
-                                            <datalist id={`ap-models-${info.id}`}>
-                                                {models.map((m) => (
-                                                    <option key={m} value={m} />
-                                                ))}
-                                            </datalist>
+                                            {info.id === 'colibri' ? (
+                                                <Select
+                                                    value={modelDraft || 'colibri-glm-5.2-moe'}
+                                                    onChange={(e) =>
+                                                        setDraftModels((prev) => ({
+                                                            ...prev,
+                                                            colibri: e.target.value,
+                                                        }))
+                                                    }
+                                                    aria-label={`${info.label} ${tr("Model")}`}
+                                                >
+                                                    {models.map((m) => (
+                                                        <option key={m} value={m}>
+                                                            {m}
+                                                        </option>
+                                                    ))}
+                                                </Select>
+                                            ) : (
+                                                <>
+                                                    <Input
+                                                        list={`ap-models-${info.id}`}
+                                                        value={modelDraft}
+                                                        onChange={(e) =>
+                                                            setDraftModels((prev) => ({
+                                                                ...prev,
+                                                                [info.id]: e.target.value,
+                                                            }))
+                                                        }
+                                                        placeholder={tr("Model name")}
+                                                        aria-label={`${info.label} ${tr("Model")}`}
+                                                        mono
+                                                    />
+                                                    <datalist id={`ap-models-${info.id}`}>
+                                                        {models.map((m) => (
+                                                            <option key={m} value={m} />
+                                                        ))}
+                                                    </datalist>
+                                                </>
+                                            )}
                                             {getProvider(info.id)?.listModels && (
                                                 <Key
                                                     size="sm"
@@ -503,7 +598,7 @@ export const AiProvidersPanel: React.FC = () => {
                                                     busy={isLoadingMods}
                                                     onClick={() => handleLoadModels(info.id)}
                                                 >
-                                                    {tr("Load models")}
+                                                    {info.id === 'colibri' ? tr("Refresh") : tr("Load models")}
                                                 </Key>
                                             )}
                                         </div>
@@ -527,7 +622,7 @@ export const AiProvidersPanel: React.FC = () => {
                                         disabled={!canTest}
                                         onClick={() => handleTest(info.id)}
                                     >
-                                        {tr("Test")}
+                                        {info.id === 'colibri' ? tr("Test Connection") : tr("Test")}
                                     </Key>
                                     {hasKey && (
                                         <Key

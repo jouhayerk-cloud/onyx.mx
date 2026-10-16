@@ -1,6 +1,8 @@
 import React from 'react';
-import DashboardView from './DashboardView';
+import { AdminControlCenter } from './AdminControlCenter';
 
 export function AdminDashboard() {
-    return <DashboardView />;
+    return <AdminControlCenter />;
 }
+
+export default AdminDashboard;

@@ -43,12 +43,19 @@ export function setProviderConfig(id: ProviderId, patch: Partial<ProviderConfig>
     changed();
 }
 
-/** compat can run without a key (a local Ollama or LM Studio), so it counts as set up once it has a base URL. */
+/** compat can run without a key (a local Ollama or LM Studio), companion runs on-device in the iOS shell, and colibri runs locally on Windows. */
 export function hasProviderKey(id: ProviderId): boolean {
+    if (id === 'companion') {
+        return typeof window !== 'undefined' && Boolean((window as any).webkit?.messageHandlers?.onyxChat);
+    }
+    if (id === 'colibri') {
+        const c = getProviderConfig('colibri');
+        return Boolean(c.baseUrl || true);
+    }
     const c = getProviderConfig(id);
     return id === 'compat' ? !!c.baseUrl : c.key.length > 0;
 }
 
 export function listConfigured(): ProviderId[] {
-    return (['gemini', 'anthropic', 'openai', 'compat'] as const).filter(hasProviderKey);
+    return (['gemini', 'anthropic', 'openai', 'compat', 'companion', 'colibri'] as const).filter(hasProviderKey);
 }

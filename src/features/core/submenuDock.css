@@ -47,23 +47,26 @@
 }
 
 .smd-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   animation: smd-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both;
   pointer-events: auto;
   flex: 0 0 auto;
   width: calc(100% - 24px);
   max-width: 1480px;
-  border-radius: 22px;
+  border-radius: 16px;
   max-height: calc(100vh - 150px);
   display: flex;
   flex-direction: row;
   align-items: center;
   min-height: 56px;
   
-  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
-  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.07) 100%)) !important;
+  background-color: var(--slab-glass-hi, rgba(14, 18, 28, 0.28)) !important;
+  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0.01) 62%, rgba(255, 255, 255, 0.08) 100%)) !important;
   -webkit-backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
   backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
+  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.22));
   box-shadow:
     inset 0 1px 0.5px rgba(255, 255, 255, 0.55),
     inset 0 -1px 1px rgba(255, 255, 255, 0.12),
@@ -71,6 +74,40 @@
     0 14px 40px rgba(2, 6, 16, 0.38),
     0 1px 3px rgba(2, 6, 16, 0.30);
   color: #fff;
+}
+
+.smd-card[data-smd-refract="on"] {
+  -webkit-backdrop-filter: var(--smd-refract-filter, none) blur(var(--slab-glass-blur, 28px)) saturate(1.9) brightness(1.08) !important;
+  backdrop-filter: var(--smd-refract-filter, none) blur(var(--slab-glass-blur, 28px)) saturate(1.9) brightness(1.08) !important;
+}
+
+.smd-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.22), transparent 55%),
+    radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 25%, transparent), transparent 62%);
+  opacity: 0.85;
+}
+
+.smd-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.12) 35%, transparent 50%, transparent 65%, rgba(255, 255, 255, 0.22) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0.9;
+  z-index: 5;
 }
 
 @media (max-width: 768px) {
@@ -404,8 +441,8 @@ html.style-slab .smd-card.smd-card [role="button"] {
 
 /* Aqua Pass Adjustments */
 html.theme-aqua .smd-card {
-  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.70)) !important;
-  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.3) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.4) 100%)) !important;
+  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.38)) !important;
+  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.18) 38%, rgba(255, 255, 255, 0.04) 62%, rgba(255, 255, 255, 0.28) 100%)) !important;
   border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
   box-shadow:
     inset 0 1px 0.5px rgba(255, 255, 255, 0.85),
@@ -413,6 +450,18 @@ html.theme-aqua .smd-card {
     0 14px 40px rgba(11, 42, 51, 0.12),
     0 1px 3px rgba(11, 42, 51, 0.08) !important;
   color: #0b2a33 !important;
+}
+
+html.theme-aqua .smd-card::before {
+  background:
+    radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.60), transparent 55%),
+    radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 12%, transparent), transparent 62%) !important;
+  opacity: 0.75;
+}
+
+html.theme-aqua .smd-card::after {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(11, 42, 51, 0.18) 35%, transparent 50%, transparent 65%, rgba(11, 42, 51, 0.12) 100%);
+  opacity: 0.85;
 }
 
 html.theme-aqua .smd-card-title {

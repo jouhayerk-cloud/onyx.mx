@@ -14,6 +14,7 @@ const requiredFiles = [
   'ios/OnyxCompanion/Sources/OnyxCompanionApp.swift',
   'ios/OnyxCompanion/Sources/WebContainer.swift',
   'ios/OnyxCompanion/Sources/OnyxEmbedBridge.swift',
+  'ios/OnyxCompanion/Sources/OnyxChatBridge.swift',
   'ios/OnyxCompanion/Sources/ModelStore.swift',
   'ios/OnyxCompanion/README.md',
   'scripts/check-ios-companion.cjs'
@@ -141,12 +142,38 @@ for (const req of bridgeRequiredStrings) {
   }
 }
 
-// 5. Verify WebContainer.swift registers onyxEmbed
+// 5. Verify OnyxChatBridge.swift contents
+const chatBridgePath = path.join(rootDir, 'ios/OnyxCompanion/Sources/OnyxChatBridge.swift');
+const chatBridgeContent = fs.readFileSync(chatBridgePath, 'utf8');
+
+const chatBridgeRequiredStrings = [
+  'onyxChat',
+  'WKScriptMessageHandlerWithReply',
+  'info',
+  'models_list',
+  'chat_generate',
+  'chat_stream',
+  'chat_abort'
+];
+
+for (const req of chatBridgeRequiredStrings) {
+  if (!chatBridgeContent.includes(req)) {
+    console.error(`Error: OnyxChatBridge.swift missing required string: ${req}`);
+    process.exit(1);
+  }
+}
+
+// 6. Verify WebContainer.swift registers onyxEmbed and onyxChat
 const webContainerPath = path.join(rootDir, 'ios/OnyxCompanion/Sources/WebContainer.swift');
 const webContainerContent = fs.readFileSync(webContainerPath, 'utf8');
 
 if (!webContainerContent.includes('onyxEmbed')) {
   console.error("Error: WebContainer.swift must register the name 'onyxEmbed'");
+  process.exit(1);
+}
+
+if (!webContainerContent.includes('onyxChat')) {
+  console.error("Error: WebContainer.swift must register the name 'onyxChat'");
   process.exit(1);
 }
 
