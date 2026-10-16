@@ -42,6 +42,7 @@
    and the legacy element rules in this file, slab.css and slab-glass.css
    stop at .ui-root through :where() guards, so it needs no !important. */
 @import "./src/styles/ui.css";
+@import "./src/styles/liquid.css";
 
 html, body, #root {
   height: 100dvh;

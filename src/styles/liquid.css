@@ -1,0 +1,86 @@
+/* Liquid Onyx (Liquid Glass) Surface Primitives
+   Wave B0: Three foundational classes built strictly from --lq-* tokens. */
+
+/* 1. Floating chrome: island, sheets, docks */
+.liquid-surface {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--lq-fill-surface);
+  background-image: var(--lq-sheen);
+  -webkit-backdrop-filter: var(--lq-filter);
+  backdrop-filter: var(--lq-filter);
+  border: 1px solid var(--lq-rim);
+  box-shadow: var(--lq-highlight), var(--lq-shadow);
+  color: var(--lq-ink);
+  border-radius: var(--lq-radius-surface);
+}
+
+/* 2. Embedded functional containers: cards inside a surface (lighter or no blur) */
+.liquid-panel {
+  position: relative;
+  background-color: var(--lq-fill-panel);
+  background-image: var(--lq-sheen);
+  -webkit-backdrop-filter: var(--lq-filter-panel);
+  backdrop-filter: var(--lq-filter-panel);
+  border: 1px solid var(--lq-rim-subtle);
+  box-shadow: var(--lq-highlight);
+  color: var(--lq-ink);
+  border-radius: var(--lq-radius-panel);
+}
+
+/* Performance: one blurred layer per stack; nested panels suppress redundant blur */
+.liquid-surface .liquid-panel,
+.liquid-panel .liquid-panel,
+.liquid-surface .liquid-control,
+.liquid-panel .liquid-control {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* 3. Interactive glass keys: buttons, fields, chips */
+.liquid-control {
+  background-color: var(--lq-fill-control);
+  -webkit-backdrop-filter: var(--lq-filter-control);
+  backdrop-filter: var(--lq-filter-control);
+  border: 1px solid var(--lq-rim-subtle);
+  color: var(--lq-ink);
+  border-radius: var(--lq-radius-control);
+  transition: var(--lq-transition-control);
+}
+
+.liquid-control:hover {
+  background-color: var(--lq-fill-control-hover);
+}
+
+/* Accessibility: solid fill fallback when reduced transparency is requested */
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-surface {
+    backdrop-filter: none;
+    background-color: var(--lq-solid-surface);
+    background-image: none;
+  }
+
+  .liquid-panel {
+    backdrop-filter: none;
+    background-color: var(--lq-solid-panel);
+    background-image: none;
+  }
+
+  .liquid-control {
+    backdrop-filter: none;
+    background-color: var(--lq-solid-control);
+  }
+
+  .liquid-control:hover {
+    background-color: var(--lq-solid-control);
+  }
+}
+
+/* Accessibility: high-contrast rim when more contrast is requested */
+@media (prefers-contrast: more) {
+  .liquid-surface,
+  .liquid-panel,
+  .liquid-control {
+    border-color: var(--lq-rim-contrast);
+  }
+}

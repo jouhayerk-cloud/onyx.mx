@@ -106,6 +106,66 @@ html.theme-aqua {
   color-scheme: light;
 }
 
+/* ── Liquid Onyx (Liquid Glass) Design Tokens ────────────────────────────── */
+:root {
+  --lq-blur: 30px;
+  --lq-blur-panel: 16px;
+  --lq-blur-control: 14px;
+  --lq-saturate: 1.9;
+  --lq-brightness: 1.08;
+  --lq-filter: blur(var(--lq-blur)) saturate(var(--lq-saturate)) brightness(var(--lq-brightness));
+  --lq-filter-panel: blur(var(--lq-blur-panel)) saturate(var(--lq-saturate)) brightness(var(--lq-brightness));
+  --lq-filter-control: blur(var(--lq-blur-control)) saturate(1.5);
+
+  /* Dark default (Talan / Obsidian) */
+  --lq-fill-surface: rgba(14, 18, 28, 0.28);
+  --lq-fill-panel: rgba(14, 18, 28, 0.40);
+  --lq-fill-control: rgba(255, 255, 255, 0.06);
+  --lq-fill-control-hover: rgba(255, 255, 255, 0.12);
+  --lq-rim: rgba(255, 255, 255, 0.22);
+  --lq-rim-subtle: rgba(255, 255, 255, 0.12);
+  --lq-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0.01) 62%, rgba(255, 255, 255, 0.08) 100%);
+  --lq-shadow: 0 14px 40px rgba(2, 6, 16, 0.38), 0 1px 3px rgba(2, 6, 16, 0.30);
+  --lq-highlight: inset 0 1px 0.5px rgba(255, 255, 255, 0.55), inset 0 -1px 1px rgba(255, 255, 255, 0.12);
+  --lq-ink: #ffffff;
+
+  /* Solid fallbacks for prefers-reduced-transparency */
+  --lq-solid-surface: #0e121c;
+  --lq-solid-panel: #141924;
+  --lq-solid-control: #1a202c;
+
+  /* High-contrast rim */
+  --lq-rim-contrast: currentColor;
+
+  /* Geometry & motion */
+  --lq-radius-surface: 18px;
+  --lq-radius-panel: 14px;
+  --lq-radius-control: 8px;
+  --lq-transition-control: all 0.15s ease;
+}
+
+html.theme-aqua {
+  /* Aqua (Light Coastal Stone) */
+  --lq-fill-surface: rgba(255, 255, 255, 0.32);
+  --lq-fill-panel: rgba(255, 255, 255, 0.38);
+  --lq-fill-control: rgba(11, 42, 51, 0.06);
+  --lq-fill-control-hover: rgba(11, 42, 51, 0.12);
+  --lq-rim: rgba(11, 42, 51, 0.15);
+  --lq-rim-subtle: rgba(11, 42, 51, 0.08);
+  --lq-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.18) 38%, rgba(255, 255, 255, 0.04) 62%, rgba(255, 255, 255, 0.25) 100%);
+  --lq-shadow: 0 14px 40px rgba(11, 42, 51, 0.15), 0 1px 3px rgba(11, 42, 51, 0.10);
+  --lq-highlight: inset 0 1px 0.5px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(0, 0, 0, 0.05);
+  --lq-ink: #0b2a33;
+
+  /* Solid fallbacks for prefers-reduced-transparency */
+  --lq-solid-surface: #f0f7f9;
+  --lq-solid-panel: #e2eef1;
+  --lq-solid-control: #d5e4e8;
+
+  /* High-contrast rim */
+  --lq-rim-contrast: currentColor;
+}
+
 /* Theme Gradient Tokens */
 :root {
   --gradient-talan: linear-gradient(135deg, #0d0b0a, #b8860b, #161210);

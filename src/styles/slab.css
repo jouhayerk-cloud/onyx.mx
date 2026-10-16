@@ -189,7 +189,10 @@ html.style-slab [class*="backdrop-blur"]:not(:where(
     .pack-wizard-root, .pack-wizard-root *,
     .liquid-glass-obsidian, .liquid-glass-obsidian *,
     .logistics-glass, .logistics-glass *,
-    .logistics-obsidian-card, .logistics-obsidian-card *
+    .logistics-obsidian-card, .logistics-obsidian-card *,
+    .liquid-surface, .liquid-surface *,
+    .liquid-panel, .liquid-panel *,
+    .liquid-control, .liquid-control *
 )),
 html.style-slab .glass-panel:not(:where(
     .ui-root, .ui-root *,
@@ -197,7 +200,10 @@ html.style-slab .glass-panel:not(:where(
     .pack-wizard-root, .pack-wizard-root *,
     .liquid-glass-obsidian, .liquid-glass-obsidian *,
     .logistics-glass, .logistics-glass *,
-    .logistics-obsidian-card, .logistics-obsidian-card *
+    .logistics-obsidian-card, .logistics-obsidian-card *,
+    .liquid-surface, .liquid-surface *,
+    .liquid-panel, .liquid-panel *,
+    .liquid-control, .liquid-control *
 )),
 html.style-slab .glass-sm:not(:where(
     .ui-root, .ui-root *,
@@ -205,7 +211,10 @@ html.style-slab .glass-sm:not(:where(
     .pack-wizard-root, .pack-wizard-root *,
     .liquid-glass-obsidian, .liquid-glass-obsidian *,
     .logistics-glass, .logistics-glass *,
-    .logistics-obsidian-card, .logistics-obsidian-card *
+    .logistics-obsidian-card, .logistics-obsidian-card *,
+    .liquid-surface, .liquid-surface *,
+    .liquid-panel, .liquid-panel *,
+    .liquid-control, .liquid-control *
 )),
 html.style-slab .glass-md:not(:where(
     .ui-root, .ui-root *,
@@ -213,7 +222,10 @@ html.style-slab .glass-md:not(:where(
     .pack-wizard-root, .pack-wizard-root *,
     .liquid-glass-obsidian, .liquid-glass-obsidian *,
     .logistics-glass, .logistics-glass *,
-    .logistics-obsidian-card, .logistics-obsidian-card *
+    .logistics-obsidian-card, .logistics-obsidian-card *,
+    .liquid-surface, .liquid-surface *,
+    .liquid-panel, .liquid-panel *,
+    .liquid-control, .liquid-control *
 )),
 html.style-slab .glass-lg:not(:where(
     .ui-root, .ui-root *,
@@ -221,7 +233,10 @@ html.style-slab .glass-lg:not(:where(
     .pack-wizard-root, .pack-wizard-root *,
     .liquid-glass-obsidian, .liquid-glass-obsidian *,
     .logistics-glass, .logistics-glass *,
-    .logistics-obsidian-card, .logistics-obsidian-card *
+    .logistics-obsidian-card, .logistics-obsidian-card *,
+    .liquid-surface, .liquid-surface *,
+    .liquid-panel, .liquid-panel *,
+    .liquid-control, .liquid-control *
 )),
 html.style-slab .glass-tile:not(:where(
     .ui-root, .ui-root *,
@@ -229,7 +244,10 @@ html.style-slab .glass-tile:not(:where(
     .pack-wizard-root, .pack-wizard-root *,
     .liquid-glass-obsidian, .liquid-glass-obsidian *,
     .logistics-glass, .logistics-glass *,
-    .logistics-obsidian-card, .logistics-obsidian-card *
+    .logistics-obsidian-card, .logistics-obsidian-card *,
+    .liquid-surface, .liquid-surface *,
+    .liquid-panel, .liquid-panel *,
+    .liquid-control, .liquid-control *
 )) {
     backdrop-filter: none !important;
 }
