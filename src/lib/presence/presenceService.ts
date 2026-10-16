@@ -299,6 +299,7 @@ export class PresenceService {
 
   private cachedSessions: UserActiveSession[] = [];
   private isOffline: boolean = false;
+  private rpcUnavailable: boolean = false;
 
   // Supabase Realtime wss:// Channel & Presence state (<100ms instant updates)
   private realtimeChannel: RealtimeChannel | null = null;
@@ -651,6 +652,10 @@ export class PresenceService {
    * Never throws errors; catches network/offline failures gracefully.
    */
   public async sendPresencePing(force = false): Promise<boolean> {
+    if (this.rpcUnavailable) {
+      return false;
+    }
+
     const now = Date.now();
     this.checkIdleState(now);
 
@@ -685,6 +690,22 @@ export class PresenceService {
       if (error) {
         // Record state locally without crashing
         this.lastPingTime = now;
+        const msg = (error.message || '').toLowerCase();
+        const isNotFound =
+          error.code === 'PGRST202' ||
+          error.code === '404' ||
+          (error as any).status === 404 ||
+          msg.includes('not found') ||
+          msg.includes('could not find the function');
+
+        if (isNotFound) {
+          this.rpcUnavailable = true;
+          console.info(
+            '[PresenceService] ping_user_presence RPC is not deployed in Supabase backend (404). Falling back cleanly to pure Realtime presence channel.'
+          );
+          return false;
+        }
+
         console.warn('[PresenceService] Ping failed (handled gracefully):', error.message);
         return false;
       }
@@ -702,6 +723,14 @@ export class PresenceService {
       // Offline or network error
       this.isOffline = true;
       this.lastPingTime = now;
+      const msg = (err?.message || '').toLowerCase();
+      if (err?.status === 404 || msg.includes('not found') || msg.includes('404')) {
+        this.rpcUnavailable = true;
+        console.info(
+          '[PresenceService] ping_user_presence RPC is not deployed in Supabase backend (404). Falling back cleanly to pure Realtime presence channel.'
+        );
+        return false;
+      }
       console.warn('[PresenceService] Network unreachable, presence saved locally:', err?.message || err);
       return false;
     }
@@ -805,7 +834,9 @@ export class PresenceService {
         .order('last_seen_at', { ascending: false });
 
       if (error) {
-        console.warn('[PresenceService] Error fetching active sessions from DB:', error.message);
+        if (error.code !== '42P01' && !error.message?.includes('does not exist')) {
+          console.warn('[PresenceService] Error fetching active sessions from DB:', error.message);
+        }
         return this.cachedSessions;
       }
 
