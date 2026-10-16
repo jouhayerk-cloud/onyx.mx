@@ -19,6 +19,7 @@ import {
 import { LazyMotion, domMax, m, AnimatePresence } from 'framer-motion';
 import { TactileSwitch } from '../../components/TactileSwitch';
 import { colibriProvider, isColibriAvailable } from '../../lib/ai/providers/colibri';
+import { colibriRealtimeBridge } from '../../lib/ai/colibriRealtimeBridge';
 import {
     getProviderConfig,
     setProviderConfig,
@@ -159,9 +160,25 @@ export const ColibriSettingsCard: React.FC = () => {
     useEffect(() => {
         refreshConfig();
         pingDaemon(endpoint);
+
+        // Live host presence tracking from Supabase Realtime Bridge
+        const unsub = colibriRealtimeBridge.onHostStatusChange((isOnline, host) => {
+            if (activeMode === 'cloud' || endpoint === SUPABASE_RELAY_URL) {
+                setOnlineStatus(isOnline);
+                if (isOnline) {
+                    setTelemetry(host?.tps ? `WSS Cloud • ${host.tps} t/s` : 'WSS Cloud Bridge');
+                } else {
+                    setTelemetry(null);
+                }
+            }
+        });
+
         window.addEventListener(AI_CONFIG_EVENT, refreshConfig);
-        return () => window.removeEventListener(AI_CONFIG_EVENT, refreshConfig);
-    }, [refreshConfig, pingDaemon, endpoint]);
+        return () => {
+            window.removeEventListener(AI_CONFIG_EVENT, refreshConfig);
+            unsub();
+        };
+    }, [refreshConfig, pingDaemon, endpoint, activeMode]);
 
     const handleSave = (newEndpoint?: string, newModel?: string) => {
         const ep = (newEndpoint ?? endpoint).trim() || detectDefaultUrl();
@@ -236,8 +253,8 @@ export const ColibriSettingsCard: React.FC = () => {
                             <Cpu size={14} className={onlineStatus ? 'animate-pulse' : ''} />
                         </div>
                         <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-[13px] font-semibold text-(--ss-fg) truncate">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-[12.5px] sm:text-[13px] font-semibold text-(--ss-fg) shrink-0">
                                     Colibrì MoE
                                 </span>
                                 <span
@@ -253,7 +270,7 @@ export const ColibriSettingsCard: React.FC = () => {
                                     {onlineStatus === true
                                         ? telemetry || tr("Online")
                                         : isIOSDevice
-                                        ? 'iOS WSS Ready'
+                                        ? 'iOS WSS'
                                         : tr("Standby")}
                                 </span>
                             </div>
@@ -261,7 +278,7 @@ export const ColibriSettingsCard: React.FC = () => {
                     </div>
 
                     {/* Inline Chan Chat Toggle + Ping */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-(--ss-field) border border-(--ss-sep)">
                             <span className="text-[10.5px] font-medium text-(--ss-fg2)">
                                 {tr("Chan")}
@@ -269,8 +286,8 @@ export const ColibriSettingsCard: React.FC = () => {
                             <TactileSwitch
                                 active={isChanActive}
                                 onChange={handleToggleChanChat}
-                                width={36}
-                                height={20}
+                                width={34}
+                                height={18}
                                 aria-label={tr("Route Chan Chat to Colibrì")}
                             />
                         </div>
@@ -278,7 +295,7 @@ export const ColibriSettingsCard: React.FC = () => {
                             type="button"
                             onClick={handleTestConnection}
                             disabled={isTesting}
-                            className="ss-glass-pill h-7 px-2.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 border border-cyan-500/30 text-[11px] font-semibold flex items-center gap-1"
+                            className="ss-glass-pill h-7 px-2.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 border border-cyan-500/30 text-[11px] font-semibold flex items-center gap-1 shrink-0"
                             title={tr("Test Colibrì Bridge")}
                         >
                             <RefreshCw size={11} className={isTesting ? 'animate-spin' : ''} />
@@ -294,11 +311,11 @@ export const ColibriSettingsCard: React.FC = () => {
                         <div className="sm:col-span-7 flex items-center p-0.5 rounded-xl bg-(--ss-field) border border-(--ss-sep) h-8">
                             {(
                                 [
-                                    { id: 'cloud', label: '☁️ WSS Relay' },
-                                    { id: 'localhost', label: '💻 G7 :8082' },
-                                    { id: 'mesh', label: '🌐 LAN' },
-                                    { id: 'custom', label: '⚙️ URL' },
-                                ] as { id: ConnectionMode; label: string }[]
+                                    { id: 'cloud', label: '☁️ Relay', full: '☁️ WSS Relay' },
+                                    { id: 'localhost', label: '💻 G7', full: '💻 G7 :8082' },
+                                    { id: 'mesh', label: '🌐 LAN', full: '🌐 LAN Mesh' },
+                                    { id: 'custom', label: '⚙️ URL', full: '⚙️ Custom URL' },
+                                ] as { id: ConnectionMode; label: string; full: string }[]
                             ).map((mItem) => {
                                 const active = activeMode === mItem.id;
                                 return (
@@ -306,7 +323,8 @@ export const ColibriSettingsCard: React.FC = () => {
                                         key={mItem.id}
                                         type="button"
                                         onClick={() => handleSelectMode(mItem.id)}
-                                        className={`relative flex-1 h-7 px-1.5 rounded-lg text-[10.5px] font-semibold transition-colors truncate z-10 ${
+                                        title={mItem.full}
+                                        className={`relative flex-1 h-7 px-1 sm:px-1.5 rounded-lg text-[10px] sm:text-[10.5px] font-semibold transition-colors truncate z-10 ${
                                             active
                                                 ? 'text-(--ss-on-accent)'
                                                 : 'text-(--ss-fg2) hover:text-(--ss-fg)'
@@ -323,7 +341,8 @@ export const ColibriSettingsCard: React.FC = () => {
                                                 }}
                                             />
                                         )}
-                                        <span className="relative z-10">{mItem.label}</span>
+                                        <span className="relative z-10 hidden sm:inline">{mItem.full}</span>
+                                        <span className="relative z-10 sm:hidden">{mItem.label}</span>
                                     </button>
                                 );
                             })}

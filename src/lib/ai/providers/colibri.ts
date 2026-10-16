@@ -43,7 +43,8 @@ export function shouldUseBridge(baseUrl: string): boolean {
 
 export async function isColibriAvailable(baseUrl: string = COLIBRI_INFO.defaultBaseUrl || 'http://127.0.0.1:8082'): Promise<boolean> {
     if (shouldUseBridge(baseUrl)) {
-        return colibriRealtimeBridge.isHostOnline();
+        if (colibriRealtimeBridge.isHostOnline()) return true;
+        return await colibriRealtimeBridge.waitForHost(1500);
     }
 
     const base = (baseUrl || 'http://127.0.0.1:8082').replace(/\/+$/, '');
@@ -71,7 +72,8 @@ export async function isColibriAvailable(baseUrl: string = COLIBRI_INFO.defaultB
     }
 
     // Fallback: check if host is online on the Supabase Realtime Bridge
-    return colibriRealtimeBridge.isHostOnline();
+    if (colibriRealtimeBridge.isHostOnline()) return true;
+    return await colibriRealtimeBridge.waitForHost(1500);
 }
 
 function resolveBaseUrl(cfg: ProviderConfig): string {

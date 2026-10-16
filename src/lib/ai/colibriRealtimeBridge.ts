@@ -80,6 +80,8 @@ class ColibriRealtimeBridge {
     // Presence tracking of online hosts
     private activeHosts = new Map<string, ColibriHostPresence>();
     private hostStatusListeners = new Set<(online: boolean, host: ColibriHostPresence | null) => void>();
+    private isSubscribed = false;
+    private subscribeWaiters: Array<() => void> = [];
 
     constructor() {
         this.clientId = typeof crypto !== 'undefined' && crypto.randomUUID
@@ -131,8 +133,13 @@ class ColibriRealtimeBridge {
 
             this.channel.subscribe(async (status) => {
                 if (status === 'SUBSCRIBED') {
+                    this.isSubscribed = true;
+                    this.subscribeWaiters.forEach(fn => fn());
+                    this.subscribeWaiters = [];
                     // Check if local loopback 127.0.0.1:8082 is reachable to determine if we should be a Host
                     await this.probeLocalHostCandidate();
+                } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    this.isSubscribed = false;
                 }
             });
 
@@ -210,6 +217,49 @@ class ColibriRealtimeBridge {
         this.hostStatusListeners.add(cb);
         cb(this.isHostOnline(), this.getHostInfo());
         return () => this.hostStatusListeners.delete(cb);
+    }
+
+    /**
+     * Waits for the Realtime channel to reach SUBSCRIBED status
+     */
+    public async ensureSubscribed(maxWaitMs = 2500): Promise<boolean> {
+        await this.init();
+        if (this.isSubscribed) return true;
+        return new Promise<boolean>((resolve) => {
+            const timer = setTimeout(() => {
+                const idx = this.subscribeWaiters.indexOf(done);
+                if (idx !== -1) this.subscribeWaiters.splice(idx, 1);
+                resolve(this.isSubscribed);
+            }, maxWaitMs);
+
+            const done = () => {
+                clearTimeout(timer);
+                resolve(true);
+            };
+
+            this.subscribeWaiters.push(done);
+        });
+    }
+
+    /**
+     * Waits for an active Colibri Host to appear via Realtime Presence
+     */
+    public async waitForHost(maxWaitMs = 1500): Promise<boolean> {
+        if (this.isHostOnline()) return true;
+        return new Promise<boolean>((resolve) => {
+            const timer = setTimeout(() => {
+                unsub();
+                resolve(this.isHostOnline());
+            }, maxWaitMs);
+
+            const unsub = this.onHostStatusChange((online) => {
+                if (online) {
+                    clearTimeout(timer);
+                    unsub();
+                    resolve(true);
+                }
+            });
+        });
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -410,6 +460,7 @@ class ColibriRealtimeBridge {
         options?: { method?: string; body?: any; timeoutMs?: number; signal?: AbortSignal }
     ): Promise<T> {
         await this.init();
+        await this.ensureSubscribed(2000);
 
         const reqId = `req_${Math.random().toString(36).slice(2, 9)}_${Date.now()}`;
         const timeoutMs = options?.timeoutMs ?? 25_000;
@@ -478,6 +529,7 @@ class ColibriRealtimeBridge {
         }
     ): Promise<any> {
         await this.init();
+        await this.ensureSubscribed(2000);
 
         const reqId = `stream_${Math.random().toString(36).slice(2, 9)}_${Date.now()}`;
         const timeoutMs = options?.timeoutMs ?? 60_000;
@@ -580,20 +632,19 @@ class ColibriRealtimeBridge {
      */
     public async test(): Promise<{ ok: boolean; message: string; latencyMs: number }> {
         const start = performance.now();
-        const host = this.getHostInfo();
+        await this.init();
+        await this.ensureSubscribed(2500);
 
-        if (!this.isHostOnline() && !host) {
-            return {
-                ok: false,
-                message: 'No Colibrì Host online on Supabase Realtime Relay. Start G7 daemon or open G7 laptop.',
-                latencyMs: 0,
-            };
+        // If host isn't marked online yet, wait briefly for presence sync event
+        if (!this.isHostOnline()) {
+            await this.waitForHost(1500);
         }
 
         try {
-            const health = await this.request<any>('/health', { timeoutMs: 4000 });
+            const health = await this.request<any>('/health', { timeoutMs: 5000 });
             const latencyMs = Math.round(performance.now() - start);
-            const hostName = host?.hostName || 'G7-Host';
+            const host = this.getHostInfo();
+            const hostName = host?.hostName || 'G7-Daemon';
             const nvme = health?.telemetry?.nvmeReadMBps ? ` • ${health.telemetry.nvmeReadMBps} MB/s NVMe` : '';
             return {
                 ok: true,
@@ -602,6 +653,14 @@ class ColibriRealtimeBridge {
             };
         } catch (err: any) {
             const latencyMs = Math.round(performance.now() - start);
+            const host = this.getHostInfo();
+            if (!this.isHostOnline() && !host) {
+                return {
+                    ok: false,
+                    message: 'No Colibrì Host online on Supabase Realtime Relay. Start G7 daemon (node scripts/colibri-supabase-relay.cjs) or ensure G7 laptop is awake.',
+                    latencyMs,
+                };
+            }
             return {
                 ok: false,
                 message: `Relay probe failed: ${err?.message || 'Host did not respond'}`,
