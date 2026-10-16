@@ -230,13 +230,14 @@ export async function generateText(opts: GenerateOptions): Promise<string> {
                 ...savedCfg,
                 model,
             };
-            const req: AiRequest = {
+            const req: AiRequest & { job?: string } = {
                 prompt: opts.prompt,
                 system: opts.system,
                 images: (opts.images || []).map(toAiImagePart),
                 temperature: opts.temperature,
                 timeoutMs: opts.timeoutMs ?? spec.timeoutMs,
                 signal: opts.signal,
+                job: opts.job,
             };
             console.log(`[ai] ${route.provider}: ${model}`);
             return withAiSlot(spec.jobClass, async () => {
@@ -278,7 +279,7 @@ export async function generateJson<T = unknown>(opts: GenerateJsonOptions): Prom
                 ...savedCfg,
                 model,
             };
-            const req: AiRequest = {
+            const req: AiRequest & { job?: string } = {
                 prompt: opts.prompt,
                 system: opts.system,
                 images: (opts.images || []).map(toAiImagePart),
@@ -286,6 +287,7 @@ export async function generateJson<T = unknown>(opts: GenerateJsonOptions): Prom
                 temperature: opts.temperature,
                 timeoutMs: opts.timeoutMs ?? spec.timeoutMs,
                 signal: opts.signal,
+                job: opts.job,
             };
             console.log(`[ai] ${route.provider}: ${model}`);
             return withAiSlot(spec.jobClass, async () => {

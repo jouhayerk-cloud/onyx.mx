@@ -82,7 +82,7 @@ export const AiProvidersPanel: React.FC = () => {
         openai: getProviderConfig('openai').model || '',
         compat: getProviderConfig('compat').model || '',
         companion: getProviderConfig('companion').model || 'qwen2.5-1.5b-instruct',
-        colibri: getProviderConfig('colibri').model || 'colibri-glm-5.2-moe',
+        colibri: getProviderConfig('colibri').model || 'auto',
     }));
 
     const [replacingKey, setReplacingKey] = useState<Record<ProviderId, boolean>>({
@@ -100,7 +100,7 @@ export const AiProvidersPanel: React.FC = () => {
         openai: ['gpt-4o', 'gpt-4o-mini', 'o3-mini'],
         compat: [],
         companion: ['qwen2.5-1.5b-instruct', 'gemma-2-2b-it'],
-        colibri: ['colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'],
+        colibri: ['auto', 'colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'],
     });
 
     const [loadingModels, setLoadingModels] = useState<Record<ProviderId, boolean>>({
@@ -174,7 +174,7 @@ export const AiProvidersPanel: React.FC = () => {
             openai: prev.openai || openaiCfg.model || '',
             compat: prev.compat || compatCfg.model || '',
             companion: prev.companion || companionCfg.model || 'qwen2.5-1.5b-instruct',
-            colibri: prev.colibri || colibriCfg.model || 'colibri-glm-5.2-moe',
+            colibri: prev.colibri || colibriCfg.model || 'auto',
         }));
     }, []);
 
@@ -196,7 +196,7 @@ export const AiProvidersPanel: React.FC = () => {
             patch.baseUrl = baseVal || (id === 'colibri' ? 'http://127.0.0.1:8082' : '');
         }
         if (id !== 'gemini') {
-            patch.model = modelVal || (id === 'colibri' ? 'colibri-glm-5.2-moe' : '');
+            patch.model = modelVal || (id === 'colibri' ? 'auto' : '');
         }
 
         setProviderConfig(id, patch);
@@ -240,7 +240,7 @@ export const AiProvidersPanel: React.FC = () => {
                 model:
                     (draftModels[id] ?? '').trim() ||
                     currentCfg.model ||
-                    (id === 'colibri' ? 'colibri-glm-5.2-moe' : undefined),
+                    (id === 'colibri' ? 'auto' : undefined),
             };
 
             const res = await impl.test(cfg);
@@ -475,13 +475,23 @@ export const AiProvidersPanel: React.FC = () => {
                                         placeholder={
                                             info.id === 'gemini'
                                                 ? 'gemini-2.5-flash (Auto)'
+                                                : info.id === 'colibri'
+                                                ? 'auto (Smart MoE Routing)'
                                                 : tr("Model ID")
                                         }
                                         className="w-full h-8 px-2.5 rounded-lg bg-black/30 border border-(--ss-sep) text-(--ss-fg) text-[11px] font-mono focus:outline-none focus:border-cyan-400 disabled:opacity-60"
                                     />
                                     <datalist id={`ap-models-${info.id}`}>
                                         {models.map((mItem) => (
-                                            <option key={mItem} value={mItem} />
+                                            <option
+                                                key={mItem}
+                                                value={mItem}
+                                                label={
+                                                    mItem === 'auto' && info.id === 'colibri'
+                                                        ? '✨ auto (Smart MoE Routing)'
+                                                        : mItem
+                                                }
+                                            />
                                         ))}
                                     </datalist>
                                     {getProvider(info.id)?.listModels && (
@@ -529,6 +539,17 @@ export const AiProvidersPanel: React.FC = () => {
                                     )}
                                 </div>
                             </div>
+
+                            {/* Auto Model Selecting Info Pill for Colibrì */}
+                            {info.id === 'colibri' && (modelDraft === 'auto' || !modelDraft) && (
+                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[10.5px] text-cyan-300">
+                                    <Sparkles size={11} className="text-cyan-400 shrink-0" />
+                                    <span className="font-semibold text-cyan-200">Auto MoE:</span>
+                                    <span className="text-cyan-300/80 truncate">
+                                        Chat ➔ GLM-5.2 · Translate ➔ Qwen-2.5 · Content/JSON ➔ Kimi-K3
+                                    </span>
+                                </div>
+                            )}
 
                             {/* Base URL input if Compat */}
                             {info.needsBaseUrl && (

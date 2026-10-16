@@ -35,6 +35,15 @@ if (process.env.COLIBRI_PORT) {
 
 const MODELS = [
     {
+        id: 'auto',
+        object: 'model',
+        created: 1729000000,
+        owned_by: 'colibri-local',
+        permission: [],
+        root: 'auto',
+        parent: null
+    },
+    {
         id: 'colibri-glm-5.2-moe',
         object: 'model',
         created: 1729000000,
@@ -164,7 +173,7 @@ const server = http.createServer((req, res) => {
                 return;
             }
 
-            const model = parsed.model || 'colibri-glm-5.2-moe';
+            let model = parsed.model || 'auto';
             const messages = parsed.messages || [];
             const lastMsg = messages[messages.length - 1] || { content: '' };
             // 1. Gather all conversation text across all messages for full context
@@ -172,6 +181,15 @@ const server = http.createServer((req, res) => {
             for (const msg of messages) {
                 const c = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content || '');
                 fullConversation += c + '\n';
+            }
+            if (model === 'auto' || model === 'colibri-auto') {
+                if (/translate|traducir|traducción|spanish|english/i.test(fullConversation)) {
+                    model = 'colibri-qwen-2.5-3b';
+                } else if (/json|schema|manifest|inventory|crate|volumetric/i.test(fullConversation)) {
+                    model = 'colibri-kimi-k3-moe';
+                } else {
+                    model = 'colibri-glm-5.2-moe';
+                }
             }
             const lastPrompt = typeof lastMsg.content === 'string' ? lastMsg.content : JSON.stringify(lastMsg.content || '');
             const isStream = Boolean(parsed.stream);

@@ -57,6 +57,7 @@ export const modelChain = (job: AiJob): string[] => {
 
 /** Colibrì Local MoE models streamed over NVMe */
 export const COLIBRI_MODELS = [
+    'auto',
     'colibri-glm-5.2-moe',
     'colibri-kimi-k3-moe',
     'colibri-qwen-2.5-3b',
@@ -72,6 +73,12 @@ export interface ColibriModelSpec {
 }
 
 export const COLIBRI_MODEL_SPECS: Record<ColibriModel, ColibriModelSpec> = {
+    auto: {
+        id: 'auto',
+        name: 'Auto (Smart MoE Routing)',
+        description: 'Dynamically routes tasks: Chat ➔ GLM-5.2, Translate ➔ Qwen-2.5, Content/JSON ➔ Kimi-K3',
+        contextLength: 131072,
+    },
     'colibri-glm-5.2-moe': {
         id: 'colibri-glm-5.2-moe',
         name: 'Colibrì GLM-5.2 MoE',

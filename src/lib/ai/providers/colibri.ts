@@ -23,7 +23,92 @@ export const COLIBRI_INFO: ProviderInfo = {
     docsUrl: 'https://github.com/JustVugg/colibri',
 };
 
-export const DEFAULT_COLIBRI_MODEL = 'colibri-glm-5.2-moe';
+export const DEFAULT_COLIBRI_MODEL = 'auto';
+
+export interface ColibriModelRoutingMap {
+    chat: string;
+    translate: string;
+    content: string;
+    segmentation: string;
+    json: string;
+    fallback: string;
+}
+
+export const COLIBRI_AUTO_ROUTING: ColibriModelRoutingMap = {
+    chat: 'colibri-glm-5.2-moe',
+    translate: 'colibri-qwen-2.5-3b',
+    content: 'colibri-kimi-k3-moe',
+    segmentation: 'colibri-kimi-k3-moe',
+    json: 'colibri-kimi-k3-moe',
+    fallback: 'colibri-glm-5.2-moe',
+};
+
+/**
+ * Resolves a model identifier for Colibrì.
+ * If model is 'auto', 'colibri-auto', or unspecified, routes based on task context and live host capabilities.
+ */
+export function resolveColibriModel(
+    requestedModel: string | undefined,
+    taskContext?: {
+        job?: string;
+        isJson?: boolean;
+        isChat?: boolean;
+        prompt?: string;
+    },
+    liveModels?: string[]
+): string {
+    const isAuto = !requestedModel || requestedModel === 'auto' || requestedModel === 'colibri-auto';
+    if (!isAuto) {
+        return requestedModel;
+    }
+
+    let target = COLIBRI_AUTO_ROUTING.fallback;
+
+    if (taskContext?.isChat || taskContext?.job === 'chat') {
+        target = COLIBRI_AUTO_ROUTING.chat;
+    } else if (taskContext?.job === 'translate') {
+        target = COLIBRI_AUTO_ROUTING.translate;
+    } else if (taskContext?.job === 'content') {
+        target = COLIBRI_AUTO_ROUTING.content;
+    } else if (taskContext?.isJson || taskContext?.job === 'segmentation') {
+        target = COLIBRI_AUTO_ROUTING.json;
+    } else if (taskContext?.prompt) {
+        const p = taskContext.prompt.toLowerCase();
+        if (
+            p.includes('translate') ||
+            p.includes('spanish') ||
+            p.includes('english') ||
+            p.includes('traducir') ||
+            p.includes('traducción')
+        ) {
+            target = COLIBRI_AUTO_ROUTING.translate;
+        } else if (
+            p.includes('json') ||
+            p.includes('schema') ||
+            p.includes('manifest') ||
+            p.includes('inventory') ||
+            p.includes('crate') ||
+            p.includes('analyze')
+        ) {
+            target = COLIBRI_AUTO_ROUTING.content;
+        }
+    }
+
+    // Check against live host models if known
+    const hostInfo = colibriRealtimeBridge.getHostInfo();
+    const available = liveModels || hostInfo?.models;
+    if (available && Array.isArray(available) && available.length > 0) {
+        const concrete = available.filter(m => m !== 'auto' && m !== 'colibri-auto');
+        if (concrete.includes(target)) {
+            return target;
+        }
+        if (concrete.length > 0) {
+            return concrete[0];
+        }
+    }
+
+    return target;
+}
 
 export function shouldUseBridge(baseUrl: string): boolean {
     if (baseUrl === SUPABASE_RELAY_URL || baseUrl.startsWith('supabase://')) {
@@ -81,9 +166,13 @@ function resolveBaseUrl(cfg: ProviderConfig): string {
     return raw.replace(/\/+$/, '');
 }
 
-export async function generateText(cfg: ProviderConfig, req: AiRequest): Promise<AiTextResult> {
+export async function generateText(cfg: ProviderConfig, req: AiRequest & { job?: string }): Promise<AiTextResult> {
     const baseUrl = resolveBaseUrl(cfg);
-    const model = cfg.model || DEFAULT_COLIBRI_MODEL;
+    const model = resolveColibriModel(cfg.model, {
+        job: (req as any).job,
+        prompt: req.prompt,
+        isChat: false,
+    });
     const controller = new AbortController();
     let timedOut = false;
     const timer = req.timeoutMs ? setTimeout(() => {
@@ -188,9 +277,13 @@ export async function generateText(cfg: ProviderConfig, req: AiRequest): Promise
     }
 }
 
-export async function generateJson(cfg: ProviderConfig, req: AiRequest): Promise<AiJsonResult> {
+export async function generateJson(cfg: ProviderConfig, req: AiRequest & { job?: string }): Promise<AiJsonResult> {
     const baseUrl = resolveBaseUrl(cfg);
-    const model = cfg.model || DEFAULT_COLIBRI_MODEL;
+    const model = resolveColibriModel(cfg.model, {
+        job: (req as any).job,
+        prompt: req.prompt,
+        isJson: true,
+    });
     const controller = new AbortController();
     let timedOut = false;
     const timer = req.timeoutMs ? setTimeout(() => {
@@ -341,11 +434,14 @@ export async function generateJson(cfg: ProviderConfig, req: AiRequest): Promise
 
 export async function streamChat(
     cfg: ProviderConfig,
-    req: ChatRequest,
+    req: ChatRequest & { job?: string },
     onToken?: (token: string) => void
 ): Promise<ChatResult> {
     const baseUrl = resolveBaseUrl(cfg);
-    const model = cfg.model || DEFAULT_COLIBRI_MODEL;
+    const model = resolveColibriModel(cfg.model, {
+        job: (req as any).job || 'chat',
+        isChat: true,
+    });
 
     const messages: Array<Record<string, unknown>> = [];
     if (req.system) {
@@ -674,41 +770,54 @@ export const colibriProvider: ColibriProviderImpl = {
 
     async listModels(cfg: ProviderConfig): Promise<string[]> {
         const baseUrl = resolveBaseUrl(cfg);
+        const hostInfo = colibriRealtimeBridge.getHostInfo();
+        let baseList: string[] = [];
 
         if (shouldUseBridge(baseUrl)) {
             try {
                 const data = await colibriRealtimeBridge.request<any>('/v1/models', { timeoutMs: 3000 });
                 if (Array.isArray(data?.data) && data.data.length > 0) {
-                    return data.data.map((m: any) => m.id || m.name).filter(Boolean);
+                    baseList = data.data.map((m: any) => m.id || m.name).filter(Boolean);
                 }
             } catch {
                 /* ignore fallback */
             }
-            return ['colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'];
+            if (baseList.length === 0 && hostInfo?.models) {
+                baseList = hostInfo.models;
+            }
+        } else {
+            try {
+                const res = await fetch(`${baseUrl}/v1/models`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data?.data) && data.data.length > 0) {
+                        baseList = data.data.map((m: any) => m.id || m.name).filter(Boolean);
+                    }
+                }
+            } catch {
+                // Check bridge if direct fetch failed
+                if (colibriRealtimeBridge.isHostOnline()) {
+                    try {
+                        const data = await colibriRealtimeBridge.request<any>('/v1/models', { timeoutMs: 3000 });
+                        if (Array.isArray(data?.data) && data.data.length > 0) {
+                            baseList = data.data.map((m: any) => m.id || m.name).filter(Boolean);
+                        }
+                    } catch {
+                        /* ignore */
+                    }
+                }
+                if (baseList.length === 0 && hostInfo?.models) {
+                    baseList = hostInfo.models;
+                }
+            }
         }
 
-        try {
-            const res = await fetch(`${baseUrl}/v1/models`);
-            if (res.ok) {
-                const data = await res.json();
-                if (Array.isArray(data?.data) && data.data.length > 0) {
-                    return data.data.map((m: any) => m.id || m.name).filter(Boolean);
-                }
-            }
-        } catch {
-            // Check bridge if direct fetch failed
-            if (colibriRealtimeBridge.isHostOnline()) {
-                try {
-                    const data = await colibriRealtimeBridge.request<any>('/v1/models', { timeoutMs: 3000 });
-                    if (Array.isArray(data?.data) && data.data.length > 0) {
-                        return data.data.map((m: any) => m.id || m.name).filter(Boolean);
-                    }
-                } catch {
-                    /* ignore */
-                }
-            }
+        if (baseList.length === 0) {
+            baseList = ['colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'];
         }
-        return ['colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'];
+
+        const cleaned = baseList.filter(m => m !== 'auto' && m !== 'colibri-auto');
+        return ['auto', ...cleaned];
     },
 };
 

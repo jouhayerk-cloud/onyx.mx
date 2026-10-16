@@ -15,6 +15,7 @@ import {
     Smartphone,
     Radio,
     Cloud,
+    Sparkles,
 } from 'lucide-react';
 import { LazyMotion, domMax, m, AnimatePresence } from 'framer-motion';
 import { TactileSwitch } from '../../components/TactileSwitch';
@@ -81,7 +82,7 @@ export const ColibriSettingsCard: React.FC = () => {
         return getProviderConfig('colibri').baseUrl || detectDefaultUrl();
     });
     const [model, setModel] = useState<string>(() => {
-        return getProviderConfig('colibri').model || 'colibri-glm-5.2-moe';
+        return getProviderConfig('colibri').model || 'auto';
     });
 
     const [isChanActive, setIsChanActive] = useState<boolean>(() => {
@@ -108,7 +109,7 @@ export const ColibriSettingsCard: React.FC = () => {
         const ep = cfg.baseUrl || detectDefaultUrl();
         setEndpoint(ep);
         setActiveMode(resolveMode(ep));
-        setModel(cfg.model || 'colibri-glm-5.2-moe');
+        setModel(cfg.model || 'auto');
         setIsChanActive(getRoute('chat').provider === 'colibri');
     }, []);
 
@@ -182,7 +183,7 @@ export const ColibriSettingsCard: React.FC = () => {
 
     const handleSave = (newEndpoint?: string, newModel?: string) => {
         const ep = (newEndpoint ?? endpoint).trim() || detectDefaultUrl();
-        const mod = (newModel ?? model).trim() || 'colibri-glm-5.2-moe';
+        const mod = (newModel ?? model).trim() || 'auto';
         const patch: Partial<ProviderConfig> = {
             baseUrl: ep,
             model: mod,
@@ -203,7 +204,7 @@ export const ColibriSettingsCard: React.FC = () => {
     const handleToggleChanChat = (active: boolean) => {
         setIsChanActive(active);
         if (active) {
-            setRoute('chat', { provider: 'colibri', model: model || 'colibri-glm-5.2-moe' });
+            setRoute('chat', { provider: 'colibri', model: model || 'auto' });
         } else {
             setRoute('chat', null);
         }
@@ -216,7 +217,7 @@ export const ColibriSettingsCard: React.FC = () => {
             const cfg: ProviderConfig = {
                 key: '',
                 baseUrl: endpoint.trim() || detectDefaultUrl(),
-                model: model || 'colibri-glm-5.2-moe',
+                model: model || 'auto',
             };
             const res = await colibriProvider.test(cfg);
             setTestResult(res);
@@ -311,10 +312,10 @@ export const ColibriSettingsCard: React.FC = () => {
                         <div className="sm:col-span-7 flex items-center p-0.5 rounded-xl bg-(--ss-field) border border-(--ss-sep) h-8">
                             {(
                                 [
-                                    { id: 'cloud', label: '☁️ Relay', full: '☁️ WSS Relay' },
+                                    { id: 'cloud', label: '☁️ Relay', full: '☁️ Relay' },
                                     { id: 'localhost', label: '💻 G7', full: '💻 G7 :8082' },
-                                    { id: 'mesh', label: '🌐 LAN', full: '🌐 LAN Mesh' },
-                                    { id: 'custom', label: '⚙️ URL', full: '⚙️ Custom URL' },
+                                    { id: 'mesh', label: '🌐 LAN', full: '🌐 LAN' },
+                                    { id: 'custom', label: '⚙️ Custom', full: '⚙️ Custom' },
                                 ] as { id: ConnectionMode; label: string; full: string }[]
                             ).map((mItem) => {
                                 const active = activeMode === mItem.id;
@@ -363,12 +364,39 @@ export const ColibriSettingsCard: React.FC = () => {
                                 aria-label={tr("Colibrì Model")}
                                 className="w-full h-8 px-2.5 rounded-xl bg-(--ss-field) border border-(--ss-sep) text-(--ss-fg) text-[11px] font-mono focus:outline-none focus:border-cyan-400"
                             >
-                                <option value="colibri-glm-5.2-moe">glm-5.2-moe (Fast)</option>
-                                <option value="colibri-kimi-k3-moe">kimi-k3-moe (Deep)</option>
-                                <option value="colibri-qwen-2.5-3b">qwen-2.5-3b (Dense)</option>
+                                <option value="auto">✨ Auto (Task / MoE Routing)</option>
+                                <option value="colibri-glm-5.2-moe">glm-5.2-moe (Fast Chat)</option>
+                                <option value="colibri-kimi-k3-moe">kimi-k3-moe (Deep Context)</option>
+                                <option value="colibri-qwen-2.5-3b">qwen-2.5-3b (Dense / Translate)</option>
                             </select>
                         </div>
                     </div>
+
+                    {/* Auto-Routing Micro HUD Strip */}
+                    <AnimatePresence initial={false}>
+                        {(model === 'auto' || !model) && (
+                            <m.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.18 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-between text-[10.5px] text-cyan-300">
+                                    <div className="flex items-center gap-1.5 truncate">
+                                        <Sparkles size={11} className="text-cyan-400 shrink-0" />
+                                        <span className="font-semibold text-cyan-200">Auto MoE:</span>
+                                        <span className="text-cyan-300/80 truncate">
+                                            Chat ➔ GLM-5.2 · Translate ➔ Qwen-2.5 · Content/JSON ➔ Kimi-K3
+                                        </span>
+                                    </div>
+                                    <span className="px-1.5 py-0.2 rounded-full bg-cyan-400/20 text-cyan-200 font-mono text-[9px] shrink-0 border border-cyan-400/30">
+                                        Auto Active
+                                    </span>
+                                </div>
+                            </m.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Custom URL Input (Animated) */}
                     <AnimatePresence initial={false}>

@@ -65,7 +65,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 let channel = null;
 let isColibriAlive = false;
-let modelsCache = ['colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'];
+let modelsCache = ['auto', 'colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'];
 let telemetryCache = { tokensPerSecond: 26.5, nvmeReadMBps: 2740.8 };
 
 /**
