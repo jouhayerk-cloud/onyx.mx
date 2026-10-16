@@ -3,22 +3,17 @@ import { useAtom } from 'jotai';
 import { themeAtom, userAtom } from '../../lib/atoms';
 import { tr } from '../../lib/i18n';
 import {
-    Cpu,
-    Check,
-    AlertCircle,
     RefreshCw,
-    Copy,
-    ChevronDown,
-    Zap,
-    Terminal,
-    Laptop,
-    Smartphone,
-    Radio,
     Cloud,
-    Sparkles,
+    Laptop,
+    Network,
+    Settings2,
+    ChevronRight,
+    Copy,
+    Check,
+    X,
 } from 'lucide-react';
-import { LazyMotion, domMax, m, AnimatePresence } from 'framer-motion';
-import { TactileSwitch } from '../../components/TactileSwitch';
+import type { LucideIcon } from 'lucide-react';
 import { colibriProvider, isColibriAvailable } from '../../lib/ai/providers/colibri';
 import { colibriRealtimeBridge } from '../../lib/ai/colibriRealtimeBridge';
 import {
@@ -41,6 +36,13 @@ interface TestStatus {
 }
 
 type ConnectionMode = 'cloud' | 'localhost' | 'mesh' | 'custom';
+
+interface TransportModeItem {
+    id: ConnectionMode;
+    label: string;
+    fullName: string;
+    icon: LucideIcon;
+}
 
 const PRESET_URLS: Record<'cloud' | 'localhost' | 'mesh', string> = {
     cloud: SUPABASE_RELAY_URL,
@@ -71,10 +73,8 @@ function resolveMode(url: string): ConnectionMode {
 export const ColibriSettingsCard: React.FC = () => {
     const [theme] = useAtom(themeAtom);
     const [user] = useAtom(userAtom);
-    const isAqua = theme === 'aqua';
     const isDevOrAdmin = !user?.role || user.role === 'Developer' || user.role === 'Admin';
 
-    // Device detection for smart UI context
     const isIOSDevice =
         typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
 
@@ -193,6 +193,7 @@ export const ColibriSettingsCard: React.FC = () => {
     };
 
     const handleSelectMode = (mode: ConnectionMode) => {
+        if (mode === 'cloud') return;
         setActiveMode(mode);
         if (mode !== 'custom') {
             const newUrl = PRESET_URLS[mode];
@@ -242,115 +243,203 @@ export const ColibriSettingsCard: React.FC = () => {
         setTimeout(() => setCopiedCmd(null), 2000);
     };
 
-    const relayLaunchCmd = `node scripts/colibri-supabase-relay.cjs`;
+    const relayLaunchCmd = 'node scripts/colibri-supabase-relay.cjs';
+
+    const transportModes: TransportModeItem[] = [
+        {
+            id: 'cloud',
+            label: tr("Relay"),
+            fullName: tr("WSS Cloud Relay"),
+            icon: Cloud,
+        },
+        {
+            id: 'localhost',
+            label: tr("Local"),
+            fullName: tr("Local G7 :8082"),
+            icon: Laptop,
+        },
+        {
+            id: 'mesh',
+            label: tr("LAN"),
+            fullName: tr("LAN Mesh"),
+            icon: Network,
+        },
+        {
+            id: 'custom',
+            label: tr("Custom"),
+            fullName: tr("Custom Endpoint"),
+            icon: Settings2,
+        },
+    ];
 
     return (
-        <LazyMotion features={domMax}>
-            <div className={`colibri-settings-card ${isAqua ? 'colibri-settings-card--aqua' : ''}`}>
-                {/* Row 1: Compact Header + Live Status + Chan Chat Switch */}
-                <div className="flex items-center justify-between px-3 py-2.5 border-b border-(--ss-sep) gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-cyan-500/15 border border-cyan-400/25 flex items-center justify-center text-cyan-400 shrink-0">
-                            <Cpu size={14} className={onlineStatus ? 'animate-pulse' : ''} />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="text-[12.5px] sm:text-[13px] font-semibold text-(--ss-fg) shrink-0">
-                                    Colibrì MoE
-                                </span>
-                                <span
-                                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                        onlineStatus === true
-                                            ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]'
-                                            : onlineStatus === false
-                                            ? 'bg-amber-400'
-                                            : 'bg-white/30 animate-pulse'
-                                    }`}
-                                />
-                                <span className="text-[10px] font-mono text-(--ss-fg2) truncate">
-                                    {onlineStatus === true
-                                        ? telemetry || tr("Online")
-                                        : isIOSDevice
-                                        ? 'iOS WSS'
-                                        : tr("Standby")}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+        <section className="sk-section" data-theme={theme}>
+            {/* Section head with eyebrow and Ping action */}
+            <div className="sk-section-head">
+                <span className="sk-eyebrow">{tr("Local engine")}</span>
+                <button
+                    type="button"
+                    onClick={handleTestConnection}
+                    disabled={isTesting}
+                    className="sk-btn"
+                    aria-label={tr("Ping")}
+                >
+                    <RefreshCw size={12} className={isTesting ? 'animate-spin' : ''} />
+                    <span>{tr("Ping")}</span>
+                </button>
+            </div>
 
-                    {/* Inline Chan Chat Toggle + Ping */}
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-(--ss-field) border border-(--ss-sep)">
-                            <span className="text-[10.5px] font-medium text-(--ss-fg2)">
-                                {tr("Chan")}
-                            </span>
-                            <TactileSwitch
-                                active={isChanActive}
-                                onChange={handleToggleChanChat}
-                                width={34}
-                                height={18}
-                                aria-label={tr("Route Chan Chat to Colibrì")}
-                            />
-                        </div>
+            <div className="sk-group">
+                {/* (a) Status row: connection dot, title, state word, Chan toggle */}
+                <div className="sk-row">
+                    <span
+                        className="sk-dot"
+                        data-state={
+                            isTesting || onlineStatus === null
+                                ? 'warn'
+                                : onlineStatus
+                                ? 'ok'
+                                : 'error'
+                        }
+                    />
+                    <div className="sk-row-label">
+                        <span className="sk-row-title">{tr("Colibri")}</span>
+                        <span className="sk-row-sub">
+                            {isTesting
+                                ? tr("Connecting")
+                                : onlineStatus === true
+                                ? telemetry || tr("Online")
+                                : onlineStatus === false
+                                ? tr("Offline")
+                                : isIOSDevice
+                                ? tr("iOS WSS")
+                                : tr("Standby")}
+                        </span>
+                    </div>
+                    <div className="sk-row-value">
                         <button
                             type="button"
-                            onClick={handleTestConnection}
-                            disabled={isTesting}
-                            className="ss-glass-pill h-7 px-2.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 border border-cyan-500/30 text-[11px] font-semibold flex items-center gap-1 shrink-0"
-                            title={tr("Test Colibrì Bridge")}
-                        >
-                            <RefreshCw size={11} className={isTesting ? 'animate-spin' : ''} />
-                            <span>{tr("Ping")}</span>
-                        </button>
+                            role="switch"
+                            aria-checked={isChanActive}
+                            aria-label={tr("Use in Chan")}
+                            onClick={() => handleToggleChanChat(!isChanActive)}
+                            className="sk-switch"
+                        />
                     </div>
                 </div>
 
-                {/* Row 2: Transport Mode Segmented Bar + Model Pill */}
-                <div className="p-2.5 space-y-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                        {/* 4-Mode Transport Switcher with Sliding Pill */}
-                        <div className="sm:col-span-7 flex items-center p-0.5 rounded-xl bg-(--ss-field) border border-(--ss-sep) h-8">
-                            {(
-                                [
-                                    { id: 'cloud', label: '☁️ Relay', full: '☁️ Relay' },
-                                    { id: 'localhost', label: '💻 G7', full: '💻 G7 :8082' },
-                                    { id: 'mesh', label: '🌐 LAN', full: '🌐 LAN' },
-                                    { id: 'custom', label: '⚙️ Custom', full: '⚙️ Custom' },
-                                ] as { id: ConnectionMode; label: string; full: string }[]
-                            ).map((mItem) => {
-                                const active = activeMode === mItem.id;
+                {/* Ping connection result row (if tested) */}
+                {testResult && (
+                    <div className="sk-row">
+                        <span
+                            className="sk-dot"
+                            data-state={testResult.ok ? 'ok' : 'error'}
+                        />
+                        <div className="sk-row-label">
+                            <span className="sk-row-title">
+                                {testResult.ok ? tr("Connected") : tr("Connection failed")}
+                            </span>
+                            <span className="sk-row-sub" title={testResult.message}>
+                                {testResult.message}
+                            </span>
+                        </div>
+                        <div className="sk-row-value">
+                            <button
+                                type="button"
+                                onClick={() => setTestResult(null)}
+                                className="sk-btn"
+                                data-icon-only=""
+                                aria-label={tr("Dismiss")}
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* (b) Link row: transport mode radiogroup */}
+                <div className="sk-row">
+                    <div className="sk-row-label">
+                        <span className="sk-row-title">{tr("Link")}</span>
+                        <span className="sk-row-sub">{tr("Off until secured")}</span>
+                    </div>
+                    <div className="sk-row-value">
+                        <div className="sk-seg" role="radiogroup" aria-label={tr("Transport mode")}>
+                            {transportModes.map((item) => {
+                                const Icon = item.icon;
+                                const isChecked = activeMode === item.id;
+                                const isDisabled = item.id === 'cloud';
                                 return (
                                     <button
-                                        key={mItem.id}
+                                        key={item.id}
                                         type="button"
-                                        onClick={() => handleSelectMode(mItem.id)}
-                                        title={mItem.full}
-                                        className={`relative flex-1 h-7 px-1 sm:px-1.5 rounded-lg text-[10px] sm:text-[10.5px] font-semibold transition-colors truncate z-10 ${
-                                            active
-                                                ? 'text-(--ss-on-accent)'
-                                                : 'text-(--ss-fg2) hover:text-(--ss-fg)'
-                                        }`}
+                                        role="radio"
+                                        aria-checked={isChecked}
+                                        aria-disabled={isDisabled ? 'true' : undefined}
+                                        disabled={isDisabled}
+                                        aria-label={
+                                            isDisabled
+                                                ? `${item.fullName} (${tr("Off until secured")})`
+                                                : item.fullName
+                                        }
+                                        title={
+                                            isDisabled
+                                                ? `${item.fullName} (${tr("Off until secured")})`
+                                                : item.fullName
+                                        }
+                                        onClick={() => {
+                                            if (!isDisabled) {
+                                                handleSelectMode(item.id);
+                                            }
+                                        }}
+                                        className="sk-seg-btn"
+                                        style={isDisabled ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
                                     >
-                                        {active && (
-                                            <m.span
-                                                layoutId="colibri-mode-pill"
-                                                className="ss-top-tab-pill rounded-lg"
-                                                transition={{
-                                                    type: 'spring',
-                                                    stiffness: 420,
-                                                    damping: 32,
-                                                }}
-                                            />
-                                        )}
-                                        <span className="relative z-10 hidden sm:inline">{mItem.full}</span>
-                                        <span className="relative z-10 sm:hidden">{mItem.label}</span>
+                                        <Icon size={13} />
+                                        <span className="sk-seg-label">{item.label}</span>
                                     </button>
                                 );
                             })}
                         </div>
+                    </div>
+                </div>
 
-                        {/* Compact Model Select */}
-                        <div className="sm:col-span-5">
+                {/* Custom Endpoint URL row rendered in main group when activeMode === 'custom' */}
+                {activeMode === 'custom' && (
+                    <div className="sk-row">
+                        <div className="sk-row-label">
+                            <span className="sk-row-title">{tr("Endpoint URL")}</span>
+                        </div>
+                        <div className="sk-row-value">
+                            <div className="sk-field">
+                                <input
+                                    type="url"
+                                    value={endpoint}
+                                    onChange={(e) => setEndpoint(e.target.value)}
+                                    onBlur={() => handleSave()}
+                                    placeholder="http://127.0.0.1:8082"
+                                    aria-label={tr("Endpoint URL")}
+                                    className="sk-mono"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => handleSave()}
+                                className="sk-btn"
+                            >
+                                {tr("Save")}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* (c) Model row: model selector in mono */}
+                <div className="sk-row">
+                    <div className="sk-row-label">
+                        <span className="sk-row-title">{tr("Model")}</span>
+                    </div>
+                    <div className="sk-row-value">
+                        <div className="sk-field">
                             <select
                                 value={model}
                                 onChange={(e) => {
@@ -361,202 +450,105 @@ export const ColibriSettingsCard: React.FC = () => {
                                         setRoute('chat', { provider: 'colibri', model: newModel });
                                     }
                                 }}
-                                aria-label={tr("Colibrì Model")}
-                                className="w-full h-8 px-2.5 rounded-xl bg-(--ss-field) border border-(--ss-sep) text-(--ss-fg) text-[11px] font-mono focus:outline-none focus:border-cyan-400"
+                                aria-label={tr("Model")}
+                                className="sk-mono"
                             >
-                                <option value="auto">✨ Auto (Task / MoE Routing)</option>
-                                <option value="colibri-glm-5.2-moe">glm-5.2-moe (Fast Chat)</option>
-                                <option value="colibri-kimi-k3-moe">kimi-k3-moe (Deep Context)</option>
-                                <option value="colibri-qwen-2.5-3b">qwen-2.5-3b (Dense / Translate)</option>
+                                <option value="auto">{tr("Auto (Task / MoE Routing)")}</option>
+                                <option value="colibri-glm-5.2-moe">glm-5.2-moe ({tr("Fast Chat")})</option>
+                                <option value="colibri-kimi-k3-moe">kimi-k3-moe ({tr("Deep Context")})</option>
+                                <option value="colibri-qwen-2.5-3b">qwen-2.5-3b ({tr("Dense / Translate")})</option>
                             </select>
                         </div>
                     </div>
+                </div>
 
-                    {/* Auto-Routing Micro HUD Strip */}
-                    <AnimatePresence initial={false}>
-                        {(model === 'auto' || !model) && (
-                            <m.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.18 }}
-                                className="overflow-hidden"
-                            >
-                                <div className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-between text-[10.5px] text-cyan-300">
-                                    <div className="flex items-center gap-1.5 truncate">
-                                        <Sparkles size={11} className="text-cyan-400 shrink-0" />
-                                        <span className="font-semibold text-cyan-200">Auto MoE:</span>
-                                        <span className="text-cyan-300/80 truncate">
-                                            Chat ➔ GLM-5.2 · Translate ➔ Qwen-2.5 · Content/JSON ➔ Kimi-K3
-                                        </span>
-                                    </div>
-                                    <span className="px-1.5 py-0.2 rounded-full bg-cyan-400/20 text-cyan-200 font-mono text-[9px] shrink-0 border border-cyan-400/30">
-                                        Auto Active
-                                    </span>
+                {/* (d) Advanced disclosure */}
+                <details
+                    className="sk-disclosure"
+                    open={relayDrawerOpen}
+                    onToggle={(e) => {
+                        const isOpen = e.currentTarget.open;
+                        setRelayDrawerOpen(isOpen);
+                        if (isOpen) {
+                            void handlePingAllNodes();
+                        }
+                    }}
+                >
+                    <summary className="sk-row">
+                        <span className="sk-row-label">
+                            <span className="sk-row-title">{tr("Advanced")}</span>
+                        </span>
+                        <ChevronRight size={14} className="sk-chevron" />
+                    </summary>
+
+                    {isDevOrAdmin && (
+                        <>
+                            {/* Mesh nodes section action */}
+                            <div className="sk-row">
+                                <div className="sk-row-label">
+                                    <span className="sk-row-title">{tr("Mesh nodes")}</span>
                                 </div>
-                            </m.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Custom URL Input (Animated) */}
-                    <AnimatePresence initial={false}>
-                        {activeMode === 'custom' && (
-                            <m.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.18 }}
-                                className="overflow-hidden"
-                            >
-                                <div className="flex items-center gap-1.5 pt-0.5">
-                                    <input
-                                        type="url"
-                                        value={endpoint}
-                                        onChange={(e) => setEndpoint(e.target.value)}
-                                        onBlur={() => handleSave()}
-                                        placeholder="http://127.0.0.1:8082"
-                                        className="flex-1 h-7 px-2.5 rounded-lg bg-(--ss-field) border border-(--ss-sep) text-(--ss-fg) text-[11px] font-mono focus:outline-none focus:border-cyan-400"
-                                    />
+                                <div className="sk-row-value">
                                     <button
                                         type="button"
-                                        onClick={() => handleSave()}
-                                        className="h-7 px-2.5 rounded-lg bg-(--ss-fill) hover:bg-(--ss-fill-hover) text-(--ss-fg) text-[10.5px] font-semibold border border-(--ss-sep)"
+                                        onClick={handlePingAllNodes}
+                                        disabled={pingingNodes}
+                                        className="sk-btn"
+                                        aria-label={tr("Ping mesh nodes")}
                                     >
-                                        {tr("Save")}
+                                        <RefreshCw size={12} className={pingingNodes ? 'animate-spin' : ''} />
+                                        <span>{tr("Ping nodes")}</span>
                                     </button>
                                 </div>
-                            </m.div>
-                        )}
-                    </AnimatePresence>
+                            </div>
 
-                    {/* Compact Test Result Micro-Strip */}
-                    <AnimatePresence initial={false}>
-                        {testResult && (
-                            <m.div
-                                initial={{ opacity: 0, y: -4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -4 }}
-                                className={`px-2.5 py-1.5 rounded-lg text-[11px] flex items-center justify-between gap-2 ${
-                                    testResult.ok
-                                        ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
-                                        : 'bg-amber-500/15 border border-amber-500/30 text-amber-300'
-                                }`}
-                            >
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                    {testResult.ok ? (
-                                        <Check size={12} className="text-emerald-400 shrink-0" />
-                                    ) : (
-                                        <AlertCircle size={12} className="text-amber-400 shrink-0" />
-                                    )}
-                                    <span className="truncate">{testResult.message}</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setTestResult(null)}
-                                    className="text-[10px] opacity-70 hover:opacity-100 shrink-0"
-                                >
-                                    ✕
-                                </button>
-                            </m.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Role-Aware Micro Mesh & CLI Drawer */}
-                    {isDevOrAdmin && (
-                        <div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const next = !relayDrawerOpen;
-                                    setRelayDrawerOpen(next);
-                                    if (next) handlePingAllNodes();
-                                }}
-                                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-(--ss-field) hover:bg-(--ss-fill-hover) border border-(--ss-sep) text-left transition-colors"
-                            >
-                                <div className="flex items-center gap-1.5 text-[11px] font-medium text-(--ss-fg2)">
-                                    <Terminal size={11} className="text-cyan-400" />
-                                    <span>Mesh Nodes (G7 · Laptop 2 · iOS) & CLI</span>
-                                </div>
-                                <ChevronDown
-                                    size={12}
-                                    className={`text-(--ss-fg3) transition-transform duration-200 ${
-                                        relayDrawerOpen ? 'rotate-180' : ''
-                                    }`}
-                                />
-                            </button>
-
-                            <AnimatePresence initial={false}>
-                                {relayDrawerOpen && (
-                                    <m.div
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                                        className="overflow-hidden"
-                                    >
-                                        <div className="mt-1.5 p-2 rounded-xl bg-(--ss-field) border border-(--ss-sep) space-y-1.5 text-[10.5px]">
-                                            <div className="grid grid-cols-3 gap-1.5">
-                                                <div className="px-2 py-1.5 rounded-lg bg-black/25 border border-cyan-500/25 flex items-center justify-between">
-                                                    <span className="flex items-center gap-1 font-medium text-(--ss-fg) truncate">
-                                                        <Laptop size={11} className="text-cyan-400 shrink-0" />
-                                                        G7
-                                                    </span>
-                                                    <span className="font-mono text-[9.5px] text-emerald-400">
-                                                        {nodePings.g7?.ok ? `${nodePings.g7.latencyMs}ms` : ':8082'}
-                                                    </span>
-                                                </div>
-                                                <div className="px-2 py-1.5 rounded-lg bg-black/25 border border-(--ss-sep) flex items-center justify-between">
-                                                    <span className="flex items-center gap-1 font-medium text-(--ss-fg) truncate">
-                                                        <Radio size={11} className="text-purple-400 shrink-0" />
-                                                        Martha
-                                                    </span>
-                                                    <span className="font-mono text-[9.5px] text-(--ss-fg2)">
-                                                        {nodePings.second_laptop?.ok ? `${nodePings.second_laptop.latencyMs}ms` : '.1.67'}
-                                                    </span>
-                                                </div>
-                                                <div className="px-2 py-1.5 rounded-lg bg-black/25 border border-(--ss-sep) flex items-center justify-between">
-                                                    <span className="flex items-center gap-1 font-medium text-(--ss-fg) truncate">
-                                                        <Smartphone size={11} className="text-amber-400 shrink-0" />
-                                                        iPhone
-                                                    </span>
-                                                    <span className="font-mono text-[9.5px] text-cyan-400">
-                                                        WSS
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center justify-between gap-1.5 px-2 py-1 rounded-lg bg-black/40 border border-(--ss-sep)">
-                                                <code className="text-[10px] font-mono text-cyan-300 truncate select-all">
-                                                    {relayLaunchCmd}
-                                                </code>
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                    <button
-                                                        type="button"
-                                                        onClick={handlePingAllNodes}
-                                                        disabled={pingingNodes}
-                                                        className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/15 text-(--ss-fg2) text-[9.5px]"
-                                                        title={tr("Ping Nodes")}
-                                                    >
-                                                        <RefreshCw size={10} className={pingingNodes ? 'animate-spin' : ''} />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleCopy(relayLaunchCmd, 'relay')}
-                                                        className="px-1.5 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[9.5px] flex items-center gap-1"
-                                                    >
-                                                        {copiedCmd === 'relay' ? <Check size={10} /> : <Copy size={10} />}
-                                                        <span>{copiedCmd === 'relay' ? tr("Copied") : tr("CLI")}</span>
-                                                    </button>
-                                                </div>
-                                            </div>
+                            {/* Mesh nodes list */}
+                            {MESH_NODES.map((node) => {
+                                const ping = nodePings[node.id];
+                                const dotState = ping === undefined ? 'warn' : ping.ok ? 'ok' : 'error';
+                                return (
+                                    <div key={node.id} className="sk-row">
+                                        <span className="sk-dot" data-state={dotState} />
+                                        <div className="sk-row-label">
+                                            <span className="sk-row-title">{node.name}</span>
+                                            <span className="sk-row-sub sk-mono">{node.ip}:{node.colibriPort}</span>
                                         </div>
-                                    </m.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
+                                        <div className="sk-row-value">
+                                            {ping ? (
+                                                <span className="sk-mono">
+                                                    {ping.ok ? `${ping.latencyMs} ms` : ping.status}
+                                                </span>
+                                            ) : (
+                                                <span className="sk-row-sub sk-mono">:{node.colibriPort}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {/* Relay daemon command */}
+                            <div className="sk-row">
+                                <div className="sk-row-label">
+                                    <span className="sk-row-title">{tr("Relay daemon")}</span>
+                                    <span className="sk-row-sub sk-mono">{relayLaunchCmd}</span>
+                                </div>
+                                <div className="sk-row-value">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCopy(relayLaunchCmd, 'relay')}
+                                        className="sk-btn"
+                                        data-icon-only=""
+                                        aria-label={copiedCmd === 'relay' ? tr("Copied") : tr("Copy relay command")}
+                                        title={copiedCmd === 'relay' ? tr("Copied") : tr("Copy relay command")}
+                                    >
+                                        {copiedCmd === 'relay' ? <Check size={13} /> : <Copy size={13} />}
+                                    </button>
+                                </div>
+                            </div>
+                        </>
                     )}
-                </div>
+                </details>
             </div>
-        </LazyMotion>
+        </section>
     );
 };

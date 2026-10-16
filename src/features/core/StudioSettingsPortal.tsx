@@ -26,19 +26,17 @@ import {
     Layers,
     Box,
     Languages,
-    Check,
     ChevronRight,
     ChevronLeft,
     Cpu,
     Smartphone,
     Laptop,
-    Globe,
     Mic,
+    Plug,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { LazyMotion, domMax, m, AnimatePresence } from 'framer-motion';
-import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
-import { THEME_ASSETS } from '../../lib/themes-assets';
+import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import changelogText from '../../assets/CHANGELOG.md?raw';
 import { SiriAccessPanel } from './SiriAccessPanel';
@@ -47,7 +45,7 @@ import { AiProvidersPanel } from './AiProvidersPanel';
 import { ColibriSettingsCard } from './ColibriSettingsCard';
 import { siriTokenPendingAtom } from './siriState';
 import { tr } from '../../lib/i18n';
-import { TactileSwitch } from '../../components/TactileSwitch';
+import './settingsKit.css';
 import './studioSettings.css';
 
 import { APP_VERSION_LABEL } from '../../lib/appVersion';
@@ -273,6 +271,19 @@ export const StudioSettingsPortal: React.FC = () => {
     const initials = user?.name ? user.name.substring(0, 2).toUpperCase() : '';
     const displayedVersions = showAllLogs ? versions : versions.slice(0, 6);
 
+    const tabs: { id: SettingsTab; label: string; icon: LucideIcon }[] = [
+        {
+            id: 'general',
+            label: tr("General & Appearance"),
+            icon: Palette,
+        },
+        {
+            id: 'ai',
+            label: tr("AI, Models & MCP"),
+            icon: Cpu,
+        },
+    ];
+
     return createPortal(
         <LazyMotion features={domMax}>
             <div className="fixed inset-0 z-[5000] flex items-center justify-center p-0 md:p-6">
@@ -331,19 +342,17 @@ export const StudioSettingsPortal: React.FC = () => {
                             {viewMode === 'settings' && (
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-(--ss-field) border border-(--ss-sep) text-[10.5px] font-mono text-(--ss-fg2) truncate">
                                     {deviceCtx.isIOS ? (
-                                        <Smartphone size={11} className="text-cyan-400 shrink-0" />
+                                        <Smartphone size={11} className="text-(--ss-accent) shrink-0" />
                                     ) : (
-                                        <Laptop size={11} className="text-cyan-400 shrink-0" />
+                                        <Laptop size={11} className="text-(--ss-accent) shrink-0" />
                                     )}
                                     <span className="text-(--ss-fg) font-semibold">
                                         {deviceCtx.label}
                                     </span>
-                                    <span className="opacity-40">•</span>
-                                    <span className="text-cyan-400">{deviceCtx.transport}</span>
                                     {user?.role && (
                                         <>
-                                            <span className="opacity-40 hidden sm:inline">•</span>
-                                            <span className="text-emerald-400 hidden sm:inline">
+                                            <span className="opacity-40">•</span>
+                                            <span className="text-(--ss-accent)">
                                                 {user.role}
                                             </span>
                                         </>
@@ -376,20 +385,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                     role="tablist"
                                     aria-label={tr("Settings category")}
                                 >
-                                    {(
-                                        [
-                                            {
-                                                id: 'general',
-                                                label: tr("General & Appearance"),
-                                                icon: Palette,
-                                            },
-                                            {
-                                                id: 'ai',
-                                                label: tr("AI, Models & MCP"),
-                                                icon: Cpu,
-                                            },
-                                        ] as { id: SettingsTab; label: string; icon: LucideIcon }[]
-                                    ).map((tab) => {
+                                    {tabs.map((tab) => {
                                         const Icon = tab.icon;
                                         const isActive = activeTab === tab.id;
                                         return (
@@ -397,7 +393,9 @@ export const StudioSettingsPortal: React.FC = () => {
                                                 key={tab.id}
                                                 type="button"
                                                 role="tab"
+                                                id={`ss-tab-${tab.id}`}
                                                 aria-selected={isActive}
+                                                aria-controls={`ss-panel-${tab.id}`}
                                                 className={`ss-top-tab ${isActive ? 'is-active' : ''}`}
                                                 onClick={() => setActiveTab(tab.id)}
                                             >
@@ -421,21 +419,40 @@ export const StudioSettingsPortal: React.FC = () => {
                             </div>
 
                             <div className="ss-body">
-                                <aside className="ss-brand" aria-hidden="true">
-                                    <div className="ss-brand-mark">
-                                        <OnyxLogo className="ss-brand-logo" />
+                                <nav aria-label={tr("Settings sections")} className="ss-sidebar">
+                                    <div role="tablist" aria-orientation="vertical" className="ss-sidebar-nav">
+                                        {tabs.map((tab) => {
+                                            const Icon = tab.icon;
+                                            const isActive = activeTab === tab.id;
+                                            return (
+                                                <button
+                                                    key={tab.id}
+                                                    type="button"
+                                                    role="tab"
+                                                    id={`ss-sidebar-tab-${tab.id}`}
+                                                    aria-selected={isActive}
+                                                    aria-controls={`ss-panel-${tab.id}`}
+                                                    className={`ss-sidebar-item ${isActive ? 'is-active' : ''}`}
+                                                    onClick={() => setActiveTab(tab.id)}
+                                                >
+                                                    <Icon size={15} className={`ss-sidebar-icon ${isActive ? 'text-(--ss-accent)' : ''}`} />
+                                                    <span className="ss-sidebar-label">{tab.label}</span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
-                                    <span className="ss-brand-name">Onyx-mx</span>
-                                    <span className="ss-brand-version">V{APP_VERSION_LABEL}</span>
-                                </aside>
+                                </nav>
 
-                                <div className="ss-scroll overflow-y-auto px-3.5 py-2 custom-scrollbar">
-                                    <div className="max-w-[540px] mx-auto pb-8">
+                                <div className="ss-scroll sk-scroll overflow-y-auto px-3.5 py-2 custom-scrollbar">
+                                    <div className="max-w-[880px] mx-auto pb-8">
                                         <AnimatePresence mode="wait">
-                                            {/* ── TAB 1: GENERAL & APPEARANCE (CONDENSED) ── */}
+                                            {/* ── TAB 1: GENERAL & APPEARANCE ── */}
                                             {activeTab === 'general' && (
                                                 <m.div
                                                     key="tab-general"
+                                                    id="ss-panel-general"
+                                                    role="tabpanel"
+                                                    aria-labelledby="ss-tab-general"
                                                     initial={{ opacity: 0, y: 6, scale: 0.99 }}
                                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                                     exit={{ opacity: 0, y: -6, scale: 0.99 }}
@@ -443,211 +460,178 @@ export const StudioSettingsPortal: React.FC = () => {
                                                         duration: 0.18,
                                                         ease: [0.22, 1, 0.36, 1],
                                                     }}
-                                                    className="space-y-2.5"
                                                 >
-                                                    {/* 1. Compact Account + Inline Sign Out */}
-                                                    <div className="ss-card">
-                                                        <div className="ss-row py-2 justify-between gap-2">
-                                                            <div className="flex items-center min-w-0">
-                                                                <div className="w-[34px] h-[34px] rounded-full bg-(--ss-field) flex items-center justify-center mr-2.5 shrink-0 border border-(--ss-sep)">
-                                                                    {initials ? (
-                                                                        <span className="text-[13px] font-bold text-(--ss-fg)">
-                                                                            {initials}
-                                                                        </span>
-                                                                    ) : (
-                                                                        <Shield
-                                                                            size={16}
-                                                                            className="text-(--ss-fg3)"
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex flex-col min-w-0">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="text-[13.5px] font-semibold text-(--ss-fg) truncate">
-                                                                            {user?.name || tr("ROOT")}
-                                                                        </span>
-                                                                        {user?.role && (
-                                                                            <span className="px-1.5 py-0.2 rounded-full text-[9.5px] font-mono font-semibold bg-(--ss-field) text-(--ss-accent) border border-(--ss-sep)">
-                                                                                {user.role}
+                                                    <div className="sk-grid">
+                                                        {/* 1. Account Section */}
+                                                        <section className="sk-section sk-span-2">
+                                                            <div className="sk-section-head">
+                                                                <span className="sk-eyebrow">{tr("Account")}</span>
+                                                            </div>
+                                                            <div className="sk-group">
+                                                                <div className="sk-row">
+                                                                    <div className="sk-row-icon">
+                                                                        {initials ? (
+                                                                            <span className="text-[12px] font-bold text-(--ss-fg)">
+                                                                                {initials}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <Shield size={15} />
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="sk-row-label">
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <span className="sk-row-title font-medium">
+                                                                                {user?.name || tr("ROOT")}
+                                                                            </span>
+                                                                            {user?.role && (
+                                                                                <span className="sk-badge" data-tone="accent">
+                                                                                    {user.role}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        {user?.email && (
+                                                                            <span className="sk-row-sub font-mono">
+                                                                                {user.email.toLowerCase()}
                                                                             </span>
                                                                         )}
                                                                     </div>
-                                                                    <span className="text-[11px] text-(--ss-fg2) truncate">
-                                                                        {user?.email?.toLowerCase()}
-                                                                    </span>
+                                                                    <div className="sk-row-value">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => logout()}
+                                                                            className="sk-btn"
+                                                                            data-variant="danger"
+                                                                        >
+                                                                            <LogOut size={13} />
+                                                                            <span>{tr("Sign out")}</span>
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
+                                                        </section>
 
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => logout()}
-                                                                className="ss-glass-pill h-7 px-2.5 rounded-lg bg-red-500/12 hover:bg-red-500/20 border border-red-500/25 text-(--ss-danger) text-[11px] font-semibold flex items-center gap-1 shrink-0"
-                                                            >
-                                                                <LogOut size={12} />
-                                                                <span>{tr("Sign out")}</span>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 2. Appearance Card: Theme + Surface Style + Palette Drawer */}
-                                                    <div className="ss-card">
-                                                        {/* Compact Theme Row */}
-                                                        <div className="flex items-center justify-between px-3 py-2.5 gap-3">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[13px] font-semibold text-(--ss-fg)">
-                                                                    {tr("Theme")}
-                                                                </span>
-                                                                <span className="text-[10.5px] text-(--ss-fg2)">
-                                                                    {theme === 'talan'
-                                                                        ? 'Talan Obsidian'
-                                                                        : 'Aqua Daylight'}
-                                                                </span>
+                                                        {/* 2. Appearance Section */}
+                                                        <section className="sk-section">
+                                                            <div className="sk-section-head">
+                                                                <span className="sk-eyebrow">{tr("Appearance")}</span>
                                                             </div>
-
-                                                            <div
-                                                                className="flex items-center gap-2.5"
-                                                                role="radiogroup"
-                                                                aria-label={tr("Theme")}
-                                                            >
-                                                                {/* Dark Talan */}
-                                                                <button
-                                                                    type="button"
-                                                                    className="ss-theme-btn flex items-center gap-1.5"
-                                                                    role="radio"
-                                                                    aria-checked={theme === 'talan'}
-                                                                    onClick={() => setTheme('talan')}
-                                                                    ref={(el) =>
-                                                                        (themeRefs.current[0] = el)
-                                                                    }
-                                                                    onKeyDown={(e) =>
-                                                                        handleThemeKeyDown(e, 0)
-                                                                    }
-                                                                >
-                                                                    <div
-                                                                        className="ss-theme-miniature"
-                                                                        style={{
-                                                                            backgroundImage: `url(${THEME_ASSETS.talan.swatch})`,
-                                                                        }}
-                                                                    >
-                                                                        <div className="w-[16px] h-full bg-black/45 border-r border-white/10" />
-                                                                        {theme === 'talan' && (
-                                                                            <div className="ss-theme-badge">
-                                                                                <Check
-                                                                                    size={10}
-                                                                                    strokeWidth={3}
-                                                                                />
-                                                                            </div>
-                                                                        )}
+                                                            <div className="sk-group">
+                                                                {/* Theme Row */}
+                                                                <div className="sk-row">
+                                                                    <div className="sk-row-label">
+                                                                        <span className="sk-row-title">{tr("Theme")}</span>
+                                                                        <span className="sk-row-sub">
+                                                                            {theme === 'talan'
+                                                                                ? tr("Talan Obsidian")
+                                                                                : tr("Aqua Daylight")}
+                                                                        </span>
                                                                     </div>
-                                                                </button>
-
-                                                                {/* Light Aqua */}
-                                                                <button
-                                                                    type="button"
-                                                                    className="ss-theme-btn flex items-center gap-1.5"
-                                                                    role="radio"
-                                                                    aria-checked={theme === 'aqua'}
-                                                                    onClick={() => setTheme('aqua')}
-                                                                    ref={(el) =>
-                                                                        (themeRefs.current[1] = el)
-                                                                    }
-                                                                    onKeyDown={(e) =>
-                                                                        handleThemeKeyDown(e, 1)
-                                                                    }
-                                                                >
-                                                                    <div
-                                                                        className="ss-theme-miniature"
-                                                                        style={{
-                                                                            backgroundImage: `url(${THEME_ASSETS.aqua.swatch})`,
-                                                                        }}
-                                                                    >
-                                                                        <div className="w-[16px] h-full bg-white/70 border-r border-black/10" />
-                                                                        {theme === 'aqua' && (
-                                                                            <div className="ss-theme-badge">
-                                                                                <Check
-                                                                                    size={10}
-                                                                                    strokeWidth={3}
-                                                                                />
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="ss-separator" />
-
-                                                        {/* Surface Material Row */}
-                                                        <div className="ss-row justify-between">
-                                                            <span className="text-[13px] font-medium text-(--ss-fg)">
-                                                                {tr("Surface style")}
-                                                            </span>
-                                                            <div
-                                                                className="ss-segmented"
-                                                                role="group"
-                                                                aria-label={tr("Interface style")}
-                                                            >
-                                                                {APP_STYLES.map((s) => {
-                                                                    const meta =
-                                                                        STYLE_META[s] ?? STYLE_META.rock;
-                                                                    const Icon = meta.icon;
-                                                                    return (
-                                                                        <button
-                                                                            key={s}
-                                                                            type="button"
-                                                                            aria-pressed={appStyle === s}
-                                                                            className="ss-segment"
-                                                                            onClick={() => setAppStyle(s)}
+                                                                    <div className="sk-row-value">
+                                                                        <div
+                                                                            className="sk-seg sk-seg-keep"
+                                                                            role="radiogroup"
+                                                                            aria-label={tr("Theme")}
                                                                         >
-                                                                            <Icon
-                                                                                size={12}
-                                                                                className="mr-1 opacity-75"
-                                                                            />
-                                                                            {meta.label}
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </div>
+                                                                            <button
+                                                                                type="button"
+                                                                                role="radio"
+                                                                                aria-checked={theme === 'talan'}
+                                                                                aria-label={tr("Talan")}
+                                                                                className="sk-seg-btn"
+                                                                                onClick={() => setTheme('talan')}
+                                                                                ref={(el) => {
+                                                                                    themeRefs.current[0] = el;
+                                                                                }}
+                                                                                onKeyDown={(e) =>
+                                                                                    handleThemeKeyDown(e, 0)
+                                                                                }
+                                                                            >
+                                                                                <span className="sk-seg-label">{tr("Talan")}</span>
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                role="radio"
+                                                                                aria-checked={theme === 'aqua'}
+                                                                                aria-label={tr("Aqua")}
+                                                                                className="sk-seg-btn"
+                                                                                onClick={() => setTheme('aqua')}
+                                                                                ref={(el) => {
+                                                                                    themeRefs.current[1] = el;
+                                                                                }}
+                                                                                onKeyDown={(e) =>
+                                                                                    handleThemeKeyDown(e, 1)
+                                                                                }
+                                                                            >
+                                                                                <span className="sk-seg-label">{tr("Aqua")}</span>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
 
-                                                        <div className="ss-separator" />
+                                                                {/* Surface Style Row */}
+                                                                <div className="sk-row">
+                                                                    <div className="sk-row-label">
+                                                                        <span className="sk-row-title">{tr("Surface style")}</span>
+                                                                    </div>
+                                                                    <div className="sk-row-value">
+                                                                        <div
+                                                                            className="sk-seg"
+                                                                            role="radiogroup"
+                                                                            aria-label={tr("Surface style")}
+                                                                        >
+                                                                            {APP_STYLES.map((s) => {
+                                                                                const meta =
+                                                                                    STYLE_META[s] ?? STYLE_META.rock;
+                                                                                const Icon = meta.icon;
+                                                                                const isChecked = appStyle === s;
+                                                                                return (
+                                                                                    <button
+                                                                                        key={s}
+                                                                                        type="button"
+                                                                                        role="radio"
+                                                                                        aria-checked={isChecked}
+                                                                                        aria-label={meta.label}
+                                                                                        className="sk-seg-btn"
+                                                                                        onClick={() => setAppStyle(s)}
+                                                                                    >
+                                                                                        <Icon size={12} />
+                                                                                        <span className="sk-seg-label">
+                                                                                            {meta.label}
+                                                                                        </span>
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
 
-                                                        {/* Collapsible Color Tokens Row */}
-                                                        <button
-                                                            type="button"
-                                                            className="ss-row ss-row-clickable justify-between w-full text-left"
-                                                            onClick={() => setColorsOpen(!colorsOpen)}
-                                                            aria-expanded={colorsOpen}
-                                                        >
-                                                            <span className="flex items-center gap-2.5">
-                                                                <span className="ss-icon-tile bg-cyan-500/10 text-cyan-500">
-                                                                    <Palette size={14} />
-                                                                </span>
-                                                                <span className="text-[13px] font-medium text-(--ss-fg)">
-                                                                    {tr("Color tokens")}
-                                                                </span>
-                                                            </span>
-                                                            <ChevronRight
-                                                                size={16}
-                                                                className={`text-(--ss-fg3) transition-transform duration-200 ${
-                                                                    colorsOpen ? 'rotate-90' : ''
-                                                                }`}
-                                                            />
-                                                        </button>
-
-                                                        <AnimatePresence initial={false}>
-                                                            {colorsOpen && (
-                                                                <m.div
-                                                                    initial={{ opacity: 0, height: 0 }}
-                                                                    animate={{
-                                                                        opacity: 1,
-                                                                        height: 'auto',
-                                                                    }}
-                                                                    exit={{ opacity: 0, height: 0 }}
-                                                                    className="overflow-hidden"
+                                                                {/* Color Tokens Disclosure */}
+                                                                <details
+                                                                    className="sk-disclosure"
+                                                                    open={colorsOpen}
+                                                                    onToggle={(e) =>
+                                                                        setColorsOpen(
+                                                                            (e.target as HTMLDetailsElement).open
+                                                                        )
+                                                                    }
                                                                 >
-                                                                    <div className="ss-separator ml-0" />
-                                                                    <div className="p-3 grid grid-cols-6 gap-2.5">
+                                                                    <summary className="sk-row">
+                                                                        <span className="sk-row-icon">
+                                                                            <Palette size={14} />
+                                                                        </span>
+                                                                        <span className="sk-row-label">
+                                                                            <span className="sk-row-title">
+                                                                                {tr("Color tokens")}
+                                                                            </span>
+                                                                        </span>
+                                                                        <span className="sk-row-value">
+                                                                            <ChevronRight
+                                                                                size={14}
+                                                                                className="sk-chevron"
+                                                                            />
+                                                                        </span>
+                                                                    </summary>
+                                                                    <div className="p-3 grid grid-cols-6 gap-2 bg-(--ss-field) border-t border-(--ss-sep)">
                                                                         {[
                                                                             {
                                                                                 label: tr("Surface"),
@@ -703,7 +687,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                                 className="flex flex-col items-center gap-1"
                                                                             >
                                                                                 <div
-                                                                                    className="w-[22px] h-[22px] rounded-full border border-(--ss-sep)"
+                                                                                    className="w-[20px] h-[20px] rounded-full border border-(--ss-sep)"
                                                                                     style={{
                                                                                         backgroundColor:
                                                                                             colorValues[
@@ -718,109 +702,133 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                             </div>
                                                                         ))}
                                                                     </div>
-                                                                </m.div>
-                                                            )}
-                                                        </AnimatePresence>
-                                                    </div>
-
-                                                    {/* 3. System & Network Card */}
-                                                    <div className="ss-card">
-                                                        <div className="ss-row justify-between">
-                                                            <div className="flex items-center gap-2.5">
-                                                                <div className="ss-icon-tile bg-blue-500/10 text-blue-500">
-                                                                    <Languages size={14} />
-                                                                </div>
-                                                                <span className="text-[13px] font-medium text-(--ss-fg)">
-                                                                    {tr("Language")}
-                                                                </span>
+                                                                </details>
                                                             </div>
-                                                            <div className="ss-segmented">
-                                                                <button
-                                                                    type="button"
-                                                                    className="ss-segment"
-                                                                    aria-pressed={language === 'en'}
-                                                                    onClick={() => setLanguage('en')}
-                                                                >
-                                                                    EN
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    className="ss-segment"
-                                                                    aria-pressed={language === 'es'}
-                                                                    onClick={() => setLanguage('es')}
-                                                                >
-                                                                    ES
-                                                                </button>
+                                                        </section>
+
+                                                        {/* 3. System & Network Section */}
+                                                        <section className="sk-section">
+                                                            <div className="sk-section-head">
+                                                                <span className="sk-eyebrow">{tr("System")}</span>
                                                             </div>
-                                                        </div>
-
-                                                        <div className="ss-separator ss-separator--icon" />
-
-                                                        <div className="ss-row justify-between">
-                                                            <div className="flex items-center gap-2.5">
-                                                                <div className="ss-icon-tile bg-yellow-500/10 text-yellow-500">
-                                                                    <Zap size={14} />
+                                                            <div className="sk-group">
+                                                                {/* Language Row */}
+                                                                <div className="sk-row">
+                                                                    <span className="sk-row-icon">
+                                                                        <Languages size={14} />
+                                                                    </span>
+                                                                    <div className="sk-row-label">
+                                                                        <span className="sk-row-title">
+                                                                            {tr("Language")}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="sk-row-value">
+                                                                        <div
+                                                                            className="sk-seg sk-seg-keep"
+                                                                            role="radiogroup"
+                                                                            aria-label={tr("Language")}
+                                                                        >
+                                                                            <button
+                                                                                type="button"
+                                                                                role="radio"
+                                                                                aria-checked={language === 'en'}
+                                                                                aria-label={tr("English")}
+                                                                                className="sk-seg-btn"
+                                                                                onClick={() => setLanguage('en')}
+                                                                            >
+                                                                                <span className="sk-seg-label">EN</span>
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                role="radio"
+                                                                                aria-checked={language === 'es'}
+                                                                                aria-label={tr("Spanish")}
+                                                                                className="sk-seg-btn"
+                                                                                onClick={() => setLanguage('es')}
+                                                                            >
+                                                                                <span className="sk-seg-label">ES</span>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[13px] font-medium text-(--ss-fg)">
-                                                                        {tr("Performance")}
+
+                                                                {/* Performance Row */}
+                                                                <div className="sk-row">
+                                                                    <span className="sk-row-icon">
+                                                                        <Zap size={14} />
                                                                     </span>
-                                                                    <span className="text-[10.5px] font-mono text-(--ss-fg2)">
-                                                                        {performanceMode
-                                                                            ? tr("Max")
-                                                                            : tr("Std")}
+                                                                    <div className="sk-row-label">
+                                                                        <span className="sk-row-title">
+                                                                            {tr("Performance")}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="sk-row-value">
+                                                                        <span className="sk-mono text-[12px]">
+                                                                            {performanceMode
+                                                                                ? tr("Max")
+                                                                                : tr("Std")}
+                                                                        </span>
+                                                                        <button
+                                                                            type="button"
+                                                                            role="switch"
+                                                                            aria-checked={performanceMode}
+                                                                            className="sk-switch"
+                                                                            onClick={() => setPerf(!performanceMode)}
+                                                                            aria-label={tr("Performance")}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Offline Mode Row */}
+                                                                <div className="sk-row">
+                                                                    <span className="sk-row-icon">
+                                                                        {isOffline ? (
+                                                                            <WifiOff size={14} />
+                                                                        ) : (
+                                                                            <Wifi size={14} />
+                                                                        )}
                                                                     </span>
+                                                                    <div className="sk-row-label">
+                                                                        <span className="sk-row-title">
+                                                                            {tr("Offline mode")}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="sk-row-value">
+                                                                        <span className="sk-mono text-[12px]">
+                                                                            {isOffline
+                                                                                ? tr("Local")
+                                                                                : tr("Live Sync")}
+                                                                        </span>
+                                                                        <button
+                                                                            type="button"
+                                                                            role="switch"
+                                                                            aria-checked={isOffline}
+                                                                            className="sk-switch"
+                                                                            onClick={() =>
+                                                                                isOffline
+                                                                                    ? goOnline()
+                                                                                    : goOffline()
+                                                                            }
+                                                                            aria-label={tr("Offline mode")}
+                                                                        />
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                            <TactileSwitch
-                                                                active={performanceMode}
-                                                                onChange={setPerf}
-                                                                width={42}
-                                                                height={24}
-                                                                aria-label={tr("Performance")}
-                                                            />
-                                                        </div>
-
-                                                        <div className="ss-separator ss-separator--icon" />
-
-                                                        <div className="ss-row justify-between">
-                                                            <div className="flex items-center gap-2.5">
-                                                                <div className="ss-icon-tile bg-amber-500/10 text-amber-500">
-                                                                    {isOffline ? (
-                                                                        <WifiOff size={14} />
-                                                                    ) : (
-                                                                        <Wifi size={14} />
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-[13px] font-medium text-(--ss-fg)">
-                                                                        {tr("Offline mode")}
-                                                                    </span>
-                                                                    <span className="text-[10.5px] font-mono text-(--ss-fg2)">
-                                                                        {isOffline
-                                                                            ? tr("Local")
-                                                                            : tr("Live Sync")}
-                                                                    </span>
-                                                                </div>
+                                                            <div className="sk-footnote">
+                                                                {tr("Offline changes are stored locally and will sync when reconnected.")}
                                                             </div>
-                                                            <TactileSwitch
-                                                                active={isOffline}
-                                                                onChange={(v) =>
-                                                                    v ? goOffline() : goOnline()
-                                                                }
-                                                                width={42}
-                                                                height={24}
-                                                                aria-label={tr("Offline mode")}
-                                                            />
-                                                        </div>
+                                                        </section>
                                                     </div>
                                                 </m.div>
                                             )}
 
-                                            {/* ── TAB 2: AI, MODELS & MCP (UNIFIED SINGLE TAB) ── */}
+                                            {/* ── TAB 2: AI, MODELS & MCP ── */}
                                             {activeTab === 'ai' && (
                                                 <m.div
                                                     key="tab-ai-mcp"
+                                                    id="ss-panel-ai"
+                                                    role="tabpanel"
+                                                    aria-labelledby="ss-tab-ai"
                                                     initial={{ opacity: 0, y: 6, scale: 0.99 }}
                                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                                     exit={{ opacity: 0, y: -6, scale: 0.99 }}
@@ -828,94 +836,78 @@ export const StudioSettingsPortal: React.FC = () => {
                                                         duration: 0.18,
                                                         ease: [0.22, 1, 0.36, 1],
                                                     }}
-                                                    className="space-y-2.5"
                                                 >
-                                                    {/* 1. Colibrì Local MoE Strip */}
-                                                    <ColibriSettingsCard />
+                                                    <div className="sk-grid">
+                                                        {/* 1. Colibrì Local MoE Section */}
+                                                        <ColibriSettingsCard />
 
-                                                    {/* 2. AI Provider Matrix & Task Routing */}
-                                                    <AiProvidersPanel />
+                                                        {/* 2. AI Providers Panel & Task Routing */}
+                                                        <AiProvidersPanel />
 
-                                                    {/* 3. Unified Connectors Strip (MCP Gateway + Siri Shortcuts) */}
-                                                    <div className="space-y-1.5 pt-0.5">
-                                                        <div className="flex items-center justify-between px-1">
-                                                            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-(--ss-fg2)">
-                                                                {tr("External Bridges & Voice")}
-                                                            </span>
-
-                                                            <div className="flex items-center p-0.5 rounded-full bg-(--ss-field) border border-(--ss-sep)">
-                                                                {(
-                                                                    [
-                                                                        {
-                                                                            id: 'mcp',
-                                                                            label: '🔌 MCP Bridge',
-                                                                            icon: Globe,
-                                                                        },
-                                                                        {
-                                                                            id: 'siri',
-                                                                            label: '🎙️ Siri & iOS',
-                                                                            icon: Mic,
-                                                                        },
-                                                                    ] as const
-                                                                ).map((c) => {
-                                                                    const active =
-                                                                        connectorMode === c.id;
-                                                                    return (
-                                                                        <button
-                                                                            key={c.id}
-                                                                            type="button"
-                                                                            onClick={() =>
-                                                                                setConnectorMode(c.id)
-                                                                            }
-                                                                            className={`relative h-6 px-2.5 rounded-full text-[10.5px] font-semibold transition-colors z-10 ${
-                                                                                active
-                                                                                    ? 'text-(--ss-on-accent)'
-                                                                                    : 'text-(--ss-fg2) hover:text-(--ss-fg)'
-                                                                            }`}
-                                                                        >
-                                                                            {active && (
-                                                                                <m.span
-                                                                                    layoutId="connector-sub-pill"
-                                                                                    className="ss-top-tab-pill"
-                                                                                    transition={{
-                                                                                        type: 'spring',
-                                                                                        stiffness: 420,
-                                                                                        damping: 32,
-                                                                                    }}
-                                                                                />
-                                                                            )}
-                                                                            <span className="relative z-10">
-                                                                                {c.label}
-                                                                            </span>
-                                                                        </button>
-                                                                    );
-                                                                })}
+                                                        {/* 3. Connectors Section */}
+                                                        <section className="sk-section sk-span-2">
+                                                            <div className="sk-section-head">
+                                                                <span className="sk-eyebrow">
+                                                                    {tr("Connectors")}
+                                                                </span>
+                                                                <div
+                                                                    className="sk-seg"
+                                                                    role="radiogroup"
+                                                                    aria-label={tr("Connectors")}
+                                                                >
+                                                                    <button
+                                                                        type="button"
+                                                                        role="radio"
+                                                                        aria-checked={connectorMode === 'mcp'}
+                                                                        className="sk-seg-btn"
+                                                                        onClick={() => setConnectorMode('mcp')}
+                                                                        aria-label={tr("MCP")}
+                                                                    >
+                                                                        <Plug size={14} />
+                                                                        <span className="sk-seg-label">
+                                                                            {tr("MCP")}
+                                                                        </span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        role="radio"
+                                                                        aria-checked={connectorMode === 'siri'}
+                                                                        className="sk-seg-btn"
+                                                                        onClick={() => setConnectorMode('siri')}
+                                                                        aria-label={tr("Siri & iOS")}
+                                                                    >
+                                                                        <Mic size={14} />
+                                                                        <span className="sk-seg-label">
+                                                                            {tr("Siri & iOS")}
+                                                                        </span>
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                        </div>
 
-                                                        <AnimatePresence mode="wait">
-                                                            {connectorMode === 'mcp' ? (
-                                                                <m.div
-                                                                    key="conn-mcp"
-                                                                    initial={{ opacity: 0, y: 4 }}
-                                                                    animate={{ opacity: 1, y: 0 }}
-                                                                    exit={{ opacity: 0, y: -4 }}
-                                                                    transition={{ duration: 0.15 }}
-                                                                >
-                                                                    <McpAccessPanel />
-                                                                </m.div>
-                                                            ) : (
-                                                                <m.div
-                                                                    key="conn-siri"
-                                                                    initial={{ opacity: 0, y: 4 }}
-                                                                    animate={{ opacity: 1, y: 0 }}
-                                                                    exit={{ opacity: 0, y: -4 }}
-                                                                    transition={{ duration: 0.15 }}
-                                                                >
-                                                                    <SiriAccessPanel />
-                                                                </m.div>
-                                                            )}
-                                                        </AnimatePresence>
+                                                            <AnimatePresence mode="wait">
+                                                                {connectorMode === 'mcp' ? (
+                                                                    <m.div
+                                                                        key="conn-mcp"
+                                                                        initial={{ opacity: 0, y: 4 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        exit={{ opacity: 0, y: -4 }}
+                                                                        transition={{ duration: 0.15 }}
+                                                                    >
+                                                                        <McpAccessPanel />
+                                                                    </m.div>
+                                                                ) : (
+                                                                    <m.div
+                                                                        key="conn-siri"
+                                                                        initial={{ opacity: 0, y: 4 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        exit={{ opacity: 0, y: -4 }}
+                                                                        transition={{ duration: 0.15 }}
+                                                                    >
+                                                                        <SiriAccessPanel />
+                                                                    </m.div>
+                                                                )}
+                                                            </AnimatePresence>
+                                                        </section>
                                                     </div>
                                                 </m.div>
                                             )}
@@ -1027,26 +1019,20 @@ export const StudioSettingsPortal: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Compact Footer Telemetry Strip */}
+                    {/* Footer */}
                     {viewMode === 'settings' && (
-                        <div className="h-[32px] border-t border-(--ss-sep) px-3.5 flex items-center justify-between text-[11px] tabular-nums text-(--ss-fg2) shrink-0">
-                            <div className="flex items-center gap-3">
-                                <span className="flex items-center gap-1.5">
-                                    <span
-                                        className={`w-1.5 h-1.5 rounded-full ${
-                                            isOffline ? 'bg-(--ss-warn)' : 'bg-(--ss-ok)'
-                                        }`}
-                                    />
-                                    <span className="font-mono text-(--ss-fg)">
-                                        {isOffline ? tr("OFFLINE") : tr("SYNC LIVE")}
-                                    </span>
+                        <div className="h-[32px] border-t border-(--ss-sep) px-3.5 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-1.5 text-[11px]">
+                                <span
+                                    className="sk-dot"
+                                    data-state={isOffline ? 'warn' : 'ok'}
+                                />
+                                <span className="text-(--ss-fg2)">
+                                    {isOffline ? tr("Offline") : tr("Synced")}
                                 </span>
-                                <span className="opacity-40">•</span>
-                                <span className="font-mono">{deviceCtx.label}</span>
                             </div>
-                            <div className="flex items-center gap-3 font-mono text-[10.5px]">
-                                <span>MX-NORTH</span>
-                                <span className="text-(--ss-fg)">V{APP_VERSION_LABEL}</span>
+                            <div className="sk-mono text-[11px] text-(--ss-fg2)">
+                                V{APP_VERSION_LABEL}
                             </div>
                         </div>
                     )}

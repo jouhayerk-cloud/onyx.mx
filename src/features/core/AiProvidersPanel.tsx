@@ -1,9 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAtom } from 'jotai';
-import { themeAtom, userAtom } from '../../lib/atoms';
+import { userAtom } from '../../lib/atoms';
 import { tr } from '../../lib/i18n';
-import { AlertCircle, Check, ExternalLink, RefreshCw, Trash2, Sparkles, Sliders } from 'lucide-react';
-import { LazyMotion, domMax, m, AnimatePresence } from 'framer-motion';
+import {
+    AlertCircle,
+    Check,
+    ChevronRight,
+    ExternalLink,
+    RefreshCw,
+    Sparkles,
+    Trash2,
+    X,
+} from 'lucide-react';
 import { PROVIDER_INFOS, getProvider } from '../../lib/ai/providers';
 import type { ProviderConfig, ProviderId } from '../../lib/ai/providers/types';
 import {
@@ -20,7 +28,7 @@ import {
     type RouteJob,
     type Route,
 } from '../../lib/ai/routing';
-import './aiProviders.css';
+import './settingsKit.css';
 
 interface TestStatus {
     ok: boolean;
@@ -36,17 +44,17 @@ const SHORT_NAMES: Record<ProviderId, string> = {
     colibri: 'Colibrì',
 };
 
+const TASK_ORDER: RouteJob[] = ['chat', 'content', 'translate', 'segmentation'];
+
 const JOB_META: Record<RouteJob, { label: string; tag: string }> = {
-    chat: { label: 'Chan Chat', tag: 'Tools' },
+    chat: { label: 'Chan chat', tag: 'Tools' },
     content: { label: 'Content', tag: 'Copy' },
-    segmentation: { label: 'Segment', tag: 'Vision' },
     translate: { label: 'Translate', tag: 'ES/EN' },
+    segmentation: { label: 'Segment', tag: 'Vision' },
 };
 
 export const AiProvidersPanel: React.FC = () => {
-    const [theme] = useAtom(themeAtom);
     const [user] = useAtom(userAtom);
-    const L = theme === 'aqua';
     const isDevOrAdmin = !user?.role || user.role === 'Developer' || user.role === 'Admin';
 
     const [configuredKeys, setConfiguredKeys] = useState<Record<ProviderId, boolean>>(() => ({
@@ -78,6 +86,15 @@ export const AiProvidersPanel: React.FC = () => {
 
     const [draftModels, setDraftModels] = useState<Record<ProviderId, string>>(() => ({
         gemini: '',
+        anthropic: getProviderConfig('anthropic').model || '',
+        openai: getProviderConfig('openai').model || '',
+        compat: getProviderConfig('compat').model || '',
+        companion: getProviderConfig('companion').model || 'qwen2.5-1.5b-instruct',
+        colibri: getProviderConfig('colibri').model || 'auto',
+    }));
+
+    const [savedModels, setSavedModels] = useState<Record<ProviderId, string>>(() => ({
+        gemini: getProviderConfig('gemini').model || 'gemini-2.5-flash',
         anthropic: getProviderConfig('anthropic').model || '',
         openai: getProviderConfig('openai').model || '',
         compat: getProviderConfig('compat').model || '',
@@ -137,8 +154,7 @@ export const AiProvidersPanel: React.FC = () => {
         chat: getRoute('chat'),
     }));
 
-    const [selectedProvider, setSelectedProvider] = useState<ProviderId>('gemini');
-    const [showRouting, setShowRouting] = useState<boolean>(true);
+    const [selectedProvider, setSelectedProvider] = useState<ProviderId | null>('gemini');
 
     const refreshState = useCallback(() => {
         setConfiguredKeys({
@@ -176,6 +192,15 @@ export const AiProvidersPanel: React.FC = () => {
             companion: prev.companion || companionCfg.model || 'qwen2.5-1.5b-instruct',
             colibri: prev.colibri || colibriCfg.model || 'auto',
         }));
+
+        setSavedModels({
+            gemini: getProviderConfig('gemini').model || 'gemini-2.5-flash',
+            anthropic: getProviderConfig('anthropic').model || '',
+            openai: getProviderConfig('openai').model || '',
+            compat: getProviderConfig('compat').model || '',
+            companion: getProviderConfig('companion').model || 'qwen2.5-1.5b-instruct',
+            colibri: getProviderConfig('colibri').model || 'auto',
+        });
     }, []);
 
     useEffect(() => {
@@ -203,6 +228,16 @@ export const AiProvidersPanel: React.FC = () => {
         setDraftKeys((prev) => ({ ...prev, [id]: '' }));
         setReplacingKey((prev) => ({ ...prev, [id]: false }));
         setTestStatus((prev) => ({ ...prev, [id]: { ok: true, message: tr("Saved") } }));
+
+        const savedModelVal =
+            id === 'gemini'
+                ? (getProviderConfig('gemini').model || 'gemini-2.5-flash')
+                : id === 'colibri'
+                ? (modelVal || 'auto')
+                : id === 'companion'
+                ? (modelVal || 'qwen2.5-1.5b-instruct')
+                : modelVal;
+        setSavedModels((prev) => ({ ...prev, [id]: savedModelVal }));
     };
 
     const handleTest = async (id: ProviderId) => {
@@ -293,378 +328,419 @@ export const AiProvidersPanel: React.FC = () => {
         setDraftModels((prev) => ({ ...prev, [id]: '' }));
         setReplacingKey((prev) => ({ ...prev, [id]: false }));
         setTestStatus((prev) => ({ ...prev, [id]: null }));
+        setSavedModels((prev) => ({
+            ...prev,
+            [id]: id === 'gemini'
+                ? 'gemini-2.5-flash'
+                : id === 'colibri'
+                ? 'auto'
+                : id === 'companion'
+                ? 'qwen2.5-1.5b-instruct'
+                : '',
+        }));
     };
 
     const configuredProviderIds = listConfigured();
     const otherConfigured = configuredProviderIds.filter((p) => p !== 'gemini');
     const activeChatRoute = routes.chat || { provider: 'gemini' };
-    const info = PROVIDER_INFOS.find((p) => p.id === selectedProvider) || PROVIDER_INFOS[0];
 
-    const hasKey = configuredKeys[info.id];
-    const isReplacing = replacingKey[info.id];
-    const keyDraft = draftKeys[info.id] ?? '';
-    const baseUrlDraft = draftBaseUrls[info.id] ?? '';
-    const modelDraft = draftModels[info.id] ?? '';
-    const isTesting = testing[info.id];
-    const isLoadingMods = loadingModels[info.id];
-    const testResult = testStatus[info.id];
-    const models = availableModels[info.id] || [];
+    const orderedJobs: RouteJob[] = [
+        ...TASK_ORDER.filter((j) => ROUTABLE_JOBS.includes(j)),
+        ...ROUTABLE_JOBS.filter((j) => !TASK_ORDER.includes(j)),
+    ];
 
     return (
-        <LazyMotion features={domMax}>
-            <div className={`sa-panel ap-panel space-y-2.5 ${L ? 'sa-theme-aqua' : ''}`}>
-                {/* 1. Compact 6-Pill Provider Selector Strip + Inline Inspector */}
-                <div className="ss-card p-2.5 space-y-2.5">
-                    <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-1.5">
-                            <Sparkles size={12} className="text-cyan-400" />
-                            <span className="text-[11px] font-semibold uppercase tracking-wider text-(--ss-fg2)">
-                                {tr("AI Providers")}
-                            </span>
-                        </div>
-                        <span className="text-[10.5px] font-mono text-(--ss-fg2)">
-                            Chat: <strong className="text-cyan-400">{SHORT_NAMES[activeChatRoute.provider]}</strong>
-                        </span>
+        <>
+            {/* 1. Routing section */}
+            {isDevOrAdmin && (
+                <section className="sk-section">
+                    <div className="sk-section-head">
+                        <span className="sk-eyebrow">{tr("Routing")}</span>
                     </div>
-
-                    {/* 6-Pill Grid */}
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                        {PROVIDER_INFOS.map((p) => {
-                            const isSelected = selectedProvider === p.id;
-                            const isReady =
-                                configuredKeys[p.id] || p.id === 'colibri' || p.id === 'companion';
-                            const isChatActive = activeChatRoute.provider === p.id;
+                    <div className="sk-group">
+                        {orderedJobs.map((job) => {
+                            const currentRoute = routes[job] || { provider: 'gemini' };
+                            const meta = JOB_META[job] || { label: job, tag: '' };
 
                             return (
-                                <button
-                                    key={p.id}
-                                    type="button"
-                                    onClick={() => setSelectedProvider(p.id)}
-                                    className={`ss-glass-pill relative h-8 px-2 rounded-xl border text-[11px] font-semibold flex items-center justify-between gap-1 transition-all ${
-                                        isSelected
-                                            ? 'bg-cyan-500/18 border-cyan-400/60 text-cyan-300 shadow-xs'
-                                            : 'bg-(--ss-field) border-(--ss-sep) text-(--ss-fg2) hover:text-(--ss-fg)'
-                                    }`}
-                                >
-                                    <span className="truncate">{SHORT_NAMES[p.id]}</span>
-                                    <span
-                                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                            isChatActive
-                                                ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]'
-                                                : isReady
-                                                ? 'bg-emerald-400'
-                                                : 'bg-(--ss-fg3)/40'
-                                        }`}
-                                    />
-                                </button>
+                                <div key={job} className="sk-row">
+                                    <div className="sk-row-label">
+                                        <span className="sk-row-title">{tr(meta.label)}</span>
+                                        {meta.tag && (
+                                            <span className="sk-row-sub">{tr(meta.tag)}</span>
+                                        )}
+                                    </div>
+                                    <div className="sk-row-value">
+                                        <div className="sk-field">
+                                            <select
+                                                value={currentRoute.provider}
+                                                onChange={(e) => {
+                                                    const nextProv = e.target.value as ProviderId;
+                                                    if (nextProv === 'gemini') {
+                                                        setRoute(job, null);
+                                                    } else {
+                                                        setRoute(job, { provider: nextProv });
+                                                    }
+                                                }}
+                                                aria-label={tr(meta.label)}
+                                            >
+                                                <option value="gemini">Gemini</option>
+                                                <option value="colibri">Colibrì MoE</option>
+                                                <option value="companion">iOS A17</option>
+                                                {otherConfigured
+                                                    .filter((p) => p !== 'colibri' && p !== 'companion')
+                                                    .map((pId) => (
+                                                        <option key={pId} value={pId}>
+                                                            {SHORT_NAMES[pId] || pId}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
                             );
                         })}
                     </div>
+                </section>
+            )}
 
-                    {/* Animated Inline Provider Bar */}
-                    <AnimatePresence mode="wait">
-                        <m.div
-                            key={info.id}
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                            className="p-2.5 rounded-xl bg-(--ss-field) border border-(--ss-sep) space-y-2"
-                        >
-                            {/* Header line: Provider Name + Status + Docs */}
-                            <div className="flex items-center justify-between gap-2 text-[11px]">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="font-semibold text-(--ss-fg) truncate">
-                                        {info.label}
+            {/* 2. Providers section */}
+            <section className="sk-section sk-span-2">
+                <div className="sk-section-head">
+                    <span className="sk-eyebrow">{tr("Providers")}</span>
+                    <span className="sk-badge" data-tone="accent">
+                        {tr("Chat")}: {SHORT_NAMES[activeChatRoute.provider] || activeChatRoute.provider}
+                    </span>
+                </div>
+                <div className="sk-group">
+                    {PROVIDER_INFOS.map((p) => {
+                        const isSelected = selectedProvider === p.id;
+                        const hasKey = configuredKeys[p.id];
+                        const isKeylessAvailable =
+                            p.id === 'colibri' ||
+                            (p.id === 'companion' && hasProviderKey('companion')) ||
+                            (p.id === 'compat' && hasProviderKey('compat') && !draftKeys[p.id]);
+                        const isOk = Boolean(hasKey || isKeylessAvailable);
+
+                        const savedModel = savedModels[p.id];
+                        const modelDraft = draftModels[p.id] ?? '';
+
+                        const isReplacing = replacingKey[p.id];
+                        const keyDraft = draftKeys[p.id] ?? '';
+                        const baseUrlDraft = draftBaseUrls[p.id] ?? '';
+                        const isTesting = testing[p.id];
+                        const isLoadingMods = loadingModels[p.id];
+                        const testResult = testStatus[p.id];
+                        const models = availableModels[p.id] || [];
+
+                        return (
+                            <React.Fragment key={p.id}>
+                                <button
+                                    type="button"
+                                    className="sk-row sk-row-button"
+                                    aria-expanded={isSelected}
+                                    onClick={() =>
+                                        setSelectedProvider((prev) => (prev === p.id ? null : p.id))
+                                    }
+                                >
+                                    <span
+                                        className="sk-dot"
+                                        data-state={isOk ? 'ok' : undefined}
+                                    />
+                                    <span className="sk-row-label">
+                                        <span className="sk-row-title">
+                                            {SHORT_NAMES[p.id] || p.label}
+                                        </span>
                                     </span>
-                                    {hasKey && (
-                                        <span className="px-1.5 py-0.2 rounded text-[9.5px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                                            {tr("Key Saved")}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    {info.docsUrl && (
-                                        <a
-                                            href={info.docsUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-[10.5px] text-cyan-400 hover:underline flex items-center gap-0.5"
+                                    <span className="sk-row-value">
+                                        {p.id === 'colibri' || p.id === 'companion' ? (
+                                            <span className="sk-badge">{tr("On device")}</span>
+                                        ) : hasKey ? (
+                                            <span className="sk-badge" data-tone="ok">
+                                                {tr("Key saved")}
+                                            </span>
+                                        ) : (
+                                            <span className="sk-badge">{tr("No key")}</span>
+                                        )}
+                                        <span
+                                            className={`${savedModel ? 'sk-mono ' : ''}sk-truncate`}
+                                            style={{ maxWidth: 160 }}
                                         >
-                                            <span>{tr("Key")}</span>
-                                            <ExternalLink size={10} />
-                                        </a>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Compact Inputs Row */}
-                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center">
-                                {/* API Key or Native Status */}
-                                {info.id === 'companion' || info.id === 'colibri' ? (
-                                    <div className="sm:col-span-6 h-8 px-2.5 rounded-lg bg-black/20 border border-(--ss-sep) flex items-center gap-1.5 text-[11px] text-emerald-400 font-mono truncate">
-                                        <Check size={12} className="shrink-0" />
-                                        <span className="truncate">
-                                            {info.id === 'colibri'
-                                                ? 'Local NVMe / WSS Bridge'
-                                                : 'iOS A17 Native Bridge'}
+                                            {savedModel || tr("No model")}
                                         </span>
-                                    </div>
-                                ) : hasKey && !isReplacing ? (
-                                    <div className="sm:col-span-6 h-8 px-2.5 rounded-lg bg-black/20 border border-(--ss-sep) flex items-center justify-between gap-1.5 text-[11px]">
-                                        <span className="text-emerald-400 font-mono flex items-center gap-1 truncate">
-                                            <Check size={12} /> ••••••••
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setReplacingKey((prev) => ({
-                                                    ...prev,
-                                                    [info.id]: true,
-                                                }))
-                                            }
-                                            className="text-[10.5px] text-cyan-400 hover:underline shrink-0"
-                                        >
-                                            {tr("Change")}
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="sm:col-span-6 flex items-center gap-1">
-                                        <input
-                                            type="password"
-                                            autoComplete="off"
-                                            placeholder={info.keyHint || tr("API Key")}
-                                            value={keyDraft}
-                                            onChange={(e) =>
-                                                setDraftKeys((prev) => ({
-                                                    ...prev,
-                                                    [info.id]: e.target.value,
-                                                }))
-                                            }
-                                            className="w-full h-8 px-2.5 rounded-lg bg-black/30 border border-(--ss-sep) text-(--ss-fg) text-[11px] font-mono focus:outline-none focus:border-cyan-400"
+                                        <ChevronRight
+                                            size={14}
+                                            className="sk-chevron"
+                                            style={{
+                                                transform: isSelected ? 'rotate(90deg)' : undefined,
+                                            }}
                                         />
-                                        {isReplacing && (
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setReplacingKey((prev) => ({
+                                    </span>
+                                </button>
+
+                                {isSelected && (
+                                    <div
+                                        className="sk-row-editor"
+                                        style={{ borderBottom: '1px solid var(--ss-sep)' }}
+                                    >
+                                        {/* Key field */}
+                                        {p.id === 'companion' || p.id === 'colibri' ? (
+                                            <div className="sk-field sk-mono">
+                                                <Check
+                                                    size={12}
+                                                    style={{ color: 'var(--ss-ok)', flex: 'none' }}
+                                                />
+                                                <span className="sk-truncate">
+                                                    {p.id === 'colibri'
+                                                        ? tr("Local NVMe / WSS Bridge")
+                                                        : tr("iOS A17 Native Bridge")}
+                                                </span>
+                                            </div>
+                                        ) : hasKey && !isReplacing ? (
+                                            <div className="sk-field">
+                                                <span
+                                                    className="sk-mono"
+                                                    style={{
+                                                        flex: '1 1 auto',
+                                                        color: 'var(--ss-ok)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                    }}
+                                                >
+                                                    <Check size={12} /> ••••••••
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    className="sk-btn"
+                                                    data-variant="plain"
+                                                    style={{ height: 22, padding: '0 6px', fontSize: 11 }}
+                                                    onClick={() =>
+                                                        setReplacingKey((prev) => ({
+                                                            ...prev,
+                                                            [p.id]: true,
+                                                        }))
+                                                    }
+                                                >
+                                                    {tr("Change")}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="sk-field">
+                                                <input
+                                                    type="password"
+                                                    autoComplete="off"
+                                                    placeholder={p.keyHint || tr("API key")}
+                                                    value={keyDraft}
+                                                    onChange={(e) =>
+                                                        setDraftKeys((prev) => ({
+                                                            ...prev,
+                                                            [p.id]: e.target.value,
+                                                        }))
+                                                    }
+                                                    aria-label={tr("API key")}
+                                                />
+                                                {isReplacing && (
+                                                    <button
+                                                        type="button"
+                                                        className="sk-btn"
+                                                        data-variant="plain"
+                                                        data-icon-only
+                                                        style={{ width: 20, height: 20 }}
+                                                        onClick={() =>
+                                                            setReplacingKey((prev) => ({
+                                                                ...prev,
+                                                                [p.id]: false,
+                                                            }))
+                                                        }
+                                                        aria-label={tr("Cancel")}
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Base URL (Compat / needsBaseUrl) */}
+                                        {p.needsBaseUrl && (
+                                            <div className="sk-field" style={{ flexBasis: '100%' }}>
+                                                <input
+                                                    type="url"
+                                                    value={baseUrlDraft}
+                                                    onChange={(e) =>
+                                                        setDraftBaseUrls((prev) => ({
+                                                            ...prev,
+                                                            [p.id]: e.target.value,
+                                                        }))
+                                                    }
+                                                    placeholder={
+                                                        p.defaultBaseUrl || 'http://localhost:11434/v1'
+                                                    }
+                                                    aria-label={tr("Base URL")}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Model field */}
+                                        <div className="sk-field">
+                                            <input
+                                                list={`ap-models-${p.id}`}
+                                                value={modelDraft}
+                                                disabled={p.id === 'gemini'}
+                                                onChange={(e) =>
+                                                    setDraftModels((prev) => ({
                                                         ...prev,
-                                                        [info.id]: false,
+                                                        [p.id]: e.target.value,
                                                     }))
                                                 }
-                                                className="h-8 px-2 rounded-lg text-[10px] text-(--ss-fg2) hover:text-(--ss-fg)"
+                                                placeholder={
+                                                    p.id === 'gemini'
+                                                        ? tr("gemini-2.5-flash (Auto)")
+                                                        : p.id === 'colibri'
+                                                        ? tr("auto (MoE Routing)")
+                                                        : tr("Model ID")
+                                                }
+                                                aria-label={tr("Model ID")}
+                                            />
+                                            <datalist id={`ap-models-${p.id}`}>
+                                                {models.map((mItem) => (
+                                                    <option
+                                                        key={mItem}
+                                                        value={mItem}
+                                                        label={
+                                                            mItem === 'auto' && p.id === 'colibri'
+                                                                ? tr("auto (MoE Routing)")
+                                                                : mItem
+                                                        }
+                                                    />
+                                                ))}
+                                            </datalist>
+                                            {getProvider(p.id)?.listModels && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleLoadModels(p.id)}
+                                                    disabled={isLoadingMods}
+                                                    title={tr("Fetch models")}
+                                                    aria-label={tr("Fetch models")}
+                                                    className="sk-btn"
+                                                    data-variant="plain"
+                                                    data-icon-only
+                                                    style={{ width: 22, height: 22 }}
+                                                >
+                                                    <RefreshCw
+                                                        size={12}
+                                                        className={
+                                                            isLoadingMods ? 'animate-spin' : undefined
+                                                        }
+                                                    />
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Action buttons */}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSave(p.id)}
+                                            className="sk-btn"
+                                            data-variant="primary"
+                                        >
+                                            {tr("Save")}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleTest(p.id)}
+                                            disabled={isTesting}
+                                            className="sk-btn"
+                                        >
+                                            {isTesting ? '…' : tr("Test")}
+                                        </button>
+
+                                        {hasKey && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemove(p.id)}
+                                                className="sk-btn"
+                                                data-variant="danger"
+                                                data-icon-only
+                                                aria-label={tr("Delete key")}
+                                                title={tr("Delete key")}
                                             >
-                                                ✕
+                                                <Trash2 size={13} />
                                             </button>
+                                        )}
+
+                                        {p.docsUrl && (
+                                            <a
+                                                href={p.docsUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="sk-btn"
+                                                data-variant="plain"
+                                            >
+                                                <span>{tr("Get key")}</span>
+                                                <ExternalLink size={11} />
+                                            </a>
+                                        )}
+
+                                        {/* Colibri MoE Hint */}
+                                        {p.id === 'colibri' && (modelDraft === 'auto' || !modelDraft) && (
+                                            <div
+                                                className="sk-footnote"
+                                                style={{
+                                                    width: '100%',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    color: 'var(--ss-fg2)',
+                                                    marginTop: 2,
+                                                }}
+                                            >
+                                                <Sparkles
+                                                    size={12}
+                                                    style={{ color: 'var(--ss-accent)', flex: 'none' }}
+                                                />
+                                                <span className="sk-truncate">
+                                                    <strong style={{ color: 'var(--ss-fg)' }}>
+                                                        {tr("Auto MoE")}:
+                                                    </strong>{' '}
+                                                    {tr("Chat -> GLM-5.2 · Translate -> Qwen-2.5 · Content/JSON -> Kimi-K3")}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Test Status Feedback */}
+                                        {testResult && (
+                                            <div
+                                                className="sk-footnote"
+                                                style={{
+                                                    width: '100%',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    color: testResult.ok
+                                                        ? 'var(--ss-ok)'
+                                                        : 'var(--ss-warn)',
+                                                    marginTop: 2,
+                                                }}
+                                            >
+                                                {testResult.ok ? (
+                                                    <Check size={12} />
+                                                ) : (
+                                                    <AlertCircle size={12} />
+                                                )}
+                                                <span className="sk-truncate">
+                                                    {testResult.message}
+                                                </span>
+                                            </div>
                                         )}
                                     </div>
                                 )}
-
-                                {/* Model Input / Select */}
-                                <div className="sm:col-span-4 flex items-center gap-1">
-                                    <input
-                                        list={`ap-models-${info.id}`}
-                                        value={modelDraft}
-                                        disabled={info.id === 'gemini'}
-                                        onChange={(e) =>
-                                            setDraftModels((prev) => ({
-                                                ...prev,
-                                                [info.id]: e.target.value,
-                                            }))
-                                        }
-                                        placeholder={
-                                            info.id === 'gemini'
-                                                ? 'gemini-2.5-flash (Auto)'
-                                                : info.id === 'colibri'
-                                                ? 'auto (Smart MoE Routing)'
-                                                : tr("Model ID")
-                                        }
-                                        className="w-full h-8 px-2.5 rounded-lg bg-black/30 border border-(--ss-sep) text-(--ss-fg) text-[11px] font-mono focus:outline-none focus:border-cyan-400 disabled:opacity-60"
-                                    />
-                                    <datalist id={`ap-models-${info.id}`}>
-                                        {models.map((mItem) => (
-                                            <option
-                                                key={mItem}
-                                                value={mItem}
-                                                label={
-                                                    mItem === 'auto' && info.id === 'colibri'
-                                                        ? '✨ auto (Smart MoE Routing)'
-                                                        : mItem
-                                                }
-                                            />
-                                        ))}
-                                    </datalist>
-                                    {getProvider(info.id)?.listModels && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleLoadModels(info.id)}
-                                            disabled={isLoadingMods}
-                                            title={tr("Fetch models")}
-                                            className="h-8 w-8 rounded-lg bg-(--ss-fill) hover:bg-(--ss-fill-hover) border border-(--ss-sep) flex items-center justify-center text-(--ss-fg2) shrink-0"
-                                        >
-                                            <RefreshCw
-                                                size={11}
-                                                className={isLoadingMods ? 'animate-spin' : ''}
-                                            />
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Actions: Save + Test + Delete */}
-                                <div className="sm:col-span-2 flex items-center justify-end gap-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSave(info.id)}
-                                        className="ss-glass-pill h-8 px-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-[11px] font-semibold"
-                                    >
-                                        {tr("Save")}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleTest(info.id)}
-                                        disabled={isTesting}
-                                        className="ss-glass-pill h-8 px-2 rounded-lg bg-(--ss-fill) hover:bg-(--ss-fill-hover) border border-(--ss-sep) text-(--ss-fg) text-[11px] font-medium"
-                                    >
-                                        {isTesting ? '…' : tr("Test")}
-                                    </button>
-                                    {hasKey && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemove(info.id)}
-                                            className="h-8 w-7 rounded-lg text-red-400 hover:bg-red-500/15 flex items-center justify-center shrink-0"
-                                            title={tr("Remove key")}
-                                        >
-                                            <Trash2 size={12} />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Auto Model Selecting Info Pill for Colibrì */}
-                            {info.id === 'colibri' && (modelDraft === 'auto' || !modelDraft) && (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[10.5px] text-cyan-300">
-                                    <Sparkles size={11} className="text-cyan-400 shrink-0" />
-                                    <span className="font-semibold text-cyan-200">Auto MoE:</span>
-                                    <span className="text-cyan-300/80 truncate">
-                                        Chat ➔ GLM-5.2 · Translate ➔ Qwen-2.5 · Content/JSON ➔ Kimi-K3
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* Base URL input if Compat */}
-                            {info.needsBaseUrl && (
-                                <input
-                                    type="url"
-                                    value={baseUrlDraft}
-                                    onChange={(e) =>
-                                        setDraftBaseUrls((prev) => ({
-                                            ...prev,
-                                            [info.id]: e.target.value,
-                                        }))
-                                    }
-                                    placeholder={info.defaultBaseUrl || 'http://localhost:11434/v1'}
-                                    className="w-full h-7 px-2.5 rounded-lg bg-black/30 border border-(--ss-sep) text-(--ss-fg) text-[11px] font-mono focus:outline-none focus:border-cyan-400"
-                                />
-                            )}
-
-                            {/* Test feedback micro-pill */}
-                            {testResult && (
-                                <div
-                                    className={`px-2 py-1 rounded-md text-[10.5px] flex items-center gap-1.5 ${
-                                        testResult.ok
-                                            ? 'bg-emerald-500/15 text-emerald-300'
-                                            : 'bg-amber-500/15 text-amber-300'
-                                    }`}
-                                >
-                                    {testResult.ok ? <Check size={11} /> : <AlertCircle size={11} />}
-                                    <span className="truncate">{testResult.message}</span>
-                                </div>
-                            )}
-                        </m.div>
-                    </AnimatePresence>
+                            </React.Fragment>
+                        );
+                    })}
                 </div>
-
-                {/* 2. Data-Dense 2x2 Task Routing Matrix */}
-                {isDevOrAdmin && (
-                    <div className="ss-card p-2.5">
-                        <button
-                            type="button"
-                            onClick={() => setShowRouting(!showRouting)}
-                            className="w-full flex items-center justify-between px-1 py-0.5 text-left"
-                        >
-                            <div className="flex items-center gap-1.5">
-                                <Sliders size={12} className="text-cyan-400" />
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-(--ss-fg2)">
-                                    {tr("Task Routing Matrix")}
-                                </span>
-                            </div>
-                            <span className="text-[10.5px] text-(--ss-accent) font-medium">
-                                {showRouting ? tr("Hide") : tr("Configure")}
-                            </span>
-                        </button>
-
-                        <AnimatePresence initial={false}>
-                            {showRouting && (
-                                <m.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                                    className="overflow-hidden"
-                                >
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-2">
-                                        {ROUTABLE_JOBS.map((job) => {
-                                            const currentRoute = routes[job] || { provider: 'gemini' };
-                                            const meta = JOB_META[job];
-
-                                            return (
-                                                <div
-                                                    key={job}
-                                                    className="flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-xl bg-(--ss-field) border border-(--ss-sep)"
-                                                >
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                        <span className="text-[11.5px] font-semibold text-(--ss-fg) truncate">
-                                                            {meta.label}
-                                                        </span>
-                                                        <span className="text-[9.5px] font-mono px-1 py-0.2 rounded bg-white/5 text-(--ss-fg3)">
-                                                            {meta.tag}
-                                                        </span>
-                                                    </div>
-
-                                                    <select
-                                                        value={currentRoute.provider}
-                                                        onChange={(e) => {
-                                                            const nextProv = e.target.value as ProviderId;
-                                                            if (nextProv === 'gemini') {
-                                                                setRoute(job, null);
-                                                            } else {
-                                                                setRoute(job, { provider: nextProv });
-                                                            }
-                                                        }}
-                                                        aria-label={meta.label}
-                                                        className="h-6.5 px-2 rounded-lg bg-black/35 border border-(--ss-sep) text-(--ss-fg) text-[11px] font-mono focus:outline-none focus:border-cyan-400"
-                                                    >
-                                                        <option value="gemini">Gemini</option>
-                                                        <option value="colibri">Colibrì MoE</option>
-                                                        <option value="companion">iOS A17</option>
-                                                        {otherConfigured
-                                                            .filter((p) => p !== 'colibri' && p !== 'companion')
-                                                            .map((pId) => (
-                                                                <option key={pId} value={pId}>
-                                                                    {SHORT_NAMES[pId] || pId}
-                                                                </option>
-                                                            ))}
-                                                    </select>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </m.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                )}
-            </div>
-        </LazyMotion>
+            </section>
+        </>
     );
 };
