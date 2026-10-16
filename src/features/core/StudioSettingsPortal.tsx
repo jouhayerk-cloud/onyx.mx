@@ -102,7 +102,7 @@ export type SettingsTab = 'general' | 'ai';
 function useDeviceContext() {
     return useMemo(() => {
         if (typeof window === 'undefined') {
-            return { label: 'Node', isIOS: false, transport: 'WSS' };
+            return { label: 'Node', isIOS: false, transport: 'Web' };
         }
         const ua = navigator.userAgent || '';
         const isIOS = /iPhone|iPad|iPod/i.test(ua);
@@ -121,7 +121,7 @@ function useDeviceContext() {
             ? 'Windows'
             : 'Web Node';
 
-        const transport = isLocal && !isIOS ? 'Loopback :8082' : 'Cloud WSS';
+        const transport = isLocal && !isIOS ? 'Loopback' : 'Remote';
         return { label, isIOS, transport };
     }, []);
 }

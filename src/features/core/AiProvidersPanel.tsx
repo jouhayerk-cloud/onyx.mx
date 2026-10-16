@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { PROVIDER_INFOS, getProvider } from '../../lib/ai/providers';
 import { COLIBRI_DEFAULT_BASE_URL } from '../../lib/ai/providers/colibri';
+import { COLIBRI_MODELS } from '../../lib/ai/models';
 import type { ProviderConfig, ProviderId } from '../../lib/ai/providers/types';
 import {
     getProviderConfig,
@@ -26,6 +27,7 @@ import {
     getRoute,
     setRoute,
     ROUTABLE_JOBS,
+    providerAllowedForJob,
     type RouteJob,
     type Route,
 } from '../../lib/ai/routing';
@@ -56,7 +58,7 @@ const JOB_META: Record<RouteJob, { label: string; tag: string }> = {
 
 export const AiProvidersPanel: React.FC = () => {
     const [user] = useAtom(userAtom);
-    const isDevOrAdmin = !user?.role || user.role === 'Developer' || user.role === 'Admin';
+    const isDevOrAdmin = user?.role === 'Developer' || user?.role === 'Admin';
 
     const [configuredKeys, setConfiguredKeys] = useState<Record<ProviderId, boolean>>(() => ({
         gemini: hasProviderKey('gemini'),
@@ -118,7 +120,7 @@ export const AiProvidersPanel: React.FC = () => {
         openai: ['gpt-4o', 'gpt-4o-mini', 'o3-mini'],
         compat: [],
         companion: ['qwen2.5-1.5b-instruct', 'gemma-2-2b-it'],
-        colibri: ['auto', 'colibri-glm-5.2-moe', 'colibri-kimi-k3-moe', 'colibri-qwen-2.5-3b'],
+        colibri: [...COLIBRI_MODELS],
     });
 
     const [loadingModels, setLoadingModels] = useState<Record<ProviderId, boolean>>({
@@ -386,7 +388,9 @@ export const AiProvidersPanel: React.FC = () => {
                                                 aria-label={tr(meta.label)}
                                             >
                                                 <option value="gemini">Gemini</option>
-                                                <option value="colibri">Colibrì MoE</option>
+                                                {providerAllowedForJob('colibri', job) && (
+                                                    <option value="colibri">Colibrì MoE</option>
+                                                )}
                                                 <option value="companion">iOS A17</option>
                                                 {otherConfigured
                                                     .filter((p) => p !== 'colibri' && p !== 'companion')
@@ -493,7 +497,7 @@ export const AiProvidersPanel: React.FC = () => {
                                                 />
                                                 <span className="sk-truncate">
                                                     {p.id === 'colibri'
-                                                        ? tr("Local NVMe / WSS Bridge")
+                                                        ? tr("Local Colibrì server")
                                                         : tr("iOS A17 Native Bridge")}
                                                 </span>
                                             </div>

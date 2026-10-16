@@ -15,7 +15,7 @@
     TCP port (default: the port in setup.json, else 8000).
 
 .PARAMETER CorsOrigin
-    Browser origins allowed to call the server. Default: the deployed app. http://localhost:5173 is already in
+    Browser origins allowed to call the server. Default: the deployed app and https://localhost:1001. For a LAN address pass it here or set COLIBRI_CORS_ORIGINS (comma separated). http://localhost:5173 is already in
     Colibri's built-in list. Add the dev server origin if you serve the app from another port.
 
 .PARAMETER DevMock
@@ -42,7 +42,7 @@
 [CmdletBinding()]
 param(
     [int]$Port = 0,
-    [string[]]$CorsOrigin = @("https://jouhayerk-cloud.github.io", "https://192.0.2.71:1001", "https://localhost:1001"),
+    [string[]]$CorsOrigin = @("https://jouhayerk-cloud.github.io", "https://localhost:1001"),
     [switch]$DevMock,
     [switch]$Stop,
     [switch]$Status,
@@ -142,7 +142,8 @@ if ($DevMock) {
     $argList = @($setup.args | ForEach-Object { "$_" })
     # keep the server on this machine and replace the port if one was given
     $argList = @($argList | Where-Object { $_ -ne "--no-browser" })
-    foreach ($origin in $CorsOrigin) {
+    $envOrigins = if ($env:COLIBRI_CORS_ORIGINS) { $env:COLIBRI_CORS_ORIGINS -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } } else { @() }
+    foreach ($origin in @($CorsOrigin) + @($envOrigins)) {
         if ($origin) { $argList += @("--cors-origin", "+$origin") }
     }
     $argList += "--no-browser"

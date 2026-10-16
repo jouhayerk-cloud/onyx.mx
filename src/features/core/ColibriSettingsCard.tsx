@@ -9,13 +9,12 @@ import {
     Network,
     Settings2,
     ChevronRight,
-    Copy,
-    Check,
     X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { colibriProvider, isColibriAvailable, COLIBRI_DEFAULT_BASE_URL } from '../../lib/ai/providers/colibri';
-import { colibriRealtimeBridge } from '../../lib/ai/colibriRealtimeBridge';
+import { COLIBRI_RELAY_DISABLED_REASON } from '../../lib/ai/colibriRealtimeBridge';
+import { COLIBRI_MODELS, COLIBRI_MODEL_SPECS } from '../../lib/ai/models';
 import {
     getProviderConfig,
     setProviderConfig,
@@ -26,7 +25,7 @@ import type { ProviderConfig } from '../../lib/ai/providers/types';
 import {
     ONYX_MESH_TOPOLOGY,
     MESH_NODES,
-    SUPABASE_RELAY_URL,
+    isMeshNodeConfigured,
     pingMeshNode,
 } from '../../lib/network/localMeshMap';
 
@@ -44,45 +43,31 @@ interface TransportModeItem {
     icon: LucideIcon;
 }
 
-const PRESET_URLS: Record<'cloud' | 'localhost' | 'mesh', string> = {
-    cloud: SUPABASE_RELAY_URL,
-    localhost: COLIBRI_DEFAULT_BASE_URL,
-    mesh: `http://${ONYX_MESH_TOPOLOGY.g7.ip}:${ONYX_MESH_TOPOLOGY.g7.colibriPort || 8000}`,
-};
+/** Read at click time: the mesh list can change after this module loads. Null until the host node has an address. */
+function meshPresetUrl(): string | null {
+    const g7 = ONYX_MESH_TOPOLOGY.g7;
+    return isMeshNodeConfigured(g7) ? `http://${g7.ip}:${g7.colibriPort || 8000}` : null;
+}
 
 function detectDefaultUrl(): string {
-    if (typeof window === 'undefined') return COLIBRI_DEFAULT_BASE_URL;
-    const isLocalhost =
-        window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const isHttps = window.location.protocol === 'https:';
-    const ua = navigator.userAgent || '';
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    if (isIOS || (isHttps && !isLocalhost)) {
-        return SUPABASE_RELAY_URL;
-    }
     return COLIBRI_DEFAULT_BASE_URL;
 }
 
 function resolveMode(url: string): ConnectionMode {
-    if (url === PRESET_URLS.cloud) return 'cloud';
     if (
-        url === PRESET_URLS.localhost ||
+        url === COLIBRI_DEFAULT_BASE_URL ||
         url === 'http://localhost:8000' ||
-        url === 'http://127.0.0.1:8082' ||
-        url === 'http://localhost:8082'
+        url.startsWith('supabase://')
     )
         return 'localhost';
-    if (url === PRESET_URLS.mesh) return 'mesh';
+    if (url === meshPresetUrl()) return 'mesh';
     return 'custom';
 }
 
 export const ColibriSettingsCard: React.FC = () => {
     const [theme] = useAtom(themeAtom);
     const [user] = useAtom(userAtom);
-    const isDevOrAdmin = !user?.role || user.role === 'Developer' || user.role === 'Admin';
-
-    const isIOSDevice =
-        typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+    const isDevOrAdmin = user?.role === 'Developer' || user?.role === 'Admin';
 
     const [endpoint, setEndpoint] = useState<string>(() => {
         return getProviderConfig('colibri').baseUrl || detectDefaultUrl();
@@ -101,7 +86,6 @@ export const ColibriSettingsCard: React.FC = () => {
     const [testResult, setTestResult] = useState<TestStatus | null>(null);
 
     const [relayDrawerOpen, setRelayDrawerOpen] = useState<boolean>(false);
-    const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
 
     const [nodePings, setNodePings] = useState<
         Record<string, { ok: boolean; latencyMs: number; status: string }>
@@ -124,18 +108,17 @@ export const ColibriSettingsCard: React.FC = () => {
             const ok = await isColibriAvailable(targetUrl);
             setOnlineStatus(ok);
             if (ok) {
-                if (targetUrl === SUPABASE_RELAY_URL) {
-                    setTelemetry('WSS Cloud Bridge');
-                    return;
-                }
                 const res = await fetch(`${targetUrl.replace(/\/+$/, '')}/health`, {
                     headers: { Accept: 'application/json' },
                 }).catch(() => null);
                 if (res && res.ok) {
                     const data = await res.json().catch(() => ({}));
                     if (data.telemetry?.nvmeReadMBps) {
+                        const tps = data.telemetry.tokensPerSecond;
                         setTelemetry(
-                            `${data.telemetry.nvmeReadMBps} MB/s • ${data.telemetry.tokensPerSecond || 26} t/s`
+                            typeof tps === 'number' && tps > 0
+                                ? `${data.telemetry.nvmeReadMBps} MB/s • ${tps} t/s`
+                                : `${data.telemetry.nvmeReadMBps} MB/s`
                         );
                     } else if (data.relayGateway?.active) {
                         setTelemetry(`Relay ${data.relayGateway.upstreamHost}`);
@@ -168,24 +151,11 @@ export const ColibriSettingsCard: React.FC = () => {
         refreshConfig();
         pingDaemon(endpoint);
 
-        // Live host presence tracking from Supabase Realtime Bridge
-        const unsub = colibriRealtimeBridge.onHostStatusChange((isOnline, host) => {
-            if (activeMode === 'cloud' || endpoint === SUPABASE_RELAY_URL) {
-                setOnlineStatus(isOnline);
-                if (isOnline) {
-                    setTelemetry(host?.tps ? `WSS Cloud • ${host.tps} t/s` : 'WSS Cloud Bridge');
-                } else {
-                    setTelemetry(null);
-                }
-            }
-        });
-
         window.addEventListener(AI_CONFIG_EVENT, refreshConfig);
         return () => {
             window.removeEventListener(AI_CONFIG_EVENT, refreshConfig);
-            unsub();
         };
-    }, [refreshConfig, pingDaemon, endpoint, activeMode]);
+    }, [refreshConfig, pingDaemon, endpoint]);
 
     const handleSave = (newEndpoint?: string, newModel?: string) => {
         const ep = (newEndpoint ?? endpoint).trim() || detectDefaultUrl();
@@ -200,9 +170,10 @@ export const ColibriSettingsCard: React.FC = () => {
 
     const handleSelectMode = (mode: ConnectionMode) => {
         if (mode === 'cloud') return;
+        const newUrl = mode === 'localhost' ? COLIBRI_DEFAULT_BASE_URL : mode === 'mesh' ? meshPresetUrl() : null;
+        if (mode !== 'custom' && !newUrl) return;
         setActiveMode(mode);
-        if (mode !== 'custom') {
-            const newUrl = PRESET_URLS[mode];
+        if (newUrl) {
             setEndpoint(newUrl);
             handleSave(newUrl, undefined);
         }
@@ -243,19 +214,11 @@ export const ColibriSettingsCard: React.FC = () => {
         }
     };
 
-    const handleCopy = (text: string, label: string) => {
-        navigator.clipboard?.writeText(text);
-        setCopiedCmd(label);
-        setTimeout(() => setCopiedCmd(null), 2000);
-    };
-
-    const relayLaunchCmd = 'node scripts/colibri-supabase-relay.cjs';
-
     const transportModes: TransportModeItem[] = [
         {
             id: 'cloud',
             label: tr("Relay"),
-            fullName: tr("WSS Cloud Relay"),
+            fullName: tr("Relay"),
             icon: Cloud,
         },
         {
@@ -264,12 +227,16 @@ export const ColibriSettingsCard: React.FC = () => {
             fullName: tr("Local Host :8000"),
             icon: Laptop,
         },
-        {
-            id: 'mesh',
-            label: tr("LAN"),
-            fullName: tr("LAN Mesh"),
-            icon: Network,
-        },
+        ...(isMeshNodeConfigured(ONYX_MESH_TOPOLOGY.g7)
+            ? [
+                  {
+                      id: 'mesh' as const,
+                      label: tr("LAN"),
+                      fullName: tr("LAN Mesh"),
+                      icon: Network,
+                  },
+              ]
+            : []),
         {
             id: 'custom',
             label: tr("Custom"),
@@ -317,8 +284,6 @@ export const ColibriSettingsCard: React.FC = () => {
                                 ? telemetry || tr("Online")
                                 : onlineStatus === false
                                 ? tr("Offline")
-                                : isIOSDevice
-                                ? tr("iOS WSS")
                                 : tr("Standby")}
                         </span>
                     </div>
@@ -367,7 +332,6 @@ export const ColibriSettingsCard: React.FC = () => {
                 <div className="sk-row">
                     <div className="sk-row-label">
                         <span className="sk-row-title">{tr("Link")}</span>
-                        <span className="sk-row-sub">{tr("Off until secured")}</span>
                     </div>
                     <div className="sk-row-value">
                         <div className="sk-seg" role="radiogroup" aria-label={tr("Transport mode")}>
@@ -385,12 +349,12 @@ export const ColibriSettingsCard: React.FC = () => {
                                         disabled={isDisabled}
                                         aria-label={
                                             isDisabled
-                                                ? `${item.fullName} (${tr("Off until secured")})`
+                                                ? `${item.fullName} (${tr(COLIBRI_RELAY_DISABLED_REASON)})`
                                                 : item.fullName
                                         }
                                         title={
                                             isDisabled
-                                                ? `${item.fullName} (${tr("Off until secured")})`
+                                                ? `${item.fullName} (${tr(COLIBRI_RELAY_DISABLED_REASON)})`
                                                 : item.fullName
                                         }
                                         onClick={() => {
@@ -460,15 +424,19 @@ export const ColibriSettingsCard: React.FC = () => {
                                 className="sk-mono"
                             >
                                 <option value="auto">{tr("Auto (Task / MoE Routing)")}</option>
-                                <option value="colibri-glm-5.2-moe">glm-5.2-moe ({tr("Fast Chat")})</option>
-                                <option value="colibri-kimi-k3-moe">kimi-k3-moe ({tr("Deep Context")})</option>
-                                <option value="colibri-qwen-2.5-3b">qwen-2.5-3b ({tr("Dense / Translate")})</option>
+                                {COLIBRI_MODELS.filter((id) => id !== 'auto').map((id) => (
+                                    <option key={id} value={id}>{COLIBRI_MODEL_SPECS[id].name}</option>
+                                ))}
+                                {model !== 'auto' && !(COLIBRI_MODELS as readonly string[]).includes(model) && (
+                                    <option value={model}>{model}</option>
+                                )}
                             </select>
                         </div>
                     </div>
                 </div>
 
                 {/* (d) Advanced disclosure */}
+                {isDevOrAdmin && (
                 <details
                     className="sk-disclosure"
                     open={relayDrawerOpen}
@@ -487,8 +455,7 @@ export const ColibriSettingsCard: React.FC = () => {
                         <ChevronRight size={14} className="sk-chevron" />
                     </summary>
 
-                    {isDevOrAdmin && (
-                        <>
+                    <>
                             {/* Mesh nodes section action */}
                             <div className="sk-row">
                                 <div className="sk-row-label">
@@ -531,29 +498,9 @@ export const ColibriSettingsCard: React.FC = () => {
                                     </div>
                                 );
                             })}
-
-                            {/* Relay daemon command */}
-                            <div className="sk-row">
-                                <div className="sk-row-label">
-                                    <span className="sk-row-title">{tr("Relay daemon")}</span>
-                                    <span className="sk-row-sub sk-mono">{relayLaunchCmd}</span>
-                                </div>
-                                <div className="sk-row-value">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleCopy(relayLaunchCmd, 'relay')}
-                                        className="sk-btn"
-                                        data-icon-only=""
-                                        aria-label={copiedCmd === 'relay' ? tr("Copied") : tr("Copy relay command")}
-                                        title={copiedCmd === 'relay' ? tr("Copied") : tr("Copy relay command")}
-                                    >
-                                        {copiedCmd === 'relay' ? <Check size={13} /> : <Copy size={13} />}
-                                    </button>
-                                </div>
-                            </div>
-                        </>
-                    )}
+                    </>
                 </details>
+                )}
             </div>
         </section>
     );

@@ -106,7 +106,7 @@ export const SiriAccessPanel: React.FC = () => {
 
     const handleCreate = async () => {
         const trimmedLabel = label.trim();
-        if (!trimmedLabel || isBusy) return;
+        if (!trimmedLabel || isBusy || createdToken !== null) return;
 
         setIsCreating(true);
         setErrorMessage(null);
@@ -320,7 +320,7 @@ export const SiriAccessPanel: React.FC = () => {
                                         void handleCreate();
                                     }
                                 }}
-                                disabled={isBusy}
+                                disabled={isBusy || createdToken !== null}
                                 aria-label={tr("Token label")}
                             />
                         </div>
@@ -329,7 +329,7 @@ export const SiriAccessPanel: React.FC = () => {
                             className="sk-btn"
                             data-variant={hasActiveToken ? undefined : 'primary'}
                             onClick={() => void handleCreate()}
-                            disabled={isBusy || !label.trim() || activeTokens.length >= 5}
+                            disabled={isBusy || createdToken !== null || !label.trim() || activeTokens.length >= 5}
                             title={activeTokens.length >= 5 ? tr("Max 5 active tokens reached. Revoke one first.") : undefined}
                         >
                             {isCreating ? <Loader2 size={12} className="animate-spin" /> : null}

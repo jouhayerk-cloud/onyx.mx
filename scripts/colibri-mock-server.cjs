@@ -31,8 +31,6 @@ const allowedOrigins = new Set([
     'http://localhost:5173',
     'https://localhost:1001',
     'http://localhost:1001',
-    'https://192.0.2.71:1001',
-    'http://192.0.2.71:1001',
     'https://jouhayerk-cloud.github.io',
 ]);
 
@@ -43,6 +41,8 @@ for (let i = 0; i < args.length; i++) {
     else if (args[i] === '--delay-ms' && next) { delayMs = Math.max(0, parseInt(next, 10) || 0); i++; }
     else if (args[i] === '--allow-origin' && next) { allowedOrigins.add(next.replace(/\/+$/, '')); i++; }
 }
+// LAN origins come from the environment (comma separated), never from a hard-coded address.
+for (const o of (process.env.COLIBRI_ALLOW_ORIGINS || '').split(',')) { if (o.trim()) allowedOrigins.add(o.trim().replace(/\/+$/, '')); }
 if (process.env.COLIBRI_PORT) port = parseInt(process.env.COLIBRI_PORT, 10) || port;
 
 const counters = { admitted: 0, completed: 0, failed: 0, active: 0 };
