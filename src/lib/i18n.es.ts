@@ -3677,7 +3677,6 @@ export const esCatalog: Record<string, string> = {
   'gemini-2.5-flash (Auto)': 'gemini-2.5-flash (Automático)',
   'auto (MoE Routing)': 'auto (Enrutamiento MoE)',
   'Chat -> GLM-5.2 · Translate -> Qwen-2.5 · Content/JSON -> Kimi-K3': 'Chat -> GLM-5.2 · Traducir -> Qwen-2.5 · Contenido/JSON -> Kimi-K3',
-  'Tap \'Copy prompt\' to get shortcut actions.': 'Toca \'Copiar instrucciones\' para obtener las acciones del atajo.',
   'Token label (e.g. Cursor, Claude)': 'Etiqueta del token (ej. Cursor, Claude)',
   'Device (e.g. Ramses iPhone)': 'Dispositivo (ej. iPhone de Ramses)',
   'Token label': 'Etiqueta del token',
