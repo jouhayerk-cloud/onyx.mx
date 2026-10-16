@@ -68,7 +68,12 @@ if (!rootNode) console.error("FATAL: #root node not found!");
 console.log("Mounting React tree...");
 createRoot(rootNode!).render(
   <StrictMode>
-    <Suspense fallback={<div style={{ color: 'white', padding: '20px' }}>{tr("Loading Onyx.mx...")}</div>}>
+    <Suspense fallback={
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0d0b0a', color: '#fdfcf0', fontFamily: '-apple-system,BlinkMacSystemFont,sans-serif' }}>
+        <img src={`${import.meta.env.BASE_URL}onyxlogo.webp`} alt="Onyx-mx" style={{ width: 84, height: 84, objectFit: 'contain', marginBottom: 16 }} />
+        <div style={{ fontSize: 13, letterSpacing: '0.04em', opacity: 0.85, fontWeight: 600 }}>Onyx-mx loading...</div>
+      </div>
+    }>
       <App />
     </Suspense>
   </StrictMode>,

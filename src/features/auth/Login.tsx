@@ -61,12 +61,40 @@ export function Login() {
 
   return (
     <div className="relative w-full h-screen flex items-center justify-center overflow-hidden">
+      <style>{`
+        @keyframes onyxLogoZoomIn {
+          0% { transform: scale(0.65); opacity: 0; filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+          60% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 12px 30px rgba(255,255,255,0.22)); }
+          100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.6)); }
+        }
+        @keyframes onyxLogoPulseZoom {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 8px 24px rgba(255,255,255,0.18)); }
+          50% { transform: scale(1.14); filter: drop-shadow(0 14px 38px rgba(255,255,255,0.42)); }
+        }
+        .onyx-login-logo {
+          animation: onyxLogoZoomIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .onyx-login-logo.is-loading {
+          animation: onyxLogoPulseZoom 1.5s ease-in-out infinite;
+        }
+      `}</style>
       <div className="w-full max-w-md p-8 glass-panel z-10">
         <div className="text-center mb-8">
-          <img src={`${import.meta.env.BASE_URL}chan-directions.webp`} alt="Onyx Chan" className="w-32 h-32 mx-auto mb-4 object-contain drop-shadow-2xl" />
+          <div className="flex justify-center mb-4">
+            <OnyxLogo
+              className={`w-32 h-32 object-contain onyx-login-logo ${loading ? 'is-loading' : ''}`}
+            />
+          </div>
           <h1 className="text-2xl font-bold">{t.welcome}</h1>
           <p className="text-[var(--text-color-secondary)] text-sm mt-2">
-            {tr("Secure Enterprise Access")}
+            {loading ? (
+              <span className="text-emerald-400 font-medium tracking-wide animate-pulse">
+                Onyx-mx loading...
+              </span>
+            ) : (
+              tr("Secure Enterprise Access")
+            )}
           </p>
         </div>
 
@@ -102,7 +130,7 @@ export function Login() {
             disabled={loading}
             className="button w-full !py-4 font-bold uppercase tracking-widest mt-4"
           >
-            {loading ? tr("Authenticating...") : tr("Enter System")}
+            {loading ? "Onyx-mx loading..." : tr("Enter System")}
           </button>
         </form>
 

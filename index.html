@@ -127,14 +127,34 @@
       });
     })();
   </script>
+  <style>
+    @keyframes onyxSplashZoom {
+      0% { transform: scale(0.6); opacity: 0; }
+      60% { transform: scale(1.06); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes onyxSplashPulse {
+      0%, 100% { transform: scale(1); opacity: 0.92; }
+      50% { transform: scale(1.06); opacity: 1; filter: drop-shadow(0 12px 32px rgba(255,255,255,0.22)); }
+    }
+    .onyx-splash-logo {
+      width: 92px;
+      height: 92px;
+      margin: 0 auto 16px;
+      display: block;
+      object-fit: contain;
+      animation: onyxSplashZoom 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards, onyxSplashPulse 2.2s ease-in-out infinite 0.85s;
+      filter: drop-shadow(0 10px 24px rgba(0,0,0,0.6));
+    }
+  </style>
 </head>
 
 <body>
   <div id="root">
     <div id="onyx-initial-splash" style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0d0b0a;color:#fdfcf0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
       <div style="text-align:center;">
-        <div style="font-size:22px;font-weight:700;letter-spacing:0.04em;">ONYX</div>
-        <div id="onyx-splash-subtitle" style="font-size:12px;opacity:0.6;margin-top:6px;">Connecting...</div>
+        <img class="onyx-splash-logo" src="./onyxlogo.webp" alt="Onyx-mx" />
+        <div id="onyx-splash-subtitle" style="font-size:14px;letter-spacing:0.04em;opacity:0.85;font-weight:600;">Onyx-mx loading...</div>
       </div>
     </div>
   </div>
