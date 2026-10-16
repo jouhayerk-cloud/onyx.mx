@@ -32,6 +32,15 @@ import {
 } from '../../../lib/network/localMeshMap';
 import { isColibriAvailable } from '../../../lib/ai/providers/colibri';
 import { tr } from '../../../lib/i18n';
+import {
+    HairlineDeviceGallery,
+    HairlineLaptop,
+    HairlinePhone,
+    HairlineTablet,
+    HairlineStackChan,
+    HairlineM5StickS3,
+    HairlineM5StickCPlus2,
+} from '../hairline';
 
 interface NodePingResult {
     ok: boolean;
@@ -318,6 +327,9 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                 </div>
             </div>
 
+            {/* Interactive Hairline 3D Edge Hardware Studio */}
+            <HairlineDeviceGallery />
+
             {/* Neural MoE Network Nodes Grid */}
             <div>
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-4 px-1 flex items-center gap-2">
@@ -336,7 +348,7 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h4 className="text-sm font-bold text-(--text-color)">
-                                            G7 Laptop (Ramses)
+                                             G7 Laptop (Ramses)
                                         </h4>
                                         <span className="acc-badge acc-badge-mesh">Host</span>
                                     </div>
@@ -346,6 +358,18 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                                 </div>
                             </div>
                             <span className="acc-dot acc-dot-cyan acc-pulse-cyan" title="Colibrì Primary Host Active" />
+                        </div>
+
+                        {/* Interactive Hairline Laptop Figure */}
+                        <div className="py-1">
+                            <HairlineLaptop
+                                title="G7 Host"
+                                hostName="G7-Laptop-Ramses"
+                                ipAddress="192.0.2.71"
+                                nvmeSpeed={g7Telemetry.nvmeSpeedMBps}
+                                initialAngle={106}
+                                className="max-h-[160px]"
+                            />
                         </div>
 
                         {/* Telemetry Metrics */}
@@ -399,6 +423,16 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                             <span className="acc-dot acc-dot-purple" title="LAN Relay Gateway" />
                         </div>
 
+                        {/* Interactive Hairline Tablet / Relay Terminal Figure */}
+                        <div className="py-1">
+                            <HairlineTablet
+                                title="Second Relay"
+                                deviceName="Second Laptop"
+                                ipAddress="192.0.2.67"
+                                className="max-h-[160px]"
+                            />
+                        </div>
+
                         {/* Telemetry Metrics */}
                         <div className="space-y-2.5 p-3 rounded-xl bg-black/30 border border-white/5 text-xs font-mono">
                             <div className="flex justify-between items-center text-white/70">
@@ -448,6 +482,16 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                                 </div>
                             </div>
                             <span className="acc-dot acc-dot-emerald" title="iOS Native Companion" />
+                        </div>
+
+                        {/* Interactive Hairline Phone Figure */}
+                        <div className="py-1">
+                            <HairlinePhone
+                                title="iOS Companion"
+                                deviceName="Ramses iPhone 15 Pro"
+                                ipAddress="192.0.2.100"
+                                className="max-h-[160px]"
+                            />
                         </div>
 
                         {/* Telemetry Metrics */}
@@ -551,6 +595,34 @@ export const EdgeFleetOverviewSection: React.FC = () => {
                                             </>
                                         )}
                                     </div>
+                                </div>
+
+                                {/* Interactive Hairline Microcontroller Figure */}
+                                <div className="py-1">
+                                    {pico.device_id.includes('onyxchan') ? (
+                                        <HairlineStackChan
+                                            title="StackChan Companion"
+                                            botName={pico.device_id}
+                                            batteryPct={pico.battery_pct ?? 92}
+                                            className="max-h-[160px]"
+                                        />
+                                    ) : pico.device_id.includes('scale') ? (
+                                        <HairlineM5StickCPlus2
+                                            title="M5StickC Plus 2"
+                                            nodeId={pico.device_id}
+                                            batteryPct={pico.battery_pct ?? 78}
+                                            tempC={pico.temp_c ?? 31.2}
+                                            className="max-h-[160px]"
+                                        />
+                                    ) : (
+                                        <HairlineM5StickS3
+                                            title="M5StickS3 Controller"
+                                            nodeId={pico.device_id}
+                                            heapFree={pico.heap_free}
+                                            rssi={pico.rssi ?? -58}
+                                            className="max-h-[160px]"
+                                        />
+                                    )}
                                 </div>
 
                                 {/* Controller Telemetry Strip */}

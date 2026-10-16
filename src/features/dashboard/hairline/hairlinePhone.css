@@ -1,0 +1,115 @@
+.hl-phone-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 4;
+    max-width: 380px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    touch-action: none;
+}
+
+.hl-phone-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.hl-phone-chassis {
+    fill: #0c0f12;
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 1.2;
+}
+
+.hl-phone-bezel {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 1.4;
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.45));
+}
+
+.hl-phone-glass {
+    fill: #050709;
+    stroke: rgba(56, 189, 248, 0.25);
+    stroke-width: 1;
+}
+
+.hl-dynamic-island {
+    fill: #000000;
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 0.8;
+}
+
+.hl-camera-bump {
+    fill: #11151a;
+    stroke: rgba(255, 255, 255, 0.18);
+    stroke-width: 1;
+}
+
+.hl-lens-ring {
+    fill: #0a0d10;
+    stroke: #00d2ff;
+    stroke-width: 1;
+}
+
+.hl-side-button {
+    fill: #1a2027;
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 0.8;
+}
+
+/* Feed item cards */
+.hl-feed-card {
+    fill: rgba(14, 20, 26, 0.88);
+    stroke: rgba(56, 189, 248, 0.28);
+    stroke-width: 1;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.hl-feed-card:hover {
+    fill: rgba(20, 32, 44, 0.95);
+    stroke: #38bdf8;
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
+}
+
+.hl-stream-text {
+    font-family: monospace;
+    font-size: 7.5px;
+    font-weight: 700;
+    fill: #e2e8f0;
+}
+
+.hl-stream-sub {
+    font-family: monospace;
+    font-size: 6px;
+    fill: #94a3b8;
+}
+
+.hl-stream-badge {
+    font-family: monospace;
+    font-size: 5.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.hl-phone-telemetry {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    background: rgba(12, 16, 20, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 9999px;
+    padding: 3px 10px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}

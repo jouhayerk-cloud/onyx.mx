@@ -1,0 +1,97 @@
+.hl-stackchan-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 4;
+    max-width: 380px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    touch-action: none;
+    cursor: pointer;
+}
+
+.hl-stackchan-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.hl-chan-base {
+    fill: #11161d;
+    stroke: rgba(255, 255, 255, 0.16);
+    stroke-width: 1.2;
+}
+
+.hl-chan-neck {
+    fill: #1e293b;
+    stroke: #f59e0b;
+    stroke-width: 1.2;
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
+}
+
+.hl-chan-head {
+    fill: #0c1015;
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 1.4;
+    transition: stroke 0.2s ease;
+}
+
+.hl-chan-head:hover {
+    stroke: #00d2ff;
+}
+
+.hl-chan-screen {
+    fill: #040608;
+    stroke: rgba(0, 210, 255, 0.4);
+    stroke-width: 1.2;
+}
+
+.hl-chan-eye {
+    fill: #00d2ff;
+    filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.8));
+    transition: transform 0.1s ease;
+}
+
+.hl-chan-eye-happy {
+    stroke: #00d2ff;
+    stroke-width: 2.2;
+    fill: none;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.8));
+}
+
+.hl-chan-mouth {
+    stroke: #00d2ff;
+    stroke-width: 1.6;
+    fill: none;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 4px rgba(0, 210, 255, 0.6));
+}
+
+.hl-chan-cheek {
+    fill: #f43f5e;
+    opacity: 0.55;
+    filter: blur(2px);
+}
+
+.hl-stackchan-telemetry {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    background: rgba(12, 16, 21, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 210, 255, 0.3);
+    border-radius: 9999px;
+    padding: 3px 10px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #00d2ff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}

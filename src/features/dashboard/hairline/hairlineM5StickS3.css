@@ -1,0 +1,88 @@
+.hl-m5s3-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 4;
+    max-width: 360px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    touch-action: none;
+    cursor: pointer;
+}
+
+.hl-m5s3-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.hl-m5s3-chassis {
+    fill: #13171d;
+    stroke: rgba(255, 255, 255, 0.16);
+    stroke-width: 1.2;
+}
+
+.hl-m5s3-bezel {
+    fill: none;
+    stroke: #00d2ff;
+    stroke-width: 1.4;
+    filter: drop-shadow(0 0 6px rgba(0, 210, 255, 0.5));
+}
+
+.hl-m5s3-screen {
+    fill: #06090d;
+    stroke: rgba(0, 210, 255, 0.35);
+    stroke-width: 1;
+}
+
+.hl-m5s3-btn {
+    fill: #1e2530;
+    stroke: #00d2ff;
+    stroke-width: 1.2;
+    transition: all 0.15s ease;
+}
+
+.hl-m5s3-btn:hover {
+    fill: #263242;
+    filter: drop-shadow(0 0 6px rgba(0, 210, 255, 0.8));
+}
+
+.hl-m5s3-btn.is-pressed {
+    transform: translateY(1.5px);
+    fill: #00d2ff;
+}
+
+.hl-m5s3-waveform {
+    stroke: #00d2ff;
+    stroke-width: 1.4;
+    fill: none;
+    filter: drop-shadow(0 0 4px rgba(0, 210, 255, 0.7));
+}
+
+.hl-m5s3-pin {
+    fill: #eab308;
+    stroke: #ca8a04;
+    stroke-width: 0.6;
+}
+
+.hl-m5s3-telemetry {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    background: rgba(19, 23, 29, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 210, 255, 0.3);
+    border-radius: 9999px;
+    padding: 3px 10px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #00d2ff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}

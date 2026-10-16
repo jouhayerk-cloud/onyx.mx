@@ -1,0 +1,148 @@
+.hl-laptop-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 4;
+    max-width: 440px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    touch-action: none;
+}
+
+.hl-laptop-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* Hairline base strokes */
+.hl-line {
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.hl-chassis-body {
+    fill: #0c1014;
+    stroke: rgba(255, 255, 255, 0.12);
+    stroke-width: 1.2;
+}
+
+.hl-chassis-rim {
+    fill: none;
+    stroke: #00d2ff;
+    stroke-width: 1.4;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 6px rgba(0, 210, 255, 0.5));
+}
+
+.hl-key-body {
+    fill: #11161b;
+    stroke: rgba(255, 255, 255, 0.08);
+    stroke-width: 0.8;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.hl-key-body:hover {
+    fill: #1a222a;
+    stroke: rgba(0, 210, 255, 0.4);
+}
+
+.hl-key-active {
+    fill: rgba(0, 210, 255, 0.25);
+    stroke: #00d2ff;
+}
+
+.hl-trackpad {
+    fill: #0f1419;
+    stroke: rgba(255, 255, 255, 0.14);
+    stroke-width: 1;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hl-trackpad:hover {
+    stroke: #00d2ff;
+    fill: #141c24;
+}
+
+.hl-screen-plate {
+    fill: #080a0c;
+    stroke: rgba(255, 255, 255, 0.18);
+    stroke-width: 1.2;
+}
+
+.hl-screen-display {
+    fill: #040608;
+    stroke: rgba(0, 210, 255, 0.3);
+    stroke-width: 1;
+}
+
+.hl-code-cyan {
+    stroke: #00d2ff;
+    stroke-width: 1.4;
+    filter: drop-shadow(0 0 4px rgba(0, 210, 255, 0.6));
+}
+
+.hl-code-emerald {
+    stroke: #10b981;
+    stroke-width: 1.4;
+    filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.6));
+}
+
+.hl-code-amber {
+    stroke: #f59e0b;
+    stroke-width: 1.4;
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6));
+}
+
+.hl-code-purple {
+    stroke: #a855f7;
+    stroke-width: 1.4;
+    filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.6));
+}
+
+.hl-cursor-blink {
+    animation: hlCursorBlink 0.9s infinite step-end;
+}
+
+@keyframes hlCursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.hl-telemetry-badge {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    background: rgba(12, 16, 20, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 210, 255, 0.3);
+    border-radius: 9999px;
+    padding: 3px 10px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #00d2ff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.hl-pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #00d2ff;
+    box-shadow: 0 0 8px #00d2ff;
+    animation: hlPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes hlPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.4; }
+}
