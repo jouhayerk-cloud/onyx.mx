@@ -52,17 +52,28 @@ export interface PresenceServiceConfig {
 }
 
 export const SESSION_STORAGE_KEY = 'onyx_presence_session_id';
-export const DEFAULT_PING_INTERVAL_MS = 15_000;       // 15 seconds while active for responsive fleet telemetry
-export const DEFAULT_INTERACTION_DEBOUNCE_MS = 15_000; // 15 seconds debounce for interaction actions
+export const DEFAULT_PING_INTERVAL_MS = 45_000;       // 45 seconds while active for low-load fleet telemetry
+export const DEFAULT_INTERACTION_DEBOUNCE_MS = 30_000; // 30 seconds debounce for interaction actions
 export const DEFAULT_IDLE_TIMEOUT_MS = 180_000;       // 3 minutes (180s) of inactivity -> Idle
-export const DEFAULT_MIN_THROTTLE_MS = 2_000;         // Minimum 2 seconds between state change pings
+export const DEFAULT_MIN_THROTTLE_MS = 5_000;         // Minimum 5 seconds between state change pings
 
 /**
- * Generates or retrieves a persistent session ID from sessionStorage.
+ * Generates or retrieves a persistent session ID.
+ * Prefers localStorage so multiple tabs on the same hardware browser share one node session.
  */
 export function getOrCreateSessionId(customStorage?: Storage | null): string {
   try {
-    const storage = customStorage !== undefined ? customStorage : (typeof window !== 'undefined' ? window.sessionStorage : null);
+    let storage: Storage | null = null;
+    if (customStorage !== undefined) {
+      storage = customStorage;
+    } else if (typeof window !== 'undefined') {
+      try {
+        storage = window.localStorage || window.sessionStorage;
+      } catch {
+        storage = window.sessionStorage || null;
+      }
+    }
+
     if (storage) {
       const existing = storage.getItem(SESSION_STORAGE_KEY);
       if (existing && existing.trim().length > 0) {
@@ -507,12 +518,36 @@ export class PresenceService {
 
     // Filter out stale sessions older than 10 minutes unless currently in realtime presence
     const tenMinAgo = Date.now() - 10 * 60 * 1000;
-    const list = Array.from(map.values()).filter(s => {
+    const activeList = Array.from(map.values()).filter(s => {
       if (this.activeRealtimePresences.has(s.session_id)) return true;
       const seenTime = Date.parse(s.last_seen_at);
       return !Number.isNaN(seenTime) && seenTime >= tenMinAgo;
     });
 
+    // Deduplicate by physical hardware node: (user, device_name, client_platform)
+    // Multiple tabs or previous session IDs from the same device collapse into 1 card
+    const deviceMap = new Map<string, UserActiveSession>();
+    for (const s of activeList) {
+      const key = `${(s.user_email || s.user_id || 'anon').toLowerCase()}::${s.device_name.toLowerCase()}::${s.client_platform.toLowerCase()}`;
+      const existing = deviceMap.get(key);
+      if (!existing) {
+        deviceMap.set(key, s);
+      } else {
+        const existingTime = Date.parse(existing.last_seen_at) || 0;
+        const newTime = Date.parse(s.last_seen_at) || 0;
+        const isSelf = s.session_id === this.sessionId || existing.session_id === this.sessionId;
+        if (newTime >= existingTime) {
+          deviceMap.set(key, {
+            ...s,
+            session_id: isSelf ? this.sessionId : s.session_id,
+          });
+        } else if (isSelf) {
+          existing.session_id = this.sessionId;
+        }
+      }
+    }
+
+    const list = Array.from(deviceMap.values());
     list.sort((a, b) => Date.parse(b.last_seen_at) - Date.parse(a.last_seen_at));
     this.cachedSessions = list;
     this.fleetListeners.forEach(cb => cb(this.cachedSessions));

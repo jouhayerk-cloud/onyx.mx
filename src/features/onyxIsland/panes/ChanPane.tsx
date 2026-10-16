@@ -9,7 +9,11 @@ import {
     Check, 
     X, 
     ChevronRight, 
-    RotateCcw 
+    RotateCcw,
+    Radio,
+    Wifi,
+    Clock,
+    Shield
 } from 'lucide-react';
 import { useAtom } from 'jotai';
 import { islandChanDraftAtom } from '../islandState';
@@ -18,6 +22,7 @@ import { isCompanionAvailable, isColibriAvailable } from '../../../lib/ai/provid
 import { getRoute, setRoute } from '../../../lib/ai/routing';
 import { AI_CONFIG_EVENT } from '../../../lib/ai/providerKeys';
 import { tr } from '../../../lib/i18n';
+import { ONYX_MESH_TOPOLOGY } from '../../../lib/network/localMeshMap';
 import { LaserCutfileCard, LaserCutfileCardProps } from '../../onyxAgent/components/LaserCutfileCard';
 import './chanPane.css';
 
@@ -320,9 +325,61 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
         ? robot.devices.find(d => d.id === robot.selectedId)
         : (robot.devices.find(d => d.online) ?? null);
     const isRobotOnline = Boolean(selectedRobot?.online);
+    const [infoHudOpen, setInfoHudOpen] = useState(true);
 
     return (
         <div className="chan-pane isl-pane">
+            {/* ONYX ISLAND CHAN INFO PANEL (System, Mesh & Host Telemetry HUD) */}
+            <div className="mx-3 mt-2 mb-2 p-2.5 rounded-xl bg-white/5 dark:bg-black/20 border border-white/10 dark:border-white/5 backdrop-blur-xl shadow-inner text-(--text-color)">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="acc-dot acc-dot-cyan acc-pulse-cyan shrink-0" />
+                        <span className="text-[11px] font-mono font-bold truncate">
+                            Node: {ONYX_MESH_TOPOLOGY.g7.ip}
+                        </span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hidden sm:inline-flex items-center gap-1">
+                            <Wifi size={8} /> G7 Wi-Fi Mesh
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-mono text-(--text-color-secondary) flex items-center gap-1">
+                            <Clock size={10} />
+                            {new Date().toLocaleTimeString('en-US', { hour12: false })}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setInfoHudOpen(!infoHudOpen)}
+                            className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded hover:bg-white/10 text-(--text-color-secondary) cursor-pointer"
+                        >
+                            {infoHudOpen ? 'Collapse' : 'Expand Info'}
+                        </button>
+                    </div>
+                </div>
+
+                {infoHudOpen && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-2 pt-2 border-t border-white/10 dark:border-white/5 text-[10px] font-mono">
+                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-black/20 dark:bg-white/5 border border-white/5">
+                            <span className="text-(--text-color-secondary)">MoE Host:</span>
+                            <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                <Radio size={9} className="animate-pulse" /> Live
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-black/20 dark:bg-white/5 border border-white/5">
+                            <span className="text-(--text-color-secondary)">LiteRT SLM:</span>
+                            <span className="text-cyan-400 font-bold">Qwen 1.5B</span>
+                        </div>
+                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-black/20 dark:bg-white/5 border border-white/5">
+                            <span className="text-(--text-color-secondary)">Fleet Mesh:</span>
+                            <span className="text-purple-400 font-bold">Active</span>
+                        </div>
+                        <div className="flex items-center justify-between p-1.5 rounded-lg bg-black/20 dark:bg-white/5 border border-white/5">
+                            <span className="text-(--text-color-secondary)">NVMe MoE:</span>
+                            <span className="text-amber-400 font-bold">:8082</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             {/* (1) STATUS LINE */}
             <div className="chan-status-bar">
                 <div className="chan-status-left">

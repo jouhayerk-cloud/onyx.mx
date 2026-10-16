@@ -24,65 +24,68 @@ export function ControlView() {
     ];
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
-            {/* Top Bar: Minimal HUD Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8 px-10 py-8 border-b border-white/3">
-                {/* Left: Administrative Context */}
-                <div className="flex items-center gap-6">
-                    <div className="w-10 h-10 rounded-full border border-(--main-color)/20 flex items-center justify-center bg-(--main-color)/5 shadow-[0_0_20px_rgba(var(--main-color-rgb),0.1)]">
-                        <Shield size={18} className="text-(--main-color)" />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <h1 className="text-[16px] font-black uppercase tracking-[0.5em] text-white">{tr("Control")}</h1>
-                            <div className="px-2 py-0.5 rounded bg-(--main-color) text-black text-[8px] font-black tracking-widest uppercase">{tr("System Core")}</div>
+        <div className="flex flex-col h-full overflow-hidden ui-root bg-(--app-bg)">
+            {/* Top Bar: Apple HIG Liquid Onyx Island-Safe Command Header */}
+            <header className="pt-16 sm:pt-20 pb-4 px-6 md:px-10 border-b border-white/8 sticky top-0 bg-[#0a0d12]/92 backdrop-blur-2xl z-20 shadow-xl flex flex-col gap-3.5">
+                {/* Tier 1: Brand Context & Hardware Gateway */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl border border-cyan-500/30 flex items-center justify-center bg-white/[0.04] text-cyan-400 shadow-[0_0_15px_rgba(0,174,239,0.2)] shrink-0">
+                            <Shield size={18} />
                         </div>
-                        <p className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.3em]">{tr("Developer & Administrator Override Hub")}</p>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-base md:text-lg font-black uppercase tracking-wider text-white">{tr("Control")}</h1>
+                                <span className="px-2 py-0.5 rounded-full border border-cyan-500/30 bg-white/[0.04] text-cyan-400 text-[8px] font-black tracking-widest uppercase">{tr("System Core")}</span>
+                                <span className="acc-badge acc-badge-mesh hidden sm:inline-flex">
+                                    192.0.2.71
+                                </span>
+                            </div>
+                            <p className="text-[9px] font-black text-white/50 uppercase tracking-[0.2em]">{tr("Developer & Administrator Override Hub")}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setActiveView('pico-bridge')}
+                            title={tr("Launch PicoBridge Hardware Gateway (Hidden)")}
+                            className="px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/12 text-purple-300 hover:text-white text-[10px] font-bold tracking-wider uppercase transition-all flex items-center gap-2 shadow-sm"
+                        >
+                            <Terminal size={13} className="text-purple-400" />
+                            <span>{tr("PicoBridge")}</span>
+                        </button>
                     </div>
                 </div>
 
-                {/* Right: Modern Tab Switcher & Hidden Gateway Launch */}
-                <div className="flex items-center gap-8">
-                    <nav className="flex items-center gap-10">
-                        {tabs.map(tab => {
+                {/* Tier 2: Apple HIG Segmented Control (Safely Below Onyx Island) */}
+                <div className="flex items-center justify-center w-full">
+                    <div className="acc-segmented-control overflow-x-auto max-w-full no-scrollbar shadow-2xl">
+                        {tabs.map((tab) => {
                             const Icon = tab.icon;
                             const isActive = activeTab === tab.id;
                             return (
                                 <button
                                     key={tab.id}
+                                    type="button"
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`relative group flex flex-col gap-1 transition-all duration-500 ${isActive ? '' : 'hover:scale-105'}`}
+                                    className={`acc-segmented-item ${isActive ? 'active' : ''}`}
                                 >
-                                    <div className="flex items-center gap-3">
-                                        <Icon size={14} className={isActive ? 'text-(--main-color)' : 'text-neutral-500'} />
-                                        <span className={`text-[10px] font-black uppercase tracking-[0.25em] ${isActive ? 'text-white' : 'text-neutral-500'}`}>
-                                            {tab.label}
-                                        </span>
-                                    </div>
-                                    {/* Active Indicator line */}
-                                    <div className={`h-0.5 bg-(--main-color) transition-all duration-500 transform origin-left shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)] ${isActive ? 'scale-x-100' : 'scale-x-0'}`} />
+                                    <Icon size={13} className={isActive ? 'text-cyan-400' : 'text-white/50'} />
+                                    <span>{tr(tab.label)}</span>
                                 </button>
                             );
                         })}
-                    </nav>
-
-                    <button
-                        onClick={() => setActiveView('pico-bridge')}
-                        title={tr("Launch PicoBridge Hardware Gateway (Hidden)")}
-                        className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/20 to-indigo-600/20 hover:from-purple-600/40 hover:to-indigo-600/40 border border-purple-500/30 text-purple-300 hover:text-white text-[10px] font-bold tracking-wider uppercase transition-all flex items-center gap-2 shadow-sm"
-                    >
-                        <Terminal size={14} className="text-purple-400" />
-                        <span className="hidden lg:inline">{tr("PicoBridge")}</span>
-                    </button>
+                    </div>
                 </div>
-            </div>
+            </header>
 
-            {/* Main Content Area: Frameless Flow */}
-            <main className="flex-1 overflow-y-auto px-10 py-12 pb-32 scrollbar-none">
-                <div className="max-w-[1800px] mx-auto animate-in fade-in duration-1000">
+            {/* Main Content Area: Frameless Translucent Flow */}
+            <main className="flex-1 overflow-y-auto px-6 md:px-10 py-8 pb-32 custom-scrollbar">
+                <div className="max-w-[1800px] mx-auto animate-in fade-in duration-500">
                     {activeTab === 'users' && <UserRegistryPanel />}
                     {activeTab === 'database' && (
-                        <div className="flex flex-col gap-16">
+                        <div className="flex flex-col gap-12">
                             <DatabaseStatsPanel />
                             <DataBaseArtifact />
                         </div>

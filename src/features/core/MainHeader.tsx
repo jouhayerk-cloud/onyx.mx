@@ -168,6 +168,7 @@ import { UploadToolsRegistrar } from '../upload/uploadTools';
 import { ControlToolsRegistrar } from '../control/controlTools';
 import { MiscViewToolsRouter } from './miscViewTools';
 import { PrintToolsRegistrar } from '../print/printTools';
+import { ONYX_MESH_TOPOLOGY } from '../../lib/network/localMeshMap';
 import { trackDocumentJob, saveExportFile } from '../print/jobTracking';
 import { isWorkbookV3Item, isWorkbookV3LedgerEntry } from '../workbook/workbookV3';
 
@@ -725,6 +726,21 @@ const InfoNotch: React.FC<{ part?: 'stats' | 'user' | 'both' }> = ({ part = 'bot
         <div className="info-notch flex items-stretch gap-0 shrink-0 [text-shadow:none] [&_*]:[text-shadow:none]">
             {statsBtn}
             {userBtn}
+        </div>
+    );
+};
+
+const ControlInfoNotch: React.FC = () => {
+    return (
+        <div
+            role="group"
+            aria-label={tr("Control Center Telemetry")}
+            className="info-notch-stats flex items-center gap-2.5 px-3 py-1 font-mono text-[11px]"
+        >
+            <span className="acc-dot acc-dot-cyan acc-pulse-cyan shrink-0" />
+            <span className="font-bold text-(--main-color)">{ONYX_MESH_TOPOLOGY.g7.ip}</span>
+            <span className="text-(--text-color-secondary) opacity-40">·</span>
+            <span className="text-emerald-400 font-semibold text-[10px] uppercase tracking-wider">MoE Live</span>
         </div>
     );
 };
@@ -4525,7 +4541,9 @@ export function MainHeader() {
                         ? { left: <ArchivedReadout part="stats" />, right: <ArchivedReadout part="scope" /> }
                         : (activeView === 'logistics' || activeView === 'warehouse' || activeView === 'trucking')
                             ? { left: <LogisticsReadoutSide side="left" />, right: <LogisticsReadoutSide side="right" /> }
-                            : null}
+                            : activeView === 'control'
+                                ? { left: <ControlInfoNotch />, right: null }
+                                : null}
             />
 
             {!migratedView && (

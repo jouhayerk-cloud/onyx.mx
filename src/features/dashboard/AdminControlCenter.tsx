@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     Shield,
     Activity,
@@ -10,6 +10,7 @@ import {
     Clock,
     Layers,
     Sparkles,
+    Radio,
 } from 'lucide-react';
 import {
     exchangeRateAtom,
@@ -18,6 +19,8 @@ import {
     inventoryAtom,
     logisticsDataAtom,
     financeTotalsAtom,
+    adminViewModeAtom,
+    AdminViewMode,
 } from '../../lib/atoms';
 import { vendors, DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -39,11 +42,11 @@ import { ExpenseSection } from './sections/ExpenseSection';
 // Apple HIG Styles
 import './adminControlCenter.css';
 
-export type AdminViewMode = 'active_devices' | 'edge_fleet' | 'financials';
+export { type AdminViewMode } from '../../lib/atoms';
 
 export const AdminControlCenter: React.FC = () => {
-    // Current Active Mode Switcher
-    const [viewMode, setViewMode] = useState<AdminViewMode>('active_devices');
+    // Current Active Mode Switcher (Synced with Onyx Island Dock)
+    const [viewMode, setViewMode] = useAtom(adminViewModeAtom);
 
     // Live clock for live time badge
     const [currentTimeStr, setCurrentTimeStr] = useState<string>(() => {
@@ -398,125 +401,63 @@ export const AdminControlCenter: React.FC = () => {
     const totalOpsMxn = Object.values(opsBreakdown).reduce((acc, c) => acc + c.mxn, 0);
 
     return (
-        <div className="flex flex-col h-full overflow-hidden relative animate-in fade-in duration-500 bg-(--app-bg)">
-            {/* Top Header: Apple HIG LiquidOnyx Floating Bar */}
-            <div className="px-6 md:px-10 py-5 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 bg-(--app-bg) z-20 backdrop-blur-xl">
-                {/* Title & Network Status Chip */}
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 shrink-0 shadow-[0_0_15px_rgba(0,174,239,0.2)]">
-                        <Shield size={20} />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2.5">
-                            <h1 className="text-lg md:text-xl font-black uppercase tracking-wider text-(--text-color)">
-                                {tr("Onyx Admin Control Center")}
-                            </h1>
-                            <span className="acc-badge acc-badge-mesh hidden sm:inline-flex" title="Mesh Topology Host">
-                                <Wifi size={10} />
-                                {ONYX_MESH_TOPOLOGY.g7.ip}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-(--text-color-secondary)">
-                            <span className="acc-dot acc-dot-emerald acc-pulse-emerald" />
-                            <span className="font-mono text-[11px] text-emerald-400 font-bold">
-                                {tr("Mesh Active")}
-                            </span>
-                            <span>•</span>
-                            <span className="font-mono text-[11px] text-white/50 flex items-center gap-1">
-                                <Clock size={10} />
-                                {currentTimeStr}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Segmented View Mode Switcher [ 👥 Active Users & Devices | ⚡ Edge & Colibrì Fleet | 📊 KPI & Financials ] */}
-                <div className="acc-segmented-control self-start md:self-auto overflow-x-auto max-w-full">
-                    <button
-                        type="button"
-                        onClick={() => setViewMode('active_devices')}
-                        className={`acc-segmented-item ${viewMode === 'active_devices' ? 'active' : ''}`}
-                    >
-                        <Users size={14} className={viewMode === 'active_devices' ? 'text-emerald-400' : ''} />
-                        <span>{tr("Active Users & Devices")}</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => setViewMode('edge_fleet')}
-                        className={`acc-segmented-item ${viewMode === 'edge_fleet' ? 'active' : ''}`}
-                    >
-                        <Cpu size={14} className={viewMode === 'edge_fleet' ? 'text-cyan-400' : ''} />
-                        <span>{tr("Edge & Colibrì Fleet")}</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => setViewMode('financials')}
-                        className={`acc-segmented-item ${viewMode === 'financials' ? 'active' : ''}`}
-                    >
-                        <BarChart3 size={14} className={viewMode === 'financials' ? 'text-amber-400' : ''} />
-                        <span>{tr("KPI & Financials")}</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Scrollable Viewport */}
-            <div className="grow min-h-0 overflow-y-auto custom-scrollbar px-6 md:px-10 py-6 pb-24">
+        <div className="flex flex-col h-full overflow-hidden relative animate-in fade-in duration-500 bg-(--app-bg) ui-root">
+            {/* Scrollable Viewport — Content flows smoothly beneath the floating Onyx Island */}
+            <div className="h-full overflow-y-auto custom-scrollbar relative px-6 md:px-10 pt-20 sm:pt-24 pb-24">
                 {/* 1. Active Users & Devices Mode */}
                 {viewMode === 'active_devices' && (
                     <ActiveUsersAndDevicesSection />
                 )}
 
-                {/* 2. Edge & Colibrì Fleet Mode */}
-                {viewMode === 'edge_fleet' && (
-                    <EdgeFleetOverviewSection />
-                )}
+                    {/* 2. Edge & Colibrì Fleet Mode */}
+                    {viewMode === 'edge_fleet' && (
+                        <EdgeFleetOverviewSection />
+                    )}
 
-                {/* 3. KPI & Financials Mode */}
-                {viewMode === 'financials' && (
-                    <div className="space-y-12 animate-in fade-in duration-300">
-                        {/* KPI Strip */}
-                        <KpiStrip
-                            totalItems={globalTotals.totalItems}
-                            totalAcqUsd={globalTotals.totalAcqValueUsd}
-                            totalAcqMxn={globalTotals.totalAcqValueMxn}
-                            totalLiabilityMxn={globalTotals.totalLiabilityMxn}
-                            totalLiabilityUsd={globalTotals.totalLiabilityMxn / currentExchangeRate}
-                            logisticsSpendMxn={globalTotals.logisticsSpendMxn}
-                            logisticsSpendUsd={globalTotals.logisticsSpendUsd}
-                            opsSpendMxn={totalOpsMxn}
-                            opsSpendUsd={totalOpsUsd}
-                            currentExchangeRate={currentExchangeRate}
-                        />
+                    {/* 3. KPI & Financials Mode */}
+                    {viewMode === 'financials' && (
+                        <div className="space-y-12 animate-in fade-in duration-300">
+                            {/* KPI Strip */}
+                            <KpiStrip
+                                totalItems={globalTotals.totalItems}
+                                totalAcqUsd={globalTotals.totalAcqValueUsd}
+                                totalAcqMxn={globalTotals.totalAcqValueMxn}
+                                totalLiabilityMxn={globalTotals.totalLiabilityMxn}
+                                totalLiabilityUsd={globalTotals.totalLiabilityMxn / currentExchangeRate}
+                                logisticsSpendMxn={globalTotals.logisticsSpendMxn}
+                                logisticsSpendUsd={globalTotals.logisticsSpendUsd}
+                                opsSpendMxn={totalOpsMxn}
+                                opsSpendUsd={totalOpsUsd}
+                                currentExchangeRate={currentExchangeRate}
+                            />
 
-                        {/* Finance Summary Section */}
-                        <FinanceSummarySection
-                            globalTotals={globalTotals}
-                            currentExchangeRate={currentExchangeRate}
-                            requisitions={requisitions}
-                            comingPaymentsByVendor={comingPaymentsByVendor}
-                            activeDestReqNetMXN={activeDestReqNetMXN}
-                        />
+                            {/* Finance Summary Section */}
+                            <FinanceSummarySection
+                                globalTotals={globalTotals}
+                                currentExchangeRate={currentExchangeRate}
+                                requisitions={requisitions}
+                                comingPaymentsByVendor={comingPaymentsByVendor}
+                                activeDestReqNetMXN={activeDestReqNetMXN}
+                            />
 
-                        {/* Inventory Status Section */}
-                        <InventoryStatusSection groupedLogistics={globalTotals.groupedLogistics} />
+                            {/* Inventory Status Section */}
+                            <InventoryStatusSection groupedLogistics={globalTotals.groupedLogistics} />
 
-                        {/* Vendor Acquisition Section */}
-                        <VendorAcquisitionSection
-                            vendorSummaries={vendorSummaries}
-                            currentExchangeRate={currentExchangeRate}
-                        />
+                            {/* Vendor Acquisition Section */}
+                            <VendorAcquisitionSection
+                                vendorSummaries={vendorSummaries}
+                                currentExchangeRate={currentExchangeRate}
+                            />
 
-                        {/* Material Breakdown Section */}
-                        <MaterialBreakdownSection attributeStats={attributeStats} />
+                            {/* Material Breakdown Section */}
+                            <MaterialBreakdownSection attributeStats={attributeStats} />
 
-                        {/* Expense Section */}
-                        <ExpenseSection opsBreakdown={opsBreakdown} />
-                    </div>
-                )}
+                            {/* Expense Section */}
+                            <ExpenseSection opsBreakdown={opsBreakdown} />
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
     );
 };
 export default AdminControlCenter;

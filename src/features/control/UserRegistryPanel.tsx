@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from '../onyxIsland/notify/toast';
 import { UserRegistrySkeleton } from './UserRegistrySkeleton';
@@ -161,18 +161,51 @@ export function UserRegistryPanel() {
         window.open(`mailto:${user.email}?subject=${subject}&body=${body}`, '_blank');
     };
 
+    const [filterOnlyActiveWithLog, setFilterOnlyActiveWithLog] = useState<boolean>(true);
+
+    const displayUsers = useMemo(() => {
+        if (!filterOnlyActiveWithLog) return users;
+        return users.filter(u => u.is_active !== false && (Boolean(u.last_submit_at) || Number(u.total_submits) > 0));
+    }, [users, filterOnlyActiveWithLog]);
+
+    const hiddenNoLogCount = useMemo(() => {
+        return users.length - displayUsers.length;
+    }, [users, displayUsers]);
+
     return (
-        <div className="flex flex-col gap-12">
+        <div className="flex flex-col gap-8">
             {/* Minimal Header */}
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-6">
-                    <h2 className="text-[14px] font-black uppercase tracking-[0.4em] text-white flex items-center gap-4">
-                        {tr("Registry")}
-                        <span className="text-[10px] font-mono text-(--main-color) bg-neutral-900 px-3 py-1 rounded-full border border-(--main-color)/30 tracking-normal leading-none">{users.length}</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/8">
+                <div className="flex items-center gap-4 flex-wrap">
+                    <h2 className="text-sm font-black uppercase tracking-[0.3em] text-white flex items-center gap-3">
+                        {tr("Identity Registry")}
+                        <span className="text-[10px] font-mono text-cyan-400 bg-white/[0.04] px-2.5 py-0.5 rounded-full border border-cyan-500/30">
+                            {displayUsers.length}
+                        </span>
                     </h2>
+
+                    <button
+                        type="button"
+                        onClick={() => setFilterOnlyActiveWithLog(!filterOnlyActiveWithLog)}
+                        className={`acc-badge cursor-pointer transition-all ${
+                            filterOnlyActiveWithLog
+                                ? 'bg-cyan-500/10 text-cyan-300 border-cyan-400/40'
+                                : 'bg-white/5 text-white/60 hover:text-white border-white/10'
+                        }`}
+                        title="Toggle hiding accounts with no login history"
+                    >
+                        <span>{filterOnlyActiveWithLog ? tr("Filtered: Active with Login Record") : tr("Show All Accounts")}</span>
+                    </button>
+
+                    {hiddenNoLogCount > 0 && filterOnlyActiveWithLog && (
+                        <span className="text-[10px] font-mono text-white/40">
+                            ({hiddenNoLogCount} {tr("accounts with no login history hidden")})
+                        </span>
+                    )}
+
                     <button 
                         onClick={() => fetchUsers()} 
-                        className={`p-2 rounded-full hover:bg-white/10 text-neutral-500 hover:text-(--main-color) transition-all ${loading ? 'animate-spin text-(--main-color)' : ''}`}
+                        className={`p-1.5 rounded-full hover:bg-white/10 text-white/50 hover:text-cyan-400 transition-all ${loading ? 'animate-spin text-cyan-400' : ''}`}
                         title={tr("SYNC REGISTRY")}
                     >
                         <History size={14} className={loading ? 'animate-spin' : ''} />
@@ -181,70 +214,68 @@ export function UserRegistryPanel() {
                 
                 <button
                     onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-3 group"
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/12 text-white/70 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-all self-start sm:self-auto"
                 >
-                    <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center group-hover:border-(--main-color)/40 group-hover:bg-(--main-color)/5 transition-all duration-500">
-                        <UserPlus size={14} className="text-neutral-500 group-hover:text-(--main-color) transition-all transform group-hover:rotate-12" />
-                    </div>
-                    <span className="text-[9px] font-black tracking-[0.3em] text-neutral-500 group-hover:text-white transition-all uppercase">{tr("Enrollment")}</span>
+                    <UserPlus size={13} className="text-cyan-400" />
+                    <span>{tr("Enrollment")}</span>
                 </button>
             </div>
 
-            {/* Add User Form - HUD Style */}
+            {/* Add User Form - Liquid Onyx HUD Style */}
             {showAddForm && (
-                <form onSubmit={handleAdd} className="animate-in fade-in slide-in-from-top-4 duration-700 max-w-2xl">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="h-px grow bg-gradient-to-r from-(--main-color) to-transparent" />
-                        <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-(--main-color)">{tr("Identity Provisioning")}</h3>
-                        <div className="h-px w-16 bg-(--main-color)/30" />
+                <form onSubmit={handleAdd} className="animate-in fade-in slide-in-from-top-4 duration-500 max-w-2xl p-6 rounded-2xl bg-white/[0.03] backdrop-blur-2xl border border-white/10 shadow-2xl">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="h-px grow bg-gradient-to-r from-cyan-500 to-transparent" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400">{tr("Identity Provisioning")}</h3>
+                        <div className="h-px w-16 bg-cyan-500/30" />
                     </div>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
-                        <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">{tr("Protocol Address")}</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[8px] uppercase font-black tracking-[0.2em] text-white/50">{tr("Protocol Address")}</label>
                             <input 
                                 type="email" required value={newEmail} 
                                 onChange={e => setNewEmail(e.target.value)} 
                                 placeholder={tr("USER@DOMAIN.COM")} 
-                                className="bg-transparent border-b border-white/5 py-2 text-xs text-white focus:outline-none focus:border-(--main-color)/50 transition-all placeholder:text-white/5 uppercase tracking-tight" 
+                                className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400/50 transition-all placeholder:text-white/20 uppercase font-mono" 
                             />
                         </div>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">{tr("Access Tier")}</label>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[8px] uppercase font-black tracking-[0.2em] text-white/50">{tr("Access Tier")}</label>
                             <select 
                                 value={newRole} 
                                 onChange={e => setNewRole(e.target.value as UserRole)} 
-                                className="bg-transparent border-b border-white/5 py-2 text-xs text-white focus:outline-none focus:border-(--main-color)/50 transition-all cursor-pointer uppercase tracking-tight"
+                                className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400/50 transition-all cursor-pointer uppercase font-mono"
                             >
                                 {(['Developer', 'Admin', 'ClientBoss', 'ClientAccounting', 'ClientViewer', 'Vendor'] as UserRole[]).map(r => (
-                                    <option key={r} value={r} className="bg-neutral-900 border-none">{r.toUpperCase()}</option>
+                                    <option key={r} value={r} className="bg-neutral-900 text-white font-mono">{r.toUpperCase()}</option>
                                 ))}
                             </select>
                         </div>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">{tr("Display handle")}</label>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[8px] uppercase font-black tracking-[0.2em] text-white/50">{tr("Display handle")}</label>
                             <input 
                                 type="text" value={newName} 
                                 onChange={e => setNewName(e.target.value)} 
                                 placeholder={tr("OPERATIVE DESIGNATION")} 
-                                className="bg-transparent border-b border-white/5 py-2 text-xs text-white focus:outline-none focus:border-(--main-color)/50 transition-all placeholder:text-white/5 uppercase tracking-tight" 
+                                className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400/50 transition-all placeholder:text-white/20 uppercase font-mono" 
                             />
                         </div>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">{tr("Internal observations")}</label>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[8px] uppercase font-black tracking-[0.2em] text-white/50">{tr("Internal observations")}</label>
                             <input 
                                 type="text" value={newNotes} 
                                 onChange={e => setNewNotes(e.target.value)} 
                                 placeholder={tr("OPTIONAL METADATA...")} 
-                                className="bg-transparent border-b border-white/5 py-2 text-xs text-white focus:outline-none focus:border-(--main-color)/50 transition-all placeholder:text-white/5 uppercase tracking-tight" 
+                                className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400/50 transition-all placeholder:text-white/20 uppercase font-mono" 
                             />
                         </div>
                     </div>
-                    <div className="flex gap-8 justify-end mt-12">
-                        <button type="button" onClick={() => setShowAddForm(false)} className="text-[9px] font-black tracking-[0.3em] text-neutral-500 hover:text-white transition-all uppercase">{tr("Abort")}</button>
+                    <div className="flex gap-4 justify-end mt-8">
+                        <button type="button" onClick={() => setShowAddForm(false)} className="text-[9px] font-black tracking-[0.2em] text-white/50 hover:text-white transition-all uppercase px-4 py-2">{tr("Abort")}</button>
                         <button 
                             type="submit" disabled={submitting} 
-                            className="bg-(--main-color) text-black px-10 py-2.5 rounded-full text-[10px] font-black tracking-[0.3em] hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.2)] uppercase"
+                            className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-2 rounded-full text-[10px] font-black tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(0,174,239,0.3)] uppercase"
                         >
                             {submitting ? tr("Encrypting…") : tr("Finalize Registry")}
                         </button>
@@ -254,123 +285,123 @@ export function UserRegistryPanel() {
 
             {error && <p className="text-red-400 text-[10px] font-black uppercase tracking-widest bg-red-500/5 border border-red-500/10 rounded-lg px-4 py-3 animate-pulse">{error}</p>}
 
-            {/* Frameless Content Grid */}
+            {/* Liquid Onyx Translucent Grid */}
             {loading ? (
                 <UserRegistrySkeleton />
-            ) : users.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-4 opacity-10">
-                    <UserSearch size={48} strokeWidth={1} />
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em]">{tr("Empty Registry")}</p>
+            ) : displayUsers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 gap-4 opacity-40">
+                    <UserSearch size={40} strokeWidth={1} className="text-white/40" />
+                    <p className="text-xs font-black uppercase tracking-[0.3em] text-white/50">{tr("No Matching Active Operatives")}</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-12 gap-y-16">
-                    {users.map(user => {
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {displayUsers.map(user => {
                         const RoleIcon = ROLE_ICONS[user.role] || UserSearch;
                         const lastActive = user.last_submit_at ? new Date(user.last_submit_at).getTime() : 0;
                         const isOnline = Date.now() - lastActive < 10 * 60 * 1000;
                         
                         return (
-                            <div key={user.id} className={`group relative flex flex-col gap-4 transition-all duration-700 ${!user.is_active ? 'opacity-20 grayscale' : ''}`}>
-                                {/* HUD Actions: Free Floating at Bottom */}
-                                <div className="mt-auto pt-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-all duration-700 translate-y-2 group-hover:translate-y-0">
-                                    <div className="flex gap-4">
-                                        <button 
-                                            onClick={() => { setEditingUserId(editingUserId === user.id ? null : user.id); setEditName(user.display_name || ''); }}
-                                            className="text-neutral-500 hover:text-(--main-color) transition-all"
-                                            title={tr("Modify Designation")}
-                                        >
-                                            <SquarePen size={14} />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleToggleActive(user)}
-                                            className={`transition-all ${user.is_active ? 'text-green-500/50 hover:text-red-500' : 'text-red-500/50 hover:text-green-500'}`}
-                                            title={user.is_active ? 'Decommission' : 'Restore'}
-                                        >
-                                            <Shield size={14} />
-                                        </button>
-                                        <button 
-                                            onClick={() => sendInvite(user)}
-                                            className="text-neutral-500 hover:text-blue-400 transition-all"
-                                            title={tr("Dispatch Creds")}
-                                        >
-                                            <Mail size={14} />
-                                        </button>
-                                    </div>
-                                    <button 
-                                        onClick={() => handleDelete(user.id)}
-                                        className="text-red-500/40 hover:text-red-500 transition-all"
-                                        title={tr("Purge")}
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-
-                                {/* Main HUD Content */}
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="relative">
-                                            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-transparent flex items-center justify-center border border-white/5 group-hover:border-(--main-color)/20 transition-all duration-1000 shadow-2xl ${ROLE_COLORS[user.role] || ROLE_COLORS.ClientViewer}`}>
-                                                <RoleIcon size={28} strokeWidth={1} />
+                            <div key={user.id} className={`group relative p-4 rounded-2xl bg-white/[0.03] backdrop-blur-2xl border border-white/8 hover:border-white/16 hover:bg-white/[0.05] transition-all flex flex-col justify-between gap-4 shadow-xl ${!user.is_active ? 'opacity-30 grayscale' : ''}`}>
+                                {/* Main Content */}
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="relative shrink-0">
+                                            <div className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-cyan-400 shadow-inner">
+                                                <RoleIcon size={20} strokeWidth={1.5} />
                                             </div>
-                                            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-black flex items-center justify-center ${isOnline ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-white/10'}`}>
-                                                {isOnline && <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />}
+                                            <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-black flex items-center justify-center ${isOnline ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-white/20'}`}>
+                                                {isOnline && <div className="w-1 h-1 rounded-full bg-white animate-ping" />}
                                             </div>
                                         </div>
                                         
-                                        <div className="flex flex-col min-w-0 grow pt-1">
+                                        <div className="flex flex-col min-w-0 grow">
                                             {editingUserId === user.id ? (
-                                                <div className="flex items-center gap-2 border-b border-(--main-color)/50 pb-1 animate-in zoom-in-95 duration-300">
+                                                <div className="flex items-center gap-1.5 border-b border-cyan-400/50 pb-1">
                                                     <input 
                                                         type="text" value={editName} 
                                                         onChange={(e) => setEditName(e.target.value)}
-                                                        className="bg-transparent border-none p-0 text-[11px] font-black text-white focus:ring-0 w-full uppercase tracking-tight"
+                                                        className="bg-transparent border-none p-0 text-xs font-bold text-white focus:ring-0 w-full uppercase"
                                                         placeholder={tr("NEW DESIGNATION")}
                                                         autoFocus
                                                     />
-                                                    <button onClick={() => handleUpdateName(user.id)} className="text-(--main-color) hover:scale-125 transition-all">
-                                                        <CheckCircle2 size={16} strokeWidth={3} />
+                                                    <button onClick={() => handleUpdateName(user.id)} className="text-cyan-400 hover:scale-110 transition-all">
+                                                        <CheckCircle2 size={14} />
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <h4 className="text-[12px] font-black text-white truncate tracking-tight uppercase leading-none mb-1.5">
+                                                <h4 className="text-xs font-bold text-white truncate uppercase">
                                                     {user.display_name || tr("UNIDENTIFIED UNIT")}
                                                 </h4>
                                             )}
-                                            <p className="text-[9px] font-mono text-neutral-500 truncate tracking-widest uppercase">{user.email}</p>
+                                            <p className="text-[10px] font-mono text-white/50 truncate">{user.email}</p>
                                         </div>
                                     </div>
 
-                                    {/* HUD Data Matrix */}
-                                    <div className="space-y-4 pt-1">
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">{tr("Hierarchy Control")}</span>
+                                    {/* Data Matrix */}
+                                    <div className="space-y-2 pt-2 border-t border-white/5">
+                                        <div className="flex items-center justify-between text-[10px]">
+                                            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/40">{tr("Hierarchy")}</span>
                                             <select 
                                                 value={user.role} 
                                                 onChange={(e) => handleUpdateRole(user.id, e.target.value as UserRole)}
-                                                className="bg-transparent border-none p-0 text-[10px] font-black uppercase tracking-[0.15em] text-(--main-color) hover:text-white focus:ring-0 cursor-pointer transition-all appearance-none"
+                                                className="bg-transparent border-none p-0 text-[10px] font-bold uppercase tracking-wider text-cyan-400 hover:text-white cursor-pointer transition-all"
                                             >
                                                 {(['Developer', 'Admin', 'ClientBoss', 'ClientAccounting', 'ClientViewer', 'Vendor'] as UserRole[]).map(r => (
-                                                    <option key={r} value={r} className="bg-neutral-900 text-white font-black">{r.toUpperCase()}</option>
+                                                    <option key={r} value={r} className="bg-neutral-900 text-white font-mono">{r.toUpperCase()}</option>
                                                 ))}
                                             </select>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">{tr("Last Sync")}</span>
-                                                <span className="text-[9px] font-black text-neutral-500 uppercase tracking-tighter">
+                                        <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                            <div>
+                                                <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/40 block">{tr("Last Sync")}</span>
+                                                <span className="text-[10px] font-mono text-white/60">
                                                     {user.last_submit_at ? new Date(user.last_submit_at).toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric', year: '2-digit' }) : tr("NONE")}
                                                 </span>
                                             </div>
-                                            <div className="flex flex-col gap-1 items-end text-right">
-                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">{tr("Log History")}</span>
-                                                <div className="flex items-center gap-1.5 justify-end">
-                                                    <Activity size={10} className="text-neutral-600" />
-                                                    <span className="text-[9px] font-mono text-neutral-500 font-bold">{user.total_submits || 0}</span>
-                                                </div>
+                                            <div className="text-right">
+                                                <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/40 block">{tr("Log History")}</span>
+                                                <span className="text-[10px] font-mono text-cyan-400 font-bold flex items-center gap-1 justify-end">
+                                                    <Activity size={9} />
+                                                    {user.total_submits || 0}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Floating Action Bar at Card Bottom */}
+                                <div className="pt-2 border-t border-white/5 flex items-center justify-between opacity-50 group-hover:opacity-100 transition-all">
+                                    <div className="flex items-center gap-3">
+                                        <button 
+                                            onClick={() => { setEditingUserId(editingUserId === user.id ? null : user.id); setEditName(user.display_name || ''); }}
+                                            className="text-white/40 hover:text-cyan-400 transition-all"
+                                            title={tr("Modify Designation")}
+                                        >
+                                            <SquarePen size={13} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleToggleActive(user)}
+                                            className={`transition-all ${user.is_active ? 'text-emerald-400/60 hover:text-red-400' : 'text-red-400/60 hover:text-emerald-400'}`}
+                                            title={user.is_active ? 'Decommission' : 'Restore'}
+                                        >
+                                            <Shield size={13} />
+                                        </button>
+                                        <button 
+                                            onClick={() => sendInvite(user)}
+                                            className="text-white/40 hover:text-purple-300 transition-all"
+                                            title={tr("Dispatch Creds")}
+                                        >
+                                            <Mail size={13} />
+                                        </button>
+                                    </div>
+                                    <button 
+                                        onClick={() => handleDelete(user.id)}
+                                        className="text-red-400/40 hover:text-red-400 transition-all"
+                                        title={tr("Purge")}
+                                    >
+                                        <Trash2 size={13} />
+                                    </button>
                                 </div>
                             </div>
                         );
