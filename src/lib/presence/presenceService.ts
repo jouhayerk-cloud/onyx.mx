@@ -10,6 +10,11 @@
  * - Throttled ping engine (45s interval, 30s interaction debounce, 3min idle threshold)
  * - Zero DB writes when state is unchanged and interval has not elapsed
  * - Non-crashing offline & fallback handling
+ *
+ * Privacy: the Realtime presence channel is PUBLIC (anyone holding the anon key can join it), so it only
+ * carries the session_id plus non-identifying liveness fields (device_type, last_seen_at). Identities
+ * (email, name, IP, device, current view) live in the RLS-protected user_active_sessions table, written by
+ * the ping_user_presence RPC and read back by Developer/Admin only.
  */
 
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -35,6 +40,13 @@ export interface UserActiveSession {
   created_at: string;
 }
 
+/** The only fields ever broadcast on the public presence channel. */
+export interface PublicPresencePayload {
+  session_id: string;
+  device_type: DeviceType;
+  last_seen_at: string;
+}
+
 export interface PresenceUserInfo {
   id?: string | null;
   email?: string | null;
@@ -54,6 +66,7 @@ export interface PresenceServiceConfig {
 export const SESSION_STORAGE_KEY = 'onyx_presence_session_id';
 export const DEFAULT_PING_INTERVAL_MS = 45_000;       // 45 seconds while active for low-load fleet telemetry
 export const DEFAULT_INTERACTION_DEBOUNCE_MS = 30_000; // 30 seconds debounce for interaction actions
+export const MAX_PING_BACKOFF_MS = 5 * 60_000;         // failed pings back off exponentially up to 5 minutes
 export const DEFAULT_IDLE_TIMEOUT_MS = 180_000;       // 3 minutes (180s) of inactivity -> Idle
 export const DEFAULT_MIN_THROTTLE_MS = 5_000;         // Minimum 5 seconds between state change pings
 
@@ -311,6 +324,8 @@ export class PresenceService {
   private cachedSessions: UserActiveSession[] = [];
   private isOffline: boolean = false;
   private rpcUnavailable: boolean = false;
+  private pingFailures: number = 0;
+  private nextPingAllowedAt: number = 0;
 
   // Supabase Realtime wss:// Channel & Presence state (<100ms instant updates)
   private realtimeChannel: RealtimeChannel | null = null;
@@ -389,6 +404,8 @@ export class PresenceService {
     if (this.realtimeChannel) return;
 
     try {
+      // Public channel: see the privacy note at the top of the file. Move to `private: true` together with the
+      // realtime.messages policies in swarm/tasks/FX/FX1_proposed.sql, once those are applied.
       this.realtimeChannel = supabase.channel('onyx_live_presence', {
         config: {
           presence: { key: this.sessionId },
@@ -423,25 +440,18 @@ export class PresenceService {
   }
 
   /**
-   * Emits instantaneous presence state over WebSockets (<100ms) to all connected devices.
+   * Emits instantaneous presence over WebSockets. The channel is public, so the payload is limited to the
+   * session id and non-identifying liveness fields; identities are read from user_active_sessions (RLS).
    */
   public async trackRealtimePresence(): Promise<void> {
     if (!this.realtimeChannel) return;
     try {
-      await this.realtimeChannel.track({
+      const payload: PublicPresencePayload = {
         session_id: this.sessionId,
-        user_id: this.user?.id || null,
-        user_email: this.user?.email || null,
-        user_name: this.user?.name || null,
-        device_name: this.deviceName,
         device_type: this.deviceType,
-        client_platform: this.clientPlatform,
-        browser: this.browser,
-        current_view: this.currentView,
-        last_action: this.lastAction,
-        is_idle: this.isIdleState,
         last_seen_at: new Date().toISOString(),
-      });
+      };
+      await this.realtimeChannel.track(payload);
     } catch (err) {
       console.warn('[PresenceService] Realtime presence track error:', err);
     }
@@ -484,32 +494,31 @@ export class PresenceService {
       map.set(id, { ...sess });
     }
 
-    // 2. Overlay instantaneous Realtime Presence states (<100ms websocket)
+    // 2. Overlay instantaneous Realtime Presence (session_id, device_type, last_seen_at only: the channel is public).
+    //    Identity, view and IP always come from the RLS-protected DB rows above.
     for (const [key, p] of this.activeRealtimePresences.entries()) {
-      const sessId = p.session_id || key;
+      const sessId = typeof p.session_id === 'string' && p.session_id ? p.session_id : key;
       const existing = map.get(sessId);
       if (existing) {
-        existing.current_view = p.current_view || existing.current_view;
-        existing.last_action = p.last_action || existing.last_action;
-        existing.is_idle = p.is_idle !== undefined ? Boolean(p.is_idle) : existing.is_idle;
         existing.last_seen_at = p.last_seen_at || existing.last_seen_at;
-        if (p.user_name) existing.user_name = p.user_name;
-        if (p.user_email) existing.user_email = p.user_email;
       } else {
-        // Realtime session joined before DB write was committed
+        // Live session with no readable DB row (not written yet, ping RPC missing, or hidden by RLS): count it, unidentified.
+        const deviceType: DeviceType = ['desktop', 'mobile', 'tablet', 'edge_relay'].includes(p.device_type)
+          ? p.device_type
+          : 'desktop';
         map.set(sessId, {
           session_id: sessId,
-          user_id: p.user_id || null,
-          user_email: p.user_email || null,
-          user_name: p.user_name || null,
-          device_name: p.device_name || 'Onyx Node',
-          device_type: p.device_type || 'desktop',
-          client_platform: p.client_platform || 'Windows',
-          browser: p.browser || 'App',
+          user_id: null,
+          user_email: null,
+          user_name: null,
+          device_name: 'Onyx Node',
+          device_type: deviceType,
+          client_platform: 'Unknown',
+          browser: 'App',
           ip_address: null,
-          current_view: p.current_view || 'home',
-          last_action: p.last_action || 'Connected via Realtime',
-          is_idle: Boolean(p.is_idle),
+          current_view: '',
+          last_action: 'Connected via Realtime',
+          is_idle: false,
           last_seen_at: p.last_seen_at || new Date().toISOString(),
           created_at: new Date().toISOString(),
         });
@@ -528,7 +537,11 @@ export class PresenceService {
     // Multiple tabs or previous session IDs from the same device collapse into 1 card
     const deviceMap = new Map<string, UserActiveSession>();
     for (const s of activeList) {
-      const key = `${(s.user_email || s.user_id || 'anon').toLowerCase()}::${s.device_name.toLowerCase()}::${s.client_platform.toLowerCase()}`;
+      // Unidentified (realtime-only) sessions never merge: each one is its own live session.
+      const who = s.user_email || s.user_id;
+      const key = who
+        ? `${who.toLowerCase()}::${s.device_name.toLowerCase()}::${s.client_platform.toLowerCase()}`
+        : `session::${s.session_id}`;
       const existing = deviceMap.get(key);
       if (!existing) {
         deviceMap.set(key, s);
@@ -661,6 +674,9 @@ export class PresenceService {
    * Skips DB write if state hasn't changed and interval hasn't elapsed.
    */
   public shouldSendPing(now = Date.now(), force = false): boolean {
+    // After failures, even forced pings wait for the backoff window (no request storm, no console flood)
+    if (now < this.nextPingAllowedAt) return false;
+
     if (force) return true;
 
     // Minimum throttle protection: do not ping more frequently than minThrottleMs
@@ -698,6 +714,8 @@ export class PresenceService {
       return false;
     }
 
+    // Identity is never sent: the RPC resolves user, email and name from the caller's JWT, so a client cannot
+    // claim to be someone else. Current view and last action stay in the RLS-protected table.
     const payload = {
       p_session_id: this.sessionId,
       p_device_name: this.deviceName,
@@ -707,9 +725,6 @@ export class PresenceService {
       p_current_view: this.currentView,
       p_last_action: this.lastAction,
       p_is_idle: this.isIdleState,
-      p_user_id: this.user?.id || null,
-      p_user_email: this.user?.email || null,
-      p_user_name: this.user?.name || null,
     };
 
     try {
@@ -723,8 +738,6 @@ export class PresenceService {
       const { error } = await (supabase as any).rpc('ping_user_presence', payload);
 
       if (error) {
-        // Record state locally without crashing
-        this.lastPingTime = now;
         const msg = (error.message || '').toLowerCase();
         const isNotFound =
           error.code === 'PGRST202' ||
@@ -734,6 +747,7 @@ export class PresenceService {
           msg.includes('could not find the function');
 
         if (isNotFound) {
+          this.lastPingTime = now;
           this.rpcUnavailable = true;
           console.info(
             '[PresenceService] ping_user_presence RPC is not deployed in Supabase backend (404). Falling back cleanly to pure Realtime presence channel.'
@@ -741,11 +755,16 @@ export class PresenceService {
           return false;
         }
 
-        console.warn('[PresenceService] Ping failed (handled gracefully):', error.message);
+        this.registerPingFailure(now, error.message);
         return false;
       }
 
       this.lastPingTime = now;
+      if (this.pingFailures > 0) {
+        console.info('[PresenceService] Presence ping recovered.');
+      }
+      this.pingFailures = 0;
+      this.nextPingAllowedAt = 0;
       this.lastSyncedHash = computeStateHash(
         this.currentView,
         this.lastAction,
@@ -757,17 +776,31 @@ export class PresenceService {
     } catch (err: any) {
       // Offline or network error
       this.isOffline = true;
-      this.lastPingTime = now;
       const msg = (err?.message || '').toLowerCase();
       if (err?.status === 404 || msg.includes('not found') || msg.includes('404')) {
+        this.lastPingTime = now;
         this.rpcUnavailable = true;
         console.info(
           '[PresenceService] ping_user_presence RPC is not deployed in Supabase backend (404). Falling back cleanly to pure Realtime presence channel.'
         );
         return false;
       }
-      console.warn('[PresenceService] Network unreachable, presence saved locally:', err?.message || err);
+      this.registerPingFailure(now, err?.message || String(err));
       return false;
+    }
+  }
+
+  /**
+   * Records a failed ping: exponential backoff (ping interval x 2^n, capped), and a single console line for the
+   * whole failure streak so a missing RPC, a denied call or a dead network cannot flood the console.
+   */
+  private registerPingFailure(now: number, message: string): void {
+    this.lastPingTime = now;
+    this.pingFailures++;
+    const wait = Math.min(this.pingIntervalMs * 2 ** this.pingFailures, MAX_PING_BACKOFF_MS);
+    this.nextPingAllowedAt = now + wait;
+    if (this.pingFailures === 1) {
+      console.warn('[PresenceService] Ping failed, retrying with backoff (handled gracefully):', message);
     }
   }
 

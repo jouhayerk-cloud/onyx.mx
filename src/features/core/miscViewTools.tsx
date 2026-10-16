@@ -2,10 +2,17 @@ import React from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { DollarSign, Download, Shield, Users, Cpu, BarChart3, Radio } from 'lucide-react';
 import { tr } from '../../lib/i18n';
-import { currencyModeAtom, adminViewModeAtom } from '../../lib/atoms';
+import { currencyModeAtom, adminViewModeAtom, userAtom } from '../../lib/atoms';
 import { ONYX_MESH_TOPOLOGY } from '../../lib/network/localMeshMap';
 import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import toast from 'react-hot-toast';
+
+/** Fleet / operator administration (Operators, Edge Fleet, Mesh, Colibri): Developer and Admin only. */
+export const isStaffRole = (role: string | null | undefined): boolean => role === 'Developer' || role === 'Admin';
+
+/** Same set as the server-side money roles (FINANCE_ROLES): Developer, Admin, ClientBoss, ClientAccounting. */
+export const FINANCE_ROLES: readonly string[] = ['Developer', 'Admin', 'ClientBoss', 'ClientAccounting'];
+export const isFinanceRole = (role: string | null | undefined): boolean => !!role && FINANCE_ROLES.includes(role);
 
 export interface MiscViewHandlers {
   handleMasterExportXLSX?: () => void;
@@ -45,10 +52,14 @@ export function useOverviewTools(handlers: MiscViewHandlers): ToolDescriptor[] {
 
 export function useDashboardTools(): ToolDescriptor[] {
   const [adminViewMode, setAdminViewMode] = useAtom(adminViewModeAtom);
+  const user = useAtomValue(userAtom);
+  const staff = isStaffRole(user?.role);
+  const finance = isFinanceRole(user?.role);
   const tools: ToolDescriptor[] = [];
 
+  // Mesh, Operators, Edge Fleet and Colibri are Developer/Admin only; Financials also serves the finance client roles.
   // 1. Mesh Node Icon (Docked Left of Face)
-  tools.push({
+  if (staff) tools.push({
     id: 'dashboard.mesh-node',
     moduleId: 'dashboard',
     label: tr('Mesh Node'),
@@ -69,7 +80,7 @@ export function useDashboardTools(): ToolDescriptor[] {
   });
 
   // 2. Operators Tab Selector (Docked Left of Face)
-  tools.push({
+  if (staff) tools.push({
     id: 'dashboard.tab.operators',
     moduleId: 'dashboard',
     label: tr('Operators'),
@@ -87,7 +98,7 @@ export function useDashboardTools(): ToolDescriptor[] {
   });
 
   // 3. Edge Fleet Tab Selector (Docked Right of Face)
-  tools.push({
+  if (staff) tools.push({
     id: 'dashboard.tab.edge_fleet',
     moduleId: 'dashboard',
     label: tr('Edge Fleet'),
@@ -105,7 +116,7 @@ export function useDashboardTools(): ToolDescriptor[] {
   });
 
   // 4. Financials Tab Selector (Docked Right of Face)
-  tools.push({
+  if (finance) tools.push({
     id: 'dashboard.tab.financials',
     moduleId: 'dashboard',
     label: tr('Financials'),
@@ -123,7 +134,7 @@ export function useDashboardTools(): ToolDescriptor[] {
   });
 
   // 5. Colibrì MoE Host Status Icon (Docked Right of Face)
-  tools.push({
+  if (staff) tools.push({
     id: 'dashboard.colibri-moe',
     moduleId: 'dashboard',
     label: tr('Colibrì MoE'),

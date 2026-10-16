@@ -5,6 +5,7 @@ import { tr } from '../../lib/i18n';
 import { userAtom, adminViewModeAtom } from '../../lib/atoms';
 import { ONYX_MESH_TOPOLOGY } from '../../lib/network/localMeshMap';
 import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
+import { isStaffRole, isFinanceRole } from '../core/miscViewTools';
 import toast from 'react-hot-toast';
 
 export interface ControlHandlers {
@@ -19,10 +20,14 @@ export interface ControlHandlers {
 /** Builds the command tool entries for the Control view, wired to the given handlers. */
 export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
   const [adminViewMode, setAdminViewMode] = useAtom(adminViewModeAtom);
+  const user = useAtomValue(userAtom);
+  const staff = isStaffRole(user?.role);
+  const finance = isFinanceRole(user?.role);
   const tools: ToolDescriptor[] = [];
 
+  // Mesh, Operators, Edge Fleet and Colibri are Developer/Admin only; Financials also serves the finance client roles.
   // 1. Mesh Node Icon (Docked Left of Face)
-  tools.push({
+  if (staff) tools.push({
     id: 'control.mesh-node',
     moduleId: 'control',
     label: tr('Mesh Node'),
@@ -43,7 +48,7 @@ export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
   });
 
   // 2. Operators Tab Selector (Docked Left of Face)
-  tools.push({
+  if (staff) tools.push({
     id: 'control.tab.operators',
     moduleId: 'control',
     label: tr('Operators'),
@@ -61,7 +66,7 @@ export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
   });
 
   // 3. Edge Fleet Tab Selector (Docked Right of Face)
-  tools.push({
+  if (staff) tools.push({
     id: 'control.tab.edge_fleet',
     moduleId: 'control',
     label: tr('Edge Fleet'),
@@ -79,7 +84,7 @@ export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
   });
 
   // 4. Financials Tab Selector (Docked Right of Face)
-  tools.push({
+  if (finance) tools.push({
     id: 'control.tab.financials',
     moduleId: 'control',
     label: tr('Financials'),
@@ -97,7 +102,7 @@ export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
   });
 
   // 5. Colibrì MoE Host Status Icon (Docked Right of Face)
-  tools.push({
+  if (staff) tools.push({
     id: 'control.colibri-moe',
     moduleId: 'control',
     label: tr('Colibrì MoE'),
