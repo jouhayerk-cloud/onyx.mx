@@ -76,10 +76,17 @@ export function shouldUseBridge(_baseUrl: string): boolean {
     return false;
 }
 
+/** Colibrì published inside the owner's Tailscale network (tailscale serve, HTTPS); reachable only from signed-in tailnet devices. */
+export const COLIBRI_TAILNET_URL = 'https://g7.tail2a809e.ts.net';
+
+const isAppleMobile = (): boolean => typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+
 function resolveBaseUrl(cfg: ProviderConfig | undefined): string {
     const raw = (cfg?.baseUrl || COLIBRI_DEFAULT_BASE_URL).trim();
     // a stale 'supabase://' preset from the relay days points nowhere now
-    return (raw.startsWith('supabase://') ? COLIBRI_DEFAULT_BASE_URL : raw).replace(/\/+$/, '');
+    const url = (raw.startsWith('supabase://') ? COLIBRI_DEFAULT_BASE_URL : raw).replace(/\/+$/, '');
+    // on iPhone/iPad 127.0.0.1 is the phone itself: reach the PC through Tailscale instead
+    return isAppleMobile() && isLoopback(url) ? COLIBRI_TAILNET_URL : url;
 }
 
 function authHeaders(cfg: ProviderConfig | undefined, json: boolean): Record<string, string> {
@@ -93,8 +100,8 @@ const isLoopback = (url: string): boolean => /^https?:\/\/(127\.0\.0\.1|localhos
 
 /** Why a direct call from this page cannot work at all, or null. Saves a pointless wait. */
 export function colibriBlockedReason(baseUrl: string): string | null {
-    if (typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent || '')) {
-        return tr('Colibrì runs only on the Windows PC; it is not available on iPhone or iPad');
+    if (isAppleMobile() && isLoopback(baseUrl)) {
+        return tr('Colibrì runs on the Windows PC; on iPhone or iPad it is reached through Tailscale');
     }
     if (typeof window !== 'undefined' && window.location?.protocol === 'https:' && baseUrl.startsWith('http:') && !isLoopback(baseUrl)) {
         return tr('This page is HTTPS, so the browser blocks a plain HTTP address on the network. Use http://127.0.0.1:8000 on the PC that runs Colibrì');

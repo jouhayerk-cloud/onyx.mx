@@ -347,11 +347,11 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
         let chatSetup = effectiveViaGemini ? null : resolveChatRoute(route);
 
         if (!effectiveViaGemini) {
-            if (chatSetup && !chatSetup.ok) {
+            if (chatSetup && chatSetup.ok === false) {
                 fallbackNotice = `${chatSetup.message}. ${tr('Falling back to Gemini for this turn.')}`;
                 effectiveViaGemini = true;
             } else if (route.provider === 'colibri') {
-                const isUp = await isColibriAvailable(chatSetup?.cfg?.baseUrl);
+                const isUp = await isColibriAvailable(chatSetup?.ok ? chatSetup.cfg.baseUrl : undefined);
                 if (!isUp) {
                     fallbackNotice = `${tr('Colibrì is not running on this PC.')} ${tr('Falling back to Gemini for this turn.')}`;
                     effectiveViaGemini = true;
@@ -388,7 +388,7 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
         try {
             // route model first (user choice), then 2.5 Flash primary, 3.8 Flash fallback; offline provider falls back to Gemini for that turn
             const modelsToTry = effectiveViaGemini
-                ? Array.from(new Set([...(route.model && viaGemini ? [route.model] : []), "gemini-2.5-flash", "gemini-3.8-flash"]))
+                ? Array.from(new Set([...(route.model && route.provider === 'gemini' ? [route.model] : []), "gemini-2.5-flash", "gemini-3.8-flash"]))
                 : [];
             let resp = null;
             let usedModel = "";
@@ -436,8 +436,7 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
                 const parts = resp.candidates?.[0]?.content?.parts || [];
                 const calls = parts.filter((p: any) => p.functionCall);
                 const textParts = parts.filter((p: any) => typeof p.text === 'string' && p.text).map((p: any) => p.text);
-                let modelText: string | undefined = textParts.length > 0 ? textParts.join('
-') : undefined;
+                let modelText: string | undefined = textParts.length > 0 ? textParts.join('\n') : undefined;
 
                 if (calls.length === 0 && modelText) {
                     const unexecutedTool = allDefinitions.find((d: any) =>
@@ -453,7 +452,7 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
                             contents.push({
                                 role: 'user',
                                 parts: [{
-                                    text: `You mentioned '${unexecutedTool.name}' without calling it. Do not narrate tool calls. You must invoke the tool as a function call. Tool schema:\n${JSON.stringify(unexecutedTool)}`
+                                    text: `You mentioned '${(unexecutedTool as any).name}' without calling it. Do not narrate tool calls. You must invoke the tool as a function call. Tool schema:\n${JSON.stringify(unexecutedTool)}`
                                 }]
                             });
                             setPhase('thinking');
