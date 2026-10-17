@@ -22,18 +22,20 @@
   }
 }
 
-/* Dimming scrim behind the studio sheet — no blur here so .lps-sheet is the single active blur layer */
+/* Frosted glass scrim behind the studio (owner 2026-10-17): the page behind frosts over, the sheet floats on it */
 .lps-scrim,
 html.style-slab .lps-scrim {
   position: absolute;
   inset: 0;
-  background-color: rgba(2, 6, 16, 0.22) !important;
-  backdrop-filter: none !important;
+  background-color: rgba(2, 6, 16, 0.18) !important;
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 60%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
+  backdrop-filter: blur(22px) saturate(1.4) !important;
 }
 
 html.theme-aqua .lps-scrim,
 html.style-slab.theme-aqua .lps-scrim {
-  background-color: rgba(11, 42, 51, 0.10) !important;
+  background-color: rgba(255, 255, 255, 0.22) !important;
 }
 
 /* ── Master Sheet Container (Layer 1: Clear .liquid-surface) ────────────── */
