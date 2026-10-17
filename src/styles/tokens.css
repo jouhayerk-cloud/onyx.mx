@@ -118,8 +118,8 @@ html.theme-aqua {
   --lq-filter-control: blur(var(--lq-blur-control)) saturate(1.5);
 
   /* Dark default (Talan / Obsidian) */
-  --lq-fill-surface: rgba(14, 18, 28, 0.28);
-  --lq-fill-panel: rgba(14, 18, 28, 0.40);
+  --lq-fill-surface: rgba(10, 12, 16, 0.14);
+  --lq-fill-panel: rgba(10, 12, 16, 0.22);
   --lq-fill-control: rgba(255, 255, 255, 0.06);
   --lq-fill-control-hover: rgba(255, 255, 255, 0.12);
   --lq-rim: rgba(255, 255, 255, 0.22);
@@ -146,8 +146,8 @@ html.theme-aqua {
 
 html.theme-aqua {
   /* Aqua (Light Coastal Stone) */
-  --lq-fill-surface: rgba(255, 255, 255, 0.32);
-  --lq-fill-panel: rgba(255, 255, 255, 0.38);
+  --lq-fill-surface: rgba(255, 255, 255, 0.18);
+  --lq-fill-panel: rgba(255, 255, 255, 0.24);
   --lq-fill-control: rgba(11, 42, 51, 0.06);
   --lq-fill-control-hover: rgba(11, 42, 51, 0.12);
   --lq-rim: rgba(11, 42, 51, 0.15);
