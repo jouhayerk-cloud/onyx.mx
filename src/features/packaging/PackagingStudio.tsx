@@ -261,14 +261,14 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
         created_at: new Date().toISOString()
       });
 
-      const containerType = kind === 'cardboard' ? 'box' : kind === 'crate' ? 'crate' : 'pallet';
+      const containerType = kind === 'cardboard' ? 'cardboard' : kind === 'crate' ? 'crate' : 'pallet';
       const label = `${kind === 'cardboard' ? 'BOX' : kind === 'crate' ? 'CRT' : 'PAL'}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
       const { data, error } = await supabase
         .from('logistics')
         .insert({
           type: containerType,
-          status: 'Empty',
+          status: stagedItems.length > 0 ? 'Packed' : 'Empty',
           width_cm: resolvedSpec.outerCm.w,
           length_cm: resolvedSpec.outerCm.l,
           height_cm: resolvedSpec.outerCm.h,

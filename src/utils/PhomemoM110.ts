@@ -30,6 +30,8 @@ const M110_CMD = {
 export class M110Driver {
     private device: any = null;
     private characteristic: any = null;
+    /** Called when the printer drops the Bluetooth link (power off, out of range). */
+    public onDisconnect?: () => void;
 
     async connect() {
         if (!(navigator as any).bluetooth) {
@@ -44,6 +46,11 @@ export class M110Driver {
                 { namePrefix: 'Q' }, // M110S
             ],
             optionalServices: [M110_CONSTANTS.SERVICE_UUID]
+        });
+
+        this.device.addEventListener('gattserverdisconnected', () => {
+            this.characteristic = null;
+            this.onDisconnect?.();
         });
 
         const server = await this.device.gatt?.connect();

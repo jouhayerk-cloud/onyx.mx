@@ -255,8 +255,11 @@ export function generateBomCutList(spec: PackagingSpec): PackagingCutList {
   if (kind === 'cardboard') {
     const gMm = 35;
     const tMm = boardThicknessMm;
-    const blankWidthMm = 2 * (innerCm.l * 10 + innerCm.w * 10) + gMm + 4 * tMm;
-    const blankHeightMm = innerCm.h * 10 + innerCm.w * 10 + 2 * tMm;
+    const boxLMm = innerCm.l * 10 + 2 * foamPaddingMm;
+    const boxWMm = innerCm.w * 10 + 2 * foamPaddingMm;
+    const boxHMm = innerCm.h * 10 + 2 * foamPaddingMm;
+    const blankWidthMm = 2 * (boxLMm + boxWMm) + gMm + 4 * tMm;
+    const blankHeightMm = boxHMm + boxWMm + 2 * tMm;
     const blankAreaM2 = (blankWidthMm * blankHeightMm) / 1000000;
     totalCardboardM2 += blankAreaM2;
 
@@ -341,7 +344,7 @@ export function generateBomCutList(spec: PackagingSpec): PackagingCutList {
     });
 
     // Side Panels (2x length walls)
-    const wallHeightMm = hMm - (spec.skidMm?.height ?? 89) - 18;
+    const wallHeightMm = hMm - (spec.skidMm?.height ?? 89) - 18 - spec.boardThicknessMm - (spec.cleatMm?.thick ?? 19);
     const sideArea = (2 * (lMm * wallHeightMm)) / 1000000;
     totalPlywoodM2 += sideArea;
     items.push({
@@ -392,7 +395,7 @@ export function generateBomCutList(spec: PackagingSpec): PackagingCutList {
 
     // Foam Lining
     if (foamPaddingMm > 0) {
-      const foamArea = (2 * (outerCm.w * 10 * outerCm.l * 10) + 2 * (outerCm.l * 10 * outerCm.h * 10) + 2 * (outerCm.w * 10 * outerCm.h * 10)) / 1000000;
+      const foamArea = (2 * (innerCm.w * 10 * innerCm.l * 10 + innerCm.l * 10 * innerCm.h * 10 + innerCm.w * 10 * innerCm.h * 10)) / 1000000;
       totalFoamM3 = foamArea * (foamPaddingMm / 1000);
       items.push({
         part: 'Interior Foam Cushioning Lining',
@@ -459,9 +462,9 @@ export function generateDielineSvg(spec: PackagingSpec): string {
     // Width = Glue flap (g) + Length 1 + Width 1 + Length 2 + Width 2
     const g = 35;
     const t = boardThicknessMm;
-    const L = Math.round(innerCm.l * 10);
-    const W = Math.round(innerCm.w * 10);
-    const H = Math.round(innerCm.h * 10);
+    const L = Math.round(innerCm.l * 10 + 2 * spec.foamPaddingMm);
+    const W = Math.round(innerCm.w * 10 + 2 * spec.foamPaddingMm);
+    const H = Math.round(innerCm.h * 10 + 2 * spec.foamPaddingMm);
     const flapH = Math.round(W / 2);
 
     const totalW = g + 2 * L + 2 * W;
@@ -984,5 +987,5 @@ export function generateBoxesCliRecipe(spec: PackagingSpec): string {
 
   return `# Boxes.py Divider Recipe for Onyx Workshop Laser PC
 # Run in terminal with python -m boxes or boxes.exe:
-boxes.exe TypeTray --x=${wMm} --y=${lMm} --h=${hMm} --thickness=${tMm} --burn=${burnMm} --sx="100*2" --sy="100*2" --output=divider_${wMm}x${lMm}.svg`;
+boxes.exe TypeTray --sx="${Math.round(wMm/2)}*2" --sy="${Math.round(lMm/2)}*2" --h=${hMm} --thickness=${tMm} --burn=${burnMm} --output=divider_${wMm}x${lMm}.svg`;
 }
