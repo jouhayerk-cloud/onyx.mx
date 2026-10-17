@@ -840,7 +840,7 @@ html.theme-aqua .wl-info-panel::after {
 }
 
 /* Chromium-only SVG refraction guard: WebKit drops the whole backdrop-filter on url() */
-@media not all { /* SVG refraction off (owner 2026-10-17: smeared glass on Chrome); slab glass everywhere */
+html.lq-refraction { /* SVG refraction: opt-in test effect (add class lq-refraction on <html>; localStorage lqRefraction=1) */
   .wl-halo.liquid-surface,
   .wl-bubble.liquid-surface {
     backdrop-filter: url(#lq-refract) var(--lq-filter) !important;
@@ -1205,7 +1205,7 @@ html.theme-aqua .wl-mini-lucide-bubble::before {
   background: radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.25) 35%, transparent 68%);
 }
 
-@media not all { /* SVG refraction off (owner 2026-10-17: smeared glass on Chrome); slab glass everywhere */
+html.lq-refraction { /* SVG refraction: opt-in test effect (add class lq-refraction on <html>; localStorage lqRefraction=1) */
   .wl-mini-lucide-bubble.liquid-control {
     backdrop-filter: url(#lq-refract) var(--lq-filter-control) !important;
   }

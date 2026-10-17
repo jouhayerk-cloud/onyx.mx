@@ -248,6 +248,11 @@ export default function App() {
     // class unconditionally and let the theme's own palette decide the ground —
     // slab.css defines a light slab for Aqua and a dark slab for Talan.
     document.documentElement.classList.add('dark');
+
+    // SVG refraction is an opt-in Liquid Glass test effect, not a default: localStorage lqRefraction = '1' turns it on.
+    let refraction = false;
+    try { refraction = localStorage.getItem('lqRefraction') === '1'; } catch { /* storage blocked */ }
+    document.documentElement.classList.toggle('lq-refraction', refraction);
   }, [theme, appStyle]);
 
   useEffect(() => {

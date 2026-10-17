@@ -11,7 +11,7 @@ Precedence: owner (Ramses) instructions > this skill > apple-design > taste skil
 
 ## 1. Hard rules (gate fails if broken)
 
-1. **No SVG refraction.** No `backdrop-filter: url(#...)` anywhere (smeared glass on Chrome, Safari drops the whole filter, blur included). Old blocks stay disabled as `@media not all { ... }`. SVG `fill="url(#gradient)"` inside drawings is fine.
+1. **SVG refraction is opt-in, not banned.** The default glass is the slab recipe (no `backdrop-filter: url(#...)`): it smeared on Chrome and Safari drops the whole filter on url(). Refraction rules live inside `html.lq-refraction { ... }` blocks and switch on with localStorage `lqRefraction = 1` (App.tsx toggles the class). Any Liquid Glass effect may be tested that way; promote one to default only with the owner's OK after a look on Chrome and iPhone. SVG `fill="url(#gradient)"` inside drawings is unrestricted.
 2. **No emoji or emoticons** in bars, menus, chips, tabs, buttons, toasts or labels. lucide-react icons only.
 3. **Glass is tokens, not literals.** Fill, blur, rim, sheen, shadow and ink come from `--lq-*` (src/styles/tokens.css). A component may override a token locally on its own root; it never hard-codes a dark-only colour.
 4. **Liquid classes never set `position`** (`.liquid-surface`, `.liquid-panel`, `.liquid-control`); they broke fixed/sticky Tailwind utilities.
@@ -49,7 +49,7 @@ A modal sheet (Settings, Print Studio, Packaging Studio) floats on a frosted scr
 
 - **iOS Safari / WebKit:** no SVG backdrop filters; Web Bluetooth unavailable (show a message, never a dead button); 44pt touch targets.
 - **Home Screen app (standalone):** `viewport-fit=cover`, `black-translucent`; the shell is `html, body { height: 100% }`, `#root { position: fixed; top/left/right 0; z-index: 1 }`; safe areas as padding (`env(safe-area-inset-*)`), never as container size. Known iOS bug: the web view can be 59pt short at the bottom (873 vs 932); CSS cannot paint it - the fix is the native container (ios/OnyxCompanion).
-- **Chrome/Windows:** same slab recipe as Safari (refraction off).
+- **Chrome/Windows:** same slab recipe as Safari by default; refraction only when `lq-refraction` is on.
 
 ## 5. Chrome and layout (Apple HIG, data-dense)
 
@@ -67,12 +67,12 @@ A modal sheet (Settings, Print Studio, Packaging Studio) floats on a frosted scr
 - Classes: `src/styles/liquid.css`. Slab theme sweep and rows: `src/styles/slab-glass.css`, `src/styles/slab.css`.
 - Shell: `index.css` (`#root`, phone rules), `src/features/core/topbarOverlay.css`.
 - Sidebar/Island/Dock: `src/features/core/islandSidebar.css`, `src/features/onyxIsland/*.css`, `src/features/core/submenuDock.css`.
-- Filters component (refraction defs, unused while off): `src/features/core/LiquidOnyxFilters.tsx`.
+- Filters component (refraction defs for the opt-in effect): `src/features/core/LiquidOnyxFilters.tsx`.
 
 ## 7. Gate checklist (run before merge)
 
 1. `npx tsc --noEmit -p .` - 0 errors under `src/`; `npm run build` passes.
-2. `grep -rn "backdrop-filter: url(#" src` - only inside `@media not all`.
+2. `grep -rn "backdrop-filter: url(#" src` - only inside `html.lq-refraction { }` blocks (opt-in).
 3. No emoji in added lines (scan `[☀-➿\U0001F300-\U0001FAFF]`).
 4. No `position:` in liquid classes; no new solid sheet backgrounds; aqua mapping present for hard-coded dark utilities.
 5. Look at it on the 1001 dev server in slab and rock, dark and aqua, desktop and iPhone; behaviour unchanged.
