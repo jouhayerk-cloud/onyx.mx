@@ -8336,14 +8336,197 @@ function init() {
   });
 
   console.log('Phomymo Label Designer initialized');
+  try {
+    window.parent.postMessage({ type: 'DESIGNER_READY' }, window.location.origin || '*');
+  } catch (e) {}
+}
+
+let currentPreviewJobId = 0;
+
+function decodeRasterToDataUrl(rasterBytes, widthBytes, heightLines) {
+  const widthPx = widthBytes * 8;
+  const heightPx = heightLines;
+  const canvas = document.createElement('canvas');
+  canvas.width = widthPx;
+  canvas.height = heightPx;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  const imgData = ctx.createImageData(widthPx, heightPx);
+  const data = imgData.data;
+
+  for (let y = 0; y < heightPx; y++) {
+    for (let bx = 0; bx < widthBytes; bx++) {
+      const byte = rasterBytes[y * widthBytes + bx];
+      for (let bit = 0; bit < 8; bit++) {
+        const isBlack = (byte & (0x80 >> bit)) !== 0;
+        const pxIdx = (y * widthPx + (bx * 8 + bit)) * 4;
+        const c = isBlack ? 0 : 255;
+        data[pxIdx] = c;
+        data[pxIdx + 1] = c;
+        data[pxIdx + 2] = c;
+        data[pxIdx + 3] = 255;
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+
+/**
+ * Render a single template record to a 1-bit monochrome raster data URL
+ * using CanvasRenderer and VirtualTransport. This is the exact same path that
+ * virtual printing and Phomemo M110 printhead use.
+ */
+async function renderRecordToRasterDataUrl(record, templateElements = state.elements) {
+  if (!record || !state.renderer) return null;
+
+  const substitutedElements = substituteFields(templateElements, record);
+  const mergedElements = evaluateExpressions(substitutedElements);
+
+  // Pre-load any image elements to ensure they are fully decoded into ImageBitmap / Canvas
+  const imageElements = mergedElements.filter(e => e.type === 'image' && e.imageData);
+  if (imageElements.length > 0) {
+    await Promise.all(imageElements.map(e => new Promise(resolve => {
+      const cached = state.renderer._getFromImageCache(e.id);
+      if (cached && cached.src === e.imageData && cached.complete && cached.naturalWidth > 0) {
+        resolve();
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        state.renderer._addToImageCache(e.id, img);
+        resolve();
+      };
+      img.onerror = () => resolve();
+      img.src = e.imageData;
+    })));
+  }
+
+  // Pre-render to trigger barcode and QR generation
+  state.renderer._renderToPixels(mergedElements);
+
+  // Allow async generation to settle
+  await new Promise(r => setTimeout(r, 60));
+
+  const deviceName = state.transport?.getDeviceName?.() || '';
+  const printerModel = state.printSettings?.printerModel || 'auto';
+  const printerWidth = getPrinterWidthBytes(deviceName, printerModel);
+  const printerAlignment = getPrinterAlignment(deviceName, printerModel);
+
+  let ditherMode = getDitherMode(mergedElements);
+  if (ditherMode === 'auto' && isTSPLPrinter(deviceName, printerModel)) {
+    ditherMode = 'threshold';
+  }
+
+  const rasterData = isRotatedPrinter(deviceName, printerModel)
+    ? state.renderer.getRasterDataRaw(mergedElements, ditherMode)
+    : state.renderer.getRasterData(mergedElements, printerWidth, 203, ditherMode, printerAlignment);
+
+  let dataUrl = '';
+  if (typeof window !== 'undefined' && window.VirtualTransport && typeof window.VirtualTransport.getShared === 'function') {
+    try {
+      const vt = window.VirtualTransport.getShared();
+      if (typeof vt.decodeRasterToDataUrl === 'function') {
+        dataUrl = vt.decodeRasterToDataUrl(rasterData.data, rasterData.widthBytes, rasterData.heightLines);
+      }
+    } catch (e) {}
+  }
+  if (!dataUrl) {
+    dataUrl = decodeRasterToDataUrl(rasterData.data, rasterData.widthBytes, rasterData.heightLines);
+  }
+
+  return {
+    dataUrl,
+    widthBytes: rasterData.widthBytes,
+    heightLines: rasterData.heightLines
+  };
 }
 
 // External Messaging Interface
-window.addEventListener('message', (event) => {
+window.addEventListener('message', async (event) => {
   if (window.location.origin && event.origin && event.origin !== 'null' && window.location.origin !== 'null') {
     if (event.origin !== window.location.origin) return;
   }
   const { type, payload } = event.data || {};
+
+  if (type === 'PING') {
+    try {
+      window.parent.postMessage({ type: 'DESIGNER_READY' }, window.location.origin || '*');
+    } catch (e) {}
+    return;
+  }
+
+  if (type === 'RENDER_BATCH_PREVIEWS') {
+    const jobId = ++currentPreviewJobId;
+    const batch = payload?.batchProject || payload;
+    if (batch) {
+      if (batch.elements) state.elements = batch.elements;
+      if (batch.labelSize) {
+        state.labelSize = batch.labelSize;
+        state.renderer.setDimensions(state.labelSize.width, state.labelSize.height, state.zoom, state.labelSize.round || false);
+      }
+      if (batch.records || batch.templateData) {
+        state.templateData = batch.records || batch.templateData;
+      }
+    }
+
+    try {
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+    } catch (e) {}
+
+    const records = (batch?.records || batch?.templateData || state.templateData || []);
+    const uniqueTags = new Set();
+    const uniqueRecords = [];
+    for (const r of records) {
+      const tag = r['TAG ID'] || r['TAGID'] || r['tag_id'] || '';
+      if (tag && !uniqueTags.has(tag)) {
+        uniqueTags.add(tag);
+        uniqueRecords.push(r);
+      } else if (!tag && uniqueRecords.length === 0) {
+        uniqueRecords.push(r);
+      }
+    }
+
+    const resultMap = {};
+
+    for (const record of uniqueRecords) {
+      if (jobId !== currentPreviewJobId) return;
+      const tagId = record['TAG ID'] || record['TAGID'] || record['tag_id'] || '';
+      const res = await renderRecordToRasterDataUrl(record, state.elements);
+      if (!res) continue;
+
+      resultMap[tagId] = res.dataUrl;
+
+      try {
+        window.parent.postMessage({
+          type: 'PREVIEW_RASTER_ITEM',
+          payload: {
+            tag: tagId,
+            tagId,
+            dataUrl: res.dataUrl,
+            width: res.widthBytes * 8,
+            height: res.heightLines
+          }
+        }, window.location.origin || '*');
+      } catch (e) {}
+    }
+
+    if (jobId !== currentPreviewJobId) return;
+
+    try {
+      window.parent.postMessage({
+        type: 'PREVIEW_RASTERS_READY',
+        payload: {
+          rasters: resultMap
+        }
+      }, window.location.origin || '*');
+    } catch (e) {}
+    return;
+  }
 
   if (type === 'SET_PRINTER') {
     const printerType = payload?.printerType || (payload?.isVirtual ? 'virtual' : 'ble');

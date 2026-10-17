@@ -47,7 +47,7 @@ import { supabase } from '../../lib/supabase';
 import { M110Driver, VirtualM110Driver, VirtualDecodedLabel, isWebBluetoothSupported, BarcodeScanlineCheckResult } from '../../utils/PhomemoM110';
 import { recordExport, trackDocumentJob, getRecentTracked, TrackedJob } from './jobTracking';
 import { PdfPreview, PdfDocumentSource } from '../../components/PdfPreview';
-import { PreviewLabels, PixelLabelView, LABEL_WIDTH_50x30, LABEL_HEIGHT_50x30, LABEL_WIDTH_50x50, LABEL_HEIGHT_50x50 } from '../../components/PreviewLabels';
+import { PreviewLabels, PixelLabelView, LABEL_WIDTH_50x30, LABEL_HEIGHT_50x30, LABEL_WIDTH_50x50, LABEL_HEIGHT_50x50, labelRasterCache } from '../../components/PreviewLabels';
 import { LocalQueueTabContent } from './PrintCenter';
 import { PrintJobsPanel } from './PrintJobsPanel';
 import { TemplatesTabContent } from './TemplatesTab';
@@ -115,6 +115,8 @@ export const LabelPrintStudio: React.FC = () => {
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [isDesignerOpen, setIsDesignerOpen] = useState(false);
     const [isDesignerUserActive, setIsDesignerUserActive] = useState(false);
+    const [designerRasters, setDesignerRasters] = useState<Record<string, string>>({});
+    const [isDesignerIframeReady, setIsDesignerIframeReady] = useState(false);
     const triggerFocusRef = useRef<HTMLElement | null>(null);
     const designerOverlayRef = useRef<HTMLDivElement | null>(null);
 
@@ -475,6 +477,8 @@ export const LabelPrintStudio: React.FC = () => {
         };
     }, [printerType]);
 
+    const requestDesignerPreviewsRef = useRef<() => void>(() => {});
+
     // Designer overlay close & focus return handler
     const handleCloseDesigner = useCallback(() => {
         setIsDesignerUserActive(false);
@@ -482,6 +486,7 @@ export const LabelPrintStudio: React.FC = () => {
             pendingPrintJobRef.current = null;
             setIsDesignerOpen(false);
         }
+        requestDesignerPreviewsRef.current();
         setTimeout(() => {
             triggerFocusRef.current?.focus();
         }, 50);
@@ -725,6 +730,27 @@ export const LabelPrintStudio: React.FC = () => {
             templateData
         };
     };
+
+    // Request true 1-bit raster previews from the hidden same-origin designer print engine
+    const requestDesignerPreviews = useCallback(async () => {
+        if (!iframeRef.current?.contentWindow || selectedItems.length === 0) return;
+        try {
+            const batchProject = await buildBatchJSONAsync(selectedItems, workbookPrefix, activeLabelSize, logoVariant);
+            iframeRef.current.contentWindow.postMessage(
+                {
+                    type: 'RENDER_BATCH_PREVIEWS',
+                    payload: batchProject
+                },
+                window.location.origin
+            );
+        } catch (e) {
+            console.warn('[LabelPrintStudio] requestDesignerPreviews error:', e);
+        }
+    }, [selectedItems, workbookPrefix, activeLabelSize, logoVariant]);
+
+    useEffect(() => {
+        requestDesignerPreviewsRef.current = requestDesignerPreviews;
+    }, [requestDesignerPreviews]);
 
     // Checksum computation for print job
     const computeJobChecksum = async (batch: any): Promise<string> => {
@@ -1358,7 +1384,9 @@ export const LabelPrintStudio: React.FC = () => {
     };
 
     const handleIframeLoad = () => {
+        setIsDesignerIframeReady(true);
         sendPrinterConfigToIframe();
+        requestDesignerPreviews();
         if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
             const batch = pendingBatchRef.current;
             iframeRef.current.contentWindow.postMessage(
@@ -1382,7 +1410,9 @@ export const LabelPrintStudio: React.FC = () => {
             if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
 
             if (event.data?.type === 'DESIGNER_READY') {
+                setIsDesignerIframeReady(true);
                 sendPrinterConfigToIframe();
+                requestDesignerPreviews();
                 if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
                     const batch = pendingBatchRef.current;
                     iframeRef.current.contentWindow.postMessage(
@@ -1508,6 +1538,22 @@ export const LabelPrintStudio: React.FC = () => {
                 commitPrintJob(event.data.payload || {}, 'designer reported PRINT_COMPLETE');
             }
 
+            if (event.data?.type === 'PREVIEW_RASTER_ITEM') {
+                const { tag, dataUrl } = event.data.payload || {};
+                if (tag && dataUrl) {
+                    labelRasterCache.set(tag, dataUrl);
+                    setDesignerRasters(prev => ({ ...prev, [tag]: dataUrl }));
+                }
+            }
+
+            if (event.data?.type === 'PREVIEW_RASTERS_READY') {
+                const rasters = event.data.payload?.rasters || {};
+                for (const [tag, url] of Object.entries(rasters)) {
+                    if (url) labelRasterCache.set(tag, url as string);
+                }
+                setDesignerRasters(prev => ({ ...prev, ...rasters }));
+            }
+
             if (event.data?.type === 'CLOSE_WIZARD') {
                 pendingPrintJobRef.current = null;
                 setIsDesignerOpen(false);
@@ -1515,7 +1561,21 @@ export const LabelPrintStudio: React.FC = () => {
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [commitPrintJob]);
+    }, [commitPrintJob, sendPrinterConfigToIframe, requestDesignerPreviews]);
+
+    // Ping designer iframe on mount to announce parent presence
+    useEffect(() => {
+        if (iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage({ type: 'PING' }, window.location.origin);
+        }
+    }, []);
+
+    // Refresh previews when batch configuration changes
+    useEffect(() => {
+        if (isDesignerIframeReady && selectedItems.length > 0 && labelTemplate === 'standard') {
+            requestDesignerPreviews();
+        }
+    }, [isDesignerIframeReady, selectedItems, activeLabelSize, logoVariant, workbookPrefix, labelTemplate, requestDesignerPreviews]);
 
     useEffect(() => {
         if (isDesignerOpen && iframeRef.current?.contentWindow && !pendingBatchRef.current) {
@@ -2199,6 +2259,7 @@ export const LabelPrintStudio: React.FC = () => {
                                         logoVariant={logoVariant}
                                         showChrome={false}
                                         template={labelTemplate}
+                                        designerRasters={designerRasters}
                                         onLaunchIframe={(_indices, instances) => {
                                             const items = instances.map(inst => inst.item);
                                             handleOpenDesigner(items.length > 0 ? items : undefined);
@@ -2525,6 +2586,7 @@ export const LabelPrintStudio: React.FC = () => {
                                                     logoVariant={logoVariant}
                                                     axoSvg={axoCache[currentActiveInstance.item.codes?.bookBarcode || '']}
                                                     is1Bit={true}
+                                                    dataUrl={designerRasters[currentActiveInstance.item.codes?.bookBarcode || '']}
                                                 />
                                             </div>
                                         )}
@@ -2790,47 +2852,45 @@ export const LabelPrintStudio: React.FC = () => {
                 )}
 
                 {/* ── DESIGNER IFRAME MODAL OVERLAY ── */}
-                {isDesignerOpen && (
-                    <div 
-                        ref={designerOverlayRef}
-                        tabIndex={-1}
-                        className={`lps-designer-overlay fixed inset-0 z-[100050] flex flex-col liquid-surface rounded-none outline-none ${
-                            isDesignerUserActive 
-                                ? 'opacity-100 pointer-events-auto' 
-                                : 'opacity-0 pointer-events-none -z-10'
-                        }`}
-                    >
-                        <div className="lps-header px-6 flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={handleCloseDesigner}
-                                    className="lps-touch-target px-3 py-1.5 liquid-control text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer"
-                                >
-                                    <ArrowLeft size={16} />
-                                    Back to Batch Studio
-                                </button>
-                                <span className="text-sm font-bold">Phomemo Visual Designer</span>
-                            </div>
+                <div 
+                    ref={designerOverlayRef}
+                    tabIndex={-1}
+                    className={`lps-designer-overlay fixed inset-0 flex flex-col liquid-surface rounded-none outline-none ${
+                        isDesignerUserActive 
+                            ? 'opacity-100 pointer-events-auto z-[100050]' 
+                            : 'opacity-0 pointer-events-none -z-10 is-hidden'
+                    }`}
+                >
+                    <div className="lps-header px-6 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3">
                             <button
                                 onClick={handleCloseDesigner}
-                                className="lps-touch-target liquid-control rounded-full flex items-center justify-center cursor-pointer"
-                                aria-label="Close Visual Designer"
+                                className="lps-touch-target px-3 py-1.5 liquid-control text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer"
                             >
-                                <X size={18} />
+                                <ArrowLeft size={16} />
+                                Back to Batch Studio
                             </button>
+                            <span className="text-sm font-bold">Phomemo Visual Designer</span>
                         </div>
-                        <div className="flex-1 w-full h-full relative">
-                            <iframe
-                                ref={iframeRef}
-                                src={`${import.meta.env.BASE_URL}phomemo-designer/index.html?v=${selectedItems.length}&theme=${theme}`}
-                                className="w-full h-full border-none bg-transparent"
-                                title="Phomemo Designer"
-                                allow="bluetooth"
-                                onLoad={handleIframeLoad}
-                            />
-                        </div>
+                        <button
+                            onClick={handleCloseDesigner}
+                            className="lps-touch-target liquid-control rounded-full flex items-center justify-center cursor-pointer"
+                            aria-label="Close Visual Designer"
+                        >
+                            <X size={18} />
+                        </button>
                     </div>
-                )}
+                    <div className="flex-1 w-full h-full relative">
+                        <iframe
+                            ref={iframeRef}
+                            src={`${import.meta.env.BASE_URL}phomemo-designer/index.html?theme=${theme}`}
+                            className="w-full h-full border-none bg-transparent"
+                            title="Phomemo Designer"
+                            allow="bluetooth"
+                            onLoad={handleIframeLoad}
+                        />
+                    </div>
+                </div>
 
                 {/* ── VIRTUAL TRAY LABEL INSPECTION MODAL ── */}
                 {trayModalLabel && (

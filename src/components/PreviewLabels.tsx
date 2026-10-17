@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Printer, ChevronLeft, ChevronRight, Check, ZoomIn } from 'lucide-react';
 import { generateAxonometricDataUrl } from '../lib/axonometric';
 import { tr, trf } from '../lib/i18n';
-import { renderItemLabelToRaster } from '../features/print/renderers/labelRenderer';
+import { renderItemLabelToRaster, labelRasterCache } from '../features/print/renderers/labelRenderer';
 import { ItemTag } from './ui/ItemTag';
 
 export interface PreviewLabelsProps {
@@ -15,6 +15,7 @@ export interface PreviewLabelsProps {
     template?: 'standard' | 'barkod';
     onQuantityChange?: (row: string, qty: number) => void;
     showChrome?: boolean;
+    designerRasters?: Record<string, string>;
 }
 
 export const LABEL_WIDTH_50x30 = 384;
@@ -22,7 +23,7 @@ export const LABEL_HEIGHT_50x30 = 240;
 export const LABEL_WIDTH_50x50 = 384;
 export const LABEL_HEIGHT_50x50 = 384;
 
-export const labelRasterCache = new Map<string, string>();
+export { labelRasterCache };
 
 export interface PixelLabelViewProps {
     instance: { item: any; index: number; globalIndex: number };
@@ -58,33 +59,35 @@ export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
     const targetHeight = isSquare ? LABEL_HEIGHT_50x50 : LABEL_HEIGHT_50x30;
 
     const cacheKey = `${tag}_${activeLabelSize}_${template}_${logoVariant}_${axoSvg ? 'axo' : 'noaxo'}`;
-    const [rasterUrl, setRasterUrl] = useState<string>(() => propDataUrl || labelRasterCache.get(cacheKey) || '');
+    const initialRaster = propDataUrl || labelRasterCache.get(tag) || labelRasterCache.get(cacheKey) || '';
+    const [rasterUrl, setRasterUrl] = useState<string>(() => initialRaster);
 
     useEffect(() => {
-        if (propDataUrl) {
-            setRasterUrl(propDataUrl);
-            return;
-        }
-        if (labelRasterCache.has(cacheKey)) {
-            setRasterUrl(labelRasterCache.get(cacheKey)!);
+        const resolved = propDataUrl || labelRasterCache.get(tag) || labelRasterCache.get(cacheKey);
+        if (resolved) {
+            setRasterUrl(resolved);
             return;
         }
 
-        let isCurrent = true;
-        renderItemLabelToRaster(item, {
-            tagId: tag,
-            labelSize: activeLabelSize,
-            logoVariant,
-            template,
-            axoSvg
-        }).then(url => {
-            labelRasterCache.set(cacheKey, url);
-            if (isCurrent) setRasterUrl(url);
-        }).catch(err => {
-            console.warn('[PixelLabelView] Raster render failed:', err);
-        });
+        // Standard batch labels must come from designer print engine (public/phomemo-designer)
+        // Fall back to local canvas generator only for non-standard (e.g. barkod) templates
+        if (template === 'barkod') {
+            let isCurrent = true;
+            renderItemLabelToRaster(item, {
+                tagId: tag,
+                labelSize: activeLabelSize,
+                logoVariant,
+                template,
+                axoSvg
+            }).then(url => {
+                labelRasterCache.set(cacheKey, url);
+                if (isCurrent) setRasterUrl(url);
+            }).catch(err => {
+                console.warn('[PixelLabelView] Raster render failed:', err);
+            });
 
-        return () => { isCurrent = false; };
+            return () => { isCurrent = false; };
+        }
     }, [item, tag, activeLabelSize, logoVariant, template, axoSvg, propDataUrl, cacheKey]);
 
     const displayWidth = scale ? targetWidth * scale : undefined;
@@ -127,7 +130,8 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
     logoVariant = 'ArtOfDecor',
     template = 'standard',
     onQuantityChange,
-    showChrome = true
+    showChrome = true,
+    designerRasters
 }) => {
     const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
     const [axoCache, setAxoCache] = useState<Record<string, string>>({});
@@ -224,6 +228,23 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
         return () => { active = false; };
     }, [items]);
 
+    // Merged rasters: priority is designerRasters > labelRasterCache > local rasterMap
+    const effectiveRasters = useMemo(() => {
+        const merged: Record<string, string> = { ...rasterMap };
+        if (designerRasters) {
+            for (const [k, v] of Object.entries(designerRasters)) {
+                if (v) merged[k] = v;
+            }
+        }
+        for (const item of items) {
+            const tag = item.codes?.bookBarcode || '';
+            if (!merged[tag] && labelRasterCache.has(tag)) {
+                merged[tag] = labelRasterCache.get(tag)!;
+            }
+        }
+        return merged;
+    }, [rasterMap, designerRasters, items]);
+
     // Pre-generate true 1-bit printer rasters for unique items
     useEffect(() => {
         let active = true;
@@ -231,11 +252,19 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
             const map: Record<string, string> = {};
             for (const item of items) {
                 const tag = item.codes?.bookBarcode || '';
+                if (designerRasters?.[tag]) {
+                    map[tag] = designerRasters[tag];
+                    continue;
+                }
+                if (labelRasterCache.has(tag)) {
+                    map[tag] = labelRasterCache.get(tag)!;
+                    continue;
+                }
                 const axoSvg = axoCache[tag];
                 const key = `${tag}_${activeLabelSize}_${template}_${logoVariant}_${axoSvg ? 'axo' : 'noaxo'}`;
                 if (labelRasterCache.has(key)) {
                     map[tag] = labelRasterCache.get(key)!;
-                } else {
+                } else if (template === 'barkod') {
                     try {
                         const url = await renderItemLabelToRaster(item, {
                             tagId: tag,
@@ -255,7 +284,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
         };
         generateBatchRasters();
         return () => { active = false; };
-    }, [items, activeLabelSize, template, logoVariant, axoCache]);
+    }, [items, activeLabelSize, template, logoVariant, axoCache, designerRasters]);
 
     const toggleSelection = (index: number) => {
         const next = new Set(selectedIndices);
@@ -341,7 +370,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                             axoSvg={axoSvg}
                                             template={template}
                                             className="w-full h-full border-none shadow-none"
-                                            dataUrl={rasterMap[tag]}
+                                            dataUrl={effectiveRasters[tag]}
                                         />
                                     </div>
 
@@ -369,7 +398,13 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
             </div>
 
             {/* Interactive Pixel-Perfect 1-Bit Large Label Preview Modal */}
-            {inspectedInstance && inspectIndex !== null && (
+            {inspectedInstance && inspectIndex !== null && (() => {
+                const inspectedTag = inspectedInstance.item.codes?.bookBarcode || '';
+                const isTrulyEngineRaster = Boolean(
+                    effectiveRasters[inspectedTag] || labelRasterCache.has(inspectedTag)
+                );
+
+                return (
                 <div className="lps-inspect-overlay fixed inset-0 z-[100030] flex items-center justify-center p-0 min-[821px]:p-6">
                     {/* Backdrop Scrim */}
                     <div 
@@ -395,9 +430,15 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                             item={inspectedInstance.item.data ? { ...inspectedInstance.item.data, book_barcode: inspectedInstance.item.codes?.bookBarcode || inspectedInstance.item.data.book_barcode } : inspectedInstance.item}
                                             size="md"
                                         />
-                                        <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold liquid-control text-[var(--main-color,#7FBBFF)] uppercase tracking-wider shrink-0">
-                                            1-BIT PIXEL-PERFECT
-                                        </span>
+                                        {isTrulyEngineRaster ? (
+                                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold liquid-control text-[var(--main-color,#7FBBFF)] uppercase tracking-wider shrink-0">
+                                                1-BIT PIXEL-PERFECT
+                                            </span>
+                                        ) : (
+                                            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold liquid-control text-[var(--lq-ink-muted,rgba(255,255,255,0.4))] uppercase tracking-wider shrink-0 animate-pulse">
+                                                GENERATING RASTER...
+                                            </span>
+                                        )}
                                     </div>
                                     <span className="text-[11px] text-[var(--lq-ink-muted,rgba(255,255,255,0.5))] mt-0.5 truncate">
                                         {trf('Label {current} of {total} · Copy #{copy}', {
@@ -449,10 +490,10 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                     instance={inspectedInstance}
                                     activeLabelSize={activeLabelSize}
                                     logoVariant={logoVariant}
-                                    axoSvg={axoCache[inspectedInstance.item.codes?.bookBarcode || '']}
+                                    axoSvg={axoCache[inspectedTag]}
                                     scale={integerScale}
                                     template={template}
-                                    dataUrl={rasterMap[inspectedInstance.item.codes?.bookBarcode || '']}
+                                    dataUrl={effectiveRasters[inspectedTag]}
                                     className="rounded shadow-lg"
                                 />
 
@@ -511,7 +552,8 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                         </div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
 
             {/* Sticky Footer (only when showChrome is true) */}
             {showChrome && onLaunchIframe && (

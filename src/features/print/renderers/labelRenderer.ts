@@ -5,6 +5,7 @@ import { renderBarkodToContext, BarkodStyle } from '../barkod/barkod';
 import type { Dims } from '../../entry/hairline/types';
 import { decodeRasterToDataUrl } from '../../../utils/PhomemoM110';
 
+export const labelRasterCache = new Map<string, string>();
 const labelImageCache = new Map<string, HTMLImageElement>();
 export function loadLabelImage(src: string): Promise<HTMLImageElement> {
     if (labelImageCache.has(src)) {
@@ -640,7 +641,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
             fontSize: Math.max(20, LABEL_TYPE_SCALE.body.dots),
             maxWidth: 244,
             align: 'left',
-            fontFamily: "monospace",
+            fontFamily: "Inter, sans-serif",
             fontWeight: "bold"
         });
 
@@ -652,7 +653,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
             fontSize: Math.max(18, LABEL_TYPE_SCALE.body.dots),
             maxWidth: 244,
             align: 'left',
-            fontFamily: "monospace"
+            fontFamily: "Inter, sans-serif"
         });
 
         elements.push({
@@ -663,7 +664,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
             fontSize: Math.max(14, LABEL_TYPE_SCALE.utility.dots),
             maxWidth: 244,
             align: 'left',
-            fontFamily: "monospace",
+            fontFamily: "Inter, sans-serif",
             fontWeight: "bold"
         });
 
@@ -674,7 +675,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
             text: retail,
             fontSize: Math.max(18, LABEL_TYPE_SCALE.body.dots),
             align: 'left',
-            fontFamily: "monospace",
+            fontFamily: "Inter, sans-serif",
             fontWeight: "bold"
         });
 
@@ -685,7 +686,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
             text: "Made in Mexico For",
             fontSize: Math.max(14, LABEL_TYPE_SCALE.utility.dots),
             align: 'left',
-            fontFamily: "monospace"
+            fontFamily: "Inter, sans-serif"
         });
 
         if (options.logoImage) {
@@ -705,7 +706,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
                 text: options.logoVariant === 'RareEarth' ? 'RARE EARTH GALLERY' : 'ART OF DECOR',
                 fontSize: Math.max(16, LABEL_TYPE_SCALE.utility.dots),
                 align: 'left',
-                fontFamily: "monospace",
+                fontFamily: "Inter, sans-serif",
                 fontWeight: "bold"
             });
         }
@@ -737,7 +738,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
             text: options.tagId,
             fontSize: Math.max(16, LABEL_TYPE_SCALE.utility.dots),
             align: 'center',
-            fontFamily: "monospace",
+            fontFamily: "Inter, sans-serif",
             fontWeight: "bold"
         });
 
@@ -753,12 +754,12 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
     // Default 50x30 mm landscape layout (384x240 dots for M110 printhead)
     elements.push({
         type: 'text',
-        x: 16,
-        y: 214,
+        x: 8,
+        y: 110,
         text: "MADE IN MEXICO",
-        fontSize: Math.max(14, LABEL_TYPE_SCALE.utility.dots),
+        fontSize: Math.max(13, LABEL_TYPE_SCALE.utility.dots),
         rotation: -90,
-        fontFamily: "monospace",
+        fontFamily: "Inter, sans-serif",
         fontWeight: "bold"
     });
 
@@ -770,7 +771,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
         fontSize: Math.max(15, LABEL_TYPE_SCALE.utility.dots),
         maxWidth: 200,
         align: 'center',
-        fontFamily: "monospace",
+        fontFamily: "Inter, sans-serif",
         fontWeight: "bold"
     });
 
@@ -782,7 +783,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
         fontSize: Math.max(21, LABEL_TYPE_SCALE.body.dots),
         maxWidth: 200,
         align: 'center',
-        fontFamily: "monospace",
+        fontFamily: "Inter, sans-serif",
         fontWeight: "bold"
     });
 
@@ -794,7 +795,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
         fontSize: Math.max(21, LABEL_TYPE_SCALE.body.dots),
         maxWidth: 200,
         align: 'center',
-        fontFamily: "monospace"
+        fontFamily: "Inter, sans-serif"
     });
 
     elements.push({
@@ -805,7 +806,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
         fontSize: Math.max(14, LABEL_TYPE_SCALE.utility.dots),
         maxWidth: 200,
         align: 'center',
-        fontFamily: "monospace",
+        fontFamily: "Inter, sans-serif",
         fontWeight: "bold"
     });
 
@@ -844,7 +845,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
         text: options.tagId,
         fontSize: Math.max(15, LABEL_TYPE_SCALE.utility.dots),
         align: 'center',
-        fontFamily: "monospace",
+        fontFamily: "Inter, sans-serif",
         fontWeight: "bold"
     });
 
@@ -891,6 +892,14 @@ export async function renderItemLabelToRaster(
     const labelSize = options.labelSize || '50x30';
     const logoVariant = options.logoVariant || 'ArtOfDecor';
     const template = options.template || 'standard';
+
+    const cacheKey = `${tagId}_${labelSize}_${template}_${logoVariant}_${options.axoSvg ? 'axo' : 'noaxo'}`;
+    if (labelRasterCache.has(cacheKey)) {
+        return labelRasterCache.get(cacheKey)!;
+    }
+    if (labelRasterCache.has(tagId)) {
+        return labelRasterCache.get(tagId)!;
+    }
 
     let axoImage = options.axoImage;
     if (!axoImage && options.axoSvg) {

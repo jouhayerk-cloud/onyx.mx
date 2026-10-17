@@ -1588,3 +1588,10 @@ html.theme-aqua .lps-modal-sheet {
   flex-direction: column;
 }
 
+.lps-designer-overlay.is-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -10 !important;
+}
+
+
