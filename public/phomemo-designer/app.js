@@ -1884,14 +1884,36 @@ async function handleBatchPrint() {
       : `Printing ${totalRecords} Label${totalRecords !== 1 ? 's' : ''}`;
     showPrintProgress(labelText, totalRows);
 
+    try {
+      window.parent.postMessage({
+        type: 'PRINT_RUN_START',
+        payload: {
+          totalRows,
+          totalRecords,
+          isMultiLabel: !!isMultiLabel,
+          cloneMode: !!cloneMode,
+          startedAt: Date.now()
+        }
+      }, '*');
+    } catch (relayErr) {
+      console.warn('PRINT_RUN_START relay failed:', relayErr);
+    }
+
     for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
       // Check for cancellation
       if (isPrintCancelled()) {
         showToast(`Printing cancelled after ${rowIndex} row${rowIndex !== 1 ? 's' : ''}`, 'warning');
+        try {
+          window.parent.postMessage({
+            type: 'PRINT_RUN_CANCELLED',
+            payload: { rowIndex, current: rowIndex, total: totalRows }
+          }, '*');
+        } catch (e) {}
         break;
       }
 
       let substitutedElements;
+      let currentTagId = '';
 
       if (isMultiLabel && !cloneMode) {
         // Clone mode OFF: Different record per zone
@@ -1905,6 +1927,7 @@ async function handleBatchPrint() {
           }
           // If no more records, zone will be empty (no substitution)
         }
+        currentTagId = rowRecords[0] ? (rowRecords[0]['TAG ID'] || rowRecords[0]['TAGID'] || rowRecords[0]['tag_id'] || '') : '';
         substitutedElements = substituteFieldsByZone(state.elements, rowRecords, labelsAcross);
 
         updatePrintProgress(rowIndex + 1, totalRows, `Printing row ${rowIndex + 1}...`);
@@ -1913,11 +1936,30 @@ async function handleBatchPrint() {
         // Clone mode ON or single-label: Same data for all zones
         const recordIndex = recordsToPrint[rowIndex];
         const record = state.templateData[recordIndex];
+        currentTagId = record ? (record['TAG ID'] || record['TAGID'] || record['tag_id'] || '') : '';
         substitutedElements = substituteFields(state.elements, record);
 
         updatePrintProgress(rowIndex + 1, totalRows, `Printing label ${rowIndex + 1}...`);
         btn.textContent = `Printing ${rowIndex + 1}/${totalRows}...`;
       }
+
+      const chunkIndex = Math.floor(rowIndex / 50) + 1;
+      const totalChunks = Math.ceil(totalRows / 50);
+
+      try {
+        window.parent.postMessage({
+          type: 'PRINT_RUN_LABEL_START',
+          payload: {
+            rowIndex,
+            current: rowIndex + 1,
+            total: totalRows,
+            chunkIndex,
+            totalChunks,
+            tagId: currentTagId,
+            timestamp: Date.now()
+          }
+        }, '*');
+      } catch (e) {}
 
       // Evaluate instant expressions (date/time, etc.)
       const mergedElements = evaluateExpressions(substitutedElements);
@@ -1950,8 +1992,35 @@ async function handleBatchPrint() {
         feed,
         onProgress: (progress) => {
           updatePrintProgress(rowIndex + 1, totalRows, `Sending data... ${progress}%`);
+          try {
+            window.parent.postMessage({
+              type: 'PRINT_RUN_DRIVER_PROGRESS',
+              payload: {
+                rowIndex,
+                current: rowIndex + 1,
+                total: totalRows,
+                driverProgress: progress,
+                tagId: currentTagId
+              }
+            }, '*');
+          } catch (e) {}
         },
       });
+
+      try {
+        window.parent.postMessage({
+          type: 'PRINT_RUN_LABEL_COMPLETE',
+          payload: {
+            rowIndex,
+            current: rowIndex + 1,
+            total: totalRows,
+            chunkIndex,
+            totalChunks,
+            tagId: currentTagId,
+            completedAt: Date.now()
+          }
+        }, '*');
+      } catch (e) {}
 
       // Delay between prints
       if (rowIndex < totalRows - 1 && !isPrintCancelled()) {
@@ -1960,6 +2029,20 @@ async function handleBatchPrint() {
         const isOutOfPaper = $('#pi-paper')?.classList.contains('text-red-600') || false;
         
         if ((rowIndex + 1) % 50 === 0 || isOutOfPaper) {
+          try {
+            window.parent.postMessage({
+              type: 'PRINT_RUN_CHUNK_PAUSE',
+              payload: {
+                rowIndex,
+                current: rowIndex + 1,
+                total: totalRows,
+                chunkIndex,
+                totalChunks,
+                isOutOfPaper
+              }
+            }, '*');
+          } catch (e) {}
+
           const nextBtn = $('#progress-next-batch');
           const cancelBtn = $('#progress-cancel');
           nextBtn.classList.remove('hidden');
@@ -1975,19 +2058,29 @@ async function handleBatchPrint() {
           await new Promise(resolve => {
              const onNext = () => {
                  cleanup();
+                 try {
+                   window.parent.postMessage({ type: 'PRINT_RUN_CHUNK_RESUME', payload: { rowIndex } }, '*');
+                 } catch (e) {}
                  resolve();
              };
              const onCancel = () => {
                  printProgressCancelled = true;
                  cleanup();
+                 try {
+                   window.parent.postMessage({ type: 'PRINT_RUN_CANCELLED', payload: { rowIndex, current: rowIndex + 1 } }, '*');
+                 } catch (e) {}
                  resolve();
              };
              const cleanup = () => {
+                 window.__batchPauseResume = null;
+                 window.__batchPauseCancel = null;
                  nextBtn.removeEventListener('click', onNext);
                  cancelBtn.removeEventListener('click', onCancel);
                  nextBtn.classList.add('hidden');
              };
              
+             window.__batchPauseResume = onNext;
+             window.__batchPauseCancel = onCancel;
              nextBtn.addEventListener('click', onNext);
              cancelBtn.addEventListener('click', onCancel);
           });
@@ -2038,6 +2131,16 @@ async function handleBatchPrint() {
 
   } catch (error) {
     logError(error, 'handleBatchPrint');
+    try {
+      window.parent.postMessage({
+        type: 'PRINT_RUN_ERROR',
+        payload: {
+          error: error?.message || 'Print failed'
+        }
+      }, '*');
+    } catch (e) {}
+    setStatus(error.message || 'Print failed');
+    btn.textContent = originalText;
     setStatus(error.message || 'Print failed');
     btn.textContent = originalText;
   } finally {
@@ -8019,6 +8122,33 @@ window.addEventListener('message', (event) => {
   if (type === 'GET_RASTER') {
     // Parent wants the current raster data for printing
     // implementation could return current canvas as dataURL or raw bytes
+  }
+
+  if (type === 'START_BATCH_PRINT') {
+    handleBatchPrint();
+  }
+
+  if (type === 'PRINT_RESUME') {
+    if (typeof window.__batchPauseResume === 'function') {
+      window.__batchPauseResume();
+    } else {
+      const nextBtn = $('#progress-next-batch');
+      if (nextBtn && !nextBtn.classList.contains('hidden')) {
+        nextBtn.click();
+      }
+    }
+  }
+
+  if (type === 'PRINT_CANCEL') {
+    printProgressCancelled = true;
+    if (typeof window.__batchPauseCancel === 'function') {
+      window.__batchPauseCancel();
+    } else {
+      const cancelBtn = $('#progress-cancel');
+      if (cancelBtn) {
+        cancelBtn.click();
+      }
+    }
   }
 });
 

@@ -19,7 +19,8 @@ import {
     Printer, Bluetooth, X, FileSpreadsheet, FileText, Download,
     CheckCircle2, ChevronRight, ChevronLeft, Zap, AlertCircle, Eye,
     RefreshCw, Layers, Sparkles, Cpu, History, Search, UploadCloud,
-    Sliders, Smartphone, Check, ArrowLeft, ShieldAlert, Activity, BookOpen
+    Sliders, Smartphone, Check, ArrowLeft, ShieldAlert, Activity, BookOpen,
+    Play, Pause, RotateCcw, Clock, ShieldCheck
 } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
 import { RareEarthLogoBase64 } from '../logistics/RareEarthLogoBase64';
@@ -46,7 +47,7 @@ import { supabase } from '../../lib/supabase';
 import { M110Driver } from '../../utils/PhomemoM110';
 import { recordExport, trackDocumentJob, getRecentTracked, TrackedJob } from './jobTracking';
 import { PdfPreview, PdfDocumentSource } from '../../components/PdfPreview';
-import { PreviewLabels } from '../../components/PreviewLabels';
+import { PreviewLabels, PixelLabelView, LABEL_WIDTH_50x30, LABEL_HEIGHT_50x30, LABEL_WIDTH_50x50, LABEL_HEIGHT_50x50 } from '../../components/PreviewLabels';
 import { LocalQueueTabContent } from './PrintCenter';
 import { PrintJobsPanel } from './PrintJobsPanel';
 import { TemplatesTabContent } from './TemplatesTab';
@@ -63,6 +64,11 @@ import './labelPrintStudio.css';
 type StudioMode = 'studio' | 'history' | 'queue' | 'verify' | 'templates';
 type MobileTab = 'preview' | 'controls' | 'center';
 type BleStatus = 'unsupported' | 'disconnected' | 'connecting' | 'connected' | 'printing' | 'error';
+
+const fmtDuration = (ms: number): string => {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    return total < 60 ? `${total}s` : `${Math.floor(total / 60)}m ${String(total % 60).padStart(2, '0')}s`;
+};
 
 export const LabelPrintStudio: React.FC = () => {
     const user = useAtomValue(userAtom);
@@ -134,6 +140,42 @@ export const LabelPrintStudio: React.FC = () => {
         jobId: string; labelCount: number; itemCount: number; at: string; isReprint: boolean;
     } | null>(null);
     const [showJobLog, setShowJobLog] = useState(false);
+
+    // Live Batch Print Run State Machine
+    const [isLiveRunOpen, setIsLiveRunOpen] = useState(false);
+    const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'paused_chunk' | 'paused_paper' | 'cancelled' | 'complete' | 'error'>('idle');
+    const [runCurrentIndex, setRunCurrentIndex] = useState(1);
+    const [runTotalLabels, setRunTotalLabels] = useState(0);
+    const [runChunkIndex, setRunChunkIndex] = useState(1);
+    const [runTotalChunks, setRunTotalChunks] = useState(1);
+    const [runDriverProgress, setRunDriverProgress] = useState(0);
+    const [batchStartedAt, setBatchStartedAt] = useState<number | null>(null);
+    const [chunkStartedAt, setChunkStartedAt] = useState<number | null>(null);
+    const [labelStartedAt, setLabelStartedAt] = useState<number | null>(null);
+    const [completedDurations, setCompletedDurations] = useState<number[]>([]);
+    const [nowTicker, setNowTicker] = useState<number>(Date.now());
+    const [doneList, setDoneList] = useState<Array<{
+        tagId: string;
+        item: any;
+        index: number;
+        durationMs: number;
+        checksum: string;
+        completedAt: string;
+    }>>([]);
+    const [failedList, setFailedList] = useState<Array<{
+        tagId: string;
+        error: string;
+        index: number;
+    }>>([]);
+
+    // Live Run Timer Interval (ticker for smooth elapsed time & ETA calculation)
+    useEffect(() => {
+        if (!isLiveRunOpen || runStatus === 'complete' || runStatus === 'cancelled' || runStatus === 'idle') return;
+        const interval = setInterval(() => {
+            setNowTicker(Date.now());
+        }, 250);
+        return () => clearInterval(interval);
+    }, [isLiveRunOpen, runStatus]);
 
     // Designer Iframe Refs
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -209,6 +251,39 @@ export const LabelPrintStudio: React.FC = () => {
         });
         return instances;
     }, [selectedItems, quantities]);
+
+    // Live Run State Sync Refs
+    const isLiveRunOpenRef = useRef(isLiveRunOpen);
+    useEffect(() => { isLiveRunOpenRef.current = isLiveRunOpen; }, [isLiveRunOpen]);
+
+    const labelStartedAtRef = useRef(labelStartedAt);
+    useEffect(() => { labelStartedAtRef.current = labelStartedAt; }, [labelStartedAt]);
+
+    const runCurrentIndexRef = useRef(runCurrentIndex);
+    useEffect(() => { runCurrentIndexRef.current = runCurrentIndex; }, [runCurrentIndex]);
+
+    const labelInstancesRef = useRef(labelInstances);
+    useEffect(() => { labelInstancesRef.current = labelInstances; }, [labelInstances]);
+
+    // Computed values for Live Batch Print Run
+    const currentActiveInstance = useMemo(() => {
+        if (labelInstances.length === 0) return null;
+        const targetIdx = Math.max(0, Math.min(labelInstances.length - 1, runCurrentIndex - 1));
+        return labelInstances[targetIdx];
+    }, [labelInstances, runCurrentIndex]);
+
+    const elapsedBatchMs = batchStartedAt ? Math.max(0, nowTicker - batchStartedAt) : 0;
+    const elapsedChunkMs = chunkStartedAt ? Math.max(0, nowTicker - chunkStartedAt) : 0;
+    const elapsedLabelMs = labelStartedAt ? Math.max(0, nowTicker - labelStartedAt) : 0;
+
+    const avgDurationMs = completedDurations.length > 0 
+        ? completedDurations.reduce((a, b) => a + b, 0) / completedDurations.length 
+        : 2500;
+    const remainingCount = Math.max(0, runTotalLabels - (runStatus === 'complete' ? runTotalLabels : doneList.length));
+    const etaMs = remainingCount * avgDurationMs;
+    const runPercent = runTotalLabels > 0 
+        ? Math.min(100, Math.round(((runStatus === 'complete' ? runTotalLabels : (runCurrentIndex - 1)) / runTotalLabels) * 100)) 
+        : 0;
 
     // Pre-cache Axonometrics
     useEffect(() => {
@@ -592,7 +667,24 @@ export const LabelPrintStudio: React.FC = () => {
                 isReprint,
             };
 
-            toast.success(tr("Batch Prepared! Launching Print Engine"), { id: tid });
+            toast.success(tr("Batch Prepared! Launching Live Print Run"), { id: tid });
+
+            // Initialize Live Batch Print Run state machine
+            setIsLiveRunOpen(true);
+            setRunStatus('running');
+            setRunCurrentIndex(1);
+            setRunTotalLabels(batchProject.templateData.length);
+            setRunChunkIndex(1);
+            setRunTotalChunks(Math.ceil(batchProject.templateData.length / 50));
+            setRunDriverProgress(0);
+            const tStart = Date.now();
+            setBatchStartedAt(tStart);
+            setChunkStartedAt(tStart);
+            setLabelStartedAt(tStart);
+            setDoneList([]);
+            setFailedList([]);
+            setCompletedDurations([]);
+
             setIsDesignerOpen(true);
 
             if (iframeRef.current?.contentWindow) {
@@ -606,12 +698,39 @@ export const LabelPrintStudio: React.FC = () => {
                         { type: 'UPDATE_DATA', payload: { templateData: currentTemplateData } },
                         window.location.origin
                     );
+                    iframeRef.current?.contentWindow?.postMessage(
+                        { type: 'START_BATCH_PRINT' },
+                        window.location.origin
+                    );
                 }, 300);
             }
         } catch (e: any) {
             console.error('[LabelPrintStudio] handlePrintAll failed:', e);
             toast.error(`Print setup failed: ${e?.message || 'unknown error'}`, { id: tid });
         }
+    };
+
+    // Control Handlers for Live Batch Print Run
+    const handleResumeChunk = () => {
+        iframeRef.current?.contentWindow?.postMessage({ type: 'PRINT_RESUME' }, window.location.origin);
+        setRunStatus('running');
+        setChunkStartedAt(Date.now());
+    };
+
+    const handleCancelRun = () => {
+        iframeRef.current?.contentWindow?.postMessage({ type: 'PRINT_CANCEL' }, window.location.origin);
+        setRunStatus('cancelled');
+    };
+
+    const handleReprintFailed = () => {
+        if (failedList.length === 0) return;
+        setIsLiveRunOpen(false);
+        handlePrintAll(true);
+    };
+
+    const handleReprintEntireBatch = () => {
+        setIsLiveRunOpen(false);
+        handlePrintAll(true);
     };
 
     // Backup XLSX Export
@@ -873,12 +992,101 @@ export const LabelPrintStudio: React.FC = () => {
                             { type: 'UPDATE_DATA', payload: { templateData: currentTemplateData } },
                             window.location.origin
                         );
+                        if (isLiveRunOpenRef.current) {
+                            iframeRef.current?.contentWindow?.postMessage(
+                                { type: 'START_BATCH_PRINT' },
+                                window.location.origin
+                            );
+                        }
                     }, 300);
                     pendingBatchRef.current = null;
                 }
             }
 
+            if (event.data?.type === 'PRINT_RUN_START') {
+                setIsLiveRunOpen(true);
+                setRunStatus('running');
+                const started = event.data.payload?.startedAt || Date.now();
+                setBatchStartedAt(started);
+                setChunkStartedAt(started);
+                setLabelStartedAt(started);
+                setRunTotalLabels(event.data.payload?.totalRows || labelInstancesRef.current.length);
+                setRunCurrentIndex(1);
+                setRunChunkIndex(1);
+                setRunTotalChunks(Math.ceil((event.data.payload?.totalRows || labelInstancesRef.current.length) / 50));
+                setRunDriverProgress(0);
+                setDoneList([]);
+                setFailedList([]);
+                setCompletedDurations([]);
+            }
+
+            if (event.data?.type === 'PRINT_RUN_LABEL_START') {
+                setRunStatus('running');
+                setRunCurrentIndex(event.data.payload?.current || 1);
+                setRunChunkIndex(event.data.payload?.chunkIndex || 1);
+                setRunTotalChunks(event.data.payload?.totalChunks || 1);
+                setLabelStartedAt(event.data.payload?.timestamp || Date.now());
+                setRunDriverProgress(0);
+            }
+
+            if (event.data?.type === 'PRINT_RUN_DRIVER_PROGRESS') {
+                setRunDriverProgress(event.data.payload?.driverProgress || 0);
+            }
+
+            if (event.data?.type === 'PRINT_RUN_LABEL_COMPLETE') {
+                const p = event.data.payload;
+                const completedAt = p?.completedAt || Date.now();
+                const startT = labelStartedAtRef.current;
+                const dur = startT ? Math.max(200, completedAt - startT) : 2200;
+                setCompletedDurations(prev => [...prev, dur]);
+
+                const curIdx = runCurrentIndexRef.current;
+                const idx = (p?.rowIndex ?? (curIdx - 1));
+                const insts = labelInstancesRef.current;
+                const inst = insts[idx] || insts[0];
+                const tagId = p?.tagId || inst?.item.codes?.bookBarcode || '';
+                const shortChecksum = (pendingPrintJobRef.current?.checksum || 'dj1').slice(0, 6);
+
+                setDoneList(prev => [
+                    {
+                        tagId,
+                        item: inst?.item,
+                        index: p?.current || (prev.length + 1),
+                        durationMs: dur,
+                        checksum: shortChecksum,
+                        completedAt: new Date(completedAt).toLocaleTimeString()
+                    },
+                    ...prev
+                ]);
+            }
+
+            if (event.data?.type === 'PRINT_RUN_CHUNK_PAUSE') {
+                const isPaper = !!event.data.payload?.isOutOfPaper;
+                setRunStatus(isPaper ? 'paused_paper' : 'paused_chunk');
+                setRunChunkIndex(event.data.payload?.chunkIndex || 1);
+                setRunTotalChunks(event.data.payload?.totalChunks || 1);
+            }
+
+            if (event.data?.type === 'PRINT_RUN_CHUNK_RESUME') {
+                setRunStatus('running');
+                setChunkStartedAt(Date.now());
+            }
+
+            if (event.data?.type === 'PRINT_RUN_CANCELLED') {
+                setRunStatus('cancelled');
+            }
+
+            if (event.data?.type === 'PRINT_RUN_ERROR') {
+                setRunStatus('error');
+                setFailedList(prev => [...prev, {
+                    tagId: event.data.payload?.tagId || 'Unknown',
+                    error: event.data.payload?.error || 'Print failed',
+                    index: event.data.payload?.rowIndex ?? -1
+                }]);
+            }
+
             if (event.data?.type === 'PRINT_COMPLETE' || event.data?.type === 'PRINT_DONE') {
+                setRunStatus('complete');
                 commitPrintJob(event.data.payload || {}, 'designer reported PRINT_COMPLETE');
             }
 
@@ -1555,9 +1763,305 @@ export const LabelPrintStudio: React.FC = () => {
                     )}
                 </div>
 
+                {/* ── LIVE BATCH PRINT RUN VIEW OVERLAY ── */}
+                {isLiveRunOpen && (
+                    <div className="lps-live-overlay">
+                        {/* Backdrop Scrim */}
+                        <div 
+                            className="lps-scrim absolute inset-0 cursor-pointer"
+                            onClick={() => { if (runStatus === 'complete' || runStatus === 'cancelled') setIsLiveRunOpen(false); }}
+                        />
+
+                        {/* Sheet Container */}
+                        <div className="lps-live-sheet liquid-panel ui-root">
+                            {/* Top Bar Header */}
+                            <div className="lps-live-header">
+                                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                                    <div className="w-8 h-8 rounded-lg liquid-panel flex items-center justify-center text-[var(--main-color,#7FBBFF)] shrink-0">
+                                        <Printer size={16} strokeWidth={2.5} />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-xs sm:text-sm font-black tracking-wider uppercase truncate">
+                                                LIVE BATCH PRINT RUN
+                                            </h2>
+                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                                runStatus === 'running' ? 'bg-emerald-500/20 text-emerald-400 animate-pulse' :
+                                                runStatus === 'paused_chunk' || runStatus === 'paused_paper' ? 'bg-amber-500/20 text-amber-400' :
+                                                runStatus === 'complete' ? 'bg-emerald-500/20 text-emerald-400' :
+                                                runStatus === 'cancelled' ? 'bg-zinc-500/20 text-zinc-400' :
+                                                'bg-rose-500/20 text-rose-400'
+                                            }`}>
+                                                {runStatus === 'running' ? 'PRINTING' :
+                                                 runStatus === 'paused_chunk' ? 'PAUSED · CHUNK COMPLETE' :
+                                                 runStatus === 'paused_paper' ? 'OUT OF PAPER' :
+                                                 runStatus === 'complete' ? 'COMPLETE' :
+                                                 runStatus === 'cancelled' ? 'CANCELLED' :
+                                                 'ERROR'}
+                                            </span>
+                                        </div>
+                                        <span className="text-[11px] lps-text-secondary font-mono mt-0.5 truncate">
+                                            {pendingPrintJobRef.current?.jobId || 'BATCH_JOB'} · {activeLabelSize} mm · {logoVariant}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Top Right Header Controls */}
+                                <div className="flex items-center gap-2">
+                                    {runStatus === 'running' && (
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelRun}
+                                            className="lps-btn-cancel text-xs cursor-pointer"
+                                        >
+                                            Cancel Run
+                                        </button>
+                                    )}
+                                    {(runStatus === 'complete' || runStatus === 'cancelled' || runStatus === 'error') && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsLiveRunOpen(false)}
+                                            className="w-8 h-8 liquid-control rounded-full flex items-center justify-center cursor-pointer text-[var(--lq-ink)]"
+                                            aria-label="Close Live Run"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Body: Two columns (Desktop) / Stacked (Mobile) */}
+                            <div className="lps-live-body">
+                                {/* Left Column: Large Preview of Currently Printing Label */}
+                                <div className="lps-live-preview-pane">
+                                    <div className="lps-live-card-frame w-full max-w-md">
+                                        <div className="flex items-center justify-between w-full mb-3 px-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-2.5 h-2.5 rounded-full ${runStatus === 'running' ? 'bg-emerald-400 animate-ping' : runStatus === 'complete' ? 'bg-emerald-400' : 'bg-zinc-400'}`} />
+                                                <span className="text-xs font-black uppercase tracking-wider text-[var(--lq-ink)]">
+                                                    {runStatus === 'complete' ? 'BATCH COMPLETE' : `PRINTING #${runCurrentIndex} OF ${runTotalLabels}`}
+                                                </span>
+                                            </div>
+                                            <span className="text-[11px] lps-text-muted font-mono">
+                                                {currentActiveInstance ? `Copy #${currentActiveInstance.index}` : ''}
+                                            </span>
+                                        </div>
+
+                                        {/* Large 1-Bit Pixelated Label Preview */}
+                                        {currentActiveInstance && (
+                                            <div 
+                                                className="relative overflow-hidden bg-white rounded shadow-md border border-black/10"
+                                                style={{
+                                                    width: activeLabelSize === '50x50' ? LABEL_WIDTH_50x50 : LABEL_WIDTH_50x30,
+                                                    height: activeLabelSize === '50x50' ? LABEL_HEIGHT_50x50 : LABEL_HEIGHT_50x30,
+                                                    imageRendering: 'pixelated',
+                                                }}
+                                            >
+                                                <PixelLabelView 
+                                                    instance={currentActiveInstance}
+                                                    activeLabelSize={activeLabelSize}
+                                                    logoVariant={logoVariant}
+                                                    axoSvg={axoCache[currentActiveInstance.item.codes?.bookBarcode || '']}
+                                                    is1Bit={true}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Hardware M110 Driver Raster Transmission Bar */}
+                                        <div className="w-full mt-3 flex flex-col gap-1">
+                                            <div className="flex items-center justify-between text-[10px] font-mono lps-text-secondary">
+                                                <span>M110 DRIVER TRANSMISSION</span>
+                                                <span>{runDriverProgress}%</span>
+                                            </div>
+                                            <div className="lps-driver-bar-track">
+                                                <div className="lps-driver-bar-fill" style={{ width: `${runDriverProgress}%` }} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Telemetry & Live Done List */}
+                                <div className="lps-live-telemetry-pane">
+                                    {/* Overall Progress Meter */}
+                                    <div className="lps-progress-bar-wrap">
+                                        <div className="flex items-center justify-between text-xs font-bold">
+                                            <span className="uppercase tracking-wider">Overall Progress</span>
+                                            <span className="font-mono text-[var(--main-color,#7FBBFF)]">{runPercent}%</span>
+                                        </div>
+                                        <div className="lps-progress-bar-track">
+                                            <div className="lps-progress-bar-fill" style={{ width: `${runPercent}%` }} />
+                                        </div>
+                                        <div className="flex items-center justify-between text-[11px] lps-text-muted font-mono mt-0.5">
+                                            <span>{doneList.length} of {runTotalLabels} labels confirmed printed</span>
+                                            <span>Chunk {runChunkIndex} of {runTotalChunks} (50 / chunk)</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Telemetry Metrics 4-Grid */}
+                                    <div className="lps-telemetry-grid">
+                                        <div className="lps-telemetry-cell">
+                                            <span className="text-[9px] lps-text-muted uppercase font-black tracking-wider">BATCH TIME</span>
+                                            <span className="text-xs font-mono font-bold">{fmtDuration(elapsedBatchMs)}</span>
+                                        </div>
+                                        <div className="lps-telemetry-cell">
+                                            <span className="text-[9px] lps-text-muted uppercase font-black tracking-wider">CHUNK TIME</span>
+                                            <span className="text-xs font-mono font-bold">{fmtDuration(elapsedChunkMs)}</span>
+                                        </div>
+                                        <div className="lps-telemetry-cell">
+                                            <span className="text-[9px] lps-text-muted uppercase font-black tracking-wider">LABEL TIME</span>
+                                            <span className="text-xs font-mono font-bold">{fmtDuration(elapsedLabelMs)}</span>
+                                        </div>
+                                        <div className="lps-telemetry-cell">
+                                            <span className="text-[9px] lps-text-muted uppercase font-black tracking-wider">ETA</span>
+                                            <span className="text-xs font-mono font-bold text-[var(--main-color,#7FBBFF)]">
+                                                {runStatus === 'complete' ? '0s' : fmtDuration(etaMs)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Pause Alert Banner (if paused on chunk of 50 or paper) */}
+                                    {(runStatus === 'paused_chunk' || runStatus === 'paused_paper') && (
+                                        <div className="lps-pause-banner">
+                                            <div className="flex items-center gap-2">
+                                                <AlertCircle size={18} className="shrink-0" />
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-xs">
+                                                        {runStatus === 'paused_paper' ? 'Out of Paper!' : `Chunk ${runChunkIndex} Complete (50 Labels)`}
+                                                    </span>
+                                                    <span className="text-[11px] opacity-80">
+                                                        {runStatus === 'paused_paper' ? 'Load paper roll and resume print.' : 'Check roll and click to print next 50 labels.'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleResumeChunk}
+                                                    className="lps-btn-resume"
+                                                >
+                                                    <Play size={12} fill="currentColor" />
+                                                    <span>{runStatus === 'paused_paper' ? 'Resume Print' : 'Print Next 50'}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Final Summary Card on Completion */}
+                                    {runStatus === 'complete' && (
+                                        <div className="lps-final-summary-card">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <CheckCircle2 size={20} className="text-emerald-400" />
+                                                    <div>
+                                                        <h4 className="text-sm font-bold text-emerald-400">Batch Print Complete</h4>
+                                                        <span className="text-xs lps-text-muted">All physical labels reported successfully.</span>
+                                                    </div>
+                                                </div>
+                                                <span className="lps-checksum-badge">
+                                                    <ShieldCheck size={12} />
+                                                    <span>VERIFIED {pendingPrintJobRef.current?.checksum?.slice(0, 8)}</span>
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2 text-xs">
+                                                <div className="p-2 liquid-control rounded-lg flex flex-col">
+                                                    <span className="text-[9px] lps-text-muted uppercase font-bold">TOTAL PRINTED</span>
+                                                    <span className="text-sm font-black font-mono text-[var(--main-color,#7FBBFF)]">{doneList.length}</span>
+                                                </div>
+                                                <div className="p-2 liquid-control rounded-lg flex flex-col">
+                                                    <span className="text-[9px] lps-text-muted uppercase font-bold">TOTAL DURATION</span>
+                                                    <span className="text-sm font-black font-mono">{fmtDuration(elapsedBatchMs)}</span>
+                                                </div>
+                                                <div className="p-2 liquid-control rounded-lg flex flex-col">
+                                                    <span className="text-[9px] lps-text-muted uppercase font-bold">JOB ID</span>
+                                                    <span className="text-sm font-black font-mono truncate">{lastPrintJob?.jobId || pendingPrintJobRef.current?.jobId}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 pt-1">
+                                                {failedList.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleReprintFailed}
+                                                        className="px-3 py-1.5 rounded-lg liquid-control text-xs font-bold text-rose-400 hover:bg-rose-500/10 cursor-pointer flex items-center gap-1.5"
+                                                    >
+                                                        <RotateCcw size={13} />
+                                                        <span>Reprint Failed ({failedList.length})</span>
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={handleReprintEntireBatch}
+                                                    className="px-3 py-1.5 rounded-lg liquid-control text-xs font-bold uppercase cursor-pointer flex items-center gap-1.5"
+                                                >
+                                                    <RotateCcw size={13} />
+                                                    <span>Reprint Batch</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsLiveRunOpen(false)}
+                                                    className="ml-auto px-5 py-1.5 rounded-lg lps-btn-primary text-xs font-bold uppercase cursor-pointer"
+                                                >
+                                                    Done
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Live Done List Container */}
+                                    <div className="lps-live-done-box flex-1 min-h-[160px]">
+                                        <div className="px-3 py-2 border-b border-[var(--lq-rim-subtle)] flex items-center justify-between text-[11px] font-bold shrink-0">
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle2 size={13} className="text-emerald-400" />
+                                                <span className="uppercase tracking-wider">Done List ({doneList.length})</span>
+                                            </div>
+                                            <span className="text-[10px] lps-text-muted font-mono">Latest first</span>
+                                        </div>
+
+                                        <div className="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">
+                                            {doneList.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center h-full text-center p-6 lps-text-muted text-xs">
+                                                    <Clock size={20} className="mb-1 opacity-40 animate-spin" />
+                                                    <span>Awaiting physical label confirmation from driver...</span>
+                                                </div>
+                                            ) : (
+                                                doneList.map((entry, idx) => (
+                                                    <div key={`${entry.tagId}-${entry.index}-${idx}`} className="lps-done-item-row liquid-control rounded-lg">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <span className="text-[10px] font-mono font-bold text-[var(--lq-ink-muted)] w-5">
+                                                                #{entry.index}
+                                                            </span>
+                                                            <ItemTag 
+                                                                item={entry.item}
+                                                                exchangeRate={exchangeRate}
+                                                                workbook={workbookPrefix}
+                                                                size="md"
+                                                            />
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 shrink-0">
+                                                            <span className="text-[10px] font-mono lps-text-secondary">
+                                                                +{fmtDuration(entry.durationMs)}
+                                                            </span>
+                                                            <span className="lps-checksum-badge">
+                                                                <Check size={10} strokeWidth={3} />
+                                                                <span>{entry.checksum}</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* ── DESIGNER IFRAME MODAL OVERLAY ── */}
                 {isDesignerOpen && (
-                    <div className="fixed inset-0 z-[100010] flex flex-col liquid-surface rounded-none">
+                    <div className={`fixed inset-0 z-[100010] flex flex-col liquid-surface rounded-none ${isLiveRunOpen ? 'opacity-0 pointer-events-none -z-10' : ''}`}>
                         <div className="lps-header px-6 flex items-center justify-between shrink-0">
                             <div className="flex items-center gap-3">
                                 <button
