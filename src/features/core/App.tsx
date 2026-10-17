@@ -314,7 +314,7 @@ export default function App() {
           <DataSyncProvider />
           {showWelcome && <WelcomePage onComplete={() => setShowWelcome(false)} />}
           {(user as any)?.__denied ? (
-            <div className="w-full h-screen flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center">
               <div className="text-center p-8 max-w-sm">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
                   <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z" /></svg>
