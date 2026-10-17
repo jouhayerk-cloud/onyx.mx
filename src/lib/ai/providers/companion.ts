@@ -10,13 +10,15 @@ import {
     type ProviderConfig,
     type ProviderInfo,
 } from './types';
+import { tr } from '../../i18n';
 
 export const COMPANION_INFO: ProviderInfo = {
     id: 'companion',
     label: 'Onyx iOS Companion (LiteRT-LM)',
     keyHint: 'No key required (On-Device)',
     needsBaseUrl: false,
-    capabilities: { vision: true, json: true, image: false, video: false },
+    // LiteRT-LM is text-only for now; photo jobs routed here fall back to Gemini in client.ts
+    capabilities: { vision: false, json: true, image: false, video: false },
     docsUrl: 'https://github.com/google-ai-edge/LiteRT-LM',
 };
 
@@ -77,7 +79,7 @@ function postToNative(op: string, payload: Record<string, unknown> = {}): Promis
     if (!isCompanionAvailable()) {
         return Promise.reject(
             new AiProviderError(
-                'Onyx iOS Companion native bridge not found. Run inside the OnyxCompanion iOS app.',
+                tr('Onyx iOS Companion native bridge not found. Run inside the OnyxCompanion iOS app.'),
                 undefined,
                 'config'
             )
@@ -107,7 +109,11 @@ export const companionProvider: AiProviderImpl = {
     },
 
     async generateJson(cfg: ProviderConfig, req: AiRequest): Promise<AiJsonResult> {
-        const jsonPrompt = `${req.prompt}\n\nIMPORTANT: Respond with pure, valid JSON only. Do not include markdown code block backticks.`;
+        let jsonPrompt = req.prompt;
+        if (req.schema) {
+            jsonPrompt = `${jsonPrompt}\n\n${tr('Respond with a JSON object conforming to this schema:')}\n${JSON.stringify(req.schema)}`;
+        }
+        jsonPrompt = `${jsonPrompt}\n\n${tr('IMPORTANT: Respond with pure, valid JSON only. Do not include markdown code block backticks.')}`;
         const textRes = await this.generateText(cfg, { ...req, prompt: jsonPrompt });
         let raw = textRes.text.trim();
         if (raw.startsWith('```')) {
@@ -121,7 +127,7 @@ export const companionProvider: AiProviderImpl = {
                 model: textRes.model,
             };
         } catch {
-            throw new AiProviderError('On-device model did not return valid JSON', undefined, 'server');
+            throw new AiProviderError(tr('On-device model did not return valid JSON'), undefined, 'server');
         }
     },
 
@@ -129,7 +135,7 @@ export const companionProvider: AiProviderImpl = {
         if (!isCompanionAvailable()) {
             return {
                 ok: false,
-                message: 'Companion not detected (available on iOS Companion shell)',
+                message: tr('Companion not detected (available on iOS Companion shell)'),
             };
         }
         try {
@@ -142,7 +148,7 @@ export const companionProvider: AiProviderImpl = {
         } catch (err) {
             return {
                 ok: false,
-                message: err instanceof Error ? err.message : 'Companion bridge failed',
+                message: err instanceof Error ? err.message : tr('Companion bridge failed'),
             };
         }
     },
@@ -163,7 +169,7 @@ export const companionProvider: AiProviderImpl = {
     async chat(_cfg: ProviderConfig, req: ChatRequest): Promise<ChatResult> {
         if (!isCompanionAvailable()) {
             throw new AiProviderError(
-                'Onyx iOS Companion native bridge not found. Open Onyx inside the iOS Companion shell to use on-device models.',
+                tr('Onyx iOS Companion native bridge not found. Open Onyx inside the iOS Companion shell to use on-device models.'),
                 undefined,
                 'config'
             );
@@ -177,7 +183,7 @@ export const companionProvider: AiProviderImpl = {
                 timer = setTimeout(() => {
                     activeStreams.delete(streamId);
                     postToNative('chat_abort', { streamId }).catch(() => {});
-                    reject(new AiProviderError('On-device inference timed out', undefined, 'timeout'));
+                    reject(new AiProviderError(tr('On-device inference timed out'), undefined, 'timeout'));
                 }, req.timeoutMs);
             }
 
@@ -185,7 +191,7 @@ export const companionProvider: AiProviderImpl = {
                 activeStreams.delete(streamId);
                 postToNative('chat_abort', { streamId }).catch(() => {});
                 if (timer) clearTimeout(timer);
-                reject(new AiProviderError('Inference aborted', undefined, 'timeout'));
+                reject(new AiProviderError(tr('Inference aborted'), undefined, 'timeout'));
             };
 
             if (req.signal?.aborted) {
@@ -219,7 +225,7 @@ export const companionProvider: AiProviderImpl = {
                 activeStreams.delete(streamId);
                 if (timer) clearTimeout(timer);
                 req.signal?.removeEventListener('abort', onAbort);
-                reject(new AiProviderError(err?.message || 'Failed to dispatch chat_stream', undefined, 'server'));
+                reject(new AiProviderError(err?.message || tr('Failed to dispatch chat_stream'), undefined, 'server'));
             });
         });
     },

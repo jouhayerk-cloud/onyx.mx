@@ -1,6 +1,7 @@
 import { getGeminiKey, setGeminiKey } from './keys';
 import type { ProviderConfig, ProviderId } from './providers/types';
 import { colibriSeenRecently } from './providers/colibri';
+import { isCompanionAvailable } from './providers/companion';
 
 /**
  * Keys, base URLs and models of every AI provider, kept in this browser's localStorage like the Gemini key always was
@@ -59,7 +60,7 @@ export function setProviderConfig(id: ProviderId, patch: Partial<ProviderConfig>
 /** compat can run without a key (a local Ollama or LM Studio), companion runs on-device in the iOS shell, and colibri counts as set once an address is saved or its local server answered a recent probe. */
 export function hasProviderKey(id: ProviderId): boolean {
     if (id === 'companion') {
-        return typeof window !== 'undefined' && Boolean((window as any).webkit?.messageHandlers?.onyxChat);
+        return isCompanionAvailable();
     }
     if (id === 'colibri') {
         // Not "always on": it counts once the user saved an address or a probe reached the server lately.

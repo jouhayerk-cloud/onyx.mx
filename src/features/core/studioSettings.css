@@ -107,6 +107,83 @@ html.theme-aqua .ss-sheet::after {
   z-index: 1;
 }
 
+/* ── Compact Onyx Logo Brand Header ─────────────────────────────────── */
+.ss-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
+.ss-brand--sidebar {
+  padding: 10px 4px 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--ss-sep);
+  background: transparent;
+  width: 100%;
+  text-align: center;
+}
+
+.ss-brand--mobile {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .ss-brand--mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    border-radius: var(--ss-radius, 16px);
+    background-color: var(--lq-fill-panel, var(--ss-fill));
+    background-image: var(--lq-sheen);
+    border: 1px solid var(--lq-rim-subtle, var(--ss-sep));
+    box-shadow: var(--lq-highlight);
+    text-align: center;
+  }
+}
+
+.ss-brand-mark {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ss-brand-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 174, 239, 0.28));
+  transition: transform 220ms var(--ss-spring);
+}
+
+.ss-brand-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ss-fg);
+  line-height: 1.2;
+}
+
+.ss-brand-version {
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ss-fg3);
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
 /* Section Sidebar (viewport >= 900px) */
 .ss-sidebar {
   display: none;
@@ -355,8 +432,8 @@ html:root:root:root .ss-sheet .ss-segment[aria-pressed="true"] {
 
 /* Compact Theme Swatch Miniatures */
 html:root:root:root .ss-sheet .ss-theme-miniature {
-  width: 78px;
-  height: 46px;
+  width: 96px;
+  height: 54px;
   border-radius: 10px;
   position: relative;
   overflow: hidden;
@@ -400,9 +477,44 @@ html:root:root:root .ss-sheet *:focus-visible {
   outline: 2px solid var(--ss-accent) !important;
   outline-offset: 2px !important;
 }
-html:root:root:root .ss-sheet .ss-theme-btn[aria-checked="true"] .ss-theme-miniature {
+html:root:root:root .ss-sheet .ss-theme-btn[aria-checked="true"] .ss-theme-miniature,
+html:root:root:root .ss-sheet .ss-theme-btn[aria-pressed="true"] .ss-theme-miniature {
   outline: 2px solid var(--ss-accent) !important;
   outline-offset: 1px !important;
+}
+
+/* ── Compact Accent Swatches Row ─────────────────────────────────────── */
+.ss-accent-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: 1px solid var(--ss-sep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition:
+    transform 140ms var(--ss-spring),
+    box-shadow 140ms var(--ss-spring),
+    border-color 140ms var(--ss-spring);
+  flex: none;
+}
+
+.ss-accent-swatch:hover {
+  transform: scale(1.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.ss-accent-swatch:active {
+  transform: scale(0.96);
+}
+
+.ss-accent-swatch[aria-checked="true"],
+.ss-accent-swatch[aria-pressed="true"] {
+  outline: 2px solid var(--ss-accent);
+  outline-offset: 2px;
 }
 
 html:root:root:root .ss-sheet .ss-icon-btn {

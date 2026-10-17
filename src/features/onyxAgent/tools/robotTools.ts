@@ -1,7 +1,8 @@
 import { useDeviceControl } from '../../pico/useDeviceControl';
 import { FaceExpression, EXPRESSIONS } from '../face/expressions';
 
-export type AppRole = 'Developer' | 'Admin' | 'Vendor' | 'Client';
+export type { AppRole } from './appTools';
+import type { AppRole } from './appTools';
 
 export interface RobotToolContext {
   role: AppRole;

@@ -47,9 +47,9 @@ const SHORT_NAMES: Record<ProviderId, string> = {
     colibri: 'Colibrì',
 };
 
-const TASK_ORDER: RouteJob[] = ['chat', 'content', 'translate', 'segmentation'];
+const UI_JOBS: RouteJob[] = ['chat', 'content', 'translate', 'segmentation'];
 
-const JOB_META: Record<RouteJob, { label: string; tag: string }> = {
+const JOB_META: Partial<Record<RouteJob, { label: string; tag: string }>> = {
     chat: { label: 'Chan chat', tag: 'Tools' },
     content: { label: 'Content', tag: 'Copy' },
     translate: { label: 'Translate', tag: 'ES/EN' },
@@ -150,7 +150,7 @@ export const AiProvidersPanel: React.FC = () => {
         colibri: null,
     });
 
-    const [routes, setRoutes] = useState<Record<RouteJob, Route>>(() => ({
+    const [routes, setRoutes] = useState<Partial<Record<RouteJob, Route>>>(() => ({
         content: getRoute('content'),
         segmentation: getRoute('segmentation'),
         translate: getRoute('translate'),
@@ -347,10 +347,7 @@ export const AiProvidersPanel: React.FC = () => {
     const otherConfigured = configuredProviderIds.filter((p) => p !== 'gemini');
     const activeChatRoute = routes.chat || { provider: 'gemini' };
 
-    const orderedJobs: RouteJob[] = [
-        ...TASK_ORDER.filter((j) => ROUTABLE_JOBS.includes(j)),
-        ...ROUTABLE_JOBS.filter((j) => !TASK_ORDER.includes(j)),
-    ];
+    const orderedJobs: RouteJob[] = UI_JOBS;
 
     return (
         <>

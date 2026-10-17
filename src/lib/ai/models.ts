@@ -7,10 +7,30 @@
  * here, and the run log names the job rather than a guess at the id.
  */
 
-export type AiJob = 'content' | 'segmentation' | 'translate' | 'bgReplace' | 'video';
+export type AiJob =
+    | 'content'
+    | 'segmentation'
+    | 'translate'
+    | 'bgReplace'
+    | 'video'
+    | 'triage';
 
 /** Concurrency class a job counts against; see limiter.ts. */
 export type AiJobClass = 'text' | 'image' | 'video';
+
+/** Known API IDs configured per RS_AI_INTEGRATOR.md (no invented IDs). */
+export const GEMINI_2_5_FLASH = 'gemini-2.5-flash';
+export const GEMINI_3_8_FLASH = 'gemini-3.8-flash';
+/** TODO: gemini-4-argon id is unverified; keep behind a TODO constant, not used by default. */
+export const TODO_GEMINI_4_ARGON = 'gemini-4-argon';
+export const GEMINI_4_ARGON = TODO_GEMINI_4_ARGON;
+
+/** Selectable Gemini models for routing and manual selection. */
+export const GEMINI_SELECTABLE_MODELS = [
+    GEMINI_2_5_FLASH,
+    GEMINI_3_8_FLASH,
+    TODO_GEMINI_4_ARGON,
+] as const;
 
 export interface AiModelSpec {
     /** Tried first. */
@@ -18,7 +38,7 @@ export interface AiModelSpec {
     /** Tried in order when the model above rejects the request outright. */
     fallbacks?: readonly string[];
     /**
-     * Gemini 2.5 thinking budget in tokens. Omitted = the model's default.
+     * Gemini thinking budget in tokens. Omitted = the model's default.
      * 0 turns thinking off, which Google recommends for spatial (box/polygon)
      * work and which keeps short structured calls fast.
      */
@@ -29,13 +49,26 @@ export interface AiModelSpec {
 }
 
 export const AI_MODELS: Record<AiJob, AiModelSpec> = {
-    // Title, marketing HTML, colours and type. Thinking stays on: this is the
-    // copy that ships, and it was tuned with thinking on. The timeout is longer
-    // than the old 40s because thinking plus 1200 characters of HTML did not
-    // always fit inside it.
-    content: { model: 'gemini-2.5-flash', timeoutMs: 60000, jobClass: 'text' },
-    segmentation: { model: 'gemini-2.5-flash', thinkingBudget: 0, timeoutMs: 40000, jobClass: 'text' },
-    translate: { model: 'gemini-2.5-flash', thinkingBudget: 0, timeoutMs: 30000, jobClass: 'text' },
+    // Title, marketing HTML, colours and type. Defaults to Gemini 2.5 Flash as before wave 1.
+    content: {
+        model: GEMINI_2_5_FLASH,
+        timeoutMs: 60000,
+        jobClass: 'text',
+    },
+    // Spatial (box/polygon) work: thinking turned off for speed and precision.
+    segmentation: {
+        model: GEMINI_2_5_FLASH,
+        thinkingBudget: 0,
+        timeoutMs: 40000,
+        jobClass: 'text',
+    },
+    // Fast translation notes.
+    translate: {
+        model: GEMINI_2_5_FLASH,
+        thinkingBudget: 0,
+        timeoutMs: 30000,
+        jobClass: 'text',
+    },
     // Background replacement. Nano Banana 2.1 is the newest image edit model (the 3.1 preview id was scheduled off on
     // 2026-06-25, so it is gone from the chain). Whether generateContent with imageConfig behaves the same on 2.1 is NOT
     // proven (its docs show the Interactions API): the fallbacks keep the old proven path, so a rejection costs one failed
@@ -47,6 +80,13 @@ export const AI_MODELS: Record<AiJob, AiModelSpec> = {
         jobClass: 'image',
     },
     video: { model: 'models/gemini-omni-flash-preview', timeoutMs: 300000, jobClass: 'video' },
+    // Fast decision / intent triage
+    triage: {
+        model: GEMINI_2_5_FLASH,
+        thinkingBudget: 0,
+        timeoutMs: 15000,
+        jobClass: 'text',
+    },
 };
 
 /** The model, then its fallbacks: the order to try them in. */

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { userAtom, languageAtom } from '../../lib/atoms';
+import { userAtom, languageAtom, inventoryArtifactConfigAtom } from '../../lib/atoms';
 import { getGeminiKey } from '../../lib/ai/keys';
 import { supabase } from '../../lib/supabase';
 import { onyxToolDefinitions, onyxToolHandlers } from '../onyx/onyxTools';
@@ -20,7 +20,15 @@ import { getProvider } from '../../lib/ai/providers';
 import type { AiProviderImpl, ChatResult, ChatToolCall, ChatToolDef, ChatTurn, ProviderConfig } from '../../lib/ai/providers/types';
 import { aiErrorMessage } from '../../lib/ai/errors';
 
-export type Message = { id: string; role: 'user' | 'model' | 'tool'; text: string; t: number };
+export type Message = { 
+    id: string; 
+    role: 'user' | 'model' | 'tool'; 
+    text: string; 
+    t: number; 
+    toolName?: string; 
+    toolCallId?: string; 
+    result?: unknown; 
+};
 export type PendingConfirm = { id: string; tool: string; args: Record<string, unknown>; summary: string; risk?: string; detail?: string };
 
 export interface AgentToolPack {
@@ -153,6 +161,7 @@ export function useOnyxAgent(options: OnyxAgentOptions = {}) {
     const setGlobalPhase = useSetAtom(onyxAgentPhaseAtom);
     const setActivity = useSetAtom(onyxAgentActivityAtom);
     const activity = useAtomValue(onyxAgentActivityAtom);
+    const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     
     // the conversation lives in an atom, so closing the drawer or compacting the island does not lose it
     const [messages, setMessages] = useAtom(onyxAgentMessagesAtom);
@@ -367,9 +376,11 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         }));
 
         try {
-            // 2.0 and 1.5 are shut down: 2.5 Flash stays the primary, 3.8 Flash is only a fallback (3.x functionResponse has no call id: test before making it primary)
-            // the fallback list is Gemini only: another provider calls its one model once, with no fallback to Gemini when it fails
-            const modelsToTry = viaGemini ? ["gemini-2.5-flash", "gemini-3.8-flash"] : [];
+            // Read model from getRoute('chat').model first, fallback to 3.8 Flash then 2.5 Flash
+            const preferredModel = (viaGemini && route.model) ? [route.model] : [];
+            const modelsToTry = viaGemini
+                ? Array.from(new Set([...preferredModel, "gemini-3.8-flash", "gemini-2.5-flash"]))
+                : [];
             let resp = null;
             let usedModel = "";
             let lastAttemptError = "";
@@ -399,7 +410,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             while (iter < 6 && !signal.aborted) {
                 const parts = resp.candidates?.[0]?.content?.parts || [];
                 const calls = parts.filter((p: any) => p.functionCall);
-                const modelText = parts.find((p: any) => p.text)?.text;
+                const textParts = parts.filter((p: any) => typeof p.text === 'string' && p.text).map((p: any) => p.text);
+                const modelText = textParts.length > 0 ? textParts.join('\n') : undefined;
 
                 if (modelText) {
                     setPhase('speaking');
@@ -472,7 +484,22 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                                 label: `Declined ${c.functionCall.name}`,
                                 ok: false
                             });
-                            resps.push({ functionResponse: { name: c.functionCall.name, response: { content: result } } });
+                            resps.push({
+                                functionResponse: {
+                                    name: c.functionCall.name,
+                                    ...(c.functionCall.id ? { id: c.functionCall.id } : {}),
+                                    response: { content: result }
+                                }
+                            });
+                            setMessages(prev => [...prev, {
+                                id: Math.random().toString(36).slice(2),
+                                role: 'tool',
+                                text: JSON.stringify(result),
+                                t: Date.now(),
+                                toolName: c.functionCall.name,
+                                toolCallId: c.functionCall.id,
+                                result
+                            }]);
                             continue;
                         }
                     }
@@ -508,7 +535,50 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                             ok: false
                         });
                     }
-                    resps.push({ functionResponse: { name: c.functionCall.name, response: { content: result } } });
+
+                    if (
+                        c.functionCall.name === 'deploy_inventory_artifact' ||
+                        (result && typeof result === 'object' && ((result as any).action === 'DEPLOY_INVENTORY' || (result as any).artifactType === 'inventory'))
+                    ) {
+                        const rawIds = (result as any)?.ids || (result as any)?.item_ids || (result as any)?.itemIds || (c.functionCall.args as any)?.item_ids || (c.functionCall.args as any)?.itemIds;
+                        const itemIds: (string | number)[] = Array.isArray(rawIds) ? rawIds : (rawIds != null ? [rawIds] : []);
+                        const title = (result as any)?.title || (c.functionCall.args as any)?.title || tr('Inventory Artifact');
+                        const rawViewMode = (result as any)?.viewMode || (c.functionCall.args as any)?.viewMode;
+                        const viewMode = (rawViewMode === 'sidebar' || rawViewMode === 'embedded') ? rawViewMode : 'modal';
+                        
+                        setInventoryArtifactConfig({
+                            isOpen: true,
+                            itemIds,
+                            title,
+                            viewMode,
+                            displayMode: 'gallery'
+                        });
+
+                        if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('onyx:artifact-deployed', {
+                                detail: { itemIds, title, viewMode }
+                            }));
+                        }
+                    }
+
+                    resps.push({
+                        functionResponse: {
+                            name: c.functionCall.name,
+                            ...(c.functionCall.id ? { id: c.functionCall.id } : {}),
+                            response: { content: result }
+                        }
+                    });
+
+                    const stringifiedResult = typeof result === 'string' ? result : JSON.stringify(result);
+                    setMessages(prev => [...prev, {
+                        id: Math.random().toString(36).slice(2),
+                        role: 'tool',
+                        text: stringifiedResult,
+                        t: Date.now(),
+                        toolName: c.functionCall.name,
+                        toolCallId: c.functionCall.id,
+                        result
+                    }]);
                 }
                 
                 contents.push({ role: 'function', parts: resps });

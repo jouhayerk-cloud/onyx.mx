@@ -9,7 +9,8 @@ import {
     exchangeRateAtom, 
     showFinancialsAtom,
     inventoryViewModeAtom,
-    logisticsDataAtom
+    logisticsDataAtom,
+    inventoryArtifactConfigAtom
 } from '../../lib/atoms';
 import { 
     normalizeInventoryData, 
@@ -36,8 +37,6 @@ interface InventoryArtifactProps {
     title?: string;
     onItemClick?: (item: any) => void;
 }
-
-import { inventoryArtifactConfigAtom } from '../../lib/atoms';
 
 import { describeAxoIcon, getAxoIcon, peekAxoIcon } from '../../lib/axoIconCache';
 import { tr } from '../../lib/i18n';
@@ -162,7 +161,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
             if (logItem) return { data: logItem, row: logItem.id, artifactType: 'logistics' };
 
             return null;
-        }).filter(Boolean);
+        }).filter((item): item is NonNullable<typeof item> => Boolean(item));
     }, [targetIds, items, logisticsDocs]);
 
     const { partialPayIds, fullPayIds } = useMemo(() => {
@@ -212,7 +211,14 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
         if (missingIds.length > 0) {
             missingIds.forEach(id => attemptedIdsRef.current.add(id));
             import('../../lib/supabase').then(async ({ supabase }) => {
-                const { data } = await supabase.from('inventory').select('*').or(`id.in.(${missingIds.join(',')}),item_id.in.(${missingIds.join(',')}),book_barcode.in.(${missingIds.join(',')})`);
+                const numericIds = missingIds.filter(id => /^\d+$/.test(id));
+                const clauses: string[] = [];
+                if (numericIds.length > 0) {
+                    clauses.push(`id.in.(${numericIds.join(',')})`);
+                }
+                clauses.push(`item_id.in.(${missingIds.join(',')})`);
+                clauses.push(`book_barcode.in.(${missingIds.join(',')})`);
+                const { data } = await supabase.from('inventory').select('*').or(clauses.join(','));
                 if (data) setFetchedItems(prev => {
                     const known = new Set(prev.map(p => String(p.row)));
                     const additions = data.filter(d => !known.has(String(d.id))).map(d => ({ row: d.id, data: d }));

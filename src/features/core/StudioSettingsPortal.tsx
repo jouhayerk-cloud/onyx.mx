@@ -26,6 +26,7 @@ import {
     Layers,
     Box,
     Languages,
+    Check,
     ChevronRight,
     ChevronLeft,
     Cpu,
@@ -36,7 +37,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { LazyMotion, domMax, m, AnimatePresence } from 'framer-motion';
-import { OnyxMiniLogo } from '../../components/OnyxLogo';
+import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
+import { THEME_ASSETS } from '../../lib/themes-assets';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import changelogText from '../../assets/CHANGELOG.md?raw';
 import { SiriAccessPanel } from './SiriAccessPanel';
@@ -143,8 +145,38 @@ export const StudioSettingsPortal: React.FC = () => {
     useTranslation();
     const deviceCtx = useDeviceContext();
 
+    const [selectedColor, setSelectedColor] = useState<string>('--accent-color');
     const [colorsOpen, setColorsOpen] = useState(false);
     const [colorValues, setColorValues] = useState<Record<string, string>>({});
+
+    const colorTokens = useMemo(
+        () => [
+            { label: tr("Surface"), key: '--app-bg-solid' },
+            { label: tr("Neural"), key: '--main-color' },
+            { label: tr("Static"), key: '--secondary-color' },
+            { label: tr("Text P"), key: '--text-color-primary' },
+            { label: tr("Text S"), key: '--text-color-secondary' },
+            { label: tr("Border"), key: '--border-color' },
+            { label: tr("Input"), key: '--input-color' },
+            { label: tr("Sidebar"), key: '--sidebar-bg' },
+            { label: tr("Portal"), key: '--app-bg' },
+            { label: tr("Glass"), key: '--glass-bg' },
+            { label: tr("Base"), key: '--bg-color' },
+            { label: tr("Accent"), key: '--accent-color' },
+        ],
+        [language]
+    );
+
+    const handleSelectColorToken = (tokenKey: string) => {
+        setSelectedColor(tokenKey);
+        const val =
+            colorValues[tokenKey] ||
+            getComputedStyle(document.documentElement).getPropertyValue(tokenKey).trim();
+        if (val) {
+            document.documentElement.style.setProperty('--accent-color', val);
+            setColorValues((prev) => ({ ...prev, '--accent-color': val }));
+        }
+    };
 
     const [logsExpanded, setLogsExpanded] = useState<Record<string, boolean>>({});
     const [showAllLogs, setShowAllLogs] = useState(false);
@@ -170,23 +202,21 @@ export const StudioSettingsPortal: React.FC = () => {
     }, [versions]);
 
     useEffect(() => {
-        if (colorsOpen) {
-            const style = getComputedStyle(document.documentElement);
-            setColorValues({
-                '--app-bg-solid': style.getPropertyValue('--app-bg-solid').trim(),
-                '--main-color': style.getPropertyValue('--main-color').trim(),
-                '--secondary-color': style.getPropertyValue('--secondary-color').trim(),
-                '--text-color-primary': style.getPropertyValue('--text-color-primary').trim(),
-                '--text-color-secondary': style.getPropertyValue('--text-color-secondary').trim(),
-                '--border-color': style.getPropertyValue('--border-color').trim(),
-                '--input-color': style.getPropertyValue('--input-color').trim(),
-                '--sidebar-bg': style.getPropertyValue('--sidebar-bg').trim(),
-                '--app-bg': style.getPropertyValue('--app-bg').trim(),
-                '--glass-bg': style.getPropertyValue('--glass-bg').trim(),
-                '--bg-color': style.getPropertyValue('--bg-color').trim(),
-                '--accent-color': style.getPropertyValue('--accent-color').trim(),
-            });
-        }
+        const style = getComputedStyle(document.documentElement);
+        setColorValues({
+            '--app-bg-solid': style.getPropertyValue('--app-bg-solid').trim(),
+            '--main-color': style.getPropertyValue('--main-color').trim(),
+            '--secondary-color': style.getPropertyValue('--secondary-color').trim(),
+            '--text-color-primary': style.getPropertyValue('--text-color-primary').trim(),
+            '--text-color-secondary': style.getPropertyValue('--text-color-secondary').trim(),
+            '--border-color': style.getPropertyValue('--border-color').trim(),
+            '--input-color': style.getPropertyValue('--input-color').trim(),
+            '--sidebar-bg': style.getPropertyValue('--sidebar-bg').trim(),
+            '--app-bg': style.getPropertyValue('--app-bg').trim(),
+            '--glass-bg': style.getPropertyValue('--glass-bg').trim(),
+            '--bg-color': style.getPropertyValue('--bg-color').trim(),
+            '--accent-color': style.getPropertyValue('--accent-color').trim(),
+        });
     }, [colorsOpen, theme, appStyle]);
 
     useEffect(() => {
@@ -420,6 +450,13 @@ export const StudioSettingsPortal: React.FC = () => {
 
                             <div className="ss-body">
                                 <nav aria-label={tr("Settings sections")} className="ss-sidebar">
+                                    <aside className="ss-brand ss-brand--sidebar" aria-hidden="true">
+                                        <div className="ss-brand-mark">
+                                            <OnyxLogo className="ss-brand-logo" />
+                                        </div>
+                                        <span className="ss-brand-name">Onyx-mx</span>
+                                        <span className="ss-brand-version">V{APP_VERSION_LABEL}</span>
+                                    </aside>
                                     <div role="tablist" aria-orientation="vertical" className="ss-sidebar-nav">
                                         {tabs.map((tab) => {
                                             const Icon = tab.icon;
@@ -461,6 +498,14 @@ export const StudioSettingsPortal: React.FC = () => {
                                                         ease: [0.22, 1, 0.36, 1],
                                                     }}
                                                 >
+                                                    <aside className="ss-brand ss-brand--mobile" aria-hidden="true">
+                                                        <div className="ss-brand-mark">
+                                                            <OnyxLogo className="ss-brand-logo" />
+                                                        </div>
+                                                        <span className="ss-brand-name">Onyx-mx</span>
+                                                        <span className="ss-brand-version">V{APP_VERSION_LABEL}</span>
+                                                    </aside>
+
                                                     <div className="sk-grid">
                                                         {/* 1. Account Section */}
                                                         <section className="sk-section sk-span-2">
@@ -516,8 +561,8 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                 <span className="sk-eyebrow">{tr("Appearance")}</span>
                                                             </div>
                                                             <div className="sk-group">
-                                                                {/* Theme Row */}
-                                                                <div className="sk-row">
+                                                                {/* Theme Row with Preview Cards */}
+                                                                <div className="sk-row py-3 flex-col sm:flex-row sm:items-center justify-between gap-3">
                                                                     <div className="sk-row-label">
                                                                         <span className="sk-row-title">{tr("Theme")}</span>
                                                                         <span className="sk-row-sub">
@@ -526,45 +571,84 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                                 : tr("Aqua Daylight")}
                                                                         </span>
                                                                     </div>
-                                                                    <div className="sk-row-value">
-                                                                        <div
-                                                                            className="sk-seg sk-seg-keep"
-                                                                            role="radiogroup"
-                                                                            aria-label={tr("Theme")}
+                                                                    <div
+                                                                        className="flex items-center gap-3 shrink-0"
+                                                                        role="radiogroup"
+                                                                        aria-label={tr("Theme")}
+                                                                    >
+                                                                        {/* Dark Talan Card */}
+                                                                        <button
+                                                                            type="button"
+                                                                            className="ss-theme-btn flex flex-col items-center gap-1.5"
+                                                                            role="radio"
+                                                                            aria-checked={theme === 'talan'}
+                                                                            aria-pressed={theme === 'talan'}
+                                                                            aria-label={tr("Talan Obsidian")}
+                                                                            onClick={() => setTheme('talan')}
+                                                                            ref={(el) => {
+                                                                                themeRefs.current[0] = el;
+                                                                            }}
+                                                                            onKeyDown={(e) =>
+                                                                                handleThemeKeyDown(e, 0)
+                                                                            }
                                                                         >
-                                                                            <button
-                                                                                type="button"
-                                                                                role="radio"
-                                                                                aria-checked={theme === 'talan'}
-                                                                                aria-label={tr("Talan")}
-                                                                                className="sk-seg-btn"
-                                                                                onClick={() => setTheme('talan')}
-                                                                                ref={(el) => {
-                                                                                    themeRefs.current[0] = el;
+                                                                            <div
+                                                                                className="ss-theme-miniature"
+                                                                                style={{
+                                                                                    backgroundImage: `url(${THEME_ASSETS.talan.swatch})`,
                                                                                 }}
-                                                                                onKeyDown={(e) =>
-                                                                                    handleThemeKeyDown(e, 0)
-                                                                                }
                                                                             >
-                                                                                <span className="sk-seg-label">{tr("Talan")}</span>
-                                                                            </button>
-                                                                            <button
-                                                                                type="button"
-                                                                                role="radio"
-                                                                                aria-checked={theme === 'aqua'}
-                                                                                aria-label={tr("Aqua")}
-                                                                                className="sk-seg-btn"
-                                                                                onClick={() => setTheme('aqua')}
-                                                                                ref={(el) => {
-                                                                                    themeRefs.current[1] = el;
+                                                                                <div className="w-[18px] h-full bg-black/45 border-r border-white/10" />
+                                                                                {theme === 'talan' && (
+                                                                                    <div className="ss-theme-badge">
+                                                                                        <Check
+                                                                                            size={10}
+                                                                                            strokeWidth={3}
+                                                                                        />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                            <span className="text-[11px] font-medium text-(--ss-fg2)">
+                                                                                {tr("Talan")}
+                                                                            </span>
+                                                                        </button>
+
+                                                                        {/* Light Aqua Card */}
+                                                                        <button
+                                                                            type="button"
+                                                                            className="ss-theme-btn flex flex-col items-center gap-1.5"
+                                                                            role="radio"
+                                                                            aria-checked={theme === 'aqua'}
+                                                                            aria-pressed={theme === 'aqua'}
+                                                                            aria-label={tr("Aqua Daylight")}
+                                                                            onClick={() => setTheme('aqua')}
+                                                                            ref={(el) => {
+                                                                                themeRefs.current[1] = el;
+                                                                            }}
+                                                                            onKeyDown={(e) =>
+                                                                                handleThemeKeyDown(e, 1)
+                                                                            }
+                                                                        >
+                                                                            <div
+                                                                                className="ss-theme-miniature"
+                                                                                style={{
+                                                                                    backgroundImage: `url(${THEME_ASSETS.aqua.swatch})`,
                                                                                 }}
-                                                                                onKeyDown={(e) =>
-                                                                                    handleThemeKeyDown(e, 1)
-                                                                                }
                                                                             >
-                                                                                <span className="sk-seg-label">{tr("Aqua")}</span>
-                                                                            </button>
-                                                                        </div>
+                                                                                <div className="w-[18px] h-full bg-white/70 border-r border-black/10" />
+                                                                                {theme === 'aqua' && (
+                                                                                    <div className="ss-theme-badge">
+                                                                                        <Check
+                                                                                            size={10}
+                                                                                            strokeWidth={3}
+                                                                                        />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                            <span className="text-[11px] font-medium text-(--ss-fg2)">
+                                                                                {tr("Aqua")}
+                                                                            </span>
+                                                                        </button>
                                                                     </div>
                                                                 </div>
 
@@ -572,6 +656,11 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                 <div className="sk-row">
                                                                     <div className="sk-row-label">
                                                                         <span className="sk-row-title">{tr("Surface style")}</span>
+                                                                        <span className="sk-row-sub">
+                                                                            {appStyle === 'slab'
+                                                                                ? tr("Liquid glass sheen")
+                                                                                : tr("Solid stone surface")}
+                                                                        </span>
                                                                     </div>
                                                                     <div className="sk-row-value">
                                                                         <div
@@ -590,6 +679,7 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                                         type="button"
                                                                                         role="radio"
                                                                                         aria-checked={isChecked}
+                                                                                        aria-pressed={isChecked}
                                                                                         aria-label={meta.label}
                                                                                         className="sk-seg-btn"
                                                                                         onClick={() => setAppStyle(s)}
@@ -605,104 +695,102 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                     </div>
                                                                 </div>
 
-                                                                {/* Color Tokens Disclosure */}
-                                                                <details
-                                                                    className="sk-disclosure"
-                                                                    open={colorsOpen}
-                                                                    onToggle={(e) =>
-                                                                        setColorsOpen(
-                                                                            (e.target as HTMLDetailsElement).open
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <summary className="sk-row">
-                                                                        <span className="sk-row-icon">
-                                                                            <Palette size={14} />
-                                                                        </span>
-                                                                        <span className="sk-row-label">
+                                                                {/* Accent Colour Swatches Row */}
+                                                                <div className="sk-row py-2.5 flex-col items-start gap-2">
+                                                                    <div className="flex items-center justify-between w-full">
+                                                                        <div className="sk-row-label">
                                                                             <span className="sk-row-title">
-                                                                                {tr("Color tokens")}
+                                                                                {tr("Accent color")}
                                                                             </span>
-                                                                        </span>
-                                                                        <span className="sk-row-value">
-                                                                            <ChevronRight
-                                                                                size={14}
-                                                                                className="sk-chevron"
-                                                                            />
-                                                                        </span>
-                                                                    </summary>
-                                                                    <div className="p-3 grid grid-cols-6 gap-2 bg-(--ss-field) border-t border-(--ss-sep)">
-                                                                        {[
-                                                                            {
-                                                                                label: tr("Surface"),
-                                                                                key: '--app-bg-solid',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Neural"),
-                                                                                key: '--main-color',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Static"),
-                                                                                key: '--secondary-color',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Text P"),
-                                                                                key: '--text-color-primary',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Text S"),
-                                                                                key: '--text-color-secondary',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Border"),
-                                                                                key: '--border-color',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Input"),
-                                                                                key: '--input-color',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Sidebar"),
-                                                                                key: '--sidebar-bg',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Portal"),
-                                                                                key: '--app-bg',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Glass"),
-                                                                                key: '--glass-bg',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Base"),
-                                                                                key: '--bg-color',
-                                                                            },
-                                                                            {
-                                                                                label: tr("Accent"),
-                                                                                key: '--accent-color',
-                                                                            },
-                                                                        ].map((t) => (
-                                                                            <div
-                                                                                key={t.key}
-                                                                                className="flex flex-col items-center gap-1"
-                                                                            >
-                                                                                <div
-                                                                                    className="w-[20px] h-[20px] rounded-full border border-(--ss-sep)"
+                                                                            <span className="sk-row-sub">
+                                                                                {tr("Color tokens & palette")}
+                                                                            </span>
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="sk-btn text-[11px]"
+                                                                            data-variant="plain"
+                                                                            onClick={() => setColorsOpen(!colorsOpen)}
+                                                                            aria-expanded={colorsOpen}
+                                                                        >
+                                                                            <span className="flex items-center gap-1">
+                                                                                <span>
+                                                                                    {colorsOpen
+                                                                                        ? tr("Hide tokens")
+                                                                                        : tr("Show tokens")}
+                                                                                </span>
+                                                                                <ChevronRight
+                                                                                    size={12}
+                                                                                    className={`transition-transform duration-200 ${
+                                                                                        colorsOpen ? 'rotate-90' : ''
+                                                                                    }`}
+                                                                                />
+                                                                            </span>
+                                                                        </button>
+                                                                    </div>
+                                                                    <div
+                                                                        className="flex flex-wrap items-center gap-2 py-1 w-full"
+                                                                        role="radiogroup"
+                                                                        aria-label={tr("Accent color")}
+                                                                    >
+                                                                        {colorTokens.map((t) => {
+                                                                            const isSelected = selectedColor === t.key;
+                                                                            return (
+                                                                                <button
+                                                                                    key={t.key}
+                                                                                    type="button"
+                                                                                    role="radio"
+                                                                                    aria-checked={isSelected}
+                                                                                    aria-pressed={isSelected}
+                                                                                    aria-label={t.label}
+                                                                                    title={`${t.label} (${t.key})`}
+                                                                                    className="ss-accent-swatch"
+                                                                                    onClick={() =>
+                                                                                        handleSelectColorToken(t.key)
+                                                                                    }
                                                                                     style={{
                                                                                         backgroundColor:
-                                                                                            colorValues[
-                                                                                                t.key
-                                                                                            ] ||
+                                                                                            colorValues[t.key] ||
                                                                                             `var(${t.key})`,
                                                                                     }}
-                                                                                />
-                                                                                <span className="text-[9.5px] text-(--ss-fg2) truncate w-full text-center">
-                                                                                    {t.label}
-                                                                                </span>
-                                                                            </div>
-                                                                        ))}
+                                                                                >
+                                                                                    {isSelected && (
+                                                                                        <Check
+                                                                                            size={12}
+                                                                                            strokeWidth={3}
+                                                                                            className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
+                                                                                        />
+                                                                                    )}
+                                                                                </button>
+                                                                            );
+                                                                        })}
                                                                     </div>
-                                                                </details>
+                                                                    {colorsOpen && (
+                                                                        <div className="p-3 grid grid-cols-4 sm:grid-cols-6 gap-2 bg-(--ss-field) border-t border-(--ss-sep) w-full rounded-lg mt-1">
+                                                                            {colorTokens.map((t) => (
+                                                                                <div
+                                                                                    key={t.key}
+                                                                                    className="flex flex-col items-center gap-1 cursor-pointer"
+                                                                                    onClick={() =>
+                                                                                        handleSelectColorToken(t.key)
+                                                                                    }
+                                                                                >
+                                                                                    <div
+                                                                                        className="w-[20px] h-[20px] rounded-full border border-(--ss-sep)"
+                                                                                        style={{
+                                                                                            backgroundColor:
+                                                                                                colorValues[t.key] ||
+                                                                                                `var(${t.key})`,
+                                                                                        }}
+                                                                                    />
+                                                                                    <span className="text-[9.5px] text-(--ss-fg2) truncate w-full text-center">
+                                                                                        {t.label}
+                                                                                    </span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </section>
 

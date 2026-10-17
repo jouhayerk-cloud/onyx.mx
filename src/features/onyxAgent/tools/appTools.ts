@@ -4,6 +4,26 @@ import {
     CrateDimensions
 } from '../../../lib/logistics/boxesBridge';
 import { sanitizeFileBase } from '../../../lib/logistics/boxesCliBridge';
+import { getDefaultStore } from 'jotai';
+import {
+    activeViewAtom,
+    inventorySearchTermAtom,
+    TOP_BAR_SEARCH_ATOM,
+    inventoryStatusFilterAtom,
+    inventoryVendorFilterAtom,
+    inventoryCategoryFilterAtom,
+    inventoryMaterialFilterAtom,
+    inventoryMaterialColorFilterAtom,
+    inventoryShapeFilterAtom,
+    inventoryContentFilterAtom,
+    SelectedItemRowAtom,
+    isDetailsPanelOpenAtom,
+    selectedInventoryIdsAtom,
+    isInventorySelectionModeAtom,
+    type UserRole,
+    type InventoryStatusFilter
+} from '../../../lib/atoms';
+import { tr } from '../../../lib/i18n';
 
 /**
  * REQUIRED JOTAI WIRING:
@@ -14,7 +34,7 @@ import { sanitizeFileBase } from '../../../lib/logistics/boxesCliBridge';
  * - setInventorySearch: write to `inventorySearchTermAtom` or `TOP_BAR_SEARCH_ATOM` (src/lib/atoms.tsx)
  */
 
-export type AppRole = 'Developer' | 'Admin' | 'Vendor' | 'Client';
+export type AppRole = UserRole | 'Client';
 
 export type AppToolContext = {
     role: AppRole;
@@ -22,6 +42,20 @@ export type AppToolContext = {
     setActiveView: (view: string) => void;
     openItem?: (itemId: string) => void;
     setInventorySearch?: (text: string) => void;
+    setInventoryFilter?: (facet: string, value: string | string[]) => void;
+    clearFilters?: (scope?: 'all' | 'search' | 'facets') => void;
+    highlightItems?: (itemIds: string[]) => void;
+};
+
+export type UiToolDefinitions = {
+    navigate_view: { view: 'inventory' | 'finance' | 'logistics' | 'warehouse' | 'trucking' | 'packing' };
+    set_inventory_filter: {
+        facet: 'status' | 'vendor' | 'category' | 'materialColor' | 'shape' | 'search';
+        value: string | string[];
+    };
+    clear_filters: { scope?: 'all' | 'search' | 'facets' };
+    open_item: { item_id: string };
+    highlight_items: { item_ids: string[] };
 };
 
 export const VIEW_ACCESS: Record<AppRole, readonly string[]> = {
@@ -37,11 +71,28 @@ export const VIEW_ACCESS: Record<AppRole, readonly string[]> = {
         'workbook', 'store', 'process', 'viewer', 'welcome',
         'onyx', 'pico-bridge', 'onyx-reg', 'devices', 'threed'
     ],
+    ClientBoss: ['inventory', 'viewer'],
+    ClientAccounting: ['inventory', 'viewer'],
+    ClientViewer: ['inventory', 'viewer'],
     Vendor: ['inventory', 'viewer'],
     Client: ['inventory', 'viewer']
 };
 
 export const appToolDefinitions = [
+    {
+        name: "navigate_view",
+        description: "Navigates the user to a specific view in the app. Call get_current_view first when unsure of the current context.",
+        parameters: {
+            type: "OBJECT",
+            properties: {
+                view: {
+                    type: "STRING",
+                    description: "The view ID to navigate to ('inventory', 'finance', 'logistics', 'warehouse', 'trucking', 'packing', etc.)."
+                }
+            },
+            required: ["view"]
+        }
+    },
     {
         name: "navigate_to_view",
         description: "Navigates the user to a specific view in the app. Call get_current_view first when unsure of the current context.",
@@ -93,6 +144,54 @@ export const appToolDefinitions = [
         }
     },
     {
+        name: "set_inventory_filter",
+        description: "Sets an inventory facet filter ('status', 'vendor', 'category', 'materialColor', 'shape', or 'search').",
+        parameters: {
+            type: "OBJECT",
+            properties: {
+                facet: {
+                    type: "STRING",
+                    description: "The facet to filter: 'status', 'vendor', 'category', 'materialColor', 'shape', or 'search'."
+                },
+                value: {
+                    type: "STRING",
+                    description: "The filter value or comma-separated list of values."
+                }
+            },
+            required: ["facet", "value"]
+        }
+    },
+    {
+        name: "clear_filters",
+        description: "Clears active inventory filters (optionally scoped to 'all', 'search', or 'facets').",
+        parameters: {
+            type: "OBJECT",
+            properties: {
+                scope: {
+                    type: "STRING",
+                    description: "Filter scope to clear: 'all', 'search', or 'facets' (default: 'all')."
+                }
+            }
+        }
+    },
+    {
+        name: "highlight_items",
+        description: "Highlights and selects specific inventory items by their IDs.",
+        parameters: {
+            type: "OBJECT",
+            properties: {
+                item_ids: {
+                    type: "ARRAY",
+                    items: {
+                        type: "STRING"
+                    },
+                    description: "Array of item IDs to highlight and select."
+                }
+            },
+            required: ["item_ids"]
+        }
+    },
+    {
         name: "generate_crate_cutfile",
         description: "Looks up a warehouse crate by id and prepares its laser stencil from the crate's real dimensions. Returns the dimensions, the material settings and a Boxes.py CLI recipe; the card draws the approximate SVG itself, no SVG is returned. When called, include the cutfile JSON block in your answer so Chan renders the interactive LaserCutfileCard.",
         parameters: {
@@ -122,27 +221,48 @@ export const appToolDefinitions = [
 
 export const appToolRisk: Record<string, 'read' | 'navigate' | 'robot' | 'write'> = {
     navigate_to_view: 'navigate',
+    navigate_view: 'navigate',
     get_current_view: 'read',
     open_item: 'navigate',
     search_in_app: 'navigate',
+    set_inventory_filter: 'navigate',
+    clear_filters: 'navigate',
+    highlight_items: 'navigate',
     generate_crate_cutfile: 'read'
 };
 
+export const appToolConfirm: Record<string, boolean> = {
+    navigate_to_view: false,
+    navigate_view: false,
+    open_item: false,
+    highlight_items: false
+};
+
 export function createAppToolHandlers(ctx: AppToolContext): Record<string, (args: Record<string, unknown>) => Promise<unknown>> {
-    return {
-        navigate_to_view: async (args) => {
-            const view = typeof args.view === 'string' ? args.view : '';
+    const handlers: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {
+        navigate_view: async (args) => {
+            const view = typeof args.view === 'string' ? args.view.trim() : '';
             if (!view) {
-                return { ok: false, error: 'Invalid or missing view argument.' };
+                return { ok: false, error: tr('Invalid or missing view argument.') };
             }
             
             const allowedViews = VIEW_ACCESS[ctx.role] || [];
             if (!allowedViews.includes(view)) {
-                return { ok: false, error: 'not allowed' };
+                return { ok: false, error: tr('not allowed') };
             }
 
             ctx.setActiveView(view);
+            try {
+                const store = getDefaultStore();
+                store.set(activeViewAtom, view as any);
+            } catch {
+                // Ignore store error
+            }
             return { ok: true, navigatedTo: view };
+        },
+
+        navigate_to_view: async (args) => {
+            return handlers.navigate_view(args);
         },
 
         get_current_view: async () => {
@@ -151,13 +271,21 @@ export function createAppToolHandlers(ctx: AppToolContext): Record<string, (args
         },
 
         open_item: async (args) => {
-            const itemId = typeof args.item_id === 'string' ? args.item_id : '';
+            const itemId = typeof args.item_id === 'string' ? args.item_id.trim() : '';
             if (!itemId) {
-                return { ok: false, error: 'Invalid or missing item_id argument.' };
+                return { ok: false, error: tr('Invalid or missing item_id argument.') };
             }
             
             if (itemId.length > 64 || !/^[a-zA-Z0-9_-]+$/.test(itemId)) {
-                return { ok: false, error: 'Invalid item_id format or length.' };
+                return { ok: false, error: tr('Invalid item_id format or length.') };
+            }
+
+            try {
+                const store = getDefaultStore();
+                store.set(SelectedItemRowAtom, itemId);
+                store.set(isDetailsPanelOpenAtom, true);
+            } catch {
+                // Ignore store error
             }
 
             if (ctx.openItem) {
@@ -177,11 +305,11 @@ export function createAppToolHandlers(ctx: AppToolContext): Record<string, (args
         search_in_app: async (args) => {
             const text = typeof args.text === 'string' ? args.text : '';
             if (!text) {
-                return { ok: false, error: 'Invalid or missing text argument.' };
+                return { ok: false, error: tr('Invalid or missing text argument.') };
             }
             
             if (text.length > 80) {
-                return { ok: false, error: 'Search text exceeds maximum length of 80 characters.' };
+                return { ok: false, error: tr('Search text exceeds maximum length of 80 characters.') };
             }
 
             const allowedViews = VIEW_ACCESS[ctx.role] || [];
@@ -192,7 +320,138 @@ export function createAppToolHandlers(ctx: AppToolContext): Record<string, (args
             if (ctx.setInventorySearch) {
                 ctx.setInventorySearch(text);
             }
+            try {
+                const store = getDefaultStore();
+                store.set(inventorySearchTermAtom, text);
+                store.set(TOP_BAR_SEARCH_ATOM, text);
+            } catch {
+                // Ignore store error
+            }
             return { ok: true, searchedFor: text };
+        },
+
+        set_inventory_filter: async (args) => {
+            const allowedViews = VIEW_ACCESS[ctx.role] || [];
+            if (!allowedViews.includes('inventory')) {
+                return { ok: false, error: tr('not allowed') };
+            }
+
+            const facet = typeof args.facet === 'string' ? args.facet.trim() : '';
+            if (!facet) {
+                return { ok: false, error: tr('Invalid or missing facet argument.') };
+            }
+
+            const rawVal = args.value;
+            const singleVal = typeof rawVal === 'string' ? rawVal.trim() : Array.isArray(rawVal) && rawVal.length > 0 ? String(rawVal[0]).trim() : '';
+            const arrayVal = Array.isArray(rawVal)
+                ? rawVal.map(String).map(s => s.trim()).filter(Boolean)
+                : typeof rawVal === 'string' && rawVal.includes(',')
+                ? rawVal.split(',').map(s => s.trim()).filter(Boolean)
+                : singleVal ? [singleVal] : [];
+
+            if (ctx.setInventoryFilter) {
+                ctx.setInventoryFilter(facet, Array.isArray(rawVal) ? arrayVal : singleVal);
+            }
+
+            try {
+                const store = getDefaultStore();
+                switch (facet) {
+                    case 'search':
+                        store.set(inventorySearchTermAtom, singleVal);
+                        store.set(TOP_BAR_SEARCH_ATOM, singleVal);
+                        ctx.setInventorySearch?.(singleVal);
+                        break;
+                    case 'status':
+                        store.set(inventoryStatusFilterAtom, (singleVal || 'All') as InventoryStatusFilter);
+                        break;
+                    case 'vendor':
+                        store.set(inventoryVendorFilterAtom, arrayVal.length > 0 ? arrayVal : ['All']);
+                        break;
+                    case 'category':
+                        store.set(inventoryCategoryFilterAtom, singleVal || 'All');
+                        break;
+                    case 'materialColor':
+                        store.set(inventoryMaterialColorFilterAtom, arrayVal);
+                        break;
+                    case 'shape':
+                        store.set(inventoryShapeFilterAtom, arrayVal);
+                        break;
+                    default:
+                        return { ok: false, error: tr('Invalid facet argument.') };
+                }
+            } catch {
+                // Ignore store error
+            }
+
+            return { ok: true, facet, value: rawVal };
+        },
+
+        clear_filters: async (args) => {
+            const allowedViews = VIEW_ACCESS[ctx.role] || [];
+            if (!allowedViews.includes('inventory')) {
+                return { ok: false, error: tr('not allowed') };
+            }
+
+            const rawScope = typeof args.scope === 'string' ? args.scope.trim().toLowerCase() : 'all';
+            const scope = (rawScope === 'search' || rawScope === 'facets') ? rawScope : 'all';
+
+            if (ctx.clearFilters) {
+                ctx.clearFilters(scope);
+            }
+
+            try {
+                const store = getDefaultStore();
+                if (scope === 'all' || scope === 'search') {
+                    store.set(inventorySearchTermAtom, '');
+                    store.set(TOP_BAR_SEARCH_ATOM, '');
+                    ctx.setInventorySearch?.('');
+                }
+                if (scope === 'all' || scope === 'facets') {
+                    store.set(inventoryStatusFilterAtom, 'All');
+                    store.set(inventoryVendorFilterAtom, ['All']);
+                    store.set(inventoryCategoryFilterAtom, 'All');
+                    store.set(inventoryMaterialFilterAtom, 'All');
+                    store.set(inventoryMaterialColorFilterAtom, []);
+                    store.set(inventoryShapeFilterAtom, []);
+                    store.set(inventoryContentFilterAtom, []);
+                }
+            } catch {
+                // Ignore store error
+            }
+
+            return { ok: true, cleared: scope };
+        },
+
+        highlight_items: async (args) => {
+            const allowedViews = VIEW_ACCESS[ctx.role] || [];
+            if (!allowedViews.includes('inventory')) {
+                return { ok: false, error: tr('not allowed') };
+            }
+
+            const rawIds = args.item_ids;
+            const ids: string[] = Array.isArray(rawIds)
+                ? rawIds.map(String).map(s => s.trim()).filter(Boolean)
+                : typeof rawIds === 'string'
+                ? rawIds.split(',').map(s => s.trim()).filter(Boolean)
+                : [];
+
+            if (ids.length === 0) {
+                return { ok: false, error: tr('Invalid or missing item_ids argument.') };
+            }
+
+            if (ctx.highlightItems) {
+                ctx.highlightItems(ids);
+            }
+
+            try {
+                const store = getDefaultStore();
+                store.set(selectedInventoryIdsAtom, ids);
+                store.set(isInventorySelectionModeAtom, true);
+            } catch {
+                // Ignore store error
+            }
+
+            return { ok: true, highlightedCount: ids.length, itemIds: ids };
         },
 
         generate_crate_cutfile: async (args) => {
@@ -274,4 +533,5 @@ export function createAppToolHandlers(ctx: AppToolContext): Record<string, (args
             };
         }
     };
+    return handlers;
 }

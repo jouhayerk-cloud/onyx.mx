@@ -1,3 +1,13 @@
+:root {
+  --lq-fill-surface: rgba(14, 18, 28, 0.14);
+  --lq-fill-panel: rgba(14, 18, 28, 0.18);
+}
+
+html.theme-aqua {
+  --lq-fill-surface: rgba(255, 255, 255, 0.18);
+  --lq-fill-panel: rgba(255, 255, 255, 0.22);
+}
+
 .isb-panel {
   position: fixed;
   /* below the iOS status bar (clock, battery): the inset is the height of that strip in the installed app and on a notch phone */
@@ -9,31 +19,42 @@
   flex-direction: column;
   color: #fff;
   border-radius: 28px;
+  isolation: isolate;
   /* Liquid glass */
-  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
-  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.07) 100%)) !important;
-  -webkit-backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: blur(var(--lq-blur, 30px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+  backdrop-filter: blur(var(--lq-blur, 30px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+  border: 1px solid var(--lq-rim, rgba(255, 255, 255, 0.22));
   box-shadow:
-    inset 0 1px 0.5px rgba(255, 255, 255, 0.55),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.12),
-    inset 0 0 18px rgba(255, 255, 255, 0.07),
-    0 14px 40px rgba(2, 6, 16, 0.38),
-    0 1px 3px rgba(2, 6, 16, 0.30);
+    var(--lq-highlight),
+    var(--lq-shadow),
+    inset 0 0 20px rgba(255, 255, 255, 0.05);
   transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+}
+
+@supports (backdrop-filter: url(#x)) {
+  .isb-panel {
+    backdrop-filter: url(#lq-refract) blur(var(--lq-blur, 30px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+  }
 }
 
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .isb-panel {
-      background-color: rgba(12, 14, 22, 0.90) !important;
+      background-color: var(--lq-solid-surface, rgba(12, 14, 22, 0.90)) !important;
+      background-image: none !important;
   }
 }
 @media (prefers-reduced-transparency: reduce) {
   .isb-panel {
-    background-color: rgba(12, 14, 22, 0.94) !important;
+    background-color: var(--lq-solid-surface, rgba(12, 14, 22, 0.94)) !important;
+    background-image: none !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+  }
+  .isb-panel::before,
+  .isb-panel::after {
+    display: none !important;
   }
 }
 
@@ -49,13 +70,28 @@
     radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 34%, transparent), transparent 62%);
   opacity: 0.85;   /* static: an endless animation over backdrop-filter re-blurs the page every frame */
 }
+
+/* Specular top rim in ::after (one owner per pseudo element) */
+.isb-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 24px);
+  mix-blend-mode: screen;
+  box-shadow: inset 0 1.5px 0.5px rgba(255, 255, 255, 0.65), inset 0 0 16px rgba(255, 255, 255, 0.05);
+  z-index: 1;
+}
+
 @keyframes isb-breathe {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .isb-panel { transition: none !important; }
-  .isb-panel::before { animation: none !important; }
+  .isb-panel::before,
+  .isb-panel::after { animation: none !important; }
 }
 
 .isb-header {
@@ -200,9 +236,11 @@
   position: absolute;
   left: calc(100% + 12px);
   top: 0;
-  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 70%, transparent));
-  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9);
-  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.2));
+  background-color: var(--lq-fill-panel) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: blur(var(--lq-blur-panel, 16px)) saturate(var(--lq-saturate, 1.9));
+  backdrop-filter: blur(var(--lq-blur-panel, 16px)) saturate(var(--lq-saturate, 1.9));
+  border: 1px solid var(--lq-rim-subtle);
   border-radius: 16px;
   padding: 8px;
   min-width: 180px;
@@ -266,9 +304,11 @@
   left: calc(100% + 12px);
   top: 50%;
   transform: translateY(-50%);
-  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 80%, transparent));
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.2));
+  background-color: var(--lq-fill-panel) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--lq-rim-subtle);
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 12px;
@@ -363,26 +403,27 @@ html.theme-aqua .isb-panel.isb-panel .isb-item-active svg { fill: none !importan
   height: 64px;
   border-radius: 20px;
   cursor: pointer;
-  background-color: var(--slab-glass-hi, color-mix(in srgb, #0a0c14 40%, transparent)) !important;
-  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.26));
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: blur(var(--lq-blur, 30px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+  backdrop-filter: blur(var(--lq-blur, 30px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+  border: 1px solid var(--lq-rim);
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   transition: transform 0.2s ease, opacity 0.3s ease;
 }
 .isb-floating-logo:hover {
-  background-color: rgba(255,255,255,0.1) !important;
+  background-color: var(--lq-fill-control-hover, rgba(255,255,255,0.1)) !important;
 }
 
 /* Aqua Pass Adjustments */
 html.theme-aqua .isb-panel {
-  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.70)) !important;
-  background-image: var(--slab-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.3) 38%, rgba(255, 255, 255, 0) 62%, rgba(255, 255, 255, 0.4) 100%)) !important;
-  border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow:
-    inset 0 1px 0.5px rgba(255, 255, 255, 0.85),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.05),
-    0 14px 40px rgba(11, 42, 51, 0.12),
-    0 1px 3px rgba(11, 42, 51, 0.08) !important;
+    var(--lq-highlight),
+    var(--lq-shadow),
+    inset 0 0 20px rgba(11, 42, 51, 0.03) !important;
   color: #0b2a33 !important;
 }
 
@@ -390,6 +431,12 @@ html.theme-aqua .isb-panel::before {
   background:
     radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.60), transparent 55%),
     radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 15%, transparent), transparent 62%) !important;
+}
+
+html.theme-aqua .isb-panel::after {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 24px);
+  mix-blend-mode: overlay;
+  box-shadow: inset 0 1.5px 0.5px rgba(255, 255, 255, 0.85), inset 0 0 16px rgba(11, 42, 51, 0.04);
 }
 
 html.theme-aqua .isb-section-title {
@@ -403,8 +450,9 @@ html.theme-aqua .isb-logo-text {
 
 html.theme-aqua .isb-flyout,
 html.theme-aqua .isb-tooltip {
-  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.85)) !important;
-  border: 1px solid rgba(11, 42, 51, 0.15) !important;
+  background-color: var(--lq-fill-panel) !important;
+  background-image: var(--lq-sheen) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
   box-shadow: 0 8px 24px rgba(11, 42, 51, 0.12) !important;
   color: #0b2a33 !important;
 }
@@ -451,14 +499,15 @@ html.theme-aqua .isb-footer svg:not([class*="text-green"]):not([class*="text-cya
 }
 
 html.theme-aqua .isb-floating-logo {
-  background-color: var(--slab-glass-hi, rgba(255, 255, 255, 0.70)) !important;
-  border: 1px solid rgba(11, 42, 51, 0.15) !important;
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow: 0 4px 12px rgba(11, 42, 51, 0.10) !important;
   color: #0b2a33 !important;
 }
 
 html.theme-aqua .isb-floating-logo:hover {
-  background-color: rgba(11, 42, 51, 0.08) !important;
+  background-color: var(--lq-fill-control-hover, rgba(11, 42, 51, 0.08)) !important;
 }
 
 /* Darker cyan text on light glass */
@@ -517,9 +566,14 @@ html.theme-aqua .isb-panel [class*="bg-red"] svg {
 /* Reduced transparency fallback */
 @media (prefers-reduced-transparency: reduce) {
   html.theme-aqua .isb-panel {
-    background-color: #f0f7f9 !important;
+    background-color: var(--lq-solid-surface, #f0f7f9) !important;
+    background-image: none !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+  }
+  html.theme-aqua .isb-panel::before,
+  html.theme-aqua .isb-panel::after {
+    display: none !important;
   }
 }
 

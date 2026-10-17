@@ -1,3 +1,13 @@
+:root {
+  --lq-fill-surface: rgba(14, 18, 28, 0.14);
+  --lq-fill-panel: rgba(14, 18, 28, 0.18);
+}
+
+html.theme-aqua {
+  --lq-fill-surface: rgba(255, 255, 255, 0.18);
+  --lq-fill-panel: rgba(255, 255, 255, 0.22);
+}
+
 .smd-layer {
   position: fixed;
   /* no fixed height: a 0-height flex layer let the cards (overflow hidden) shrink to nothing while the stack still kept its gaps */
@@ -62,20 +72,27 @@
   align-items: center;
   min-height: 56px;
   
-  background-color: var(--lq-fill-surface, var(--slab-glass-hi, rgba(14, 18, 28, 0.28))) !important;
+  background-color: var(--lq-fill-surface) !important;
   background-image: var(--lq-sheen, var(--slab-sheen)) !important;
-  -webkit-backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  border: 1px solid var(--lq-rim, var(--slab-glass-rim, rgba(255, 255, 255, 0.22)));
+  -webkit-backdrop-filter: blur(var(--lq-blur, 30px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+  backdrop-filter: blur(var(--lq-blur, 30px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+  border: 1px solid var(--lq-rim);
   box-shadow:
     var(--lq-highlight),
-    var(--lq-shadow);
+    var(--lq-shadow),
+    inset 0 0 20px rgba(255, 255, 255, 0.05);
   color: var(--lq-ink, #fff);
 }
 
 .smd-card[data-smd-refract="on"] {
-  -webkit-backdrop-filter: var(--smd-refract-filter, none) blur(28px) saturate(1.9) brightness(1.08) !important;
-  backdrop-filter: var(--smd-refract-filter, none) blur(28px) saturate(1.9) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+  backdrop-filter: var(--smd-refract-filter, none) blur(28px) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+}
+
+@supports (backdrop-filter: url(#x)) {
+  .smd-card:not([data-smd-refract="on"]) {
+    backdrop-filter: url(#lq-refract-soft) blur(var(--lq-blur, 28px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
+  }
 }
 
 .smd-card::before {
@@ -98,12 +115,12 @@
   border-radius: inherit;
   padding: 1.5px;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.12) 35%, transparent 50%, transparent 65%, rgba(255, 255, 255, 0.22) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.15) 35%, transparent 50%, transparent 65%, rgba(255, 255, 255, 0.28) 100%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
-  opacity: 0.9;
+  opacity: 0.95;
   z-index: 5;
 }
 
@@ -125,13 +142,19 @@
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .smd-card {
     background-color: var(--lq-solid-surface, rgba(12, 14, 22, 0.90)) !important;
+    background-image: none !important;
   }
 }
 @media (prefers-reduced-transparency: reduce) {
   .smd-card {
     background-color: var(--lq-solid-surface, rgba(12, 14, 22, 0.94)) !important;
+    background-image: none !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+  }
+  .smd-card::before,
+  .smd-card::after {
+    display: none !important;
   }
 }
 
@@ -438,12 +461,13 @@ html.style-slab .smd-card.smd-card [role="button"] {
 
 /* Aqua Pass Adjustments */
 html.theme-aqua .smd-card {
-  background-color: var(--lq-fill-surface, var(--slab-glass-hi, rgba(255, 255, 255, 0.38))) !important;
+  background-color: var(--lq-fill-surface) !important;
   background-image: var(--lq-sheen, linear-gradient(160deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.18) 38%, rgba(255, 255, 255, 0.04) 62%, rgba(255, 255, 255, 0.28) 100%)) !important;
-  border: 1px solid var(--lq-rim, var(--slab-glass-rim, rgba(11, 42, 51, 0.15))) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow:
     var(--lq-highlight),
-    var(--lq-shadow) !important;
+    var(--lq-shadow),
+    inset 0 0 20px rgba(11, 42, 51, 0.03) !important;
   color: var(--lq-ink, #0b2a33) !important;
 }
 
@@ -455,7 +479,7 @@ html.theme-aqua .smd-card::before {
 }
 
 html.theme-aqua .smd-card::after {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(11, 42, 51, 0.18) 35%, transparent 50%, transparent 65%, rgba(11, 42, 51, 0.12) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.90) 0%, rgba(11, 42, 51, 0.22) 35%, transparent 50%, transparent 65%, rgba(11, 42, 51, 0.15) 100%);
   opacity: 0.85;
 }
 
@@ -590,8 +614,13 @@ html.theme-aqua .smd-card [class*="bg-red"] svg {
 @media (prefers-reduced-transparency: reduce) {
   html.theme-aqua .smd-card {
     background-color: var(--lq-solid-surface, #f0f7f9) !important;
+    background-image: none !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+  }
+  html.theme-aqua .smd-card::before,
+  html.theme-aqua .smd-card::after {
+    display: none !important;
   }
 }
 

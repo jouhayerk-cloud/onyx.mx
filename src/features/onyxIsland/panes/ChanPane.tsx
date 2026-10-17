@@ -11,10 +11,13 @@ import {
     ChevronRight, 
     RotateCcw,
     Square,
-    Cpu
+    Cpu,
+    Package,
+    Eye
 } from 'lucide-react';
 import { useAtom } from 'jotai';
 import { islandChanDraftAtom } from '../islandState';
+import { inventoryArtifactConfigAtom } from '../../../lib/atoms';
 import { useOnyxAgentWiring } from '../../onyxAgent/useOnyxAgentWiring';
 import { isCompanionAvailable, isColibriAvailable } from '../../../lib/ai/providers';
 import { fetchColibriModels } from '../../../lib/ai/providers/colibri';
@@ -107,11 +110,99 @@ function extractCutfileFromText(text: string): ParsedMessageContent {
     return { cleanText: text };
 }
 
+interface ArtifactCardData {
+    itemIds: (string | number)[];
+    title?: string;
+    viewMode?: string;
+}
+
+function extractArtifactFromTool(m: any): ArtifactCardData | null {
+    const res = m.result;
+    if (m.toolName === 'deploy_inventory_artifact') {
+        const raw = res?.ids || res?.item_ids || res?.itemIds || [];
+        const itemIds = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+        return {
+            itemIds,
+            title: res?.title,
+            viewMode: res?.viewMode
+        };
+    }
+    if (res && typeof res === 'object') {
+        if (res.action === 'DEPLOY_INVENTORY' || res.artifactType === 'inventory') {
+            const raw = res.ids || res.item_ids || res.itemIds || [];
+            const itemIds = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+            return {
+                itemIds,
+                title: res.title,
+                viewMode: res.viewMode
+            };
+        }
+    }
+    if (typeof m.text === 'string' && m.text.includes('DEPLOY_INVENTORY')) {
+        try {
+            const parsed = JSON.parse(m.text);
+            if (parsed && (parsed.action === 'DEPLOY_INVENTORY' || parsed.ids)) {
+                const raw = parsed.ids || parsed.item_ids || [];
+                const itemIds = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+                return {
+                    itemIds,
+                    title: parsed.title,
+                    viewMode: parsed.viewMode
+                };
+            }
+        } catch {}
+    }
+    return null;
+}
+
+const LiquidArtifactPill: React.FC<{
+    title?: string;
+    itemIds: (string | number)[];
+    onOpen: () => void;
+}> = ({ title, itemIds, onOpen }) => {
+    return (
+        <button
+            type="button"
+            onClick={onOpen}
+            className="isl-btn"
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px',
+                padding: '8px 12px',
+                borderRadius: 'var(--lq-radius-panel, var(--isl-radius-row))',
+                border: '1px solid var(--lq-rim-subtle, var(--isl-line))',
+                background: 'var(--lq-fill-panel, var(--isl-fill-1))',
+                color: 'var(--lq-ink, var(--isl-ink))',
+                width: '100%',
+                maxWidth: '340px',
+                cursor: 'pointer',
+                textAlign: 'left'
+            }}
+        >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <Package size={16} style={{ color: 'var(--main-color, var(--isl-accent))', flexShrink: 0 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {title || tr('Inventory Manifest')}
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'var(--isl-ink-3)' }}>
+                        {itemIds.length} {itemIds.length === 1 ? tr('Linked Asset') : tr('Linked Assets')}
+                    </span>
+                </div>
+            </div>
+            <Eye size={14} style={{ color: 'var(--isl-ink-2)', flexShrink: 0 }} />
+        </button>
+    );
+};
+
 /** Chan pane of the island: the conversation with the Onyx agent and its message box. */
 export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
     void onClose;
     const wiring = useOnyxAgentWiring();
     const { agent, robot, mirror, setMirror } = wiring;
+    const [, setInventoryArtifactConfig] = useAtom(inventoryArtifactConfigAtom);
 
     const [text, setText] = useState('');
     const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
@@ -154,6 +245,7 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
     }, [colibriActive, refreshColibri]);
 
     const [recentCutfiles, setRecentCutfiles] = useState<Record<string, LaserCutfileCardProps>>({});
+    const [recentArtifacts, setRecentArtifacts] = useState<Record<string, ArtifactCardData>>({});
 
     useEffect(() => {
         const handleCutfileGenerated = (e: Event) => {
@@ -175,8 +267,27 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
             }
         };
 
+        const handleArtifactDeployed = (e: Event) => {
+            const data = (e as CustomEvent<any>).detail;
+            if (data && Array.isArray(data.itemIds) && data.itemIds.length > 0) {
+                const key = data.itemIds.join(',');
+                setRecentArtifacts(prev => ({
+                    ...prev,
+                    [key]: {
+                        itemIds: data.itemIds,
+                        title: data.title,
+                        viewMode: data.viewMode
+                    }
+                }));
+            }
+        };
+
         window.addEventListener('onyx:cutfile-generated', handleCutfileGenerated);
-        return () => window.removeEventListener('onyx:cutfile-generated', handleCutfileGenerated);
+        window.addEventListener('onyx:artifact-deployed', handleArtifactDeployed);
+        return () => {
+            window.removeEventListener('onyx:cutfile-generated', handleCutfileGenerated);
+            window.removeEventListener('onyx:artifact-deployed', handleArtifactDeployed);
+        };
     }, []);
 
     useEffect(() => {
@@ -236,7 +347,12 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
     }, [agent.pendingConfirm]);
 
     const visibleMessages = useMemo(() => {
-        return agent.messages.filter(m => m.role !== 'tool' && m.text.trim() !== '');
+        return agent.messages.filter(m => {
+            if (m.role === 'tool') {
+                return m.result != null || Boolean(m.toolName) || m.text.trim() !== '';
+            }
+            return m.text.trim() !== '';
+        });
     }, [agent.messages]);
 
     const handleScroll = () => {
@@ -478,6 +594,74 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
                 ) : (
                     visibleMessages.map((m) => {
                         const isUser = m.role === 'user';
+                        const isTool = m.role === 'tool';
+
+                        if (isTool) {
+                            const artifactData = extractArtifactFromTool(m);
+                            const toolCutfile = (m.result && (m.result as any).dimensionsMm && (m.result as any).crateId)
+                                ? cutfileFromParsed(m.result)
+                                : undefined;
+
+                            return (
+                                <div
+                                    key={m.id}
+                                    className="chan-message-row chan-message-row--assistant"
+                                >
+                                    <div className="flex flex-col gap-2 max-w-[94%] sm:max-w-[88%] items-start">
+                                        {artifactData && artifactData.itemIds.length > 0 ? (
+                                            <LiquidArtifactPill
+                                                title={artifactData.title}
+                                                itemIds={artifactData.itemIds}
+                                                onOpen={() => {
+                                                    setInventoryArtifactConfig({
+                                                        isOpen: true,
+                                                        itemIds: artifactData.itemIds,
+                                                        title: artifactData.title || tr('Inventory Manifest'),
+                                                        viewMode: (artifactData.viewMode as any) || 'modal',
+                                                        displayMode: 'gallery'
+                                                    });
+                                                }}
+                                            />
+                                        ) : toolCutfile ? (
+                                            <LaserCutfileCard
+                                                crateId={toolCutfile.crateId}
+                                                dimensionsMm={toolCutfile.dimensionsMm}
+                                                materialThicknessMm={toolCutfile.materialThicknessMm}
+                                                burnMm={toolCutfile.burnMm}
+                                                generator={toolCutfile.generator}
+                                                cliCommand={toolCutfile.cliCommand}
+                                                svgSnippet={toolCutfile.svgSnippet}
+                                                fullSvg={toolCutfile.fullSvg}
+                                            />
+                                        ) : (
+                                            <div
+                                                className="chan-tool-result"
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    padding: '4px 10px',
+                                                    borderRadius: 'var(--isl-radius-chip)',
+                                                    border: '1px solid var(--lq-rim-subtle, var(--isl-line))',
+                                                    background: 'var(--lq-fill-panel, var(--isl-fill-1))',
+                                                    fontSize: '11px',
+                                                    color: 'var(--isl-ink-2)'
+                                                }}
+                                            >
+                                                <Wrench size={11} style={{ color: 'var(--isl-accent)' }} />
+                                                <span style={{ fontWeight: 600 }}>{m.toolName || tr('Tool')}</span>
+                                                <span style={{ color: 'var(--isl-ink-3)' }}>
+                                                    {typeof (m.result as any)?.ok === 'boolean'
+                                                        ? ((m.result as any).ok ? '✓' : '✗')
+                                                        : ''}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        }
+
                         let cutfileData: LaserCutfileCardProps | undefined;
                         let textToDisplay = m.text;
 

@@ -175,7 +175,7 @@ export function useIslandRefraction(targetRef: React.RefObject<HTMLElement | nul
                 if (ctx) {
                     ctx.putImageData(new ImageData(arr as unknown as Uint8ClampedArray<ArrayBuffer>, w, h), 0, 0);
                     const href = canvas.toDataURL('image/png');
-                    const maxPixels = w < 200 ? 14 : 10;
+                    const maxPixels = w < 200 ? 18 : 14;
                     const scale = 2 * maxPixels;
                     
                     data = { href, w, h, scale };

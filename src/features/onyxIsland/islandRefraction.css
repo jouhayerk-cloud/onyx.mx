@@ -6,6 +6,12 @@
     backdrop-filter: url(#isl-refract) blur(28px) saturate(1.9) brightness(1.08) !important;
 }
 
+@supports (backdrop-filter: url(#x)) {
+    .onyx-island-surface:not([data-isl-refract="on"]) {
+        backdrop-filter: url(#lq-refract) blur(28px) saturate(1.9) brightness(1.08) !important;
+    }
+}
+
 /* Lit specular rim for ALL browsers */
 .onyx-island-surface::after {
     content: "";
@@ -26,4 +32,10 @@
 html.theme-aqua .onyx-island-surface::after {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.90) 0%, rgba(11, 42, 51, 0.22) 35%, transparent 50%, transparent 65%, rgba(11, 42, 51, 0.15) 100%);
     opacity: 0.85;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .onyx-island-surface::after {
+        display: none !important;
+    }
 }

@@ -5,8 +5,29 @@ import { AI_CONFIG_EVENT } from './providerKeys';
  * Which provider and model serve each text or vision JSON job. Default is Gemini, exactly as before.
  * 'chat' is the Onyx agent (tool calling, see useOnyxAgent). Image and video jobs (bgReplace, video) are not routable: they stay on Gemini.
  */
-export type RouteJob = 'content' | 'segmentation' | 'translate' | 'chat';
-export const ROUTABLE_JOBS: readonly RouteJob[] = ['content', 'segmentation', 'translate', 'chat'];
+export type RouteJob =
+    | 'content'
+    | 'segmentation'
+    | 'translate'
+    | 'chat'
+    | 'bgRemove'
+    | 'bgReplace'
+    | 'embeddings'
+    | 'tts'
+    | 'stt'
+    | 'triage';
+export const ROUTABLE_JOBS: readonly RouteJob[] = [
+    'content',
+    'segmentation',
+    'translate',
+    'chat',
+    'bgRemove',
+    'bgReplace',
+    'embeddings',
+    'tts',
+    'stt',
+    'triage',
+];
 
 export interface Route { provider: ProviderId; model?: string }
 
@@ -15,12 +36,13 @@ const DEFAULT_ROUTE: Route = { provider: 'gemini' };
 const PROVIDERS: readonly ProviderId[] = ['gemini', 'anthropic', 'openai', 'compat', 'companion', 'colibri'];
 
 /**
- * Providers that read text only (Colibrì: input_modalities ["text"]) and the jobs that are about pictures.
- * A text-only provider is never offered or used for those jobs; a saved route that points there is ignored.
+ * Providers that read text only (Colibrì: input_modalities ["text"], Companion: vision not yet enabled)
+ * and the jobs that are about pictures. A text-only provider is never offered or used for those jobs;
+ * a saved route that points there is ignored.
  * Content jobs may carry photos too: client.ts refuses to send images to a provider without vision.
  */
-export const TEXT_ONLY_PROVIDERS: readonly ProviderId[] = ['colibri'];
-export const IMAGE_JOBS: readonly RouteJob[] = ['segmentation'];
+export const TEXT_ONLY_PROVIDERS: readonly ProviderId[] = ['colibri', 'companion'];
+export const IMAGE_JOBS: readonly RouteJob[] = ['segmentation', 'bgRemove', 'bgReplace'];
 
 /** False when the provider cannot do the job (a text-only provider for an image job). */
 export function providerAllowedForJob(provider: ProviderId, job: RouteJob): boolean {
