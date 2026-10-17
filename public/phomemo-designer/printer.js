@@ -145,6 +145,7 @@ const PRINTER_WIDTHS = {
   // M110/M120/M110S (48mm / 384px) - standard m-series protocol
   'm110': 48,
   'm110s': 48,
+  'm120': 48,
   // M03 (53mm / 432px)
   'm03': 54,
   // T02 (48mm / 384px) - same print head width as M02/M110
@@ -224,8 +225,8 @@ const DEVICE_PATTERNS = [
   { pattern: 'D', width: null, protocol: 'd-series', dpi: 203 },
 ];
 
-// Default configuration when no pattern matches
-const DEFAULT_CONFIG = { width: 72, protocol: 'm-series', dpi: 203 };
+// Default configuration when no pattern matches (M110/M120 default: 48 bytes / 384 dots)
+const DEFAULT_CONFIG = { width: 48, protocol: 'm110', dpi: 203 };
 
 /**
  * Get printer configuration from device name
@@ -295,9 +296,9 @@ function getOverrideConfig(modelOverride) {
     return { width: PRINTER_WIDTHS['m02-pro'], protocol: 'm02', dpi: 300 };
   }
 
-  // M110/M110S uses M110 protocol from phomemo-tools
-  if (modelOverride === 'm110' || modelOverride === 'm110s') {
-    return { width: PRINTER_WIDTHS[modelOverride], protocol: 'm110', dpi: 203 };
+  // M110/M110S/M120 uses M110 protocol from phomemo-tools
+  if (modelOverride === 'm110' || modelOverride === 'm110s' || modelOverride === 'm120') {
+    return { width: PRINTER_WIDTHS[modelOverride] || 48, protocol: 'm110', dpi: 203 };
   }
 
   // PM-241 uses TSPL protocol (shipping label printer)
@@ -455,7 +456,7 @@ export function isTSPLPrinter(deviceName, modelOverride = 'auto') {
  */
 function isM110Printer(deviceName, modelOverride = 'auto') {
   // Manual override takes precedence
-  if (modelOverride === 'm110' || modelOverride === 'm110s') {
+  if (modelOverride === 'm110' || modelOverride === 'm110s' || modelOverride === 'm120') {
     return true;
   }
 

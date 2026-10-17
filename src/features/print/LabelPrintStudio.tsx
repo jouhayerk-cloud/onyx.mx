@@ -17,7 +17,7 @@ import {
 import { isPrintCenterOpenAtom, printCenterTabAtom, PrintCenterTab } from './printState';
 import {
     Printer, Bluetooth, X, FileSpreadsheet, FileText, Download,
-    CheckCircle2, ChevronRight, ChevronLeft, Zap, AlertCircle, Eye,
+    CheckCircle2, ChevronRight, ChevronLeft, ChevronDown, Zap, AlertCircle, Eye,
     RefreshCw, Layers, Sparkles, Cpu, History, Search, UploadCloud,
     Sliders, Smartphone, Check, ArrowLeft, ShieldAlert, Activity, BookOpen,
     Play, Pause, RotateCcw, Clock, ShieldCheck
@@ -44,7 +44,7 @@ import {
 import { isShopifyReady } from '../../lib/aiContent';
 import { tr } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
-import { M110Driver, VirtualM110Driver, VirtualDecodedLabel, isWebBluetoothSupported } from '../../utils/PhomemoM110';
+import { M110Driver, VirtualM110Driver, VirtualDecodedLabel, isWebBluetoothSupported, BarcodeScanlineCheckResult } from '../../utils/PhomemoM110';
 import { recordExport, trackDocumentJob, getRecentTracked, TrackedJob } from './jobTracking';
 import { PdfPreview, PdfDocumentSource } from '../../components/PdfPreview';
 import { PreviewLabels, PixelLabelView, LABEL_WIDTH_50x30, LABEL_HEIGHT_50x30, LABEL_WIDTH_50x50, LABEL_HEIGHT_50x50 } from '../../components/PreviewLabels';
@@ -71,6 +71,7 @@ export interface VirtualTrayItem {
     timestamp: number;
     item?: any;
     scanResult?: BarkodScanCheckResult;
+    barcodeCheck?: BarcodeScanlineCheckResult;
 }
 
 type StudioMode = 'studio' | 'history' | 'queue' | 'verify' | 'templates';
@@ -127,6 +128,31 @@ export const LabelPrintStudio: React.FC = () => {
     const [virtualSimulateDisconnect, setVirtualSimulateDisconnect] = useState<boolean>(false);
     const [virtualTray, setVirtualTray] = useState<VirtualTrayItem[]>([]);
     const [trayModalLabel, setTrayModalLabel] = useState<VirtualTrayItem | null>(null);
+
+    // Collapsible side panel sections on mobile/tablet (<= 820px)
+    const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+        stock: false,
+        printer: false,
+        copies: false,
+        exports: false,
+    });
+    const toggleSection = (key: string) => {
+        setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const trayTouchStartY = useRef<number | null>(null);
+    const handleTrayTouchStart = (e: React.TouchEvent) => {
+        trayTouchStartY.current = e.touches[0].clientY;
+    };
+    const handleTrayTouchEnd = (e: React.TouchEvent) => {
+        if (trayTouchStartY.current !== null) {
+            const delta = e.changedTouches[0].clientY - trayTouchStartY.current;
+            if (delta > 80) {
+                setTrayModalLabel(null);
+            }
+            trayTouchStartY.current = null;
+        }
+    };
 
     const [bleState, setBleState] = useState<BleStatus>(() =>
         printerType === 'virtual' ? 'connected' : (isBluetoothSupported ? 'disconnected' : 'unsupported')
@@ -214,6 +240,21 @@ export const LabelPrintStudio: React.FC = () => {
         }, 250);
         return () => clearInterval(interval);
     }, [isLiveRunOpen, runStatus]);
+
+    // Live Print Run Sheet Swipe-to-Dismiss Touch Handlers
+    const liveTouchStartY = useRef<number | null>(null);
+    const handleLiveTouchStart = (e: React.TouchEvent) => {
+        liveTouchStartY.current = e.touches[0].clientY;
+    };
+    const handleLiveTouchEnd = (e: React.TouchEvent) => {
+        if (liveTouchStartY.current !== null) {
+            const delta = e.changedTouches[0].clientY - liveTouchStartY.current;
+            if (delta > 80 && (runStatus === 'complete' || runStatus === 'cancelled' || runStatus === 'error')) {
+                setIsLiveRunOpen(false);
+            }
+            liveTouchStartY.current = null;
+        }
+    };
 
     // Designer Iframe Refs
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -731,6 +772,7 @@ export const LabelPrintStudio: React.FC = () => {
                             index: idx + 1,
                             timestamp: dl.timestamp || Date.now(),
                             item: matchingItem,
+                            barcodeCheck: dl.barcodeCheck,
                         });
                     }
                 });
@@ -924,7 +966,8 @@ export const LabelPrintStudio: React.FC = () => {
                         index: i + 1,
                         timestamp: labelEnd,
                         item: inst.item,
-                        scanResult
+                        scanResult,
+                        barcodeCheck: lastDecoded?.barcodeCheck || virtualDriverRef.current.getLastBarcodeCheck()
                     };
 
                     newTrayItems.unshift(trayItem);
@@ -1591,14 +1634,14 @@ export const LabelPrintStudio: React.FC = () => {
                                     type="text"
                                     value={name}
                                     onChange={e => setName(e.target.value)}
-                                    className="lps-batch-input outline-none font-bold text-[11px] md:text-xs uppercase tracking-tight p-0 mt-0.5"
+                                    className="lps-batch-input outline-none font-bold text-[11px] md:text-xs uppercase tracking-tight p-0 mt-0.5 max-w-[130px] sm:max-w-none truncate"
                                     placeholder="BATCH NAME"
                                 />
                             </div>
                         </div>
 
-                        {/* Center Readout & Mode Switchers (Desktop) */}
-                        <div className="hidden md:flex items-center gap-2 lg:gap-3">
+                        {/* Center Readout & Mode Switchers (Desktop min-width: 821px) */}
+                        <div className="hidden min-[821px]:flex items-center gap-2 lg:gap-3">
                             <div className="liquid-panel lps-readout flex items-center gap-3 px-2.5 py-1 text-[11px] font-bold mr-1 tabular-figures">
                                 <div>
                                     <span className="lps-text-muted uppercase text-[8.5px] block leading-tight">TYPES</span>
@@ -1652,7 +1695,7 @@ export const LabelPrintStudio: React.FC = () => {
                             <button
                                 onClick={handleConnectPrinter}
                                 disabled={bleState === 'connecting' || bleState === 'printing' || (printerType === 'bluetooth' && !isBluetoothSupported)}
-                                className={`lps-status-pill liquid-control cursor-pointer ${
+                                className={`lps-status-pill liquid-control cursor-pointer min-h-[44px] px-2.5 sm:px-3 ${
                                     bleState === 'connected' ? (printerType === 'virtual' ? 'lps-tone-amber' : 'lps-tone-emerald') :
                                     bleState === 'connecting' ? 'lps-tone-blue animate-pulse' :
                                     bleState === 'printing' ? 'lps-tone-blue animate-pulse' :
@@ -1662,7 +1705,7 @@ export const LabelPrintStudio: React.FC = () => {
                                 }`}
                                 title={printerType === 'virtual' ? 'Virtual printer active' : (!isBluetoothSupported ? 'Web Bluetooth unavailable in this browser' : 'Click to pair Phomemo printer')}
                             >
-                                {printerType === 'virtual' ? <Cpu size={13} /> : <Bluetooth size={13} />}
+                                {printerType === 'virtual' ? <Cpu size={14} /> : <Bluetooth size={14} />}
                                 <span className="hidden sm:inline">
                                     {printerType === 'virtual' ? (
                                         <>Virtual M110 <span className="lps-virtual-badge py-0 px-1 text-[8px] ml-1">VIRTUAL</span></>
@@ -1680,397 +1723,475 @@ export const LabelPrintStudio: React.FC = () => {
                             {/* Close */}
                             <button
                                 onClick={handleClose}
-                                className="w-8 h-8 liquid-control rounded-full flex items-center justify-center cursor-pointer"
+                                className="w-11 h-11 liquid-control rounded-full flex items-center justify-center cursor-pointer shrink-0"
                                 aria-label="Close"
                             >
-                                <X size={16} />
+                                <X size={18} />
                             </button>
                         </div>
                     </div>
 
-                    {/* Mobile Navigation Segmented Switcher (< 768px) */}
-                    <div className="md:hidden lps-mobile-nav flex items-center justify-around shrink-0 z-10">
-                        <button
-                            onClick={() => { setMode('studio'); setMobileTab('preview'); }}
-                            className={`flex-1 lps-tab-btn lps-touch-target ${mode === 'studio' && mobileTab === 'preview' ? 'active' : ''}`}
-                        >
-                            Preview ({labelInstances.length})
-                        </button>
-                        <button
-                            onClick={() => { setMode('studio'); setMobileTab('controls'); }}
-                            className={`flex-1 lps-tab-btn lps-touch-target ${mode === 'studio' && mobileTab === 'controls' ? 'active' : ''}`}
-                        >
-                            Controls & Sizes
-                        </button>
-                        <button
-                            onClick={() => { setMode(mode === 'studio' ? 'history' : mode); setMobileTab('center'); }}
-                            className={`flex-1 lps-tab-btn lps-touch-target ${mode !== 'studio' || mobileTab === 'center' ? 'active' : ''}`}
-                        >
-                            Print Center
-                        </button>
+                    {/* Horizontally Scrollable Mode Tabs Segmented Control (<= 820px) */}
+                    <div className="lps-mode-tabs-scroll">
+                        <div className="liquid-panel lps-seg-group flex items-center gap-0.5 p-0.5 w-full">
+                            <button
+                                onClick={() => setMode('studio')}
+                                className={`flex-1 lps-tab-btn min-h-[40px] px-3 ${mode === 'studio' ? 'active' : ''}`}
+                            >
+                                Batch Studio ({labelInstances.length})
+                            </button>
+                            <button
+                                onClick={() => setMode('history')}
+                                className={`flex-1 lps-tab-btn min-h-[40px] px-3 ${mode === 'history' ? 'active' : ''}`}
+                            >
+                                History
+                            </button>
+                            <button
+                                onClick={() => setMode('queue')}
+                                className={`flex-1 lps-tab-btn min-h-[40px] px-3 ${mode === 'queue' ? 'active' : ''}`}
+                            >
+                                Queue
+                            </button>
+                            <button
+                                onClick={() => setMode('verify')}
+                                className={`flex-1 lps-tab-btn min-h-[40px] px-3 ${mode === 'verify' ? 'active' : ''}`}
+                            >
+                                Verify
+                            </button>
+                            <button
+                                onClick={() => setMode('templates')}
+                                className={`flex-1 lps-tab-btn min-h-[40px] px-3 ${mode === 'templates' ? 'active' : ''}`}
+                            >
+                                Templates
+                            </button>
+                        </div>
                     </div>
 
                     {/* Body Area */}
                     <div className="flex-1 flex overflow-hidden min-h-0 relative z-10">
                         {/* ── MODE 1: BATCH STUDIO ── */}
                         {mode === 'studio' && (
-                            <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-                                {/* Left Column: Control Pad (Desktop compact 340px / Mobile conditionally rendered) */}
-                                <div className={`lps-sidebar liquid-panel rounded-none border-y-0 border-l-0 w-full md:w-[340px] flex flex-col shrink-0 overflow-y-auto p-3 md:p-3.5 gap-2.5 md:gap-3 ${mobileTab === 'controls' ? 'flex' : 'hidden md:flex'}`}>
+                            <div className="lps-studio-container">
+                                {/* Side Panel (Stacks above Preview on <= 820px, 340px sidebar on > 820px) */}
+                                <div className="lps-studio-sidebar">
                                     
-                                    {/* 1. Label Size Selector — Small segmented control with tiny inline caption */}
-                                    <div className="flex items-center justify-between gap-2 shrink-0">
-                                        <span className="lps-mini-label">
-                                            STOCK
-                                        </span>
-                                        <div className="liquid-panel lps-seg-group flex gap-0.5 p-0.5 shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleLabelSizeChange('50x30')}
-                                                className={`lps-tab-btn lps-seg-sm tabular-figures ${activeLabelSize === '50x30' ? 'active' : ''}`}
-                                            >
-                                                50 × 30 mm
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleLabelSizeChange('50x50')}
-                                                className={`lps-tab-btn lps-seg-sm tabular-figures ${activeLabelSize === '50x50' ? 'active' : ''}`}
-                                            >
-                                                50 × 50 mm
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Template Selector: Standard vs Barkod (experimental) */}
-                                    <div className="flex items-center justify-between gap-2 shrink-0">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="lps-mini-label">
-                                                TEMPLATE
+                                    {/* SECTION 1: Stock & Branding (Collapsible on mobile) */}
+                                    <div className={`lps-collapsible-section ${collapsedSections.stock ? 'is-collapsed' : ''}`}>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleSection('stock')}
+                                            className="lps-section-header"
+                                        >
+                                            <span className="lps-section-header-title">
+                                                <span>STOCK & BRANDING</span>
+                                                <span className="lps-text-muted text-[10px] font-mono font-normal">
+                                                    ({activeLabelSize} mm · {logoVariant === 'ArtOfDecor' ? 'Decor' : 'Rare Earth'})
+                                                </span>
                                             </span>
-                                            {labelTemplate === 'barkod' && (
-                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                                                    EXP
+                                            <ChevronDown size={14} className="lps-section-chevron" />
+                                        </button>
+                                        <div className="lps-collapsible-content">
+                                            {/* 1. Label Size Selector — Small segmented control with tiny inline caption */}
+                                            <div className="flex items-center justify-between gap-2 shrink-0">
+                                                <span className="lps-mini-label">
+                                                    STOCK
                                                 </span>
-                                            )}
-                                        </div>
-                                        <div className="liquid-panel lps-seg-group flex gap-0.5 p-0.5 shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={() => setLabelTemplate('standard')}
-                                                className={`lps-tab-btn lps-seg-sm ${labelTemplate === 'standard' ? 'active' : ''}`}
-                                            >
-                                                Standard
-                                            </button>
-                                            <button
-                                                type="button"
-                                                disabled={printerType !== 'virtual'}
-                                                onClick={() => {
-                                                    if (printerType === 'virtual') {
-                                                        setLabelTemplate('barkod');
-                                                    }
-                                                }}
-                                                className={`lps-tab-btn lps-seg-sm ${labelTemplate === 'barkod' ? 'active' : ''} ${printerType !== 'virtual' ? 'opacity-40 cursor-not-allowed' : ''}`}
-                                                title={printerType !== 'virtual' ? 'Select Virtual printer to enable experimental Barkod layout' : 'Experimental Barkod Code128-B + Hairline silhouette layout'}
-                                            >
-                                                Barkod (exp)
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* 2. Branding Logo Selector — Larger visual choice chips */}
-                                    <div className="flex flex-col gap-1 shrink-0">
-                                        <span className="lps-mini-label">
-                                            BRANDING LOGO
-                                        </span>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setLogoVariant('ArtOfDecor')}
-                                                className={`lps-logo-chip liquid-control flex items-center justify-center cursor-pointer transition-all ${logoVariant === 'ArtOfDecor' ? 'is-active' : 'opacity-65 hover:opacity-100'}`}
-                                                title="Art of Decor"
-                                            >
-                                                <img src={`${import.meta.env.BASE_URL}ArtOfDecorLogo.png`} alt="Art of Decor" className="h-7 max-w-[125px] object-contain lps-logo-invert" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setLogoVariant('RareEarth')}
-                                                className={`lps-logo-chip liquid-control flex items-center justify-center cursor-pointer transition-all ${logoVariant === 'RareEarth' ? 'is-active' : 'opacity-65 hover:opacity-100'}`}
-                                                title="Rare Earth Gallery"
-                                            >
-                                                <img src={`${import.meta.env.BASE_URL}REG_Logo.png`} alt="Rare Earth Gallery" className="h-7 max-w-[125px] object-contain" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* 3. Printer Hardware — Compact Choice (Bluetooth vs Virtual) + Status + Controls */}
-                                    <div className="liquid-panel lps-card lps-hardware-row p-2.5 flex flex-col gap-2 shrink-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                            {/* Segmented choice between Phomemo (Bluetooth) and Virtual printer */}
-                                            <div className="liquid-panel lps-seg-group flex items-center p-0.5 text-[11px] font-bold">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPrinterType('bluetooth')}
-                                                    className={`lps-tab-btn py-1 px-2.5 text-[10.5px] cursor-pointer flex items-center gap-1 ${printerType === 'bluetooth' ? 'active' : ''}`}
-                                                    title={!isBluetoothSupported ? 'Web Bluetooth unavailable on iOS Safari' : 'Print to physical Phomemo M110 over Bluetooth'}
-                                                >
-                                                    <Bluetooth size={11} />
-                                                    <span>Phomemo (Bluetooth)</span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPrinterType('virtual')}
-                                                    className={`lps-tab-btn py-1 px-2.5 text-[10.5px] cursor-pointer flex items-center gap-1 ${printerType === 'virtual' ? 'active' : ''}`}
-                                                    title="Simulate print run in-memory without physical printer or paper"
-                                                >
-                                                    <Cpu size={11} />
-                                                    <span>Virtual printer</span>
-                                                </button>
-                                            </div>
-
-                                            {/* Clear VIRTUAL badge if virtual is active */}
-                                            {printerType === 'virtual' && (
-                                                <span className="lps-virtual-badge shrink-0" title="Virtual printer active — zero paper or inventory tags modified">
-                                                    VIRTUAL
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Device Status & Connect Actions */}
-                                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-[var(--lq-rim-subtle)]">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <div className={`w-2 h-2 rounded-full shrink-0 ${
-                                                    bleState === 'connected' ? (printerType === 'virtual' ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'bg-emerald-400 shadow-[0_0_8px_#34d399]') :
-                                                    bleState === 'connecting' ? 'bg-blue-400 animate-ping' :
-                                                    bleState === 'printing' ? 'bg-cyan-400 animate-pulse' :
-                                                    bleState === 'error' ? 'bg-rose-400' :
-                                                    'bg-[var(--lq-ink-muted)]'
-                                                }`} />
-                                                <span className="text-xs font-bold truncate">
-                                                    {printerType === 'virtual'
-                                                        ? (deviceName || 'Virtual M110')
-                                                        : (deviceName || (bleState === 'connected' ? 'Phomemo M110' : bleState === 'connecting' ? 'Pairing...' : bleState === 'printing' ? 'Printing...' : 'Phomemo M110'))}
-                                                </span>
-                                            </div>
-
-                                            {printerType === 'virtual' ? (
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                    <select
-                                                        value={virtualSpeedMultiplier}
-                                                        onChange={e => setVirtualSpeedMultiplier(parseFloat(e.target.value) || 1.0)}
-                                                        className="lps-field-input py-0.5 px-1.5 text-[10px] font-bold cursor-pointer"
-                                                        title="Simulation Speed"
-                                                    >
-                                                        <option value="1">1x (Real)</option>
-                                                        <option value="2">2x Speed</option>
-                                                        <option value="5">5x Speed</option>
-                                                        <option value="20">Max Speed</option>
-                                                    </select>
+                                                <div className="liquid-panel lps-seg-group flex gap-0.5 p-0.5 shrink-0">
                                                     <button
                                                         type="button"
-                                                        onClick={() => setVirtualSimulatePaperOut(p => !p)}
-                                                        className={`lps-micro-btn liquid-control cursor-pointer text-[10px] ${virtualSimulatePaperOut ? 'lps-tone-red border-rose-400 text-rose-400' : ''}`}
-                                                        title="Simulate paper out / cover open error"
+                                                        onClick={() => handleLabelSizeChange('50x30')}
+                                                        className={`lps-tab-btn lps-seg-sm tabular-figures ${activeLabelSize === '50x30' ? 'active' : ''}`}
                                                     >
-                                                        Paper out: {virtualSimulatePaperOut ? 'ON' : 'OFF'}
+                                                        50 × 30 mm
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleLabelSizeChange('50x50')}
+                                                        className={`lps-tab-btn lps-seg-sm tabular-figures ${activeLabelSize === '50x50' ? 'active' : ''}`}
+                                                    >
+                                                        50 × 50 mm
                                                     </button>
                                                 </div>
-                                            ) : !isBluetoothSupported ? (
-                                                <span className="text-[10px] lps-text-muted font-bold uppercase shrink-0" title="iOS Safari lacks Web Bluetooth; switch to Virtual printer">
-                                                    No BLE (Use Virtual)
+                                            </div>
+
+                                            {/* Template Selector: Standard vs Barkod (experimental) */}
+                                            <div className="flex items-center justify-between gap-2 shrink-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="lps-mini-label">
+                                                        TEMPLATE
+                                                    </span>
+                                                    {labelTemplate === 'barkod' && (
+                                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                                            EXP
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="liquid-panel lps-seg-group flex gap-0.5 p-0.5 shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setLabelTemplate('standard')}
+                                                        className={`lps-tab-btn lps-seg-sm ${labelTemplate === 'standard' ? 'active' : ''}`}
+                                                    >
+                                                        Standard
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        disabled={printerType !== 'virtual'}
+                                                        onClick={() => {
+                                                            if (printerType === 'virtual') {
+                                                                setLabelTemplate('barkod');
+                                                            }
+                                                        }}
+                                                        className={`lps-tab-btn lps-seg-sm ${labelTemplate === 'barkod' ? 'active' : ''} ${printerType !== 'virtual' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                                        title={printerType !== 'virtual' ? 'Select Virtual printer to enable experimental Barkod layout' : 'Experimental Barkod Code128-B + Hairline silhouette layout'}
+                                                    >
+                                                        Barkod (exp)
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* 2. Branding Logo Selector — Larger visual choice chips */}
+                                            <div className="flex flex-col gap-1 shrink-0">
+                                                <span className="lps-mini-label">
+                                                    BRANDING LOGO
                                                 </span>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={handleConnectPrinter}
-                                                    disabled={bleState === 'connecting' || bleState === 'printing'}
-                                                    className={`lps-micro-btn liquid-control cursor-pointer shrink-0 gap-1 ${bleState === 'connected' ? 'lps-tone-emerald' : ''}`}
-                                                    title={bleState === 'connected' ? 'Click to re-pair Phomemo' : 'Click to connect Phomemo via Bluetooth'}
-                                                >
-                                                    <Bluetooth size={11} />
-                                                    <span>{bleState === 'connected' ? 'Re-pair' : bleState === 'connecting' ? 'Pairing' : 'Connect'}</span>
-                                                </button>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setLogoVariant('ArtOfDecor')}
+                                                        className={`lps-logo-chip liquid-control flex items-center justify-center cursor-pointer transition-all ${logoVariant === 'ArtOfDecor' ? 'is-active' : 'opacity-65 hover:opacity-100'}`}
+                                                        title="Art of Decor"
+                                                    >
+                                                        <img src={`${import.meta.env.BASE_URL}ArtOfDecorLogo.png`} alt="Art of Decor" className="h-7 max-w-[125px] object-contain lps-logo-invert" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setLogoVariant('RareEarth')}
+                                                        className={`lps-logo-chip liquid-control flex items-center justify-center cursor-pointer transition-all ${logoVariant === 'RareEarth' ? 'is-active' : 'opacity-65 hover:opacity-100'}`}
+                                                        title="Rare Earth Gallery"
+                                                    >
+                                                        <img src={`${import.meta.env.BASE_URL}REG_Logo.png`} alt="Rare Earth Gallery" className="h-7 max-w-[125px] object-contain" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* SECTION 2: Printer Hardware & Virtual Output Tray */}
+                                    <div className={`lps-collapsible-section ${collapsedSections.printer ? 'is-collapsed' : ''}`}>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleSection('printer')}
+                                            className="lps-section-header"
+                                        >
+                                            <span className="lps-section-header-title">
+                                                <span>PRINTER HARDWARE</span>
+                                                <span className={`text-[10px] font-bold ${printerType === 'virtual' ? 'text-amber-400' : bleState === 'connected' ? 'text-emerald-400' : 'lps-text-muted'}`}>
+                                                    {printerType === 'virtual' ? 'VIRTUAL' : bleState === 'connected' ? 'CONNECTED' : 'DISCONNECTED'}
+                                                </span>
+                                            </span>
+                                            <ChevronDown size={14} className="lps-section-chevron" />
+                                        </button>
+                                        <div className="lps-collapsible-content">
+                                            {/* 3. Printer Hardware — Compact Choice (Bluetooth vs Virtual) + Status + Controls */}
+                                            <div className="liquid-panel lps-card lps-hardware-row p-2.5 flex flex-col gap-2 shrink-0">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    {/* Segmented choice between Phomemo (Bluetooth) and Virtual printer */}
+                                                    <div className="liquid-panel lps-seg-group flex items-center p-0.5 text-[11px] font-bold">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPrinterType('bluetooth')}
+                                                            className={`lps-tab-btn py-1 px-2.5 text-[10.5px] cursor-pointer flex items-center gap-1 ${printerType === 'bluetooth' ? 'active' : ''}`}
+                                                            title={!isBluetoothSupported ? 'Web Bluetooth unavailable on iOS Safari' : 'Print to physical Phomemo M110 over Bluetooth'}
+                                                        >
+                                                            <Bluetooth size={11} />
+                                                            <span>Phomemo (Bluetooth)</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPrinterType('virtual')}
+                                                            className={`lps-tab-btn py-1 px-2.5 text-[10.5px] cursor-pointer flex items-center gap-1 ${printerType === 'virtual' ? 'active' : ''}`}
+                                                            title="Simulate print run in-memory without physical printer or paper"
+                                                        >
+                                                            <Cpu size={11} />
+                                                            <span>Virtual printer</span>
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Clear VIRTUAL badge if virtual is active */}
+                                                    {printerType === 'virtual' && (
+                                                        <span className="lps-virtual-badge shrink-0" title="Virtual printer active — zero paper or inventory tags modified">
+                                                            VIRTUAL
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {/* Device Status & Connect Actions */}
+                                                <div className="flex items-center justify-between gap-2 pt-1 border-t border-[var(--lq-rim-subtle)]">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className={`w-2 h-2 rounded-full shrink-0 ${
+                                                            bleState === 'connected' ? (printerType === 'virtual' ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'bg-emerald-400 shadow-[0_0_8px_#34d399]') :
+                                                            bleState === 'connecting' ? 'bg-blue-400 animate-ping' :
+                                                            bleState === 'printing' ? 'bg-cyan-400 animate-pulse' :
+                                                            bleState === 'error' ? 'bg-rose-400' :
+                                                            'bg-[var(--lq-ink-muted)]'
+                                                        }`} />
+                                                        <span className="text-xs font-bold truncate">
+                                                            {printerType === 'virtual'
+                                                                ? (deviceName || 'Virtual M110')
+                                                                : (deviceName || (bleState === 'connected' ? 'Phomemo M110' : bleState === 'connecting' ? 'Pairing...' : bleState === 'printing' ? 'Printing...' : 'Phomemo M110'))}
+                                                        </span>
+                                                    </div>
+
+                                                    {printerType === 'virtual' ? (
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            <select
+                                                                value={virtualSpeedMultiplier}
+                                                                onChange={e => setVirtualSpeedMultiplier(parseFloat(e.target.value) || 1.0)}
+                                                                className="lps-field-input py-0.5 px-1.5 text-[10px] font-bold cursor-pointer"
+                                                                title="Simulation Speed"
+                                                            >
+                                                                <option value="1">1x (Real)</option>
+                                                                <option value="2">2x Speed</option>
+                                                                <option value="5">5x Speed</option>
+                                                                <option value="20">Max Speed</option>
+                                                            </select>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setVirtualSimulatePaperOut(p => !p)}
+                                                                className={`lps-micro-btn liquid-control cursor-pointer text-[10px] ${virtualSimulatePaperOut ? 'lps-tone-red border-rose-400 text-rose-400' : ''}`}
+                                                                title="Simulate paper out / cover open error"
+                                                            >
+                                                                Paper out: {virtualSimulatePaperOut ? 'ON' : 'OFF'}
+                                                            </button>
+                                                        </div>
+                                                    ) : !isBluetoothSupported ? (
+                                                        <span className="text-[10px] lps-text-muted font-bold uppercase shrink-0" title="iOS Safari lacks Web Bluetooth; switch to Virtual printer">
+                                                            No BLE (Use Virtual)
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleConnectPrinter}
+                                                            disabled={bleState === 'connecting' || bleState === 'printing'}
+                                                            className={`lps-micro-btn liquid-control cursor-pointer shrink-0 gap-1 ${bleState === 'connected' ? 'lps-tone-emerald' : ''}`}
+                                                            title={bleState === 'connected' ? 'Click to re-pair Phomemo' : 'Click to connect Phomemo via Bluetooth'}
+                                                        >
+                                                            <Bluetooth size={11} />
+                                                            <span>{bleState === 'connected' ? 'Re-pair' : bleState === 'connecting' ? 'Pairing' : 'Connect'}</span>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {bleError && (
+                                                <span className="text-[10px] text-red-400 font-bold truncate px-1 -mt-1">
+                                                    {bleError}
+                                                </span>
+                                            )}
+
+                                            {/* Printed Output Tray (Shows decoded 1-bit monochrome raster labels) */}
+                                            {virtualTray.length > 0 && (
+                                                <div className="lps-output-tray shrink-0">
+                                                    <div className="flex items-center justify-between gap-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="lps-mini-label mb-0">PRINTED OUTPUT TRAY</span>
+                                                            <span className="lps-virtual-badge">{virtualTray.length}</span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setVirtualTray([])}
+                                                            className="lps-micro-btn liquid-control cursor-pointer text-[10px] lps-text-muted hover:text-rose-400"
+                                                            title="Clear all decoded labels from tray"
+                                                        >
+                                                            Clear tray
+                                                        </button>
+                                                    </div>
+                                                    <div className="lps-tray-strip">
+                                                        {virtualTray.map((label, idx) => (
+                                                            <div
+                                                                key={label.id || idx}
+                                                                className="lps-tray-item group relative"
+                                                                onClick={() => setTrayModalLabel(label)}
+                                                                title={`Click to inspect #${label.index} (${label.tagId}) large`}
+                                                            >
+                                                                <img
+                                                                    src={label.dataUrl}
+                                                                    alt={`Label ${label.tagId}`}
+                                                                    className="lps-tray-thumb h-12 w-auto"
+                                                                />
+                                                                {label.scanResult && (
+                                                                    <span className={`absolute top-0.5 right-0.5 px-1 py-0.2 rounded text-[7.5px] font-black uppercase font-mono tracking-wider shadow ${
+                                                                        label.scanResult.passed ? 'bg-emerald-500 text-black' : 'bg-rose-500 text-white'
+                                                                    }`}>
+                                                                        {label.scanResult.passed ? 'PASS' : 'FAIL'}
+                                                                    </span>
+                                                                )}
+                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                    <Eye size={12} className="text-white" />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
-                                    {bleError && (
-                                        <span className="text-[10px] text-red-400 font-bold truncate px-1 -mt-1">
-                                            {bleError}
-                                        </span>
-                                    )}
 
-                                    {/* Printed Output Tray (Shows decoded 1-bit monochrome raster labels) */}
-                                    {virtualTray.length > 0 && (
-                                        <div className="lps-output-tray shrink-0">
-                                            <div className="flex items-center justify-between gap-1">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="lps-mini-label mb-0">PRINTED OUTPUT TRAY</span>
-                                                    <span className="lps-virtual-badge">{virtualTray.length}</span>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setVirtualTray([])}
-                                                    className="lps-micro-btn liquid-control cursor-pointer text-[10px] lps-text-muted hover:text-rose-400"
-                                                    title="Clear all decoded labels from tray"
-                                                >
-                                                    Clear tray
-                                                </button>
-                                            </div>
-                                            <div className="lps-tray-strip">
-                                                {virtualTray.map((label, idx) => (
-                                                    <div
-                                                        key={label.id || idx}
-                                                        className="lps-tray-item group relative"
-                                                        onClick={() => setTrayModalLabel(label)}
-                                                        title={`Click to inspect #${label.index} (${label.tagId}) large`}
-                                                    >
-                                                        <img
-                                                            src={label.dataUrl}
-                                                            alt={`Label ${label.tagId}`}
-                                                            className="lps-tray-thumb h-12 w-auto"
-                                                        />
-                                                        {label.scanResult && (
-                                                            <span className={`absolute top-0.5 right-0.5 px-1 py-0.2 rounded text-[7.5px] font-black uppercase font-mono tracking-wider shadow ${
-                                                                label.scanResult.passed ? 'bg-emerald-500 text-black' : 'bg-rose-500 text-white'
-                                                            }`}>
-                                                                {label.scanResult.passed ? 'PASS' : 'FAIL'}
-                                                            </span>
-                                                        )}
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                            <Eye size={12} className="text-white" />
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* 4. Per-Item Quantity Steppers — Dense List */}
-                                    <div className="flex-1 flex flex-col gap-1.5 min-h-[120px] overflow-hidden">
-                                        <div className="flex items-center justify-between gap-1 shrink-0">
-                                            <span className="lps-mini-label">
-                                                COPIES ({selectedItems.length})
+                                    {/* SECTION 3: Batch Copies */}
+                                    <div className={`lps-collapsible-section ${collapsedSections.copies ? 'is-collapsed' : ''}`}>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleSection('copies')}
+                                            className="lps-section-header"
+                                        >
+                                            <span className="lps-section-header-title">
+                                                <span>BATCH COPIES</span>
+                                                <span className="lps-text-muted text-[10px] font-mono font-normal">
+                                                    ({selectedItems.length} items · {labelInstances.length} labels)
+                                                </span>
                                             </span>
-                                            <div className="flex items-center gap-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleSetAllCopies(1)}
-                                                    className="lps-micro-btn liquid-control cursor-pointer"
-                                                    title="Set all items to 1 label copy"
-                                                >
-                                                    Set all to 1
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleSetAllCopies(2)}
-                                                    className="lps-micro-btn liquid-control cursor-pointer"
-                                                    title="Set all items to 2 label copies"
-                                                >
-                                                    x2
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto flex flex-col gap-1.5 pr-0.5">
-                                            {selectedItems.map(item => {
-                                                const rowKey = String(item.row);
-                                                const currentQty = quantities[rowKey] ?? (Number(item.normData?.quantity) > 0 ? Number(item.normData.quantity) : 1);
-                                                const tagRow = item.data ? { ...item.data, book_barcode: item.codes?.bookBarcode || item.data.book_barcode } : item;
-                                                const desc = item.normData?.shortDescription || item.normData?.itemType || item.normData?.type || '';
-
-                                                return (
-                                                    <div key={item.row} className="liquid-panel lps-card lps-batch-row flex items-center justify-between gap-2 p-1.5 md:p-2 text-xs">
-                                                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                            <ItemTag
-                                                                item={tagRow}
-                                                                exchangeRate={exchangeRate}
-                                                                workbook={workbookPrefix}
-                                                            />
-                                                            <span className="text-[11px] lps-text-secondary truncate flex-1 min-w-0 font-medium" title={desc}>
-                                                                {toTitleCase(desc)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1 shrink-0 tabular-figures">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setQuantities(q => ({ ...q, [rowKey]: Math.max(1, currentQty - 1) }))}
-                                                                className="lps-stepper-btn liquid-control"
-                                                                aria-label="Decrease copies"
-                                                            >
-                                                                -
-                                                            </button>
-                                                            <input
-                                                                type="number"
-                                                                min="1"
-                                                                max="99"
-                                                                value={currentQty || 1}
-                                                                onChange={e => {
-                                                                    const val = parseInt(e.target.value, 10);
-                                                                    setQuantities(q => ({ ...q, [rowKey]: isNaN(val) ? 1 : Math.max(1, Math.min(99, val)) }));
-                                                                }}
-                                                                className="lps-qty-input tabular-figures"
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setQuantities(q => ({ ...q, [rowKey]: Math.min(99, currentQty + 1) }))}
-                                                                className="lps-stepper-btn liquid-control"
-                                                                aria-label="Increase copies"
-                                                            >
-                                                                +
-                                                            </button>
-                                                        </div>
+                                            <ChevronDown size={14} className="lps-section-chevron" />
+                                        </button>
+                                        <div className="lps-collapsible-content">
+                                            {/* 4. Per-Item Quantity Steppers */}
+                                            <div className="flex-1 flex flex-col gap-1.5 min-h-[120px] overflow-hidden">
+                                                <div className="flex items-center justify-between gap-1 shrink-0">
+                                                    <span className="lps-mini-label">
+                                                        COPIES ({selectedItems.length})
+                                                    </span>
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSetAllCopies(1)}
+                                                            className="lps-micro-btn liquid-control cursor-pointer"
+                                                            title="Set all items to 1 label copy"
+                                                        >
+                                                            Set all to 1
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSetAllCopies(2)}
+                                                            className="lps-micro-btn liquid-control cursor-pointer"
+                                                            title="Set all items to 2 label copies"
+                                                        >
+                                                            x2
+                                                        </button>
                                                     </div>
-                                                );
-                                            })}
+                                                </div>
+                                                <div className="flex-1 overflow-y-auto max-h-[300px] flex flex-col gap-1.5 pr-0.5">
+                                                    {selectedItems.map(item => {
+                                                        const rowKey = String(item.row);
+                                                        const currentQty = quantities[rowKey] ?? (Number(item.normData?.quantity) > 0 ? Number(item.normData.quantity) : 1);
+                                                        const tagRow = item.data ? { ...item.data, book_barcode: item.codes?.bookBarcode || item.data.book_barcode } : item;
+                                                        const desc = item.normData?.shortDescription || item.normData?.itemType || item.normData?.type || '';
+
+                                                        return (
+                                                            <div key={item.row} className="liquid-panel lps-card lps-batch-row flex items-center justify-between gap-2 p-1.5 md:p-2 text-xs">
+                                                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                                    <ItemTag
+                                                                        item={tagRow}
+                                                                        exchangeRate={exchangeRate}
+                                                                        workbook={workbookPrefix}
+                                                                    />
+                                                                    <span className="text-[11px] lps-text-secondary truncate flex-1 min-w-0 font-medium" title={desc}>
+                                                                        {toTitleCase(desc)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1 shrink-0 tabular-figures">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setQuantities(q => ({ ...q, [rowKey]: Math.max(1, currentQty - 1) }))}
+                                                                        className="lps-stepper-btn liquid-control"
+                                                                        aria-label="Decrease copies"
+                                                                    >
+                                                                        -
+                                                                    </button>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        max="99"
+                                                                        value={currentQty || 1}
+                                                                        onChange={e => {
+                                                                            const val = parseInt(e.target.value, 10);
+                                                                            setQuantities(q => ({ ...q, [rowKey]: isNaN(val) ? 1 : Math.max(1, Math.min(99, val)) }));
+                                                                        }}
+                                                                        className="lps-qty-input tabular-figures"
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setQuantities(q => ({ ...q, [rowKey]: Math.min(99, currentQty + 1) }))}
+                                                                        className="lps-stepper-btn liquid-control"
+                                                                        aria-label="Increase copies"
+                                                                    >
+                                                                        +
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* 5. Secondary Exports */}
-                                    <div className="flex flex-col gap-1.5 pt-2 border-t border-[var(--lq-rim-subtle)] shrink-0">
-                                        <span className="lps-mini-label">
-                                            EXPORTS
-                                        </span>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={handleGeneratePDF}
-                                                disabled={progress.pdf > 0 && progress.pdf < 100}
-                                                className="lps-export-btn liquid-control lps-tone-red cursor-pointer flex items-center justify-center gap-1.5"
-                                            >
-                                                <FileText size={13} />
-                                                <span>Control PDF</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleGenerateCatalog}
-                                                disabled={progress.catalog > 0 && progress.catalog < 100}
-                                                className="lps-export-btn liquid-control lps-tone-blue cursor-pointer flex items-center justify-center gap-1.5"
-                                            >
-                                                <BookOpen size={13} />
-                                                <span>Catalog PDF</span>
-                                            </button>
+                                    {/* SECTION 4: Document Exports */}
+                                    <div className={`lps-collapsible-section ${collapsedSections.exports ? 'is-collapsed' : ''}`}>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleSection('exports')}
+                                            className="lps-section-header"
+                                        >
+                                            <span className="lps-section-header-title">
+                                                <span>DOCUMENT EXPORTS</span>
+                                            </span>
+                                            <ChevronDown size={14} className="lps-section-chevron" />
+                                        </button>
+                                        <div className="lps-collapsible-content">
+                                            {/* 5. Secondary Exports */}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleGeneratePDF}
+                                                    disabled={progress.pdf > 0 && progress.pdf < 100}
+                                                    className="lps-export-btn liquid-control lps-tone-red cursor-pointer flex items-center justify-center gap-1.5"
+                                                >
+                                                    <FileText size={13} />
+                                                    <span>Control PDF</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleGenerateCatalog}
+                                                    disabled={progress.catalog > 0 && progress.catalog < 100}
+                                                    className="lps-export-btn liquid-control lps-tone-blue cursor-pointer flex items-center justify-center gap-1.5"
+                                                >
+                                                    <BookOpen size={13} />
+                                                    <span>Catalog PDF</span>
+                                                </button>
+                                            </div>
+                                            {progress.pdf === 100 && urls.pdf && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPreviewTarget('control')}
+                                                    className="w-full lps-export-btn liquid-control lps-tone-red cursor-pointer flex items-center justify-center gap-1.5"
+                                                >
+                                                    <Eye size={12} /> Review Control PDF
+                                                </button>
+                                            )}
+                                            {progress.catalog === 100 && (urls.catalogReady || urls.catalogNotReady) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPreviewTarget('catalog')}
+                                                    className="w-full lps-export-btn liquid-control lps-tone-blue cursor-pointer flex items-center justify-center gap-1.5"
+                                                >
+                                                    <Eye size={12} /> Review Catalog PDF
+                                                </button>
+                                            )}
                                         </div>
-                                        {progress.pdf === 100 && urls.pdf && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setPreviewTarget('control')}
-                                                className="w-full lps-export-btn liquid-control lps-tone-red cursor-pointer flex items-center justify-center gap-1.5"
-                                            >
-                                                <Eye size={12} /> Review Control PDF
-                                            </button>
-                                        )}
-                                        {progress.catalog === 100 && (urls.catalogReady || urls.catalogNotReady) && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setPreviewTarget('catalog')}
-                                                className="w-full lps-export-btn liquid-control lps-tone-blue cursor-pointer flex items-center justify-center gap-1.5"
-                                            >
-                                                <Eye size={12} /> Review Catalog PDF
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
 
-                                {/* Right Column: Live Batch Preview Grid */}
-                                <div className={`lps-preview-stage flex-1 flex flex-col min-h-0 bg-transparent relative overflow-hidden ${mobileTab === 'preview' ? 'flex' : 'hidden md:flex'}`}>
+                                {/* Right Column: Live Batch Preview Grid (Stacks below Side Panel on <= 820px) */}
+                                <div className="lps-studio-preview">
                                     <PreviewLabels
                                         items={selectedItems}
                                         quantities={quantities}
@@ -2240,7 +2361,30 @@ export const LabelPrintStudio: React.FC = () => {
                     {/* Sticky Bottom Action Bar (Thumb-Zone) */}
                     {mode === 'studio' && (
                         <div className="lps-bottom-bar relative z-10">
-                            <div className="flex items-center gap-2 md:gap-3 w-full">
+                            {/* Primary Full-Width Print Button on Mobile (<= 820px) */}
+                            <button
+                                type="button"
+                                onClick={() => handlePrintAll(false)}
+                                disabled={bleState === 'printing' || labelInstances.length === 0}
+                                className="w-full min-[821px]:flex-1 order-1 min-[821px]:order-3 lps-btn-primary min-h-[48px] min-[821px]:min-h-[40px] px-4 min-[821px]:px-6 font-black text-xs min-[821px]:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
+                            >
+                                {bleState === 'printing' ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                        <span>PRINTING {printProgress.current} OF {printProgress.total}...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Printer size={16} strokeWidth={2.5} />
+                                        <span>
+                                            {bleState === 'connected' ? `PRINT ALL (${labelInstances.length} LABELS)` : `CONNECT & PRINT (${labelInstances.length})`}
+                                        </span>
+                                    </>
+                                )}
+                            </button>
+
+                            {/* Secondary Actions: Compact row on mobile, inline on desktop */}
+                            <div className="flex items-center gap-2 order-2 min-[821px]:order-1 shrink-0 w-full min-[821px]:w-auto">
                                 {/* EDIT LABEL Button */}
                                 <button
                                     type="button"
@@ -2248,7 +2392,7 @@ export const LabelPrintStudio: React.FC = () => {
                                         triggerFocusRef.current = e.currentTarget;
                                         handleOpenDesigner();
                                     }}
-                                    className="lps-bar-btn liquid-control px-3 md:px-4 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shrink-0"
+                                    className="flex-1 min-[821px]:flex-initial lps-bar-btn liquid-control min-h-[44px] min-[821px]:min-h-[36px] px-3 md:px-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                                     title="Open Visual Phomemo Label Editor"
                                 >
                                     <Sliders size={14} />
@@ -2260,33 +2404,11 @@ export const LabelPrintStudio: React.FC = () => {
                                     type="button"
                                     onClick={handleGenerateXLSX}
                                     disabled={progress.xlsx > 0 && progress.xlsx < 100}
-                                    className="lps-bar-btn liquid-control lps-tone-emerald px-3 md:px-4 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shrink-0"
+                                    className="flex-1 min-[821px]:flex-initial lps-bar-btn liquid-control lps-tone-emerald min-h-[44px] min-[821px]:min-h-[36px] px-3 md:px-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                                     title="Download Backup XLSX"
                                 >
                                     <FileSpreadsheet size={14} />
-                                    <span className="hidden sm:inline">BACKUP</span> XLSX
-                                </button>
-
-                                {/* PRINT ALL Primary CTA */}
-                                <button
-                                    type="button"
-                                    onClick={() => handlePrintAll(false)}
-                                    disabled={bleState === 'printing' || labelInstances.length === 0}
-                                    className="flex-1 lps-btn-primary min-h-[38px] md:min-h-[40px] px-4 md:px-6 font-black text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
-                                >
-                                    {bleState === 'printing' ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                            <span>PRINTING {printProgress.current} OF {printProgress.total}...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Printer size={16} strokeWidth={2.5} />
-                                            <span>
-                                                {bleState === 'connected' ? `PRINT ALL (${labelInstances.length} LABELS)` : `CONNECT & PRINT (${labelInstances.length})`}
-                                            </span>
-                                        </>
-                                    )}
+                                    <span>BACKUP XLSX</span>
                                 </button>
                             </div>
                         </div>
@@ -2302,8 +2424,15 @@ export const LabelPrintStudio: React.FC = () => {
                             onClick={() => { if (runStatus === 'complete' || runStatus === 'cancelled') setIsLiveRunOpen(false); }}
                         />
 
-                        {/* Sheet Container */}
-                        <div className="lps-live-sheet liquid-panel ui-root">
+                        {/* Sheet Container with Touch Swipe Dismissal */}
+                        <div 
+                            className="lps-live-sheet liquid-panel ui-root"
+                            onTouchStart={handleLiveTouchStart}
+                            onTouchEnd={handleLiveTouchEnd}
+                        >
+                            {/* Grabber Handle for Mobile Full-Screen Sheet */}
+                            <div className="lps-sheet-grabber" />
+
                             {/* Top Bar Header */}
                             <div className="lps-live-header">
                                 <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -2345,7 +2474,7 @@ export const LabelPrintStudio: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={handleCancelRun}
-                                            className="lps-btn-cancel text-xs cursor-pointer"
+                                            className="lps-btn-cancel min-h-[44px] px-3 text-xs cursor-pointer"
                                         >
                                             Cancel Run
                                         </button>
@@ -2354,10 +2483,10 @@ export const LabelPrintStudio: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => setIsLiveRunOpen(false)}
-                                            className="w-8 h-8 liquid-control rounded-full flex items-center justify-center cursor-pointer text-[var(--lq-ink)]"
+                                            className="w-11 h-11 liquid-control rounded-full flex items-center justify-center cursor-pointer text-[var(--lq-ink)] shrink-0"
                                             aria-label="Close Live Run"
                                         >
-                                            <X size={16} />
+                                            <X size={18} />
                                         </button>
                                     )}
                                 </div>
@@ -2538,6 +2667,13 @@ export const LabelPrintStudio: React.FC = () => {
                                                                         {label.scanResult.passed ? 'PASS' : 'FAIL'}
                                                                     </span>
                                                                 )}
+                                                                {label.barcodeCheck && (
+                                                                    <span className={`absolute top-0.5 left-0.5 px-1 py-0.2 rounded text-[7.5px] font-black uppercase font-mono tracking-wider shadow ${
+                                                                        label.barcodeCheck.passed ? 'bg-sky-500 text-black' : 'bg-rose-500 text-white'
+                                                                    }`}>
+                                                                        {label.barcodeCheck.passed ? `${label.barcodeCheck.moduleWidth}DOT` : 'ERR'}
+                                                                    </span>
+                                                                )}
                                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                                     <Eye size={12} className="text-white" />
                                                                 </div>
@@ -2700,21 +2836,28 @@ export const LabelPrintStudio: React.FC = () => {
                 {trayModalLabel && (
                     <div className="lps-tray-modal">
                         <div className="lps-tray-modal-scrim" onClick={() => setTrayModalLabel(null)} />
-                        <div className="lps-tray-modal-card">
+                        <div 
+                            className="lps-tray-modal-card"
+                            onTouchStart={handleTrayTouchStart}
+                            onTouchEnd={handleTrayTouchEnd}
+                        >
+                            {/* Sheet Grabber for Mobile Full-Screen Sheet */}
+                            <div className="lps-sheet-grabber" />
+
                             <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                    <span className="lps-virtual-badge">VIRTUAL OUTPUT</span>
-                                    <span className="text-xs font-bold tabular-figures font-mono">{trayModalLabel.tagId}</span>
-                                    <span className="text-[11px] lps-text-muted">#{trayModalLabel.index}</span>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="lps-virtual-badge shrink-0">VIRTUAL</span>
+                                    <span className="text-xs font-bold tabular-figures font-mono truncate">{trayModalLabel.tagId}</span>
+                                    <span className="text-[11px] lps-text-muted shrink-0">#{trayModalLabel.index}</span>
                                     {trayModalLabel.scanResult && (
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase font-mono tracking-wider ${
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase font-mono tracking-wider shrink-0 ${
                                              trayModalLabel.scanResult.passed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                                         }`}>
                                             SCAN {trayModalLabel.scanResult.passed ? 'PASS' : 'FAIL'}
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 shrink-0">
                                     <button
                                         type="button"
                                         onClick={(e) => {
@@ -2722,28 +2865,28 @@ export const LabelPrintStudio: React.FC = () => {
                                             const targetItem = trayModalLabel.item || selectedItems.find(it => (it.codes?.bookBarcode || '') === trayModalLabel.tagId) || selectedItems[0];
                                             handleOpenDesigner(targetItem ? [targetItem] : undefined);
                                         }}
-                                        className="lps-micro-btn liquid-control cursor-pointer flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold"
+                                        className="lps-micro-btn liquid-control cursor-pointer flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-xs font-bold"
                                         title="Edit this label in Visual Designer"
                                     >
                                         <Sliders size={13} />
-                                        <span>Edit in Designer</span>
+                                        <span className="hidden sm:inline">Edit in Designer</span>
                                     </button>
                                     <a
                                         href={trayModalLabel.dataUrl}
                                         download={`virtual-label-${trayModalLabel.tagId || 'print'}.png`}
-                                        className="lps-micro-btn liquid-control cursor-pointer flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold"
+                                        className="lps-micro-btn liquid-control cursor-pointer flex items-center gap-1.5 px-3 py-2 min-h-[44px] text-xs font-bold"
                                         title="Download 1-bit monochrome PNG"
                                     >
                                         <Download size={13} />
-                                        <span>Download PNG</span>
+                                        <span className="hidden sm:inline">Download PNG</span>
                                     </a>
                                     <button
                                         type="button"
                                         onClick={() => setTrayModalLabel(null)}
-                                        className="w-7 h-7 liquid-control rounded-full flex items-center justify-center cursor-pointer"
+                                        className="w-11 h-11 liquid-control rounded-full flex items-center justify-center cursor-pointer shrink-0"
                                         aria-label="Close"
                                     >
-                                        <X size={14} />
+                                        <X size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -2769,6 +2912,31 @@ export const LabelPrintStudio: React.FC = () => {
                                         <div><span className="opacity-70">DECODED:</span> {trayModalLabel.scanResult.decodedText || '(none)'}</div>
                                         <div><span className="opacity-70">MODULE:</span> {trayModalLabel.scanResult.moduleWidth}px</div>
                                         <div><span className="opacity-70">CHECKSUM:</span> {trayModalLabel.scanResult.readChecksum ?? 'N/A'} (mod 103)</div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Thermal Scanline Integer Module Diagnostics Panel */}
+                            {trayModalLabel.barcodeCheck && (
+                                <div className={`p-2.5 rounded-lg border text-xs flex flex-col gap-1.5 ${
+                                    trayModalLabel.barcodeCheck.passed 
+                                        ? 'bg-sky-950/30 border-sky-500/40 text-sky-300' 
+                                        : 'bg-rose-950/30 border-rose-500/40 text-rose-300'
+                                }`}>
+                                    <div className="flex items-center justify-between font-bold">
+                                        <span className="flex items-center gap-1.5 font-mono text-[11px]">
+                                            <span className={`w-2 h-2 rounded-full ${trayModalLabel.barcodeCheck.passed ? 'bg-sky-400' : 'bg-rose-400'}`} />
+                                            THERMAL SCANLINE INTEGER MODULE CHECK: {trayModalLabel.barcodeCheck.passed ? 'PASS (100% Integer Dots)' : 'FAIL'}
+                                        </span>
+                                        <span className="font-mono text-[10px] opacity-80">
+                                            {trayModalLabel.barcodeCheck.barCount} bars on raster line {trayModalLabel.barcodeCheck.scanline}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono pt-1 border-t border-current/20">
+                                        <div><span className="opacity-70">MODULE:</span> {trayModalLabel.barcodeCheck.moduleWidth} dots ({trayModalLabel.barcodeCheck.moduleWidth * 0.125} mm)</div>
+                                        <div><span className="opacity-70">CHECKED BARS:</span> {trayModalLabel.barcodeCheck.barCount}</div>
+                                        <div><span className="opacity-70">NON-INTEGER BARS:</span> {trayModalLabel.barcodeCheck.nonMultipleBars.length}</div>
+                                        <div><span className="opacity-70">HEAD RASTER:</span> 384 dots (48 bytes)</div>
                                     </div>
                                 </div>
                             )}

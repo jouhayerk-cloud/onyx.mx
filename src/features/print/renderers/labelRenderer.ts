@@ -168,27 +168,84 @@ export async function renderLabelToCanvas(spec: LabelSpec): Promise<HTMLCanvasEl
                 }
             }
         } else if (el.type === 'barcode') {
-            const tempCanvas = document.createElement('canvas');
+            const data = (el.data || "INVALID").trim();
+            const boxWidth = Math.round(el.width);
+            const boxHeight = Math.round(el.height);
+
+            let symbolModules = 0;
             try {
-                JsBarcode(tempCanvas, el.data || "INVALID", {
+                const measureCanvas = document.createElement('canvas');
+                JsBarcode(measureCanvas, data, {
                     format: "CODE128",
                     displayValue: false,
                     margin: 0,
-                    width: 2,
-                    height: el.height
+                    width: 1,
+                    height: 10
                 });
-                
-                if (el.rotation) {
-                    ctx.translate(el.x, el.y);
-                    ctx.rotate(el.rotation * Math.PI / 180);
-                    ctx.drawImage(tempCanvas, 0, 0, el.width, el.height);
-                } else {
-                    ctx.drawImage(tempCanvas, el.x, el.y, el.width, el.height);
-                }
+                symbolModules = measureCanvas.width;
             } catch (e) {
-                // UNKNOWN: Barcode generation failure behavior not explicitly specified.
-                // Safest default is to ignore/skip drawing rather than crashing the label entirely.
-                console.warn("Barcode generation failed", e);
+                console.warn("Barcode measure failed", e);
+                symbolModules = 0;
+            }
+
+            if (symbolModules > 0) {
+                const quietZoneModules = 10;
+                const totalModules = symbolModules + (quietZoneModules * 2);
+
+                // Choose integer module width: 3 dots if it fits, else 2 dots
+                let moduleWidth = 2;
+                if (totalModules * 3 <= boxWidth) {
+                    moduleWidth = 3;
+                } else if (totalModules * 2 <= boxWidth) {
+                    moduleWidth = 2;
+                } else {
+                    moduleWidth = 2;
+                    console.warn(`[labelRenderer] Barcode "${data}" (${totalModules * 2} dots at 2 dots/mod) exceeds box width (${boxWidth} dots). Squeezing disabled.`);
+                }
+
+                const quietZoneDots = quietZoneModules * moduleWidth;
+                const totalBarcodeWidth = totalModules * moduleWidth;
+                const barHeight = boxHeight;
+
+                const barcodeCanvas = document.createElement('canvas');
+                barcodeCanvas.width = totalBarcodeWidth;
+                barcodeCanvas.height = barHeight;
+                const bCtx = barcodeCanvas.getContext('2d');
+                if (bCtx) {
+                    bCtx.imageSmoothingEnabled = false;
+                    bCtx.fillStyle = '#ffffff';
+                    bCtx.fillRect(0, 0, totalBarcodeWidth, barHeight);
+                }
+
+                try {
+                    JsBarcode(barcodeCanvas, data, {
+                        format: "CODE128",
+                        width: moduleWidth,
+                        height: barHeight,
+                        displayValue: false,
+                        margin: 0,
+                        marginLeft: quietZoneDots,
+                        marginRight: quietZoneDots,
+                        marginTop: 0,
+                        marginBottom: 0,
+                        background: '#ffffff',
+                        lineColor: '#000000',
+                    });
+
+                    // Center barcode horizontally by whole dots within the element box
+                    const offsetX = Math.floor((boxWidth - totalBarcodeWidth) / 2);
+
+                    ctx.imageSmoothingEnabled = false;
+                    if (el.rotation) {
+                        ctx.translate(el.x, el.y);
+                        ctx.rotate(el.rotation * Math.PI / 180);
+                        ctx.drawImage(barcodeCanvas, offsetX, 0);
+                    } else {
+                        ctx.drawImage(barcodeCanvas, el.x + offsetX, el.y);
+                    }
+                } catch (e) {
+                    console.warn("Barcode generation failed", e);
+                }
             }
         } else if (el.type === 'barkod') {
             renderBarkodToContext(ctx, el.x, el.y, el.data, {
@@ -257,7 +314,7 @@ export async function renderLabelToCanvas(spec: LabelSpec): Promise<HTMLCanvasEl
     return canvas;
 }
 
-export function canvasToMonoBitmap(canvas: HTMLCanvasElement, threshold = 160): MonoBitmap {
+export function canvasToMonoBitmap(canvas: HTMLCanvasElement, threshold = 160, targetWidthDots = 384): MonoBitmap {
     const w = canvas.width;
     const h = canvas.height;
     const ctx = canvas.getContext('2d');
@@ -266,12 +323,29 @@ export function canvasToMonoBitmap(canvas: HTMLCanvasElement, threshold = 160): 
     const imageData = ctx.getImageData(0, 0, w, h);
     const data = imageData.data;
     
-    const widthBytes = Math.ceil(w / 8);
+    const outputWidthDots = targetWidthDots || 384;
+    const widthBytes = Math.ceil(outputWidthDots / 8);
     const monoData = new Uint8Array(widthBytes * h);
+
+    let srcStartX = 0;
+    let dstStartX = 0;
+    const copyWidth = Math.min(w, outputWidthDots);
+
+    if (w > outputWidthDots) {
+        // Center crop if canvas exceeds printable head width (e.g. 400 dots -> 384 dots, 8 dots margin)
+        srcStartX = Math.floor((w - outputWidthDots) / 2);
+    } else if (w < outputWidthDots) {
+        // Center within printable head if canvas is narrower
+        dstStartX = Math.floor((outputWidthDots - w) / 2);
+    }
     
     for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const idx = (y * w + x) * 4;
+        const rowOffset = y * w;
+        const outRowOffset = y * widthBytes;
+        for (let i = 0; i < copyWidth; i++) {
+            const srcX = srcStartX + i;
+            const dstX = dstStartX + i;
+            const idx = (rowOffset + srcX) * 4;
             const r = data[idx];
             const g = data[idx + 1];
             const b = data[idx + 2];
@@ -284,8 +358,8 @@ export function canvasToMonoBitmap(canvas: HTMLCanvasElement, threshold = 160): 
             }
             
             if (lum < threshold) {
-                const byteIdx = y * widthBytes + Math.floor(x / 8);
-                const bitIdx = 7 - (x % 8);
+                const byteIdx = outRowOffset + Math.floor(dstX / 8);
+                const bitIdx = 7 - (dstX % 8);
                 monoData[byteIdx] |= (1 << bitIdx);
             }
         }

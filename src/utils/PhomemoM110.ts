@@ -114,10 +114,21 @@ export class M110Driver {
     }
 
     private canvasToRaster(canvas: HTMLCanvasElement) {
-        // We need exactly 384px wide for M110
+        // M110/M120 print head is exactly 384 dots (48 bytes) wide
         const targetWidth = M110_CONSTANTS.WIDTH_PIXELS;
-        const scale = targetWidth / canvas.width;
-        const targetHeight = Math.round(canvas.height * scale);
+        const targetHeight = canvas.height;
+        const widthBytes = M110_CONSTANTS.WIDTH_BYTES;
+
+        // Never scale: preserve exact integer module widths by center-cropping or centering
+        let srcX = 0;
+        let dstX = 0;
+        const copyWidth = Math.min(canvas.width, targetWidth);
+
+        if (canvas.width > targetWidth) {
+            srcX = Math.floor((canvas.width - targetWidth) / 2);
+        } else if (canvas.width < targetWidth) {
+            dstX = Math.floor((targetWidth - canvas.width) / 2);
+        }
 
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = targetWidth;
@@ -125,14 +136,13 @@ export class M110Driver {
         const ctx = tempCanvas.getContext('2d');
         if (!ctx) throw new Error('Could not create canvas context');
 
-        // Draw and scale
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, targetWidth, targetHeight);
-        ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(canvas, srcX, 0, copyWidth, targetHeight, dstX, 0, copyWidth, targetHeight);
 
         const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
         const pixels = imageData.data;
-        const widthBytes = M110_CONSTANTS.WIDTH_BYTES;
         const output = new Uint8Array(widthBytes * targetHeight);
 
         for (let y = 0; y < targetHeight; y++) {
@@ -141,9 +151,7 @@ export class M110Driver {
                 for (let bit = 0; bit < 8; bit++) {
                     const x = byteX * 8 + bit;
                     const idx = (y * targetWidth + x) * 4;
-                    
-                    // Simple thresholding (0.299R + 0.587G + 0.114B)
-                    const brightness = 0.299 * pixels[idx] + 0.587 * pixels[idx+1] + 0.114 * pixels[idx+2];
+                    const brightness = 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
                     if (brightness < 128) {
                         byte |= (1 << (7 - bit));
                     }
@@ -160,6 +168,103 @@ export class M110Driver {
     }
 }
 
+export interface BarcodeScanlineCheckResult {
+    passed: boolean;
+    moduleWidth: number;
+    scanline: number;
+    barCount: number;
+    bars: number[];
+    nonMultipleBars: Array<{ index: number; x: number; width: number; remainder: number }>;
+    error?: string;
+}
+
+/**
+ * Verify that every bar in the decoded scan line has a width that is an exact multiple of the module (2 or 3 dots).
+ */
+export function checkBarcodeScanlineIntegerModules(
+    rasterBytes: Uint8Array,
+    widthBytes: number,
+    heightLines: number,
+    targetModuleWidth?: number
+): BarcodeScanlineCheckResult {
+    const widthPx = widthBytes * 8;
+    let bestLine = -1;
+    let bestBars: Array<{ x: number; width: number }> = [];
+
+    // Scan through all lines to locate the barcode band (Code 128 has at least 15 black bars)
+    for (let y = 0; y < heightLines; y++) {
+        const lineOffset = y * widthBytes;
+        const bars: Array<{ x: number; width: number }> = [];
+        let inBar = false;
+        let startX = 0;
+
+        for (let x = 0; x < widthPx; x++) {
+            const byte = rasterBytes[lineOffset + (x >> 3)];
+            const isBlack = (byte & (1 << (7 - (x & 7)))) !== 0;
+
+            if (isBlack && !inBar) {
+                inBar = true;
+                startX = x;
+            } else if (!isBlack && inBar) {
+                inBar = false;
+                bars.push({ x: startX, width: x - startX });
+            }
+        }
+        if (inBar) {
+            bars.push({ x: startX, width: widthPx - startX });
+        }
+
+        if (bars.length >= 15 && bars.length > bestBars.length) {
+            bestBars = bars;
+            bestLine = y;
+        }
+    }
+
+    if (bestLine === -1 || bestBars.length === 0) {
+        return {
+            passed: true,
+            moduleWidth: 0,
+            scanline: -1,
+            barCount: 0,
+            bars: [],
+            nonMultipleBars: [],
+            error: 'No barcode scanline detected on label'
+        };
+    }
+
+    // Narrowest bar in Code 128 is 1 module wide
+    const minBarWidth = Math.min(...bestBars.map(b => b.width));
+    let moduleWidth = targetModuleWidth || minBarWidth;
+
+    if (!targetModuleWidth) {
+        if (bestBars.every(b => b.width % 3 === 0)) {
+            moduleWidth = 3;
+        } else if (bestBars.every(b => b.width % 2 === 0)) {
+            moduleWidth = 2;
+        } else if (minBarWidth >= 2) {
+            moduleWidth = minBarWidth;
+        } else {
+            moduleWidth = 2;
+        }
+    }
+
+    const nonMultipleBars = bestBars
+        .map((b, idx) => ({ index: idx, x: b.x, width: b.width, remainder: b.width % moduleWidth }))
+        .filter(b => b.remainder !== 0);
+
+    const passed = (moduleWidth >= 2) && (nonMultipleBars.length === 0);
+
+    return {
+        passed,
+        moduleWidth,
+        scanline: bestLine,
+        barCount: bestBars.length,
+        bars: bestBars.map(b => b.width),
+        nonMultipleBars,
+        error: passed ? undefined : `Found ${nonMultipleBars.length} bars whose width is not an exact multiple of module width ${moduleWidth}`
+    };
+}
+
 export interface VirtualDecodedLabel {
     id: string;
     dataUrl: string;
@@ -167,6 +272,7 @@ export interface VirtualDecodedLabel {
     height: number;
     timestamp: number;
     tagId?: string;
+    barcodeCheck?: BarcodeScanlineCheckResult;
 }
 
 /**
@@ -228,6 +334,7 @@ export class VirtualM110Driver {
     public speedMultiplier: number = 1.0; // 1.0 = ~2-2.5s per label like real M110
     public simulatePaperOut: boolean = false;
     public simulateDisconnect: boolean = false;
+    public lastBarcodeCheck?: BarcodeScanlineCheckResult;
 
     setSpeedMultiplier(v: number) { this.speedMultiplier = v > 0 ? v : 1; }
     setSimulatePaperOut(v: boolean) { this.simulatePaperOut = v; }
@@ -326,13 +433,24 @@ export class VirtualM110Driver {
             // Extract raster payload
             const rasterSlice = this.rxBuffer.slice(rasterDataStart, rasterDataEnd);
             const dataUrl = decodeRasterToDataUrl(rasterSlice, widthBytes, heightLines);
+            const barcodeCheck = checkBarcodeScanlineIntegerModules(rasterSlice, widthBytes, heightLines);
+            this.lastBarcodeCheck = barcodeCheck;
+
+            if (barcodeCheck.barCount > 0) {
+                if (barcodeCheck.passed) {
+                    console.log(`[VirtualM110] Scanline ${barcodeCheck.scanline} verified: every bar width is an exact multiple of module ${barcodeCheck.moduleWidth} dots (${barcodeCheck.barCount} bars checked)`);
+                } else {
+                    console.warn(`[VirtualM110] Scanline ${barcodeCheck.scanline} failed integer module check:`, barcodeCheck.nonMultipleBars);
+                }
+            }
 
             const label: VirtualDecodedLabel = {
                 id: `vlbl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
                 dataUrl,
                 width: widthBytes * 8,
                 height: heightLines,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                barcodeCheck
             };
 
             this.printedLabels.push(label);
@@ -388,9 +506,21 @@ export class VirtualM110Driver {
     }
 
     private canvasToRaster(canvas: HTMLCanvasElement) {
+        // M110/M120 print head is exactly 384 dots (48 bytes) wide
         const targetWidth = M110_CONSTANTS.WIDTH_PIXELS;
-        const scale = targetWidth / canvas.width;
-        const targetHeight = Math.round(canvas.height * scale);
+        const targetHeight = canvas.height;
+        const widthBytes = M110_CONSTANTS.WIDTH_BYTES;
+
+        // Never scale: preserve exact integer module widths by center-cropping or centering
+        let srcX = 0;
+        let dstX = 0;
+        const copyWidth = Math.min(canvas.width, targetWidth);
+
+        if (canvas.width > targetWidth) {
+            srcX = Math.floor((canvas.width - targetWidth) / 2);
+        } else if (canvas.width < targetWidth) {
+            dstX = Math.floor((targetWidth - canvas.width) / 2);
+        }
 
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = targetWidth;
@@ -400,11 +530,11 @@ export class VirtualM110Driver {
 
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, targetWidth, targetHeight);
-        ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(canvas, srcX, 0, copyWidth, targetHeight, dstX, 0, copyWidth, targetHeight);
 
         const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
         const pixels = imageData.data;
-        const widthBytes = M110_CONSTANTS.WIDTH_BYTES;
         const output = new Uint8Array(widthBytes * targetHeight);
 
         for (let y = 0; y < targetHeight; y++) {
@@ -427,6 +557,10 @@ export class VirtualM110Driver {
 
     getPrintedLabels(): VirtualDecodedLabel[] {
         return [...this.printedLabels];
+    }
+
+    getLastBarcodeCheck(): BarcodeScanlineCheckResult | undefined {
+        return this.lastBarcodeCheck;
     }
 
     clearPrintedLabels() {

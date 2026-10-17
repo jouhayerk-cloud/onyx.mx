@@ -9,9 +9,9 @@ import { logError, ErrorLevel } from './utils/errors.js';
 // Pixels per mm (203 DPI ≈ 8 px/mm)
 const PX_PER_MM = 8;
 
-// Default printer width in bytes (72 bytes = 576 pixels for M260)
-// M110/M200 use 48 bytes (384 pixels)
-const DEFAULT_PRINTER_WIDTH_BYTES = 72;
+// Default printer width in bytes (48 bytes = 384 pixels for M110/M120)
+// M260 uses 72 bytes (576 pixels)
+const DEFAULT_PRINTER_WIDTH_BYTES = 48;
 const PRINTER_WIDTH_BYTES = DEFAULT_PRINTER_WIDTH_BYTES;
 const PRINTER_WIDTH_PIXELS = PRINTER_WIDTH_BYTES * 8;
 
@@ -703,11 +703,13 @@ export class CanvasRenderer {
         );
       }
     } else {
-      // Single label cutout
+      // Single label cutout: keep within printable dots (384 dots for M110/M120 printhead)
+      const printableWidth = Math.min(this.labelWidth, PRINTER_WIDTH_PIXELS);
+      const cropX = Math.max(0, Math.floor((this.labelWidth - printableWidth) / 2));
       ctx.roundRect(
-        this.labelOffsetX,
+        this.labelOffsetX + cropX * zoom,
         this.labelOffsetY,
-        this.labelWidth * zoom,
+        printableWidth * zoom,
         this.labelHeight * zoom,
         8 * zoom
       );
@@ -1183,141 +1185,129 @@ export class CanvasRenderer {
 
     if (!barcodeData || !barcodeData.trim()) return;
 
+    const data = barcodeData.trim();
+    const format = barcodeFormat || 'CODE128';
     const showText = element.showText !== false;
-    const textFontSize = element.textFontSize || 12;
+    const textFontSize = Math.round(element.textFontSize || 14);
     const textBold = element.textBold || false;
 
-    // Render at 3x resolution for crisp display when zoomed
-    const renderScale = 3;
-    const renderWidth = width * renderScale;
-    const renderHeight = height * renderScale;
-    const renderFontSize = textFontSize * renderScale;
+    // Element box dimensions in whole printer dots
+    const boxWidth = Math.round(width);
+    const boxHeight = Math.round(height);
 
-    const cacheKey = `barcode_${element.id}_${barcodeData}_${barcodeFormat}_${renderWidth}_${renderHeight}_${showText}_${textFontSize}_${textBold}`;
-    let cachedCanvas = this._getFromRenderCache(cacheKey);
-
-    if (!cachedCanvas) {
-      try {
-        // Calculate space for text (at render scale)
-        const textHeightScaled = showText ? renderFontSize + (8 * renderScale) : 0;
-        const barcodeHeightScaled = renderHeight - textHeightScaled;
-
-        // Create SVG barcode WITHOUT text (we'll draw text separately)
-        // This ensures barcode width is consistent regardless of text size
-        // Use higher bar width for crisp rendering
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        JsBarcode(svg, barcodeData, {
-          format: barcodeFormat || 'CODE128',
-          width: 2 * renderScale,  // Scale bar width
-          height: Math.round(barcodeHeightScaled * 0.85),
-          displayValue: false,  // We'll draw text ourselves
-          margin: 5 * renderScale,
-        });
-
-        // Convert SVG to canvas
-        const svgData = new XMLSerializer().serializeToString(svg);
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(svgBlob);
-
-        const tempImg = new Image();
-        tempImg.onload = () => {
-          cachedCanvas = document.createElement('canvas');
-          cachedCanvas.width = renderWidth;
-          cachedCanvas.height = renderHeight;
-          const tempCtx = cachedCanvas.getContext('2d');
-
-          // Disable smoothing for crisp barcode bars
-          tempCtx.imageSmoothingEnabled = false;
-
-          // Clip to element bounds so nothing overflows
-          tempCtx.beginPath();
-          tempCtx.rect(0, 0, renderWidth, renderHeight);
-          tempCtx.clip();
-
-          // Fill white background
-          tempCtx.fillStyle = 'white';
-          tempCtx.fillRect(0, 0, renderWidth, renderHeight);
-
-          // Calculate available space for barcode (leave room for text if shown)
-          const textSpace = showText ? renderFontSize + (6 * renderScale) : 0;
-          const availableHeight = renderHeight - textSpace;
-
-          // Scale barcode to fit width, but also cap height to available space
-          const widthScale = (renderWidth / tempImg.width) * 0.95;
-          const heightScale = availableHeight / tempImg.height;
-          const scale = Math.min(widthScale, heightScale);
-          const scaledW = tempImg.width * scale;
-          const scaledH = tempImg.height * scale;
-          const dx = (renderWidth - scaledW) / 2;
-          const dy = 2 * renderScale;  // Small top margin
-
-          tempCtx.drawImage(tempImg, dx, dy, scaledW, scaledH);
-
-          // Draw text below barcode if enabled (and if it fits)
-          if (showText) {
-            const textY = dy + scaledH + (2 * renderScale);
-            if (textY < renderHeight) {  // Only draw if there's room
-              tempCtx.fillStyle = 'black';
-              tempCtx.font = `${textBold ? 'bold ' : ''}${renderFontSize}px monospace`;
-              tempCtx.textBaseline = 'top';
-
-              const chars = barcodeData.split('');
-              if (chars.length > 1) {
-                tempCtx.textAlign = 'left';
-                const totalTextWidth = tempCtx.measureText(barcodeData).width;
-                if (totalTextWidth < scaledW) {
-                  const extraSpace = scaledW - totalTextWidth;
-                  const spacePerGap = extraSpace / (chars.length - 1);
-                  let currentX = dx;
-                  for (let i = 0; i < chars.length; i++) {
-                    tempCtx.fillText(chars[i], currentX, textY);
-                    currentX += tempCtx.measureText(chars[i]).width + spacePerGap;
-                  }
-                } else {
-                  tempCtx.textAlign = 'center';
-                  tempCtx.fillText(barcodeData, renderWidth / 2, textY);
-                }
-              } else {
-                tempCtx.textAlign = 'center';
-                tempCtx.fillText(barcodeData, renderWidth / 2, textY);
-              }
-            }
-          }
-
-          this._addToRenderCache(cacheKey, cachedCanvas);
-          URL.revokeObjectURL(url);
-
-          // Trigger re-render to show the loaded barcode
-          if (this.onAsyncLoad) {
-            this.onAsyncLoad();
-          }
-        };
-        tempImg.onerror = () => {
-          URL.revokeObjectURL(url);
-          logError('Barcode image load error', 'renderBarcode', ErrorLevel.WARNING);
-        };
-        tempImg.src = url;
-      } catch (e) {
-        logError(e, 'renderBarcode');
-      }
+    // Measure barcode symbol module count using offscreen canvas at 1 dot/module with zero margin
+    let symbolModules = 0;
+    try {
+      const measureCanvas = document.createElement('canvas');
+      JsBarcode(measureCanvas, data, {
+        format: 'CODE128',
+        displayValue: false,
+        margin: 0,
+        width: 1,
+        height: 10,
+      });
+      symbolModules = measureCanvas.width;
+    } catch (e) {
+      logError(e, 'measureBarcode');
+      return;
     }
 
-    if (cachedCanvas) {
-      // Draw high-res cached canvas scaled down to element size
-      // Use high quality smoothing when scaling down for crisp result
-      this.ctx.imageSmoothingEnabled = true;
-      this.ctx.imageSmoothingQuality = 'high';
-      this.ctx.drawImage(cachedCanvas, -width / 2, -height / 2, width, height);
+    if (symbolModules <= 0) return;
+
+    // 10 modules quiet zone on each side per Code 128 spec
+    const quietZoneModules = 10;
+    const totalModules = symbolModules + (quietZoneModules * 2);
+
+    // Choose integer module width: 3 dots if it fits, else 2 dots
+    let moduleWidth = 2;
+    element._overflowWarning = false;
+    if (totalModules * 3 <= boxWidth) {
+      moduleWidth = 3;
+    } else if (totalModules * 2 <= boxWidth) {
+      moduleWidth = 2;
     } else {
-      // Placeholder while loading
-      this.ctx.strokeStyle = '#ccc';
-      this.ctx.strokeRect(-width / 2, -height / 2, width, height);
-      this.ctx.fillStyle = '#999';
-      this.ctx.font = '12px sans-serif';
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      this.ctx.fillText('Loading...', 0, 0);
+      moduleWidth = 2;
+      // Cannot fit at 2 dots: warn in designer instead of squeezing
+      logError(
+        `Barcode "${data}" (${totalModules * 2} dots at 2 dots/mod) exceeds box width (${boxWidth} dots). Squeezing disabled.`,
+        'renderBarcode',
+        ErrorLevel.WARNING
+      );
+      element._overflowWarning = true;
     }
+
+    const quietZoneDots = quietZoneModules * moduleWidth;
+    const totalBarcodeWidth = totalModules * moduleWidth;
+
+    // Calculate space for text and bars
+    const textHeight = showText ? textFontSize + 4 : 0;
+    const barHeight = Math.max(10, boxHeight - textHeight - 2);
+
+    // Render barcode at exact print resolution with integer module widths
+    const barcodeCanvas = document.createElement('canvas');
+    barcodeCanvas.width = totalBarcodeWidth;
+    barcodeCanvas.height = barHeight;
+    const bCtx = barcodeCanvas.getContext('2d');
+    bCtx.imageSmoothingEnabled = false;
+
+    // Pure white background
+    bCtx.fillStyle = '#ffffff';
+    bCtx.fillRect(0, 0, totalBarcodeWidth, barHeight);
+
+    // Render JsBarcode with exact integer module width and 10-module quiet zones
+    try {
+      JsBarcode(barcodeCanvas, data, {
+        format: 'CODE128',
+        width: moduleWidth,
+        height: barHeight,
+        displayValue: false,
+        margin: 0,
+        marginLeft: quietZoneDots,
+        marginRight: quietZoneDots,
+        marginTop: 0,
+        marginBottom: 0,
+        background: '#ffffff',
+        lineColor: '#000000',
+      });
+    } catch (e) {
+      logError(e, 'renderBarcodeDirect');
+      return;
+    }
+
+    // Center barcode horizontally by whole dots within the element box
+    const offsetX = Math.floor((boxWidth - totalBarcodeWidth) / 2);
+    const drawX = Math.round(-boxWidth / 2 + offsetX);
+    const drawY = Math.round(-boxHeight / 2 + 1);
+
+    // Draw directly at print resolution with crisp edges (no antialiasing)
+    this.ctx.save();
+    this.ctx.imageSmoothingEnabled = false;
+
+    // Fill element background white first
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.fillRect(Math.round(-boxWidth / 2), Math.round(-boxHeight / 2), boxWidth, boxHeight);
+
+    // Draw barcode bitmap 1:1 with NO scaling
+    this.ctx.drawImage(barcodeCanvas, drawX, drawY);
+
+    // Draw human-readable text below barcode if enabled
+    if (showText) {
+      const textY = drawY + barHeight + 2;
+      this.ctx.fillStyle = '#000000';
+      this.ctx.font = `${textBold ? 'bold ' : ''}${textFontSize}px monospace`;
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'top';
+      this.ctx.fillText(data, 0, textY);
+    }
+
+    // If it cannot fit at 2 dots, draw a clean warning rim in designer (LiquidOnyx subtle amber)
+    if (element._overflowWarning) {
+      this.ctx.strokeStyle = '#f59e0b';
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(Math.round(-boxWidth / 2), Math.round(-boxHeight / 2), boxWidth, boxHeight);
+    }
+
+    this.ctx.restore();
   }
 
   /**
@@ -2133,41 +2123,52 @@ export class CanvasRenderer {
    * @param {number} outputWidthBytes - Output width in bytes (for alignment)
    * @param {'left' | 'center' | 'right'} alignment - How to align output within outputWidthBytes
    */
-  _pixelsToRasterThreshold(pixels, width, height, outputWidthBytes, alignment = 'left') {
-    const canvasBytesPerRow = Math.ceil(width / 8);
+  _pixelsToRasterThreshold(pixels, width, height, outputWidthBytes, alignment = 'center') {
+    const outputWidthDots = outputWidthBytes * 8;
     const output = new Uint8Array(outputWidthBytes * height);
 
-    // Calculate offset based on alignment
-    let offset = 0;
-    if (alignment === 'center') {
-      offset = Math.floor((outputWidthBytes - canvasBytesPerRow) / 2);
-    } else if (alignment === 'right') {
-      offset = outputWidthBytes - canvasBytesPerRow;
+    // Calculate source crop or destination offset based on alignment
+    let srcStartX = 0;
+    let dstStartX = 0;
+    const copyWidth = Math.min(width, outputWidthDots);
+
+    if (width > outputWidthDots) {
+      // Label wider than print head (e.g. 400 dots on 384-dot head) -> center crop
+      if (alignment === 'center') {
+        srcStartX = Math.floor((width - outputWidthDots) / 2);
+      } else if (alignment === 'right') {
+        srcStartX = width - outputWidthDots;
+      } else {
+        srcStartX = 0;
+      }
+    } else if (width < outputWidthDots) {
+      // Label narrower than print head -> center or align in print head
+      if (alignment === 'center') {
+        dstStartX = Math.floor((outputWidthDots - width) / 2);
+      } else if (alignment === 'right') {
+        dstStartX = outputWidthDots - width;
+      } else {
+        dstStartX = 0;
+      }
     }
 
     for (let y = 0; y < height; y++) {
-      for (let byteX = 0; byteX < canvasBytesPerRow; byteX++) {
-        let byte = 0;
+      const rowOffset = y * width;
+      const outRowOffset = y * outputWidthBytes;
+      for (let i = 0; i < copyWidth; i++) {
+        const srcX = srcStartX + i;
+        const dstX = dstStartX + i;
 
-        for (let bit = 0; bit < 8; bit++) {
-          const x = byteX * 8 + bit;
-          if (x >= width) continue;
+        const idx = (rowOffset + srcX) * 4;
+        const r = pixels[idx];
+        const g = pixels[idx + 1];
+        const b = pixels[idx + 2];
+        const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
 
-          const idx = (y * width + x) * 4;
-          const r = pixels[idx];
-          const g = pixels[idx + 1];
-          const b = pixels[idx + 2];
-          // Use perceptual grayscale even for threshold
-          const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-
-          if (brightness < 128) {
-            byte |= (1 << (7 - bit));
-          }
-        }
-
-        const outputPos = y * outputWidthBytes + offset + byteX;
-        if (outputPos >= 0 && outputPos < output.length) {
-          output[outputPos] = byte;
+        if (brightness < 128) {
+          const byteIdx = outRowOffset + (dstX >> 3);
+          const bitIdx = 7 - (dstX & 7);
+          output[byteIdx] |= (1 << bitIdx);
         }
       }
     }
@@ -2185,7 +2186,7 @@ export class CanvasRenderer {
    * @param {'left' | 'center' | 'right'} alignment - How to align output within outputWidthBytes
    * @param {string} algorithm - Dithering algorithm ('floyd-steinberg', 'atkinson', 'ordered')
    */
-  _pixelsToRasterDithered(pixels, width, height, outputWidthBytes, alignment = 'left', algorithm = 'floyd-steinberg') {
+  _pixelsToRasterDithered(pixels, width, height, outputWidthBytes, alignment = 'center', algorithm = 'floyd-steinberg') {
     // Convert to grayscale with gamma correction
     const grayscale = this._rgbaToGrayscale(pixels, width, height, 1.3);
 
@@ -2204,34 +2205,42 @@ export class CanvasRenderer {
         break;
     }
 
-    // Pack into bytes
-    const canvasBytesPerRow = Math.ceil(width / 8);
+    const outputWidthDots = outputWidthBytes * 8;
     const output = new Uint8Array(outputWidthBytes * height);
 
-    // Calculate offset based on alignment
-    let offset = 0;
-    if (alignment === 'center') {
-      offset = Math.floor((outputWidthBytes - canvasBytesPerRow) / 2);
-    } else if (alignment === 'right') {
-      offset = outputWidthBytes - canvasBytesPerRow;
+    let srcStartX = 0;
+    let dstStartX = 0;
+    const copyWidth = Math.min(width, outputWidthDots);
+
+    if (width > outputWidthDots) {
+      if (alignment === 'center') {
+        srcStartX = Math.floor((width - outputWidthDots) / 2);
+      } else if (alignment === 'right') {
+        srcStartX = width - outputWidthDots;
+      } else {
+        srcStartX = 0;
+      }
+    } else if (width < outputWidthDots) {
+      if (alignment === 'center') {
+        dstStartX = Math.floor((outputWidthDots - width) / 2);
+      } else if (alignment === 'right') {
+        dstStartX = outputWidthDots - width;
+      } else {
+        dstStartX = 0;
+      }
     }
 
     for (let y = 0; y < height; y++) {
-      for (let byteX = 0; byteX < canvasBytesPerRow; byteX++) {
-        let byte = 0;
+      const rowOffset = y * width;
+      const outRowOffset = y * outputWidthBytes;
+      for (let i = 0; i < copyWidth; i++) {
+        const srcX = srcStartX + i;
+        const dstX = dstStartX + i;
 
-        for (let bit = 0; bit < 8; bit++) {
-          const x = byteX * 8 + bit;
-          if (x >= width) continue;
-
-          if (dithered[y * width + x] === 1) {
-            byte |= (1 << (7 - bit));
-          }
-        }
-
-        const outputPos = y * outputWidthBytes + offset + byteX;
-        if (outputPos >= 0 && outputPos < output.length) {
-          output[outputPos] = byte;
+        if (dithered[rowOffset + srcX] === 1) {
+          const byteIdx = outRowOffset + (dstX >> 3);
+          const bitIdx = 7 - (dstX & 7);
+          output[byteIdx] |= (1 << bitIdx);
         }
       }
     }

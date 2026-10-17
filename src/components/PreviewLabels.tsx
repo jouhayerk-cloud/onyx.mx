@@ -3,6 +3,7 @@ import { X, Printer, ChevronLeft, ChevronRight, Check, ZoomIn } from 'lucide-rea
 import { generateAxonometricDataUrl } from '../lib/axonometric';
 import { tr, trf } from '../lib/i18n';
 import { renderItemLabelToRaster } from '../features/print/renderers/labelRenderer';
+import { ItemTag } from './ui/ItemTag';
 
 export interface PreviewLabelsProps {
     items: any[];
@@ -91,11 +92,12 @@ export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
 
     return (
         <div 
-            className={`pixel-label-surface select-none relative bg-white text-black overflow-hidden border border-black/10 shadow-sm flex items-center justify-center ${className}`}
+            className={`pixel-label-surface select-none relative bg-white text-black overflow-hidden border border-black/10 shadow-sm flex items-center justify-center max-w-full ${className}`}
             style={{
                 width: displayWidth,
                 height: displayHeight,
                 imageRendering: 'pixelated',
+                maxWidth: '100%',
             }}
         >
             {rasterUrl ? (
@@ -137,6 +139,25 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
     });
     
     const containerRef = useRef<HTMLDivElement>(null);
+    const touchStartY = useRef<number | null>(null);
+    const touchCurrentY = useRef<number | null>(null);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartY.current = e.touches[0].clientY;
+    };
+    const handleTouchMove = (e: React.TouchEvent) => {
+        touchCurrentY.current = e.touches[0].clientY;
+    };
+    const handleTouchEnd = () => {
+        if (touchStartY.current !== null && touchCurrentY.current !== null) {
+            if (touchCurrentY.current - touchStartY.current > 75) {
+                setInspectIndex(null);
+            }
+        }
+        touchStartY.current = null;
+        touchCurrentY.current = null;
+    };
+
     const isSquare = activeLabelSize === '50x50';
     const targetWidth = isSquare ? LABEL_WIDTH_50x50 : LABEL_WIDTH_50x30;
     const targetHeight = isSquare ? LABEL_HEIGHT_50x50 : LABEL_HEIGHT_50x30;
@@ -278,7 +299,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
 
             {/* Grid Container */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 relative min-h-0" ref={containerRef}>
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5 pb-24">
+                <div className="grid grid-cols-1 min-[431px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5 pb-24">
                     {labelInstances.map((instance) => {
                         const { item, globalIndex } = instance;
                         const tag = item.codes?.bookBarcode || '';
@@ -289,20 +310,22 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                             <div 
                                 key={globalIndex}
                                 onClick={() => setInspectIndex(globalIndex)}
-                                className={`group flex flex-col gap-2 p-2.5 sm:p-3 rounded-2xl cursor-pointer transition-all border relative ${isSelected ? 'border-[var(--main-color,#7FBBFF)] bg-[var(--lq-fill-panel,rgba(255,255,255,0.06))] shadow-[0_0_15px_rgba(var(--main-color-rgb,127,187,255),0.15)]' : 'border-[var(--border-color,rgba(255,255,255,0.08))] bg-[var(--lq-fill-panel,rgba(255,255,255,0.02))] opacity-75 hover:opacity-100'}`}
+                                className={`group flex flex-col gap-2 p-2.5 sm:p-3 rounded-2xl cursor-pointer transition-all border relative w-full ${isSelected ? 'border-[var(--main-color,#7FBBFF)] bg-[var(--lq-fill-panel,rgba(255,255,255,0.06))] shadow-[0_0_15px_rgba(var(--main-color-rgb,127,187,255),0.15)]' : 'border-[var(--border-color,rgba(255,255,255,0.08))] bg-[var(--lq-fill-panel,rgba(255,255,255,0.02))] opacity-75 hover:opacity-100'}`}
                             >
-                                {/* Quick select check button in top right of tile */}
+                                {/* Quick select check button in top right of tile with >= 44px touch target */}
                                 <button
                                     type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         toggleSelection(globalIndex);
                                     }}
-                                    className={`absolute top-4 right-4 z-10 w-6 h-6 rounded-md flex items-center justify-center transition-all ${isSelected ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'bg-black/50 text-white/50 hover:text-white border border-white/20'}`}
+                                    className="absolute top-2 right-2 z-10 w-11 h-11 flex items-center justify-center cursor-pointer"
                                     title={isSelected ? 'Deselect from print run' : 'Select for print run'}
                                     aria-label="Toggle Selection"
                                 >
-                                    {isSelected && <Check size={14} strokeWidth={3} />}
+                                    <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${isSelected ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'bg-black/50 text-white/50 hover:text-white border border-white/20'}`}>
+                                        {isSelected && <Check size={14} strokeWidth={3} />}
+                                    </div>
                                 </button>
 
                                 {/* Render Label Card wrapper */}
@@ -329,10 +352,15 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                     </div>
                                 </div>
                                 
-                                {/* Label Meta */}
-                                <div className="flex items-center justify-between px-1">
-                                    <span className="text-[var(--text-color,#fff)] text-xs font-black tracking-wide truncate">{tag}</span>
-                                    <span className="text-[var(--secondary-text-color,rgba(255,255,255,0.4))] text-[10px] font-bold">#{instance.index}</span>
+                                {/* Label Meta: Tag ID with ItemTag + Copy Index */}
+                                <div className="flex items-center justify-between gap-1.5 px-1 min-w-0">
+                                    <div className="min-w-0 overflow-hidden flex-shrink">
+                                        <ItemTag
+                                            item={item.data ? { ...item.data, book_barcode: tag || item.data.book_barcode } : item}
+                                            size="md"
+                                        />
+                                    </div>
+                                    <span className="text-[var(--secondary-text-color,rgba(255,255,255,0.5))] text-[10px] font-bold font-mono shrink-0 tabular-nums">#{instance.index}</span>
                                 </div>
                             </div>
                         );
@@ -342,24 +370,32 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
 
             {/* Interactive Pixel-Perfect 1-Bit Large Label Preview Modal */}
             {inspectedInstance && inspectIndex !== null && (
-                <div className="fixed inset-0 z-[100030] flex items-center justify-center p-3 sm:p-6">
+                <div className="lps-inspect-overlay fixed inset-0 z-[100030] flex items-center justify-center p-0 min-[821px]:p-6">
                     {/* Backdrop Scrim */}
                     <div 
                         className="lps-scrim absolute inset-0 cursor-pointer"
                         onClick={() => setInspectIndex(null)}
                     />
 
-                    {/* Modal Window Sheet */}
-                    <div className="lps-modal-sheet liquid-panel relative z-10 flex flex-col max-w-3xl w-full max-h-[92vh] overflow-hidden rounded-2xl shadow-2xl border border-[var(--lq-rim)] bg-[var(--lq-fill-panel,rgba(14,18,28,0.92))] backdrop-blur-2xl">
+                    {/* Modal Window Sheet (Full-Screen on Mobile with Swipe Down to Close) */}
+                    <div 
+                        className="lps-modal-sheet liquid-panel relative z-10 flex flex-col w-full overflow-hidden shadow-2xl"
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                    >
+                        <div className="lps-sheet-grabber" />
+
                         {/* Header Bar */}
-                        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--lq-rim-subtle)] shrink-0">
-                            <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-3.5 border-b border-[var(--lq-rim-subtle)] shrink-0 min-h-[48px]">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                                 <div className="flex flex-col min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-black tracking-wider text-[var(--lq-ink,#fff)] truncate font-mono">
-                                            {inspectedInstance.item.codes?.bookBarcode || 'LABEL PREVIEW'}
-                                        </span>
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold liquid-control text-[var(--main-color,#7FBBFF)] uppercase tracking-wider">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <ItemTag
+                                            item={inspectedInstance.item.data ? { ...inspectedInstance.item.data, book_barcode: inspectedInstance.item.codes?.bookBarcode || inspectedInstance.item.data.book_barcode } : inspectedInstance.item}
+                                            size="md"
+                                        />
+                                        <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold liquid-control text-[var(--main-color,#7FBBFF)] uppercase tracking-wider shrink-0">
                                             1-BIT PIXEL-PERFECT
                                         </span>
                                     </div>
@@ -373,11 +409,11 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                                 <button
                                     type="button"
                                     onClick={() => setInspectIndex(prev => (prev !== null && prev > 0 ? prev - 1 : labelInstances.length - 1))}
-                                    className="w-8 h-8 rounded-full liquid-control flex items-center justify-center text-[var(--lq-ink,#fff)] hover:bg-[var(--lq-fill-control-hover)] transition-all cursor-pointer"
+                                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full liquid-control flex items-center justify-center text-[var(--lq-ink,#fff)] hover:bg-[var(--lq-fill-control-hover)] transition-all cursor-pointer"
                                     title="Previous label (Left arrow)"
                                     aria-label="Previous label"
                                 >
@@ -386,17 +422,17 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => setInspectIndex(prev => (prev !== null && prev < labelInstances.length - 1 ? prev + 1 : 0))}
-                                    className="w-8 h-8 rounded-full liquid-control flex items-center justify-center text-[var(--lq-ink,#fff)] hover:bg-[var(--lq-fill-control-hover)] transition-all cursor-pointer"
+                                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full liquid-control flex items-center justify-center text-[var(--lq-ink,#fff)] hover:bg-[var(--lq-fill-control-hover)] transition-all cursor-pointer"
                                     title="Next label (Right arrow)"
                                     aria-label="Next label"
                                 >
                                     <ChevronRight size={18} />
                                 </button>
-                                <div className="w-px h-5 bg-[var(--lq-rim-subtle)] mx-1" />
+                                <div className="w-px h-5 bg-[var(--lq-rim-subtle)] mx-0.5 sm:mx-1" />
                                 <button
                                     type="button"
                                     onClick={() => setInspectIndex(null)}
-                                    className="w-8 h-8 rounded-full liquid-control flex items-center justify-center text-[var(--lq-ink,#fff)] hover:bg-[var(--lq-fill-control-hover)] transition-all cursor-pointer"
+                                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full liquid-control flex items-center justify-center text-[var(--lq-ink,#fff)] hover:bg-[var(--lq-fill-control-hover)] transition-all cursor-pointer"
                                     title="Close (Escape)"
                                     aria-label="Close"
                                 >
@@ -406,8 +442,8 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                         </div>
 
                         {/* Modal Body: Center Stage with Integer Scaling Container */}
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col items-center justify-center min-h-0 bg-black/20">
-                            <div className="lps-pixel-frame relative p-2 sm:p-4 rounded-xl bg-[var(--lq-fill-control,rgba(255,255,255,0.04))] border border-[var(--lq-rim-subtle)] flex flex-col items-center shadow-2xl">
+                        <div className="flex-1 overflow-y-auto p-2 sm:p-8 flex flex-col items-center justify-center min-h-0 bg-black/20 w-full">
+                            <div className="lps-pixel-frame relative p-2 sm:p-4 rounded-xl bg-[var(--lq-fill-control,rgba(255,255,255,0.04))] border border-[var(--lq-rim-subtle)] flex flex-col items-center shadow-2xl max-w-full">
                                 {/* Crisp 1-bit monochrome rendering with exact proportions and integer scaling */}
                                 <PixelLabelView 
                                     instance={inspectedInstance}
@@ -421,21 +457,21 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                 />
 
                                 {/* Spec chip bar under preview */}
-                                <div className="flex items-center justify-between w-full mt-3 px-1 text-[10px] text-[var(--lq-ink-muted,rgba(255,255,255,0.5))] font-mono uppercase tracking-wider">
+                                <div className="flex items-center justify-between w-full mt-3 px-1 text-[10px] text-[var(--lq-ink-muted,rgba(255,255,255,0.5))] font-mono uppercase tracking-wider flex-wrap gap-1">
                                     <span>{activeLabelSize === '50x50' ? '50 × 50 mm (384 × 384 px)' : '50 × 30 mm (384 × 240 px)'}</span>
                                     <div className="flex items-center gap-2">
                                         <div className="flex items-center bg-black/30 rounded px-1 py-0.5 border border-white/10">
                                             <button 
                                                 type="button"
                                                 onClick={() => setIntegerScale(1)}
-                                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${integerScale === 1 ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'text-white/60 hover:text-white'}`}
+                                                className={`px-2 py-1 rounded text-[10px] font-bold min-h-[32px] min-w-[32px] transition-all flex items-center justify-center ${integerScale === 1 ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'text-white/60 hover:text-white'}`}
                                             >
                                                 1X
                                             </button>
                                             <button 
                                                 type="button"
                                                 onClick={() => setIntegerScale(2)}
-                                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${integerScale === 2 ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'text-white/60 hover:text-white'}`}
+                                                className={`px-2 py-1 rounded text-[10px] font-bold min-h-[32px] min-w-[32px] transition-all flex items-center justify-center ${integerScale === 2 ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'text-white/60 hover:text-white'}`}
                                             >
                                                 2X
                                             </button>
@@ -447,17 +483,17 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                         </div>
 
                         {/* Bottom Actions Bar */}
-                        <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--lq-rim-subtle)] shrink-0 bg-[var(--lq-fill-surface,rgba(10,14,22,0.4))]">
+                        <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 border-t border-[var(--lq-rim-subtle)] shrink-0 bg-[var(--lq-fill-surface,rgba(10,14,22,0.4))] pb-[max(0.625rem,env(safe-area-inset-bottom,0px))]">
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
                                     onClick={() => toggleSelection(inspectIndex)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${selectedIndices.has(inspectIndex) ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'liquid-control text-[var(--lq-ink)]'}`}
+                                    className={`px-3.5 py-2 min-h-[44px] rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${selectedIndices.has(inspectIndex) ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'liquid-control text-[var(--lq-ink)]'}`}
                                 >
                                     <Check size={14} strokeWidth={selectedIndices.has(inspectIndex) ? 3 : 2} />
                                     <span>{selectedIndices.has(inspectIndex) ? 'Included in Batch' : 'Include in Batch'}</span>
                                 </button>
-                                <span className="text-[11px] text-[var(--lq-ink-muted)]">
+                                <span className="text-[11px] text-[var(--lq-ink-muted)] hidden sm:inline">
                                     {quantities[String(inspectedInstance.item.row)] ?? 1} copies configured
                                 </span>
                             </div>
@@ -467,7 +503,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => setInspectIndex(null)}
-                                    className="px-4 py-1.5 rounded-lg liquid-control text-xs font-bold uppercase cursor-pointer"
+                                    className="px-5 py-2 min-h-[44px] rounded-lg liquid-control text-xs font-bold uppercase cursor-pointer"
                                 >
                                     Done
                                 </button>
