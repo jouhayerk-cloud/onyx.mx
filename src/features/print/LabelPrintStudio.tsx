@@ -44,11 +44,6 @@ import { isShopifyReady } from '../../lib/aiContent';
 import { tr } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 import { M110Driver } from '../../utils/PhomemoM110';
-import {
-    buildItemLabelSpec,
-    renderLabelToCanvas,
-    ItemLabelOptions
-} from './renderers/labelRenderer';
 import { recordExport, trackDocumentJob, getRecentTracked, TrackedJob } from './jobTracking';
 import { PdfPreview, PdfDocumentSource } from '../../components/PdfPreview';
 import { PreviewLabels } from '../../components/PreviewLabels';
@@ -142,6 +137,15 @@ export const LabelPrintStudio: React.FC = () => {
     // Designer Iframe Refs
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const pendingBatchRef = useRef<any>(null);
+    const pendingPrintJobRef = useRef<{
+        ids: string[];
+        tagById: Record<string, string>;
+        checksum: string;
+        jobId: string;
+        isReprint: boolean;
+    } | null>(null);
+    const labelSizeRef = useRef<string>(activeLabelSize);
+    useEffect(() => { labelSizeRef.current = activeLabelSize; }, [activeLabelSize]);
 
     // Axonometric SVG Cache
     const [axoCache, setAxoCache] = useState<Record<string, string>>({});
@@ -289,6 +293,179 @@ export const LabelPrintStudio: React.FC = () => {
         }
     };
 
+    const ONYX_MASTER_TEMPLATE_V4 = (width: number, height: number) => ({
+        name: "OnyxLabels_V4",
+        version: 4,
+        isTemplate: true,
+        labelSize: { width, height },
+        templateFields: ["TAG ID", "DESCRIPTION", "SIZES", "BOOK RETAIL", "COLOR MATERIAL", "QR DATA", "AXO_IMAGE"],
+        elements: [
+            {
+                id: "el_side",
+                type: "text",
+                zone: 0,
+                x: -95, y: 107.2, width: 220, height: 23.6,
+                rotation: 90,
+                text: "MADE IN MEXICO",
+                fontSize: 15,
+                fontFamily: "Inter, sans-serif",
+                align: "justify",
+                fontWeight: "bold"
+            },
+            {
+                id: "el_retail",
+                type: "text",
+                zone: 0,
+                x: 78.7, y: 0, width: 215, height: 28.6,
+                rotation: 0,
+                align: "center",
+                text: "{{BOOK RETAIL}}",
+                fontSize: 15,
+                fontFamily: "Inter, sans-serif",
+                fontWeight: "bold",
+                autoScale: true,
+                noWrap: true
+            },
+            {
+                id: "el_desc",
+                type: "text",
+                zone: 0,
+                x: 78.7, y: 22, width: 220, height: 36,
+                rotation: 0,
+                align: "center",
+                text: "{{DESCRIPTION}}",
+                fontSize: 23,
+                fontFamily: "Inter, sans-serif",
+                fontWeight: "bold",
+                autoScale: true,
+                noWrap: true
+            },
+            {
+                id: "el_mat",
+                type: "text",
+                zone: 0,
+                x: 75.6, y: 49.8, width: 220, height: 35.1,
+                rotation: 0,
+                align: "center",
+                text: "{{COLOR MATERIAL}}",
+                fontSize: 23,
+                fontFamily: "Inter, sans-serif",
+                autoScale: true,
+                noWrap: true
+            },
+            {
+                id: "el_sizes",
+                type: "text",
+                zone: 0,
+                x: 77, y: 79.6, width: 218.6, height: 25.3,
+                rotation: 0,
+                align: "center",
+                text: "{{SIZES}}",
+                fontSize: 15,
+                fontFamily: "Inter, sans-serif",
+                fontWeight: "bold",
+                autoScale: true,
+                noWrap: true
+            },
+            {
+                id: "el_axo",
+                type: "image",
+                zone: 0,
+                x: 24, y: 12, width: 73, height: 73,
+                rotation: 0,
+                imageData: "{{AXO_IMAGE}}"
+            },
+            {
+                id: "el_qr",
+                type: "qr",
+                zone: 0,
+                x: 291.2, y: 5, width: 95, height: 95,
+                rotation: 0,
+                qrData: "{{QR DATA}}"
+            },
+            {
+                id: "el_barcode",
+                type: "barcode",
+                zone: 0,
+                x: 24.4, y: 101.6, width: 361.9, height: 138.4,
+                rotation: 0,
+                barcodeData: "{{TAG ID}}",
+                barcodeFormat: "CODE128",
+                format: "CODE128",
+                textFontSize: 15,
+                textBold: true,
+                showText: true
+            }
+        ]
+    });
+
+    const ONYX_MASTER_TEMPLATE_50x50 = (width: number, height: number, logoChoice: string) => ({
+        name: "OnyxLabels_50x50",
+        version: 6,
+        isTemplate: true,
+        labelSize: { width, height },
+        templateFields: ["TAG ID", "DESCRIPTION", "SIZES", "BOOK RETAIL", "COLOR MATERIAL", "QR DATA", "AXO_IMAGE"],
+        elements: [
+            { id: "el_axo", type: "image", zone: 0, x: 255, y: 93, width: 155, height: 155, rotation: 0, imageData: "{{AXO_IMAGE}}" },
+            { id: "el_qr", type: "qr", zone: 0, x: 20, y: 12.32, width: 106.4, height: 106.4, rotation: 0, qrData: "{{QR DATA}}" },
+            { id: "el_desc", type: "text", zone: 0, x: 130, y: 12.32, width: 250, height: 35, rotation: 0, align: "left", text: "{{DESCRIPTION}}", fontSize: 22, fontFamily: "Inter, sans-serif", fontWeight: "bold", autoScale: true, noWrap: true },
+            { id: "el_mat", type: "text", zone: 0, x: 130, y: 47.32, width: 250, height: 35.33, rotation: 0, align: "left", text: "{{COLOR MATERIAL}}", fontSize: 22, fontFamily: "Inter, sans-serif", fontWeight: "normal", autoScale: true, noWrap: true },
+            { id: "el_sizes", type: "text", zone: 0, x: 130, y: 82.65, width: 250, height: 35.01, rotation: 0, align: "left", text: "{{SIZES}}", fontSize: 22, fontFamily: "Inter, sans-serif", fontWeight: "bold", autoScale: true, noWrap: true },
+            { id: "el_retail", type: "text", zone: 0, x: 20, y: 132.8, width: 250, height: 35, rotation: 0, align: "left", text: "{{BOOK RETAIL}}", fontSize: 22, fontFamily: "Inter, sans-serif", fontWeight: "bold", autoScale: true, noWrap: true },
+            { id: "el_madein", type: "text", zone: 0, x: 20, y: 175.8, width: 161.44, height: 26.4, rotation: 0, align: "left", text: "Made in Mexico For", fontSize: 18, fontFamily: "Inter, sans-serif", fontWeight: "normal", autoScale: false, noWrap: true },
+            { id: "el_logo", type: "image", zone: 0, x: 20, y: logoChoice === 'RareEarth' ? 193 : 202, width: logoChoice === 'RareEarth' ? 198 : 174, height: logoChoice === 'RareEarth' ? 47 : 30, rotation: 0, imageData: logoChoice === 'RareEarth' ? RareEarthLogoBase64 : ART_OF_DECOR_LOGO },
+            { id: "el_barcode", type: "barcode", zone: 0, x: 18.48, y: 240.1, width: 368.16, height: 146.48, rotation: 0, barcodeData: "{{TAG ID}}", barcodeFormat: "CODE128", format: "CODE128", textFontSize: 22, textBold: true, showText: true }
+        ]
+    });
+
+    const buildBatchJSONAsync = async (items: any[], workbookPrefix: string, activeLabelSize: string = '50x30', logoVariant: string = 'ArtOfDecor') => {
+        const [wStr, hStr] = activeLabelSize.split('x');
+        const width = parseInt(wStr) || 50;
+        const height = parseInt(hStr) || 30;
+
+        const baseRecords = await Promise.all(items.map(async item => {
+            const d = item.normData;
+            const c = item.codes;
+            const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
+            const retailStr = String(c.bookRetail || '0').padStart(4, '0');
+            
+            const wCm = parseFloat(d.widthCm) || 10;
+            const hCm = parseFloat(d.heightCm) || 10;
+            const dCm = parseFloat(d.lengthCm) || wCm;
+
+            const axoBase64 = await generateAxonometricDataUrl(
+                wCm, hCm, dCm,
+                d.shape || '', d.itemType || d.type || d.shortDescription || d.description || '',
+                '#111111', true
+            );
+
+            return {
+                "TAG ID": c.bookBarcode || '',
+                "DESCRIPTION": toTitleCase(`${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'Onyx Piece'),
+                "COLOR MATERIAL": toTitleCase(`${d.color || ''} ${d.material || 'Onyx'}`.trim()),
+                "SIZES": `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM${d.weightKg ? '  WT ' + d.weightKg + ' KG' : ''}`,
+                "BOOK RETAIL": `${c.bookAqCode}-${bookv}${retailStr}`,
+                "QUANTITY": quantities[String(item.row)] ?? (d.quantity || 1),
+                "LANDED CODE": c.bookLandCode,
+                "ACQ CODE": c.bookAqCode,
+                "QR DATA": c.bookBarcode || '',
+                "AXO_IMAGE": axoBase64
+            };
+        }));
+
+        const templateData = baseRecords.flatMap(r =>
+            Array.from({ length: (Number(r["QUANTITY"]) || 1) }, () => ({ ...r }))
+        );
+
+        return {
+            ...(activeLabelSize === '50x50' ? ONYX_MASTER_TEMPLATE_50x50(width, height, logoVariant) : ONYX_MASTER_TEMPLATE_V4(width, height)),
+            name: `Onyx_Batch_${new Date().toISOString().split('T')[0]}`,
+            exportedAt: new Date().toISOString(),
+            records: templateData,
+            templateData
+        };
+    };
+
     // Checksum computation for print job
     const computeJobChecksum = async (batch: any): Promise<string> => {
         try {
@@ -301,41 +478,43 @@ export const LabelPrintStudio: React.FC = () => {
     };
 
     // Commit Print Job to Supabase & Local DJ Tracking
-    const commitPrintJob = useCallback(async (detail: {
-        jobId: string;
-        checksum: string;
-        ids: string[];
-        tagById: Record<string, string>;
-        printedTags: string[];
-        labelCount: number;
-        isReprint: boolean;
-        labelSize: string;
-        source?: string;
-    }) => {
-        const { jobId, checksum, ids, tagById, printedTags, labelCount, isReprint, labelSize, source } = detail;
-        const stamp = new Date().toISOString();
+    const commitPrintJob = useCallback(async (detail: any, reason: string = 'designer reported PRINT_COMPLETE') => {
+        const fallbackJobId = `PJ-${Date.now().toString(36).toUpperCase()}`;
+        const job = pendingPrintJobRef.current || {
+            ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
+            tagById: Object.fromEntries(selectedItems.map((it: any) => [String(it.row ?? it.data?.id ?? it.id), String(it.codes?.bookBarcode || '')])),
+            checksum: '',
+            jobId: fallbackJobId,
+            isReprint: false,
+        };
+        pendingPrintJobRef.current = null;
+
+        const printedTags: string[] = Array.isArray(detail?.printedTags) ? detail.printedTags : [];
+        const labelCount: number = Number(detail?.totalRecords) || printedTags.length || job.ids.length;
+        const stamp = detail?.finishedAt || new Date().toISOString();
+        const isReprint = !!job.isReprint;
 
         const perTag = new Map<string, number>();
         printedTags.forEach(t => perTag.set(t, (perTag.get(t) || 0) + 1));
 
         try {
             const { error: jobErr } = await supabase.from('print_jobs').insert({
-                id: jobId,
-                checksum,
+                id: job.jobId,
+                checksum: job.checksum,
                 printed_at: stamp,
                 printed_by: user?.email || user?.name || null,
                 label_count: labelCount,
-                item_count: ids.length,
+                item_count: job.ids.length,
                 is_reprint: isReprint,
-                label_size: labelSize,
-                source: source || 'batch',
+                label_size: labelSizeRef.current,
+                source: detail?.source || 'batch',
             });
             if (jobErr) console.warn('[LabelPrintStudio] print_jobs insert notice:', jobErr);
 
-            const rows = ids.map((id: string) => {
-                const tag = tagById?.[id] || '';
+            const rows = job.ids.map((id: string) => {
+                const tag = job.tagById?.[id] || '';
                 return {
-                    job_id: jobId,
+                    job_id: job.jobId,
                     inventory_id: id,
                     tag_id: tag,
                     labels_printed: perTag.get(tag) ?? 1,
@@ -351,157 +530,78 @@ export const LabelPrintStudio: React.FC = () => {
                 templateId: 'lbl-item-template-v4',
                 kind: 'label',
                 season: '826',
-                legacyPrintJobId: jobId,
+                legacyPrintJobId: job.jobId,
                 getSnapshot: () => rows
             });
 
             if (!isReprint) {
-                for (let i = 0; i < ids.length; i += 50) {
+                for (let i = 0; i < job.ids.length; i += 50) {
                     await supabase.from('inventory').update({
                         print_date: stamp,
-                        print_job_checksum: checksum,
-                        print_job_id: jobId,
+                        print_job_checksum: job.checksum,
+                        print_job_id: job.jobId,
                         updated_at: stamp,
-                    }).in('id', ids.slice(i, i + 50));
+                    }).in('id', job.ids.slice(i, i + 50));
                 }
             }
 
-            setLastPrintJob({ jobId, labelCount, itemCount: ids.length, at: stamp, isReprint });
-            toast.success(`Logged ${labelCount} label${labelCount !== 1 ? 's' : ''} across ${ids.length} item${ids.length !== 1 ? 's' : ''}`);
+            setLastPrintJob({ jobId: job.jobId, labelCount, itemCount: job.ids.length, at: stamp, isReprint });
+            toast.success(`Logged ${labelCount} label${labelCount !== 1 ? 's' : ''} across ${job.ids.length} item${job.ids.length !== 1 ? 's' : ''}`);
+            console.log(`[LabelPrintStudio] print job ${job.jobId} recorded (${reason})`);
         } catch (e: any) {
             console.error('[LabelPrintStudio] commitPrintJob error:', e);
         }
-    }, [user]);
+    }, [user, selectedItems]);
 
-    // Helper to render label to Canvas
-    const renderLabelInstanceToCanvas = async (item: any, size: '50x30' | '50x50', logo: 'ArtOfDecor' | 'RareEarth', axoDataUrl?: string) => {
-        let axoImg: HTMLImageElement | undefined = undefined;
-        if (axoDataUrl) {
-            try {
-                axoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = () => resolve(img);
-                    img.onerror = reject;
-                    img.src = axoDataUrl;
-                });
-            } catch {
-                // skip
-            }
-        }
-
-        let logoImg: HTMLImageElement | undefined = undefined;
-        if (size === '50x50') {
-            try {
-                logoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = () => resolve(img);
-                    img.onerror = reject;
-                    img.src = logo === 'RareEarth' ? RareEarthLogoBase64 : ART_OF_DECOR_LOGO;
-                });
-            } catch {
-                // skip
-            }
-        }
-
-        const tag = item.codes?.bookBarcode || '';
-        const options: ItemLabelOptions = {
-            tagId: tag,
-            qrData: tag,
-            axoImage: axoImg,
-            labelSize: size,
-            logoVariant: logo,
-            logoImage: logoImg
-        };
-
-        const spec = buildItemLabelSpec(item, options);
-        return renderLabelToCanvas(spec);
-    };
-
-    // Direct Print All
+    // Print All (through designer print engine)
     const handlePrintAll = async (isReprint = false) => {
-        if (labelInstances.length === 0) {
+        if (selectedItems.length === 0) {
             toast.error("No labels selected to print");
             return;
         }
 
-        if (!isBluetoothSupported) {
-            toast.error("Direct Bluetooth requires Chrome, Edge, or Bluefy on iOS. Generating Backup XLSX instead.");
-            handleGenerateXLSX();
-            return;
-        }
-
-        if (!driverRef.current.isConnected()) {
-            try {
-                const connected = await handleConnectBluetooth();
-                if (!connected) return;
-            } catch {
-                return;
-            }
-        }
-
-        if (!driverRef.current.isConnected()) {
-            toast.error("Please connect your Phomemo printer first");
-            return;
-        }
-
-        setBleState('printing');
-        setPrintProgress({ current: 0, total: labelInstances.length });
-        cancelPrintRef.current = false;
-
-        const tagById: Record<string, string> = {};
-        selectedItems.forEach((it: any) => {
-            const id = it.row ?? it.data?.id ?? it.id;
-            if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
-        });
-
-        const printedTags: string[] = [];
-        const jobId = `PJ-${Date.now().toString(36).toUpperCase()}`;
-
+        const tid = toast.loading(tr("Generating dynamic 3D structures for labels..."));
         try {
-            for (let i = 0; i < labelInstances.length; i++) {
-                if (cancelPrintRef.current) {
-                    ((toast as any).info || toast)(`Printing paused after ${i} labels`);
-                    break;
-                }
-                setPrintProgress({ current: i + 1, total: labelInstances.length });
-                const inst = labelInstances[i];
-                const item = inst.item;
-                const tag = String(item.codes?.bookBarcode || '');
-
-                const canvas = await renderLabelInstanceToCanvas(item, activeLabelSize, logoVariant, axoCache[tag]);
-                await driverRef.current.printCanvas(canvas);
-                printedTags.push(tag);
+            const batchProject = await buildBatchJSONAsync(selectedItems, workbookPrefix, activeLabelSize, logoVariant);
+            try {
+                localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            } catch (storageError) {
+                console.warn('LocalStorage quota exceeded. Relying purely on postMessage for iframe payload transfer.');
             }
+            pendingBatchRef.current = batchProject;
 
-            if (printedTags.length > 0) {
-                const checksum = await computeJobChecksum({
-                    jobId,
-                    tags: printedTags,
-                    size: activeLabelSize,
-                    at: new Date().toISOString()
-                });
+            const tagById: Record<string, string> = {};
+            selectedItems.forEach((it: any) => {
+                const id = it.row ?? it.data?.id ?? it.id;
+                if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
+            });
+            pendingPrintJobRef.current = {
+                ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
+                tagById,
+                checksum: await computeJobChecksum(batchProject),
+                jobId: `PJ-${Date.now().toString(36).toUpperCase()}`,
+                isReprint,
+            };
 
-                await commitPrintJob({
-                    jobId,
-                    checksum,
-                    ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
-                    tagById,
-                    printedTags,
-                    labelCount: printedTags.length,
-                    isReprint,
-                    labelSize: activeLabelSize,
-                    source: 'batch'
-                });
-                setBleState('connected');
-                toast.success(`Printed ${printedTags.length} labels successfully!`);
+            toast.success(tr("Batch Prepared! Launching Print Engine"), { id: tid });
+            setIsDesignerOpen(true);
+
+            if (iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage(
+                    { type: 'LOAD_DESIGN', payload: batchProject },
+                    window.location.origin
+                );
+                const currentTemplateData = batchProject.templateData;
+                setTimeout(() => {
+                    iframeRef.current?.contentWindow?.postMessage(
+                        { type: 'UPDATE_DATA', payload: { templateData: currentTemplateData } },
+                        window.location.origin
+                    );
+                }, 300);
             }
-        } catch (err: any) {
-            console.error('[LabelPrintStudio] Direct print streaming error:', err);
-            setBleState('error');
-            setBleError(err?.message || 'Print streaming failed');
-            toast.error(`Printing error: ${err?.message || 'Printer disconnected'}`);
-        } finally {
-            setPrintProgress({ current: 0, total: 0 });
+        } catch (e: any) {
+            console.error('[LabelPrintStudio] handlePrintAll failed:', e);
+            toast.error(`Print setup failed: ${e?.message || 'unknown error'}`, { id: tid });
         }
     };
 
@@ -678,25 +778,71 @@ export const LabelPrintStudio: React.FC = () => {
     };
 
     // Edit Label (Handoff to iframe designer)
-    const handleOpenDesigner = () => {
-        const batchProject = {
-            name: `Onyx_Batch_${new Date().toISOString().split('T')[0]}`,
-            exportedAt: new Date().toISOString(),
-            labelSize: { width: activeLabelSize === '50x50' ? 50 : 50, height: activeLabelSize === '50x50' ? 50 : 30 },
-            records: labelInstances.map(inst => ({
-                "TAG ID": String(inst.item.codes?.bookBarcode || ''),
-                "DESCRIPTION": `${inst.item.normData?.shape || ''} ${inst.item.normData?.itemType || inst.item.normData?.type || inst.item.normData?.shortDescription || ''}`.trim() || 'Onyx Piece',
-                "COLOR MATERIAL": `${inst.item.normData?.color || ''} ${inst.item.normData?.material || 'Onyx'}`.trim(),
-                "SIZES": `${inst.item.normData?.widthCm || 0}*${inst.item.normData?.lengthCm ?? inst.item.normData?.widthCm ?? 0}*${inst.item.normData?.heightCm || 0} CM`,
-                "BOOK RETAIL": `${inst.item.codes?.bookAqCode || ''}-${String(inst.item.normData?.workbook || '326').replace(/v/gi, '')}${String(inst.item.codes?.bookRetail || '0').padStart(4, '0')}`,
-                "QUANTITY": 1,
-                "QR DATA": String(inst.item.codes?.bookBarcode || ''),
-                "AXO_IMAGE": axoCache[String(inst.item.codes?.bookBarcode || '')] || ''
-            }))
-        };
-        try { localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject)); } catch {}
-        pendingBatchRef.current = batchProject;
-        setIsDesignerOpen(true);
+    const handleOpenDesigner = async () => {
+        if (selectedItems.length === 0) {
+            toast.error("No labels selected to edit");
+            return;
+        }
+        const tid = toast.loading(tr("Generating dynamic 3D structures for labels..."));
+        try {
+            const batchProject = await buildBatchJSONAsync(selectedItems, workbookPrefix, activeLabelSize, logoVariant);
+            try {
+                localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            } catch (storageError) {
+                console.warn('LocalStorage quota exceeded. Relying purely on postMessage for iframe payload transfer.');
+            }
+            pendingBatchRef.current = batchProject;
+
+            const tagById: Record<string, string> = {};
+            selectedItems.forEach((it: any) => {
+                const id = it.row ?? it.data?.id ?? it.id;
+                if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
+            });
+            pendingPrintJobRef.current = {
+                ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
+                tagById,
+                checksum: await computeJobChecksum(batchProject),
+                jobId: `PJ-${Date.now().toString(36).toUpperCase()}`,
+                isReprint: false,
+            };
+
+            toast.success(tr("Batch Prepared! Launching Visual Designer"), { id: tid });
+            setIsDesignerOpen(true);
+
+            if (iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage(
+                    { type: 'LOAD_DESIGN', payload: batchProject },
+                    window.location.origin
+                );
+                const currentTemplateData = batchProject.templateData;
+                setTimeout(() => {
+                    iframeRef.current?.contentWindow?.postMessage(
+                        { type: 'UPDATE_DATA', payload: { templateData: currentTemplateData } },
+                        window.location.origin
+                    );
+                }, 300);
+            }
+        } catch (e: any) {
+            console.error('[LabelPrintStudio] handleOpenDesigner failed:', e);
+            toast.error(`Designer setup failed: ${e?.message || 'unknown error'}`, { id: tid });
+        }
+    };
+
+    const handleIframeLoad = () => {
+        if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
+            const batch = pendingBatchRef.current;
+            iframeRef.current.contentWindow.postMessage(
+                { type: 'LOAD_DESIGN', payload: batch },
+                window.location.origin
+            );
+            const currentTemplateData = batch.templateData;
+            setTimeout(() => {
+                iframeRef.current?.contentWindow?.postMessage(
+                    { type: 'UPDATE_DATA', payload: { templateData: currentTemplateData } },
+                    window.location.origin
+                );
+            }, 300);
+        }
     };
 
     // Iframe designer message handler
@@ -704,37 +850,58 @@ export const LabelPrintStudio: React.FC = () => {
         const handleMessage = (event: MessageEvent) => {
             // only the same-origin designer frame may talk to the studio
             if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
-            if (event.data?.type === 'DESIGNER_READY' && pendingBatchRef.current && iframeRef.current?.contentWindow) {
-                iframeRef.current.contentWindow.postMessage({ type: 'ONYX_LOAD_BATCH', payload: pendingBatchRef.current }, window.location.origin);
-                iframeRef.current.contentWindow.postMessage({ type: 'LOAD_DESIGN', payload: { templateData: pendingBatchRef.current.records, labelSize: pendingBatchRef.current.labelSize } }, window.location.origin);
-            }
-            if (event.data?.type === 'PRINT_COMPLETE' || event.data?.type === 'PRINT_DONE') {
-                const printedTags = Array.isArray(event.data.payload?.printedTags) ? event.data.payload.printedTags : [];
-                const tagById: Record<string, string> = {};
-                selectedItems.forEach((it: any) => {
-                    const id = it.row ?? it.data?.id ?? it.id;
-                    if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
-                });
 
-                commitPrintJob({
-                    jobId: `PJ-${Date.now().toString(36).toUpperCase()}`,
-                    checksum: '',
-                    ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
-                    tagById,
-                    printedTags,
-                    labelCount: printedTags.length || selectedItems.length,
-                    isReprint: false,
-                    labelSize: activeLabelSize,
-                    source: 'designer'
-                });
+            if (event.data?.type === 'DESIGNER_READY') {
+                if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
+                    const batch = pendingBatchRef.current;
+                    iframeRef.current.contentWindow.postMessage(
+                        { type: 'LOAD_DESIGN', payload: batch },
+                        window.location.origin
+                    );
+                    const currentTemplateData = batch.templateData;
+                    setTimeout(() => {
+                        iframeRef.current?.contentWindow?.postMessage(
+                            { type: 'UPDATE_DATA', payload: { templateData: currentTemplateData } },
+                            window.location.origin
+                        );
+                    }, 300);
+                    pendingBatchRef.current = null;
+                }
             }
+
+            if (event.data?.type === 'PRINT_COMPLETE' || event.data?.type === 'PRINT_DONE') {
+                commitPrintJob(event.data.payload || {}, 'designer reported PRINT_COMPLETE');
+            }
+
             if (event.data?.type === 'CLOSE_WIZARD') {
+                pendingPrintJobRef.current = null;
                 setIsDesignerOpen(false);
             }
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [commitPrintJob, selectedItems, activeLabelSize, labelInstances, axoCache]);
+    }, [commitPrintJob]);
+
+    useEffect(() => {
+        if (isDesignerOpen && iframeRef.current?.contentWindow && !pendingBatchRef.current) {
+            const timer = setTimeout(async () => {
+                try {
+                    const batchProject = await buildBatchJSONAsync(selectedItems, workbookPrefix, activeLabelSize, logoVariant);
+                    try {
+                        localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+                    } catch (storageError) {}
+                    
+                    iframeRef.current?.contentWindow?.postMessage(
+                        { type: 'UPDATE_DATA', payload: { templateData: batchProject.templateData } },
+                        window.location.origin
+                    );
+                } catch (e) {
+                    console.error('Failed to update quantities in iframe', e);
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [quantities, isDesignerOpen, selectedItems, workbookPrefix, activeLabelSize, logoVariant]);
 
     // Self-test handler for absorbed Verify tab
     const handleRunSelfTest = async () => {
@@ -1355,7 +1522,7 @@ export const LabelPrintStudio: React.FC = () => {
                         <div className="lps-header px-6 flex items-center justify-between shrink-0">
                             <div className="flex items-center gap-3">
                                 <button
-                                    onClick={() => setIsDesignerOpen(false)}
+                                    onClick={() => { pendingPrintJobRef.current = null; setIsDesignerOpen(false); }}
                                     className="lps-touch-target px-3 py-1.5 liquid-control text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer"
                                 >
                                     <ArrowLeft size={16} />
@@ -1364,7 +1531,7 @@ export const LabelPrintStudio: React.FC = () => {
                                 <span className="text-sm font-bold">Phomemo Visual Designer</span>
                             </div>
                             <button
-                                onClick={() => setIsDesignerOpen(false)}
+                                onClick={() => { pendingPrintJobRef.current = null; setIsDesignerOpen(false); }}
                                 className="lps-touch-target liquid-control rounded-full flex items-center justify-center cursor-pointer"
                                 aria-label="Close Visual Designer"
                             >
@@ -1378,6 +1545,7 @@ export const LabelPrintStudio: React.FC = () => {
                                 className="w-full h-full border-none bg-transparent"
                                 title="Phomemo Designer"
                                 allow="bluetooth"
+                                onLoad={handleIframeLoad}
                             />
                         </div>
                     </div>
