@@ -33,7 +33,7 @@ html.theme-aqua {
   transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
 }
 
-@supports (backdrop-filter: url(#x)) and (not (font: -apple-system-body)) and (not (-moz-appearance: none)) {
+@media not all { /* SVG refraction off (owner 2026-10-17: smeared glass on Chrome); slab glass everywhere */
   .isb-panel {
     backdrop-filter: url(#lq-refract) blur(var(--lq-blur, 30px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
   }

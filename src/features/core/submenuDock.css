@@ -89,7 +89,7 @@ html.theme-aqua {
   backdrop-filter: var(--smd-refract-filter, none) blur(28px) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
 }
 
-@supports (backdrop-filter: url(#x)) and (not (font: -apple-system-body)) and (not (-moz-appearance: none)) {
+@media not all { /* SVG refraction off (owner 2026-10-17: smeared glass on Chrome); slab glass everywhere */
   .smd-card:not([data-smd-refract="on"]) {
     backdrop-filter: url(#lq-refract-soft) blur(var(--lq-blur, 28px)) saturate(var(--lq-saturate, 1.9)) brightness(var(--lq-brightness, 1.08)) !important;
   }

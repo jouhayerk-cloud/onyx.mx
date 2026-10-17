@@ -47,7 +47,7 @@ html.theme-aqua .liquid-surface::before {
 }
 
 /* Chromium SVG Refraction Filter (progressive enhancement) */
-@supports (backdrop-filter: url(#x)) and (not (font: -apple-system-body)) and (not (-moz-appearance: none)) {
+@media not all { /* SVG refraction off (owner 2026-10-17: smeared glass on Chrome); slab glass everywhere */
   .liquid-surface {
     backdrop-filter: url(#lq-refract) blur(var(--lq-blur)) saturate(var(--lq-saturate)) brightness(var(--lq-brightness)) !important;
   }

@@ -2,13 +2,13 @@
  * Island refraction glass effect for Chromium
  */
 /* WebKit parses url() in backdrop-filter but renders nothing (no blur either): Chromium only */
-@supports (backdrop-filter: url(#x)) and (not (font: -apple-system-body)) and (not (-moz-appearance: none)) {
+@media not all { /* SVG refraction off (owner 2026-10-17: smeared glass on Chrome); slab glass everywhere */
     .onyx-island-surface[data-isl-refract="on"] {
         backdrop-filter: url(#isl-refract) blur(28px) saturate(1.9) brightness(1.08) !important;
     }
 }
 
-@supports (backdrop-filter: url(#x)) and (not (font: -apple-system-body)) and (not (-moz-appearance: none)) {
+@media not all { /* SVG refraction off (owner 2026-10-17: smeared glass on Chrome); slab glass everywhere */
     .onyx-island-surface:not([data-isl-refract="on"]) {
         backdrop-filter: url(#lq-refract) blur(28px) saturate(1.9) brightness(1.08) !important;
     }

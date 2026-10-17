@@ -166,8 +166,8 @@ html.theme-aqua {
   --lq-rim-contrast: currentColor;
 }
 
-/* WebKit (iOS/macOS Safari): no SVG refraction, so use the slab glass recipe that looked right there (pre-B1, 3d4168ce) */
-@supports (font: -apple-system-body) {
+/* Slab glass recipe everywhere (pre-B1, 3d4168ce): SVG refraction is off in every browser */
+@supports (display: block) {
   :root {
     --lq-fill-surface: var(--slab-glass-hi, rgba(14, 18, 28, 0.28));
     --lq-fill-panel: var(--slab-glass, rgba(14, 18, 28, 0.34));
