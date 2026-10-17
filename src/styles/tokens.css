@@ -166,11 +166,22 @@ html.theme-aqua {
   --lq-rim-contrast: currentColor;
 }
 
-/* WebKit (iOS/macOS Safari): no SVG refraction, so the glass needs more body (pre-B1 look ~0.30-0.40) */
+/* WebKit (iOS/macOS Safari): no SVG refraction, so use the slab glass recipe that looked right there (pre-B1, 3d4168ce) */
 @supports (font: -apple-system-body) {
-  :root { --lq-fill-surface: rgba(10, 12, 16, 0.30); --lq-fill-panel: rgba(10, 12, 16, 0.36); }
-  html.theme-aqua { --lq-fill-surface: rgba(255, 255, 255, 0.32); --lq-fill-panel: rgba(255, 255, 255, 0.38); }
+  :root {
+    --lq-fill-surface: var(--slab-glass-hi, rgba(14, 18, 28, 0.28));
+    --lq-fill-panel: var(--slab-glass, rgba(14, 18, 28, 0.34));
+    --lq-rim: var(--slab-glass-rim, rgba(255, 255, 255, 0.22));
+    --lq-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.06) 38%, rgba(255, 255, 255, 0.01) 62%, rgba(255, 255, 255, 0.10) 100%);
+  }
+  html.theme-aqua {
+    --lq-fill-surface: var(--slab-glass-hi, rgba(255, 255, 255, 0.28));
+    --lq-fill-panel: var(--slab-glass, rgba(255, 255, 255, 0.34));
+    --lq-rim: var(--slab-glass-rim, rgba(11, 42, 51, 0.15));
+    --lq-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.12) 42%, rgba(255, 255, 255, 0.02) 65%, rgba(255, 255, 255, 0.22) 100%);
+  }
 }
+
 
 /* Theme Gradient Tokens */
 :root {
