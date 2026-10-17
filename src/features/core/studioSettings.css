@@ -718,3 +718,12 @@ html.theme-aqua .colibri-settings-card input {
 .ss-glass-pill:active:not(:disabled) {
   transform: scale(0.96);
 }
+
+/* Light scrim, no blur: the sheet's own glass shows the page behind it (a blurred dark scrim made the glass read solid).
+   Doubled class + html beats slab-glass's bg-black / backdrop-blur sweep. */
+html .ss-scrim.ss-scrim {
+  background-color: rgba(0, 0, 0, 0.15) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}

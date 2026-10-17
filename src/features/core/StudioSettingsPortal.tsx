@@ -322,7 +322,7 @@ export const StudioSettingsPortal: React.FC = () => {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute inset-0 bg-black/30 backdrop-blur-[24px]"
+                    className="ss-scrim absolute inset-0"
                     onClick={handleClose}
                 />
                 <m.div
