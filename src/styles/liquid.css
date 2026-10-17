@@ -6,12 +6,32 @@
   isolation: isolate;
   background-color: var(--lq-fill-surface);
   background-image: var(--lq-sheen);
-  -webkit-backdrop-filter: var(--lq-filter);
-  backdrop-filter: var(--lq-filter);
+  -webkit-backdrop-filter: blur(var(--lq-blur)) saturate(var(--lq-saturate)) brightness(var(--lq-brightness));
+  backdrop-filter: blur(var(--lq-blur)) saturate(var(--lq-saturate)) brightness(var(--lq-brightness));
   border: 1px solid var(--lq-rim);
-  box-shadow: var(--lq-highlight), var(--lq-shadow);
+  box-shadow: var(--lq-highlight), var(--lq-shadow), inset 0 0 20px rgba(255, 255, 255, 0.05);
   color: var(--lq-ink);
   border-radius: var(--lq-radius-surface);
+}
+
+/* Specular top rim highlight and soft inner shadow via ::before */
+.liquid-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 24px);
+  mix-blend-mode: screen;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), inset 0 0 16px rgba(255, 255, 255, 0.05);
+  z-index: 1;
+}
+
+/* Aqua theme adjustment for specular top rim */
+html.theme-aqua .liquid-surface::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 24px);
+  mix-blend-mode: overlay;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.75), inset 0 0 16px rgba(11, 42, 51, 0.04);
 }
 
 /* 2. Embedded functional containers: cards inside a surface (lighter or no blur) */
@@ -26,13 +46,25 @@
   border-radius: var(--lq-radius-panel);
 }
 
+/* Chromium SVG Refraction Filter (progressive enhancement) */
+@supports (backdrop-filter: url(#x)) {
+  .liquid-surface {
+    backdrop-filter: url(#lq-refract) blur(var(--lq-blur)) saturate(var(--lq-saturate)) brightness(var(--lq-brightness)) !important;
+  }
+
+  /* .liquid-panel uses lq-refract-soft only when not nested in a surface */
+  .liquid-panel {
+    backdrop-filter: url(#lq-refract-soft) blur(var(--lq-blur-panel)) saturate(var(--lq-saturate)) brightness(var(--lq-brightness)) !important;
+  }
+}
+
 /* Performance: one blurred layer per stack; nested panels suppress redundant blur */
 .liquid-surface .liquid-panel,
 .liquid-panel .liquid-panel,
 .liquid-surface .liquid-control,
 .liquid-panel .liquid-control {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* 3. Interactive glass keys: buttons, fields, chips */
@@ -53,24 +85,31 @@
 /* Accessibility: solid fill fallback when reduced transparency is requested */
 @media (prefers-reduced-transparency: reduce) {
   .liquid-surface {
-    backdrop-filter: none;
-    background-color: var(--lq-solid-surface);
-    background-image: none;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-surface) !important;
+    background-image: none !important;
+  }
+
+  .liquid-surface::before {
+    display: none !important;
   }
 
   .liquid-panel {
-    backdrop-filter: none;
-    background-color: var(--lq-solid-panel);
-    background-image: none;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-panel) !important;
+    background-image: none !important;
   }
 
   .liquid-control {
-    backdrop-filter: none;
-    background-color: var(--lq-solid-control);
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-control) !important;
   }
 
   .liquid-control:hover {
-    background-color: var(--lq-solid-control);
+    background-color: var(--lq-solid-control) !important;
   }
 }
 
@@ -80,5 +119,20 @@
   .liquid-panel,
   .liquid-control {
     border-color: var(--lq-rim-contrast);
+  }
+}
+
+/* Accessibility: respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .liquid-surface,
+  .liquid-panel,
+  .liquid-control {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .liquid-surface::before {
+    transition: none !important;
+    animation: none !important;
   }
 }
