@@ -1,12 +1,14 @@
 /*
  * Island refraction glass effect for Chromium
  */
-.onyx-island-surface[data-isl-refract="on"] {
-    -webkit-backdrop-filter: blur(28px) saturate(1.9) brightness(1.08) !important;
-    backdrop-filter: url(#isl-refract) blur(28px) saturate(1.9) brightness(1.08) !important;
+/* WebKit parses url() in backdrop-filter but renders nothing (no blur either): Chromium only */
+@supports (backdrop-filter: url(#x)) and (not (font: -apple-system-body)) and (not (-moz-appearance: none)) {
+    .onyx-island-surface[data-isl-refract="on"] {
+        backdrop-filter: url(#isl-refract) blur(28px) saturate(1.9) brightness(1.08) !important;
+    }
 }
 
-@supports (backdrop-filter: url(#x)) {
+@supports (backdrop-filter: url(#x)) and (not (font: -apple-system-body)) and (not (-moz-appearance: none)) {
     .onyx-island-surface:not([data-isl-refract="on"]) {
         backdrop-filter: url(#lq-refract) blur(28px) saturate(1.9) brightness(1.08) !important;
     }
