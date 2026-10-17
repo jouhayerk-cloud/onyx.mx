@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAtom, useSetAtom } from 'jotai/react';
 import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
-import { isPrintCenterOpenAtom } from '../print/printState';
 import {
     activeViewAtom,
     activeSubMenuAtom,
@@ -266,7 +265,6 @@ export const IslandSidebar: React.FC = () => {
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
     const setLogisticsSubTab = useSetAtom(logisticsSubTabAtom);
     const [isSettingsOpen, setIsSettingsOpen] = useAtom(isStudioSettingsOpenAtom);
-    const [isPrintCenterOpen, setIsPrintCenterOpen] = useAtom(isPrintCenterOpenAtom);
     
     const [isHoverPeek, setIsHoverPeek] = useState(false);
     // the round toggle peeks in from the left edge; a tap makes it grow and slide into the page, then the sidebar opens
@@ -436,7 +434,7 @@ export const IslandSidebar: React.FC = () => {
         if (activeItem) {
             activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
-    }, [activeView, activeSubMenu, isPrintCenterOpen]);
+    }, [activeView, activeSubMenu]);
 
     const handleMobileHide = useCallback(() => {
         if (isPhone || window.innerWidth <= 768) {
@@ -625,8 +623,7 @@ export const IslandSidebar: React.FC = () => {
                             isHoverPeek={isHoverPeek}
                         />
                     )}
-                    {/* Vendors enter stock but have no Print Center: Add entry sits beside Inventory. */}
-                    {see('add-entry') && !see('print-center') && (
+                    {see('add-entry') && (
                         <NavItem
                             icon={FilePlus2}
                             label={tr("Add entry")}
@@ -637,23 +634,7 @@ export const IslandSidebar: React.FC = () => {
                             isHoverPeek={isHoverPeek}
                         />
                     )}
-                    {see('inventory') && (see('add-entry') && see('print-center') ? (
-                        <NavItemWithSubmenuComponent
-                            viewId="inventory"
-                            label={tr("Inventory")}
-                            icon="album"
-                            subItems={[
-                                { id: 'add-entry', label: tr("Add entry"), icon: 'file-plus', action: () => { setActiveView('upload'); handleMobileHide(); }, isActive: activeView === 'upload' },
-                                { id: 'print-center', label: tr("Print Center"), icon: 'printer', action: () => { setIsPrintCenterOpen(open => !open); handleMobileHide(); }, isActive: isPrintCenterOpen }
-                            ]}
-                            parentActive={activeView === 'inventory'}
-                            onParentClick={() => { setActiveView('inventory'); }}
-                            isCompact={isCompact}
-                            isRail={isRail}
-                            isHoverPeek={isHoverPeek}
-                            onHideSidebarMobile={handleMobileHide}
-                        />
-                    ) : (
+                    {see('inventory') && (
                         <NavItem
                             icon={Album}
                             label={tr("Inventory")}
@@ -663,7 +644,7 @@ export const IslandSidebar: React.FC = () => {
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
                         />
-                    ))}
+                    )}
                     {see('warehouse') && (
                         <NavItem
                             icon={Package}

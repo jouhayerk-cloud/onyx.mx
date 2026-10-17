@@ -1,12 +1,13 @@
 import React from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
+import { useAtomValue, useSetAtom } from 'jotai/react';
 import { useRegisterTools, ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { PrintJobsPanel } from './PrintJobsPanel';
 import { Printer } from 'lucide-react';
 import { tr } from '../../lib/i18n';
-import { isPrintCenterOpenAtom } from './printState';
+import { isPrintCenterOpenAtom, printCenterTabAtom } from './printState';
+import { isPackingPrintWizardOpenAtom } from '../../lib/atoms';
 
-const getTools = (isOpen: boolean, toggleOpen: () => void): ToolDescriptor[] => [
+const getTools = (openHistory: () => void): ToolDescriptor[] => [
     {
         id: 'print.jobs',
         moduleId: 'global',
@@ -15,33 +16,39 @@ const getTools = (isOpen: boolean, toggleOpen: () => void): ToolDescriptor[] => 
         kind: 'widget',
         group: tr('Print'),
         order: 100,
+        run: openHistory,
         render: () => <PrintJobsPanel season='826' />
-    },
-    {
-        id: 'print.center',
-        moduleId: 'global',
-        label: tr('Print Center'),
-        icon: Printer,
-        kind: 'toggle',
-        group: tr('Print'),
-        order: 110,
-        pinned: false,
-        pressed: isOpen,
-        run: toggleOpen
     }
 ];
 
 export function PrintToolsRegistrar() {
     const isEnabled = useAtomValue(islandCommandsEnabledAtom);
-    const [isOpen, setIsOpen] = useAtom(isPrintCenterOpenAtom);
-    const tools = getTools(isOpen, () => setIsOpen((p: boolean) => !p));
+    const setIsStudioOpen = useSetAtom(isPackingPrintWizardOpenAtom);
+    const setPcTab = useSetAtom(printCenterTabAtom);
+    const setIsPrintCenterOpen = useSetAtom(isPrintCenterOpenAtom);
+
+    const openHistory = () => {
+        setPcTab('history');
+        setIsPrintCenterOpen(true);
+        setIsStudioOpen(true);
+    };
+
+    const tools = getTools(openHistory);
     useRegisterTools('print', tools, isEnabled);
     return null;
 }
 
-/** Returns the print tool entries, with the Print Center toggle wired to its open state. */
+/** Returns the print tool entries. */
 export function usePrintTools(): ToolDescriptor[] {
-    const [isOpen, setIsOpen] = useAtom(isPrintCenterOpenAtom);
-    return getTools(isOpen, () => setIsOpen((p: boolean) => !p));
-}
+    const setIsStudioOpen = useSetAtom(isPackingPrintWizardOpenAtom);
+    const setPcTab = useSetAtom(printCenterTabAtom);
+    const setIsPrintCenterOpen = useSetAtom(isPrintCenterOpenAtom);
 
+    const openHistory = () => {
+        setPcTab('history');
+        setIsPrintCenterOpen(true);
+        setIsStudioOpen(true);
+    };
+
+    return getTools(openHistory);
+}

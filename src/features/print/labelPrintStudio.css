@@ -1,0 +1,135 @@
+/* ==========================================================================
+   Phomemo Label Print Studio Styles
+   Unified Phomemo thermal label printing UI & absorbed Print Center.
+   ========================================================================== */
+
+.lps-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(40px);
+  backdrop-filter: blur(40px);
+}
+
+@media (min-width: 768px) {
+  .lps-overlay {
+    padding: 1.5rem;
+  }
+}
+
+/* Master Sheet Container (outer shell uses .liquid-panel) */
+.lps-sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  max-width: 88rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 768px) {
+  .lps-sheet {
+    height: 90vh;
+    border-radius: 1.5rem;
+  }
+}
+
+/* Header Bar (uses .liquid-surface) */
+.lps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+@media (min-width: 768px) {
+  .lps-header {
+    padding: 1rem 1.5rem;
+  }
+}
+
+/* Touch targets: min 44x44pt for touch interactions */
+.lps-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile Thumb-Zone Sticky Action Bar */
+.lps-bottom-bar {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .lps-bottom-bar {
+    padding: 1rem 1.5rem;
+  }
+}
+
+/* Bluetooth Status Indicators */
+.lps-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Refraction effect guard (Chromium only) */
+@supports (backdrop-filter: url(#lq-refract)) {
+  .lps-refract {
+    backdrop-filter: url(#lq-refract);
+  }
+}
+
+/* Tab Switcher Buttons */
+.lps-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.lps-tab-btn.active {
+  background-color: var(--main-color, #7FBBFF);
+  color: #000000;
+  box-shadow: 0 0 15px rgba(var(--main-color-rgb, 127, 187, 255), 0.4);
+}
+
+.lps-tab-btn:not(.active) {
+  color: var(--secondary-text-color, rgba(255, 255, 255, 0.5));
+}
+
+.lps-tab-btn:not(.active):hover {
+  color: var(--text-color, #ffffff);
+  background-color: var(--lq-fill-control-hover, rgba(255, 255, 255, 0.08));
+}

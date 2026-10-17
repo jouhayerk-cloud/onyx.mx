@@ -13,6 +13,7 @@ import {
 import { useDatabase } from '../../lib/hooks';
 import { CratesInventoryView } from './CratesInventoryView';
 import { CrateCutfileStencilView, BED_OPTIONS, MATERIAL_PRESETS } from './CrateCutfileStencilView';
+import { PackagingStudio } from '../packaging/PackagingStudio';
 import { 
     normalizeInventoryData, 
     getItemPaddedVolume, 
@@ -48,18 +49,18 @@ import {
 } from 'lucide-react';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
-// ─── Volume / Crate Recommendations ──────────────────────────────────────────
+// ─── Volume / Packaging Recommendations ──────────────────────────────────────
 const STANDARD_CRATES = [
-    { name: 'TypeTray (Boxes.py Laser)', width: 30, length: 30, height: 15, volumeCm3: 30 * 30 * 15 },
-    { name: 'UniversalBox (Finger-Joint CNC)', width: 38, length: 41, height: 38, volumeCm3: 38 * 41 * 38 },
-    { name: 'Standard Medium Crate', width: 60, length: 60, height: 60, volumeCm3: 60 * 60 * 60 },
-    { name: 'Large Deep Crate', width: 80, length: 80, height: 80, volumeCm3: 80 * 80 * 80 },
-    { name: 'Pallet Freight Unit', width: 120, length: 100, height: 120, volumeCm3: 120 * 100 * 120 },
+    { name: 'FEFCO 0201 Box (Small Lamp/Decor)', width: 35, length: 35, height: 25, volumeCm3: 35 * 35 * 25 },
+    { name: 'FEFCO 0201 Box (Medium Lamp)', width: 45, length: 45, height: 40, volumeCm3: 45 * 45 * 40 },
+    { name: 'ISPM-15 Cleated Crate (Standard Medium)', width: 60, length: 60, height: 60, volumeCm3: 60 * 60 * 60 },
+    { name: 'ISPM-15 Cleated Crate (Large Sculpture)', width: 80, length: 80, height: 80, volumeCm3: 80 * 80 * 80 },
+    { name: 'GMA 48×40" Freight Pallet', width: 102, length: 122, height: 120, volumeCm3: 102 * 122 * 120 },
 ];
 
 function recommendCrate(totalVolumeCm3: number) {
     if (totalVolumeCm3 <= 0) {
-        return { name: 'UniversalBox (Finger-Joint CNC)', dims: '38×41×38 cm', width: 38, length: 41, height: 38, fillPct: 0 };
+        return { name: 'FEFCO 0201 Box (Medium Lamp)', dims: '45×45×40 cm', width: 45, length: 45, height: 40, fillPct: 0 };
     }
     // Target 65-80% internal fill efficiency
     for (const c of STANDARD_CRATES) {
@@ -481,7 +482,7 @@ export const WarehouseView: React.FC = () => {
                         </span>
                     </button>
 
-                    {/* [ 📐 Boxes.py Laser Studio ] */}
+                    {/* [ 📦 Packaging Studio ] */}
                     <button
                         type="button"
                         data-warehouse-tab="boxes"
@@ -491,12 +492,12 @@ export const WarehouseView: React.FC = () => {
                                 ? 'bg-amber-500/25 text-amber-400 border border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
                                 : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
                         }`}
-                        title="Boxes.py Laser Studio"
+                        title="Packaging Studio"
                     >
-                        <span className="text-sm">📐</span>
-                        <span>{tr("Laser Studio")} (Boxes.py)</span>
+                        <span className="text-sm">📦</span>
+                        <span>{tr("Packaging Studio")}</span>
                         <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-[10px] font-mono text-amber-300 font-bold border border-amber-400/30">
-                            v2.0
+                            v1.0
                         </span>
                     </button>
                 </div>
@@ -998,106 +999,15 @@ export const WarehouseView: React.FC = () => {
                     </div>
                 )}
 
-                {/* ── TAB 3: LASER STENCILS (BOXES.PY) STUDIO ── */}
+                {/* ── TAB 3: PACKAGING STUDIO ── */}
                 {warehouseTab === 'stencils' && (
-                    <div className="w-full h-full p-4 sm:p-8 flex flex-col gap-6">
-                        {/* Stencil Crate Selector Bar */}
-                        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-3xl bg-[var(--lq-fill-panel)] backdrop-blur-2xl border border-[var(--lq-rim-subtle)] shadow-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
-                                    <Scissors size={20} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <h3 className="text-sm font-bold text-[var(--lq-ink)] flex items-center gap-2">
-                                        <span>{tr("Laser Stencil Studio (approximate preview)")}</span>
-                                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold">
-                                            v2.0
-                                        </span>
-                                    </h3>
-                                    <p className="text-[11px] text-[var(--lq-ink)]/50">
-                                        {tr("Generate parametric cutfiles, nesting telemetry, and LightBurn jobs.")}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Crate Selection Controls */}
-                            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
-                                <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--lq-ink)]/40 shrink-0">
-                                    {tr("Source Unit:")}
-                                </span>
-                                <select
-                                    value={stencilSelectedCrateId}
-                                    onChange={(e) => setStencilSelectedCrateId(e.target.value)}
-                                    className="bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] rounded-2xl px-4 py-2.5 min-h-[44px] text-xs font-semibold text-[var(--lq-ink)] focus:outline-none focus:border-amber-400/50 transition-all cursor-pointer"
-                                >
-                                    <option value="custom">⚙️ {tr("Custom Parametric Crate")}</option>
-                                    {crates.map(c => {
-                                        const { label } = getCrateDisplayName(c, crates, allInventory);
-                                        return (
-                                            <option key={c.id} value={c.id}>
-                                                📦 {label || c.id.slice(0, 8).toUpperCase()} ({c.width_cm}×{c.length_cm}×{c.height_cm} cm)
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* If Custom Crate: Numerical Inputs */}
-                        {stencilSelectedCrateId === 'custom' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-3xl bg-[var(--lq-fill-panel)] border border-[var(--lq-rim-subtle)] backdrop-blur-xl">
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] font-mono uppercase tracking-widest text-[var(--lq-ink)]/40">
-                                        {tr("Width (cm)")}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="10"
-                                        max="300"
-                                        value={customDims.width}
-                                        onChange={(e) => setCustomDims(prev => ({ ...prev, width: Number(e.target.value) || 60 }))}
-                                        className="bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] rounded-2xl px-4 py-2 min-h-[44px] text-sm font-mono text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] font-mono uppercase tracking-widest text-[var(--lq-ink)]/40">
-                                        {tr("Length (cm)")}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="10"
-                                        max="300"
-                                        value={customDims.length}
-                                        onChange={(e) => setCustomDims(prev => ({ ...prev, length: Number(e.target.value) || 60 }))}
-                                        className="bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] rounded-2xl px-4 py-2 min-h-[44px] text-sm font-mono text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] font-mono uppercase tracking-widest text-[var(--lq-ink)]/40">
-                                        {tr("Height (cm)")}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="10"
-                                        max="300"
-                                        value={customDims.height}
-                                        onChange={(e) => setCustomDims(prev => ({ ...prev, height: Number(e.target.value) || 60 }))}
-                                        className="bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] rounded-2xl px-4 py-2 min-h-[44px] text-sm font-mono text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Embedded Full Interactive CrateCutfileStencilView */}
-                        <div className="flex-1 min-h-[600px] rounded-3xl overflow-hidden border border-white/10 bg-black/40 shadow-2xl relative">
-                            <CrateCutfileStencilView
-                                width={stencilWidth}
-                                length={stencilLength}
-                                height={stencilHeight}
-                                items={stencilItems}
-                                crateName={activeStencilCrate ? activeStencilCrate.id.slice(0, 8) : 'Custom_Crate'}
-                            />
-                        </div>
+                    <div className="w-full h-full pb-16 flex flex-col">
+                        <PackagingStudio
+                            embedded={true}
+                            initialStagedItems={selectedItemIds.size > 0 
+                                ? (allInventory || []).filter(i => selectedItemIds.has(String(i.row)))
+                                : undefined}
+                        />
                     </div>
                 )}
             </main>

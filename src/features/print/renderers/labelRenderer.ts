@@ -8,7 +8,7 @@ export type LabelElement =
     | { type: 'barcode'; x: number; y: number; width: number; height: number; data: string; rotation?: number }
     | { type: 'line'; x1: number; y1: number; x2: number; y2: number; thickness: number }
     | { type: 'rect'; x: number; y: number; width: number; height: number; thickness: number; fill?: boolean }
-    | { type: 'image'; x: number; y: number; width: number; height: number; image: ImageBitmap | HTMLCanvasElement; rotation?: number };
+    | { type: 'image'; x: number; y: number; width: number; height: number; image: ImageBitmap | HTMLCanvasElement | HTMLImageElement; rotation?: number };
 
 export interface LabelSpec {
     presetId?: keyof typeof LABEL_STOCK_PRESETS;
@@ -44,7 +44,10 @@ export interface InventoryItemForLabel {
 export interface ItemLabelOptions {
     tagId: string;
     qrData: string;
-    axoImage?: HTMLCanvasElement | ImageBitmap;
+    axoImage?: HTMLCanvasElement | ImageBitmap | HTMLImageElement;
+    labelSize?: '50x30' | '50x50';
+    logoVariant?: 'ArtOfDecor' | 'RareEarth';
+    logoImage?: HTMLCanvasElement | ImageBitmap | HTMLImageElement;
 }
 
 export async function renderLabelToCanvas(spec: LabelSpec): Promise<HTMLCanvasElement> {
@@ -293,98 +296,242 @@ export async function monoBitmapToPngBlob(bitmap: MonoBitmap): Promise<Blob> {
 
 export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLabelOptions): LabelSpec {
     const elements: LabelElement[] = [];
-    
+    const isSquare = options.labelSize === '50x50';
+    const retail = `${item.codes.bookAqCode || ''}-${item.codes.bookBarcode || ''}`;
+    const desc = `${item.normData.shape || ''} ${item.normData.shortDescription || ''}`.trim() || 'Onyx Piece';
+    const matColor = `${item.normData.color || ''} ${item.normData.material || ''}`.trim() || 'Onyx';
+    const sizes = `${item.normData.widthCm || 0}*${item.normData.lengthCm || 0}*${item.normData.heightCm || 0} CM  WT ${item.normData.weightKg || 0} KG`;
+
+    if (isSquare) {
+        // 50x50 mm square layout (384x384 dots for M110 printhead)
+        elements.push({
+            type: 'qr',
+            x: 16,
+            y: 12,
+            size: 96,
+            data: options.qrData
+        });
+
+        elements.push({
+            type: 'text',
+            x: 124,
+            y: 12,
+            text: desc,
+            fontSize: Math.max(20, LABEL_TYPE_SCALE.body.dots),
+            maxWidth: 244,
+            align: 'left',
+            fontFamily: "monospace",
+            fontWeight: "bold"
+        });
+
+        elements.push({
+            type: 'text',
+            x: 124,
+            y: 44,
+            text: matColor,
+            fontSize: Math.max(18, LABEL_TYPE_SCALE.body.dots),
+            maxWidth: 244,
+            align: 'left',
+            fontFamily: "monospace"
+        });
+
+        elements.push({
+            type: 'text',
+            x: 124,
+            y: 74,
+            text: sizes,
+            fontSize: Math.max(14, LABEL_TYPE_SCALE.utility.dots),
+            maxWidth: 244,
+            align: 'left',
+            fontFamily: "monospace",
+            fontWeight: "bold"
+        });
+
+        elements.push({
+            type: 'text',
+            x: 16,
+            y: 124,
+            text: retail,
+            fontSize: Math.max(18, LABEL_TYPE_SCALE.body.dots),
+            align: 'left',
+            fontFamily: "monospace",
+            fontWeight: "bold"
+        });
+
+        elements.push({
+            type: 'text',
+            x: 16,
+            y: 158,
+            text: "Made in Mexico For",
+            fontSize: Math.max(14, LABEL_TYPE_SCALE.utility.dots),
+            align: 'left',
+            fontFamily: "monospace"
+        });
+
+        if (options.logoImage) {
+            elements.push({
+                type: 'image',
+                x: 16,
+                y: 182,
+                width: 174,
+                height: 38,
+                image: options.logoImage
+            });
+        } else {
+            elements.push({
+                type: 'text',
+                x: 16,
+                y: 182,
+                text: options.logoVariant === 'RareEarth' ? 'RARE EARTH GALLERY' : 'ART OF DECOR',
+                fontSize: Math.max(16, LABEL_TYPE_SCALE.utility.dots),
+                align: 'left',
+                fontFamily: "monospace",
+                fontWeight: "bold"
+            });
+        }
+
+        if (options.axoImage) {
+            elements.push({
+                type: 'image',
+                x: 236,
+                y: 92,
+                width: 136,
+                height: 136,
+                image: options.axoImage
+            });
+        }
+
+        elements.push({
+            type: 'barcode',
+            x: 16,
+            y: 232,
+            width: 352,
+            height: 104,
+            data: options.tagId
+        });
+
+        elements.push({
+            type: 'text',
+            x: 192,
+            y: 346,
+            text: options.tagId,
+            fontSize: Math.max(16, LABEL_TYPE_SCALE.utility.dots),
+            align: 'center',
+            fontFamily: "monospace",
+            fontWeight: "bold"
+        });
+
+        return {
+            presetId: 'Standard_50x50',
+            widthDots: 384,
+            heightDots: 384,
+            orientation: 'portrait',
+            elements
+        };
+    }
+
+    // Default 50x30 mm landscape layout (384x230 dots for M110 printhead)
     elements.push({
         type: 'text',
-        // UNKNOWN: The exact rotation origin for the old template was x: -95, y: 107.2, rotation: 90
-        // Safest default: position on left edge and rotate -90 to read upwards from bottom left.
-        x: 16, y: 224, 
+        x: 16,
+        y: 214,
         text: "MADE IN MEXICO",
-        fontSize: Math.max(15, LABEL_TYPE_SCALE.utility.dots),
+        fontSize: Math.max(14, LABEL_TYPE_SCALE.utility.dots),
         rotation: -90,
         fontFamily: "monospace",
         fontWeight: "bold"
     });
-    
-    const retail = `${item.codes.bookAqCode || ''}-${item.codes.bookBarcode || ''}`;
+
     elements.push({
         type: 'text',
-        x: 200, y: 0,
+        x: 192,
+        y: 2,
         text: retail,
         fontSize: Math.max(15, LABEL_TYPE_SCALE.utility.dots),
+        maxWidth: 200,
         align: 'center',
         fontFamily: "monospace",
         fontWeight: "bold"
     });
-    
+
     elements.push({
         type: 'text',
-        x: 200, y: 22,
-        text: `${item.normData.color || ''} ${item.normData.material || ''}`.trim(),
-        fontSize: Math.max(23, LABEL_TYPE_SCALE.body.dots),
+        x: 192,
+        y: 24,
+        text: desc,
+        fontSize: Math.max(21, LABEL_TYPE_SCALE.body.dots),
+        maxWidth: 200,
         align: 'center',
         fontFamily: "monospace",
         fontWeight: "bold"
     });
-    
+
     elements.push({
         type: 'text',
-        x: 200, y: 50,
-        text: `${item.normData.shape || ''} ${item.normData.shortDescription || ''}`.trim(),
-        fontSize: Math.max(23, LABEL_TYPE_SCALE.body.dots),
+        x: 192,
+        y: 50,
+        text: matColor,
+        fontSize: Math.max(21, LABEL_TYPE_SCALE.body.dots),
+        maxWidth: 200,
         align: 'center',
         fontFamily: "monospace"
     });
-    
-    const sizes = `${item.normData.widthCm || 0}*${item.normData.lengthCm || 0}*${item.normData.heightCm || 0} CM  WT ${item.normData.weightKg || 0} KG`;
+
     elements.push({
         type: 'text',
-        x: 200, y: 80,
+        x: 192,
+        y: 78,
         text: sizes,
+        fontSize: Math.max(14, LABEL_TYPE_SCALE.utility.dots),
+        maxWidth: 200,
+        align: 'center',
+        fontFamily: "monospace",
+        fontWeight: "bold"
+    });
+
+    if (options.axoImage) {
+        elements.push({
+            type: 'image',
+            x: 24,
+            y: 10,
+            width: 70,
+            height: 70,
+            image: options.axoImage
+        });
+    }
+
+    elements.push({
+        type: 'qr',
+        x: 280,
+        y: 6,
+        size: 90,
+        data: options.qrData
+    });
+
+    elements.push({
+        type: 'barcode',
+        x: 20,
+        y: 100,
+        width: 344,
+        height: 100,
+        data: options.tagId
+    });
+
+    elements.push({
+        type: 'text',
+        x: 192,
+        y: 206,
+        text: options.tagId,
         fontSize: Math.max(15, LABEL_TYPE_SCALE.utility.dots),
         align: 'center',
         fontFamily: "monospace",
         fontWeight: "bold"
     });
-    
-    if (options.axoImage) {
-        elements.push({
-            type: 'image',
-            x: 24, y: 12,
-            width: 73, height: 73,
-            image: options.axoImage
-        });
-    }
-    
-    elements.push({
-        type: 'qr',
-        x: 290, y: 5,
-        size: 95,
-        data: options.qrData
-    });
-    
-    elements.push({
-        type: 'barcode',
-        x: 24, y: 102,
-        width: 360, height: 110,
-        data: options.tagId
-    });
-    
-    // Explicit tag string below barcode to ensure legible crispness instead of trusting JsBarcode text scale
-    elements.push({
-        type: 'text',
-        x: 204, y: 215,
-        text: options.tagId,
-        fontSize: Math.max(16, LABEL_TYPE_SCALE.utility.dots),
-        align: 'center',
-        fontFamily: "monospace",
-        fontWeight: "bold"
-    });
-    
+
     return {
-        presetId: 'Standard_50x30',
-        widthDots: 400,
-        heightDots: 240,
+        presetId: 'M110_48x28',
+        widthDots: 384,
+        heightDots: 230,
         orientation: 'landscape',
         elements
     };

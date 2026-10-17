@@ -23,7 +23,7 @@ function PrintTemplatesPlaceholder() {
     );
 }
 
-const LocalQueueTabContent: React.FC = () => {
+export const LocalQueueTabContent: React.FC = () => {
     const tracked = getRecentTracked();
     
     if (tracked.length === 0) {

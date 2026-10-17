@@ -1,0 +1,95 @@
+/* PackagingStudio.css
+ * Liquid Onyx Packaging Studio Styling
+ * Conforms to Apple HIG, Liquid Onyx Tokens, and Responsive Glassmorphism.
+ */
+
+.packaging-studio-root {
+  isolation: isolate;
+  color: var(--lq-ink, #f0f0f0);
+  font-family: var(--font-body, system-ui, sans-serif);
+}
+
+/* Chromium-Only SVG Refraction Guard */
+@supports (backdrop-filter: url(#lq-refract)) and (-webkit-app-region: inherit) {
+  .packaging-refract {
+    backdrop-filter: url(#lq-refract) blur(24px);
+  }
+}
+
+/* Tabular figures for dimensions, volumes, and costs */
+.tabular-figures,
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Apple HIG Touch Targets (44x44pt on mobile touch, 28x28pt on desktop) */
+@media (max-width: 768px) {
+  .hig-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (min-width: 769px) {
+  .hig-touch-target {
+    min-height: 28px;
+  }
+}
+
+/* Light Theme (html.theme-aqua) adaptation */
+html.theme-aqua .packaging-studio-root {
+  color: #0f172a;
+}
+
+html.theme-aqua .packaging-studio-root .bg-black\/60,
+html.theme-aqua .packaging-studio-root .bg-black\/70,
+html.theme-aqua .packaging-studio-root .bg-black\/40 {
+  background-color: rgba(255, 255, 255, 0.75);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+
+html.theme-aqua .packaging-studio-root .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-aqua .packaging-studio-root .text-white\/70,
+html.theme-aqua .packaging-studio-root .text-white\/80 {
+  color: rgba(15, 23, 42, 0.8) !important;
+}
+
+html.theme-aqua .packaging-studio-root .text-white\/40,
+html.theme-aqua .packaging-studio-root .text-white\/60 {
+  color: rgba(15, 23, 42, 0.55) !important;
+}
+
+html.theme-aqua .packaging-studio-root input,
+html.theme-aqua .packaging-studio-root select {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.15);
+}
+
+/* Custom compact scrollbar */
+.packaging-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.packaging-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.packaging-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+
+.packaging-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+html.theme-aqua .packaging-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}

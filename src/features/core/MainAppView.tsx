@@ -28,7 +28,10 @@ import {
     isStudioSettingsOpenAtom,
     isFinanceScrolledAtom,
     isBotOrbOpenAtom,
-    UserRole
+    UserRole,
+    isPackagingStudioOpenAtom,
+    packagingStudioStagedItemsAtom,
+    packagingStudioInitialSpecAtom
 } from '../../lib/atoms';
 import { viewAllowed, homeViewFor } from '../../lib/navAccess';
 import {
@@ -41,7 +44,6 @@ import { LiquidBar } from '../../components/LiquidBar';
 import { LiquidOnyxFilters } from './LiquidOnyxFilters';
 import { MainHeader } from './MainHeader';
 import { IslandSidebar } from './IslandSidebar';
-import { isPrintCenterOpenAtom } from '../print/printState';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
 import { LiquidOnyxBackground } from '../../components/LiquidOnyxBackground';
@@ -65,7 +67,6 @@ const UploadView         = React.lazy(() => import('../upload/UploadView').then(
 // Dev only review board of the Type figures, photos and axonometric icons (activeView 'typeboard'); not in the production bundle.
 const TypeAuditBoard     = import.meta.env.DEV ? React.lazy(() => import('../entry/typeBoard/TypeAuditBoard').then(m => ({ default: m.TypeAuditBoard }))) : null;
 const WelcomeView        = React.lazy(() => import('../welcome/WelcomeView').then(m => ({ default: m.WelcomeView })));
-const PrintCenter        = React.lazy(() => import('../print/PrintCenter').then(m => ({ default: m.PrintCenter })));
 const InventoryView      = React.lazy(() => import('../inventory/InventoryView').then(m => ({ default: m.InventoryView })));
 const LogisticsView      = React.lazy(() => import('../logistics/LogisticsView').then(m => ({ default: m.LogisticsView })));
 const FinanceView        = React.lazy(() => import('../finance/FinanceView').then(m => ({ default: m.FinanceView })));
@@ -92,12 +93,15 @@ const PackWizard         = React.lazy(() => import('../logistics/PackWizard').th
 const CratePackingManager = React.lazy(() => import('../logistics/CratePackingManager').then(m => ({ default: m.CratePackingManager })));
 const ItemsPayWizard     = React.lazy(() => import('../finance/ItemsPayWizard').then(m => ({ default: m.ItemsPayWizard })));
 const DevicesView        = React.lazy(() => import('../pico/devices/DevicesView').then(m => ({ default: m.DevicesView })));
+const PackagingStudio    = React.lazy(() => import('../packaging/PackagingStudio').then(m => ({ default: m.PackagingStudio })));
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function MainAppView() {
     const t = useTranslation();
     const islandOn = useAtomValue(islandCommandsEnabledAtom);
-    const isPrintCenterOpen = useAtomValue(isPrintCenterOpenAtom);
+    const [isPackagingStudioOpen, setIsPackagingStudioOpen] = useAtom(isPackagingStudioOpenAtom);
+    const stagedPackagingItems = useAtomValue(packagingStudioStagedItemsAtom);
+    const initialPackagingSpec = useAtomValue(packagingStudioInitialSpecAtom);
     const [user] = useAtom(userAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
     const setUniversalView = useSetAtom(universalViewAtom);
@@ -373,8 +377,13 @@ export function MainAppView() {
                         <PackWizard />
                         <CratePackingManager />
                         <ItemsPayWizard />
-                        {/* A portal sheet with its own header. It used to also be wrapped in a sub menu bar, which left an empty second bar behind it. */}
-                        {isPrintCenterOpen && <PrintCenter />}
+                        {isPackagingStudioOpen && (
+                            <PackagingStudio
+                                initialSpec={initialPackagingSpec}
+                                initialStagedItems={stagedPackagingItems}
+                                onClose={() => setIsPackagingStudioOpen(false)}
+                            />
+                        )}
                     </Suspense>
                                     </div>
             </div>

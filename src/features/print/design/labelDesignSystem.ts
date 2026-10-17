@@ -18,6 +18,15 @@ export const LABEL_STOCK_PRESETS = {
         heightDots: 240, // at 203 dpi
         orientation: 'landscape' as const,
         gapMm: 0, // UNKNOWN exact gap from docs.
+    },
+    Standard_50x50: {
+        name: 'Standard 50x50mm',
+        widthMm: 50,
+        heightMm: 50,
+        widthDots: 384,
+        heightDots: 384, // at 203 dpi
+        orientation: 'portrait' as const,
+        gapMm: 0,
     }
 };
 

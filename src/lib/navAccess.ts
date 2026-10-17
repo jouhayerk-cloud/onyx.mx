@@ -15,18 +15,17 @@
  * This table is visibility, not data access: what a role can read is still decided by its own rules (RLS, FINANCE_ROLES).
  */
 export type NavId =
-    | 'home' | 'dashboard' | 'finance' | 'inventory' | 'add-entry' | 'print-center'
+    | 'home' | 'dashboard' | 'finance' | 'inventory' | 'add-entry'
     | 'warehouse' | 'trucking' | 'viewer'
     | 'control' | 'archived' | 'devices';
 
-/** The view each entry opens (print-center is a panel, not a view). */
+/** The view each entry opens. */
 export const NAV_VIEW: Record<NavId, string | null> = {
     home: 'welcome',
     dashboard: 'dashboard',
     finance: 'finance',
     inventory: 'inventory',
     'add-entry': 'upload',
-    'print-center': null,
     warehouse: 'warehouse',
     trucking: 'trucking',
     viewer: 'viewer',
@@ -35,7 +34,7 @@ export const NAV_VIEW: Record<NavId, string | null> = {
     devices: 'devices',
 };
 
-const ADMIN_NAV: readonly NavId[] = ['home', 'dashboard', 'finance', 'inventory', 'add-entry', 'print-center', 'warehouse', 'trucking', 'viewer'];
+const ADMIN_NAV: readonly NavId[] = ['home', 'dashboard', 'finance', 'inventory', 'add-entry', 'warehouse', 'trucking', 'viewer'];
 const DEV_ONLY_NAV: readonly NavId[] = ['control', 'archived', 'devices'];
 const CLIENT_FINANCE_NAV: readonly NavId[] = ['dashboard', 'finance', 'inventory'];
 const CLIENT_NAV: readonly NavId[] = ['home', 'inventory', 'viewer'];

@@ -8,10 +8,13 @@ import {
     isCratePackingManagerOpenAtom,
     packingManagerTargetCrateIdAtom,
     CrateStatus,
-    toCrateStatus 
+    toCrateStatus,
+    isPackagingStudioOpenAtom,
+    packagingStudioStagedItemsAtom
 } from '../../lib/atoms';
+import { recommendPackaging } from '../packaging/generators';
 import { 
-    X, ChevronRight, Search, Info, Loader2, PackagePlus, ArrowLeft, 
+    X, ChevronRight, Search, Info, Loader2, PackagePlus, Package, ArrowLeft, 
     Layers, Weight, Maximize2, Zap, LayoutGrid, Rotate3d, Sparkles, 
     Box, CheckCircle2, MapPin, SlidersHorizontal, Scissors, Cpu, 
     Check, ArrowUpRight
@@ -150,6 +153,8 @@ export const PackWizard: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const setIsManagerOpen = useSetAtom(isCratePackingManagerOpenAtom);
     const setManagerTargetCrateId = useSetAtom(packingManagerTargetCrateIdAtom);
+    const setIsPackagingStudioOpen = useSetAtom(isPackagingStudioOpenAtom);
+    const setPackagingStudioStagedItems = useSetAtom(packagingStudioStagedItemsAtom);
 
     const [step, setStep] = useState<WizardStep>('SELECT_CRATE');
     const [crates, setCrates] = useState<CrateRecord[]>([]);
@@ -198,22 +203,15 @@ export const PackWizard: React.FC = () => {
         return { volCm3, volLiters, weightKg, maxW, maxL, maxH, totalUnits };
     }, [selectedItems, packQuantities]);
 
-    // Auto-fit laser box suggestion (sizes and estimates come from the Onyx approximate drawing, not Boxes.py)
+    // Smart packaging suggestion using unified inside/outside volume math (FEFCO 0201, Cleated Crate, Pallet)
     const customBoxesCrate = useMemo(() => {
         if (selectedItems.length === 0) return null;
-        const { maxW, maxL, maxH, volCm3, totalUnits } = stagedMetrics;
+        const rec = recommendPackaging(selectedItems);
+        const { totalUnits } = stagedMetrics;
         
-        let w = Math.max(16, Math.ceil(maxW + 4));
-        let l = Math.max(16, Math.ceil(maxL + 4));
-        let h = Math.max(10, Math.ceil(maxH + 3));
-
-        const targetVol = volCm3 * 1.25;
-        if (w * l * h < targetVol) {
-            const scale = Math.cbrt(targetVol / Math.max(1, w * l * h));
-            w = Math.max(w, Math.ceil(w * scale));
-            l = Math.max(l, Math.ceil(l * scale));
-            h = Math.max(h, Math.ceil(h * scale));
-        }
+        const w = rec.outerCm.w;
+        const l = rec.outerCm.l;
+        const h = rec.outerCm.h;
 
         const generator: 'TypeTray' | 'UniversalBox' = totalUnits > 1 && h <= 30 ? 'TypeTray' : 'UniversalBox';
 
@@ -229,31 +227,31 @@ export const PackWizard: React.FC = () => {
         }));
 
         const boxesParams: BoxesGeneratorParams = computeBoxesParams(
-            { widthCm: w, lengthCm: l, heightCm: h, thicknessMm: 6, burnMm: 0.09 },
+            { widthCm: w, lengthCm: l, heightCm: h, thicknessMm: rec.boardThicknessMm, burnMm: 0.09 },
             generator === 'TypeTray' ? packedSpecs : undefined
         );
 
         const cutTelemetry: CutTelemetry = computeCutTelemetry(
-            { widthCm: w, lengthCm: l, heightCm: h, thicknessMm: 6, burnMm: 0.09 },
+            { widthCm: w, lengthCm: l, heightCm: h, thicknessMm: rec.boardThicknessMm, burnMm: 0.09 },
             generator === 'TypeTray' ? packedSpecs : undefined
         );
 
-        const tareWeight = Number((cutTelemetry.totalAreaMm2 * 0.000001 * 6 * 0.7).toFixed(1));
+        const tareWeight = Math.max(0.8, rec.tareWeightKg);
 
         const record: CrateRecord = {
             id: AUTOFIT_CRATE_ID,
-            type: 'cardboard',
+            type: rec.kind === 'cardboard' ? 'cardboard' : rec.kind === 'crate' ? 'crate' : 'pallet',
             status: 'Empty',
             width_cm: w,
             length_cm: l,
             height_cm: h,
-            weight_kg: Math.max(0.8, tareWeight),
+            weight_kg: tareWeight,
             inventory_ids: '',
-            description: `Auto-fit laser box, ${generator} layout (6mm Baltic Birch · kerf 0.09mm, approximate)`,
-            location: 'Laser Fab Bed',
+            description: `Auto-fit ${rec.kind.toUpperCase()} (${rec.style}) · Usable ${rec.innerCm.w}×${rec.innerCm.l}×${rec.innerCm.h}cm · Tare ${tareWeight}kg`,
+            location: 'Packaging Hub',
         };
 
-        return { record, boxesParams, cutTelemetry, generator };
+        return { record, boxesParams, cutTelemetry, generator, spec: rec };
     }, [selectedItems, stagedMetrics]);
 
     const fetchCrates = async () => {
@@ -666,11 +664,11 @@ export const PackWizard: React.FC = () => {
                                                 <div className="flex items-center gap-1.5">
                                                     <Sparkles size={14} className="text-cyan-400 animate-pulse" />
                                                     <span className="text-[9px] font-black tracking-widest uppercase px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                                                        AUTO-FIT BOXES.PY
+                                                        AUTO-FIT {customBoxesCrate.spec.kind.toUpperCase()}
                                                     </span>
                                                 </div>
                                                 <span className="text-[8px] font-bold tracking-wider text-cyan-400/70 uppercase">
-                                                    {customBoxesCrate.generator} · Baltic Birch
+                                                    {customBoxesCrate.spec.style} · {customBoxesCrate.spec.materialId}
                                                 </span>
                                             </div>
 
@@ -719,17 +717,32 @@ export const PackWizard: React.FC = () => {
                                                     )}
                                                 </span>
 
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleLaunch3DStudio(customBoxesCrate.record.id);
-                                                    }}
-                                                    className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-[8px] font-black uppercase tracking-wider flex items-center gap-1 transition-all"
-                                                    title={tr("Open in 3D & 2D Stencil Studio")}
-                                                >
-                                                    <Rotate3d size={11} /> 3D Studio
-                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPackagingStudioStagedItems(selectedItems.map(i => i.data || i));
+                                                            setIsPackagingStudioOpen(true);
+                                                            setIsOpen(false);
+                                                        }}
+                                                        className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-[8px] font-black uppercase tracking-wider flex items-center gap-1 transition-all"
+                                                        title={tr("Open in Packaging Studio")}
+                                                    >
+                                                        <Package size={11} /> Studio
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleLaunch3DStudio(customBoxesCrate.record.id);
+                                                        }}
+                                                        className="px-2 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-[8px] font-black uppercase tracking-wider flex items-center gap-1 transition-all"
+                                                        title={tr("Open in 3D & 2D Stencil Studio")}
+                                                    >
+                                                        <Rotate3d size={11} /> 3D
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

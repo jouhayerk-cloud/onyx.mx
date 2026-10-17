@@ -862,3 +862,8 @@ export const inventoryContentFilterAtom = atomWithStorage<string[]>('inventoryCo
 export const isInventoryContentFilterOpenAtom = atomWithStorage<boolean>('invContentFilterOpen', false, sessionJSONStorage);
 
 export const inventoryShapeFilterAtom = atomWithStorage<string[]>('inventoryShapeFilter', [], sessionJSONStorage);
+
+// ── Packaging Studio Atoms ────────────────────────────────────────────────────
+export const isPackagingStudioOpenAtom = atom<boolean>(false);
+export const packagingStudioStagedItemsAtom = atom<any[]>([]);
+export const packagingStudioInitialSpecAtom = atom<any | null>(null);
