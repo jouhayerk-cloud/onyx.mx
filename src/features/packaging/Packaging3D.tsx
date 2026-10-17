@@ -111,23 +111,23 @@ export const Packaging3D: React.FC<Packaging3DProps> = ({
   const expNorm = explode / 100; // 0.0 to 1.0
 
   return (
-    <div className={`relative flex flex-col w-full h-full select-none overflow-hidden bg-[#07090c] rounded-2xl border border-white/10 ${className}`}>
+    <div className={`ps-3d-stage liquid-panel relative flex flex-col w-full h-full select-none overflow-hidden rounded-2xl ${className}`}>
       {/* ── Top Bar: Camera Presets & Telemetry ── */}
-      <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-1.5 pointer-events-auto bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/10 text-[11px] font-mono text-white/80 shadow-lg">
-          <Rotate3d size={13} className="text-cyan-400" />
-          <span>{spec.kind.toUpperCase()}</span>
-          <span className="text-white/30">•</span>
-          <span className="text-white/60">{W}×{L}×{H}cm</span>
+      <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between gap-2 pointer-events-none">
+        <div className="ps-hud-pill liquid-panel flex items-center gap-1.5 pointer-events-auto px-3 py-1.5 rounded-full text-[11px] font-mono text-[var(--lq-ink)]">
+          <Rotate3d size={13} className="text-[var(--main-color)]" />
+          <span className="font-bold">{spec.kind.toUpperCase()}</span>
+          <span className="text-[var(--lq-ink-tertiary)]">•</span>
+          <span className="text-[var(--lq-ink-secondary)] tabular-nums">{W}×{L}×{H}cm</span>
         </div>
 
         {/* View Presets */}
-        <div className="flex items-center gap-1 pointer-events-auto bg-black/60 backdrop-blur-md p-1 rounded-full border border-white/10 shadow-lg">
+        <div className="ps-seg-group liquid-panel flex items-center gap-1 pointer-events-auto">
           <button
             type="button"
             onClick={() => setViewPreset(45, 30)}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-              yaw === 45 && pitch === 30 ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/40' : 'text-white/60 hover:text-white'
+            className={`ps-seg-btn hig-touch-target px-2.5 py-1 rounded-[8px] text-[10px] font-bold cursor-pointer ${
+              yaw === 45 && pitch === 30 ? 'is-active' : ''
             }`}
           >
             ISO
@@ -135,8 +135,8 @@ export const Packaging3D: React.FC<Packaging3DProps> = ({
           <button
             type="button"
             onClick={() => setViewPreset(0, 15)}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-              yaw === 0 && pitch === 15 ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/40' : 'text-white/60 hover:text-white'
+            className={`ps-seg-btn hig-touch-target px-2.5 py-1 rounded-[8px] text-[10px] font-bold cursor-pointer ${
+              yaw === 0 && pitch === 15 ? 'is-active' : ''
             }`}
           >
             FRONT
@@ -144,8 +144,8 @@ export const Packaging3D: React.FC<Packaging3DProps> = ({
           <button
             type="button"
             onClick={() => setViewPreset(90, 15)}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-              yaw === 90 && pitch === 15 ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/40' : 'text-white/60 hover:text-white'
+            className={`ps-seg-btn hig-touch-target px-2.5 py-1 rounded-[8px] text-[10px] font-bold cursor-pointer ${
+              yaw === 90 && pitch === 15 ? 'is-active' : ''
             }`}
           >
             SIDE
@@ -153,8 +153,8 @@ export const Packaging3D: React.FC<Packaging3DProps> = ({
           <button
             type="button"
             onClick={() => setViewPreset(0, 85)}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
-              yaw === 0 && pitch === 85 ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/40' : 'text-white/60 hover:text-white'
+            className={`ps-seg-btn hig-touch-target px-2.5 py-1 rounded-[8px] text-[10px] font-bold cursor-pointer ${
+              yaw === 0 && pitch === 85 ? 'is-active' : ''
             }`}
           >
             TOP
@@ -534,36 +534,36 @@ export const Packaging3D: React.FC<Packaging3DProps> = ({
       </svg>
 
       {/* ── Bottom Controls: Explode / Fold Scrub Slider ── */}
-      <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between gap-3 bg-black/70 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-xl">
+      <div className="ps-hud-bar liquid-panel absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between gap-3 px-4 py-2 rounded-2xl">
         <div className="flex items-center gap-2">
-          <Layers size={14} className="text-cyan-400 shrink-0" />
-          <span className="text-[11px] font-mono text-white/70 font-semibold whitespace-nowrap">
+          <Layers size={14} className="text-[var(--main-color)] shrink-0" />
+          <span className="text-[11px] font-mono text-[var(--lq-ink-secondary)] font-semibold whitespace-nowrap">
             {spec.kind === 'cardboard' ? 'FOLD / ASSEMBLE' : 'EXPLODED VIEW'}
           </span>
         </div>
 
         {/* Scrub Slider */}
         <div className="flex-1 flex items-center gap-2 max-w-xs">
-          <span className="text-[10px] font-mono text-white/40">0%</span>
+          <span className="text-[10px] font-mono text-[var(--lq-ink-tertiary)]">0%</span>
           <input
             type="range"
             min="0"
             max="100"
             value={explode}
             onChange={e => handleExplode(Number(e.target.value))}
-            className="w-full accent-cyan-400 h-1.5 bg-white/10 rounded-lg cursor-pointer"
+            className="w-full h-1.5 rounded-lg cursor-pointer"
           />
-          <span className="text-[10px] font-mono text-cyan-300 font-bold min-w-[32px] text-right">
+          <span className="text-[10px] font-mono text-[var(--main-color)] font-bold min-w-[32px] text-right tabular-nums">
             {explode}%
           </span>
         </div>
 
         {/* Zoom Steppers */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setZoom(z => Math.max(0.5, z - 0.15))}
-            className="p-1 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all"
+            className="liquid-control hig-touch-target p-2 rounded-xl flex items-center justify-center cursor-pointer"
             title="Zoom Out"
           >
             <ZoomOut size={14} />
@@ -571,7 +571,7 @@ export const Packaging3D: React.FC<Packaging3DProps> = ({
           <button
             type="button"
             onClick={() => setZoom(z => Math.min(2.5, z + 0.15))}
-            className="p-1 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-all"
+            className="liquid-control hig-touch-target p-2 rounded-xl flex items-center justify-center cursor-pointer"
             title="Zoom In"
           >
             <ZoomIn size={14} />

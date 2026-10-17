@@ -1,6 +1,7 @@
 /* ==========================================================================
-   Phomemo Label Print Studio Styles
-   Unified Phomemo thermal label printing UI & absorbed Print Center.
+   Phomemo Label Print Studio — Clear Liquid Glass Slab Styles
+   R3 Clear Glass Recipe · Apple HIG Hierarchy · Onyx Tokens (--lq-*)
+   Zero SVG refraction (url(#...) disabled everywhere).
    ========================================================================== */
 
 .lps-overlay {
@@ -12,67 +13,171 @@
   justify-content: center;
   padding: 0;
   overflow: hidden;
-  background-color: rgba(0, 0, 0, 0.15);
-  -webkit-backdrop-filter: blur(8px) saturate(1.3);
-  backdrop-filter: blur(8px) saturate(1.3);
+  background: transparent;
 }
 
 @media (min-width: 768px) {
   .lps-overlay {
-    padding: 1.5rem;
+    padding: 1.25rem;
   }
 }
 
-/* Master Sheet Container (outer shell uses .liquid-panel) */
+/* Dimming scrim behind the studio sheet — no blur here so .lps-sheet is the single active blur layer */
+.lps-scrim,
+html.style-slab .lps-scrim {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(2, 6, 16, 0.22) !important;
+  backdrop-filter: none !important;
+}
+
+html.theme-aqua .lps-scrim,
+html.style-slab.theme-aqua .lps-scrim {
+  background-color: rgba(11, 42, 51, 0.10) !important;
+}
+
+/* ── Master Sheet Container (Layer 1: Clear .liquid-surface) ────────────── */
 .lps-sheet {
+  /* Component-local Clear Glass Slab token overrides */
+  --lq-blur: 24px;
+  --lq-blur-panel: 16px;
+  --lq-blur-control: 12px;
+  --lq-saturate: 1.8;
+  --lq-brightness: 1.06;
+
+  /* Near-zero tint fills — surface carried by blur, specular rim, sheen & shadow */
+  --lq-fill-surface: rgba(10, 14, 22, 0.08);
+  --lq-fill-panel: rgba(10, 14, 22, 0.15);
+  --lq-fill-card: rgba(10, 14, 22, 0.28);
+  --lq-fill-control: rgba(255, 255, 255, 0.05);
+  --lq-fill-control-hover: rgba(255, 255, 255, 0.11);
+
+  --lq-rim: rgba(255, 255, 255, 0.24);
+  --lq-rim-subtle: rgba(255, 255, 255, 0.12);
+  --lq-sheen: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(255, 255, 255, 0.04) 38%,
+    rgba(255, 255, 255, 0.01) 62%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  --lq-highlight: inset 0 1.5px 0.5px rgba(255, 255, 255, 0.52),
+    inset 0 -1px 0.5px rgba(255, 255, 255, 0.14);
+  --lq-shadow: 0 24px 56px -12px rgba(2, 6, 16, 0.45),
+    0 1px 3px rgba(2, 6, 16, 0.28);
+
+  --lq-ink: #f5f7fa;
+  --lq-ink-secondary: rgba(245, 247, 250, 0.72);
+  --lq-ink-muted: rgba(245, 247, 250, 0.50);
+
+  --lq-solid-surface: #0e121c;
+  --lq-solid-panel: #141924;
+  --lq-solid-control: #1c2331;
+
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100dvh;
   max-width: 88rem;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border-radius: 0;
+  color: var(--lq-ink);
+}
+
+/* Aqua (Light Coastal Stone) Clear Glass tokens */
+html.theme-aqua .lps-sheet {
+  --lq-fill-surface: rgba(255, 255, 255, 0.14);
+  --lq-fill-panel: rgba(255, 255, 255, 0.24);
+  --lq-fill-card: rgba(255, 255, 255, 0.52);
+  --lq-fill-control: rgba(11, 42, 51, 0.05);
+  --lq-fill-control-hover: rgba(11, 42, 51, 0.11);
+
+  --lq-rim: rgba(11, 42, 51, 0.18);
+  --lq-rim-subtle: rgba(11, 42, 51, 0.10);
+  --lq-sheen: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.48) 0%,
+    rgba(255, 255, 255, 0.14) 38%,
+    rgba(255, 255, 255, 0.02) 62%,
+    rgba(255, 255, 255, 0.20) 100%
+  );
+  --lq-highlight: inset 0 1.5px 0.5px rgba(255, 255, 255, 0.88),
+    inset 0 -1px 0.5px rgba(11, 42, 51, 0.06);
+  --lq-shadow: 0 24px 56px -12px rgba(11, 42, 51, 0.16),
+    0 1px 3px rgba(11, 42, 51, 0.08);
+
+  --lq-ink: #0b2a33;
+  --lq-ink-secondary: rgba(11, 42, 51, 0.74);
+  --lq-ink-muted: rgba(11, 42, 51, 0.54);
+
+  --lq-solid-surface: #f0f7f9;
+  --lq-solid-panel: #e2eef1;
+  --lq-solid-control: #d5e4e8;
+}
+
+/* Refine top specular sheen on .lps-sheet so it frames the rim without washing out header text */
+.lps-sheet.liquid-surface::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(255, 255, 255, 0) 14px
+  );
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.45);
+}
+
+html.theme-aqua .lps-sheet.liquid-surface::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0) 14px
+  );
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.85);
 }
 
 @media (min-width: 768px) {
   .lps-sheet {
     height: 90vh;
-    border-radius: 1.5rem;
+    border-radius: var(--lq-radius-surface, 18px) !important;
   }
 }
 
-/* Header Bar (uses .liquid-surface) */
+/* ── Top Header Chrome & Bottom Thumb-Zone Bar ──────────────────────────── */
 .lps-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  padding: max(0.75rem, env(safe-area-inset-top, 0px)) 1rem 0.75rem 1rem;
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: var(--lq-fill-panel) !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--lq-rim-subtle) !important;
+  border-radius: 0 !important;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
 @media (min-width: 768px) {
   .lps-header {
-    padding: 1rem 1.5rem;
+    padding: 0.875rem 1.5rem;
+    gap: 1rem;
   }
 }
 
-/* Touch targets: min 44x44pt for touch interactions */
-.lps-touch-target {
-  min-height: 44px;
-  min-width: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Mobile Thumb-Zone Sticky Action Bar */
 .lps-bottom-bar {
   flex-shrink: 0;
   padding: 0.75rem 1rem;
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
-  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  background-color: var(--lq-fill-panel) !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-top: 1px solid var(--lq-rim-subtle) !important;
+  border-radius: 0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -84,60 +189,351 @@
   }
 }
 
-/* Bluetooth Status Indicators */
+/* Mobile Segmented Navigation Bar (< 768px) */
+.lps-mobile-nav {
+  background-color: var(--lq-fill-panel);
+  border-bottom: 1px solid var(--lq-rim-subtle);
+  padding: 0.5rem max(0.75rem, env(safe-area-inset-right, 0px)) 0.5rem max(0.75rem, env(safe-area-inset-left, 0px));
+  gap: 0.375rem;
+}
+
+/* ── Left Sidebar & Content Cards (Layer 2: .liquid-panel) ──────────────── */
+.lps-sidebar {
+  background-color: var(--lq-fill-panel);
+  border-right: 1px solid var(--lq-rim-subtle);
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+}
+
+@media (min-width: 768px) {
+  .lps-sidebar {
+    padding-left: 1.25rem;
+  }
+}
+
+/* Denser glass fill for content cards, readouts, and item rows so text stays >= 4.5:1 */
+.lps-sheet .lps-card,
+html.style-slab .lps-sheet .lps-card {
+  background-color: var(--lq-fill-card) !important;
+  background-image: var(--lq-sheen) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: var(--lq-highlight) !important;
+  border-radius: var(--lq-radius-panel, 14px) !important;
+  backdrop-filter: none !important;
+}
+
+.lps-sheet .lps-readout,
+html.style-slab .lps-sheet .lps-readout {
+  background-color: var(--lq-fill-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18) !important;
+  backdrop-filter: none !important;
+}
+
+.lps-section-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lq-ink-muted);
+}
+
+.lps-text-secondary {
+  color: var(--lq-ink-secondary);
+}
+
+.lps-text-muted {
+  color: var(--lq-ink-muted);
+}
+
+/* ── Interactive Controls & Buttons (Layer 3: .liquid-control) ──────────── */
+/* Touch targets: min 44x44pt for touch interactions (Apple HIG) */
+.lps-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Guard .liquid-control inside .lps-sheet against slab.css / slab-glass.css bare button rules */
+.lps-sheet .liquid-control,
+html.style-slab .lps-sheet .liquid-control {
+  background-color: var(--lq-fill-control) !important;
+  background-image: none !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  color: var(--lq-ink) !important;
+  border-radius: var(--lq-radius-control, 10px) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: none !important;
+  transition: var(--lq-transition-control);
+}
+
+.lps-sheet .liquid-control:hover:not(:disabled),
+html.style-slab .lps-sheet .liquid-control:hover:not(:disabled) {
+  background-color: var(--lq-fill-control-hover) !important;
+  border-color: var(--lq-rim) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+}
+
+/* Segmented Track & Buttons (Mode tabs, Label Size, Mobile tabs) */
+.lps-sheet .lps-seg-group,
+html.style-slab .lps-sheet .lps-seg-group {
+  background-color: var(--lq-fill-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  border-radius: 0.875rem !important;
+  padding: 0.25rem;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.16) !important;
+  backdrop-filter: none !important;
+}
+
+.lps-tab-btn,
+html.style-slab .lps-sheet .lps-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 36px;
+  padding: 0.4rem 0.875rem;
+  border-radius: 0.625rem !important;
+  border: 1px solid transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--lq-ink-secondary) !important;
+  transition: var(--lq-transition-control);
+  cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .lps-tab-btn,
+  html.style-slab .lps-sheet .lps-tab-btn {
+    min-height: 44px;
+  }
+}
+
+.lps-tab-btn:not(.active):hover,
+html.style-slab .lps-sheet .lps-tab-btn:not(.active):hover {
+  color: var(--lq-ink) !important;
+  background-color: var(--lq-fill-control-hover) !important;
+}
+
+.lps-tab-btn.active,
+html.style-slab .lps-sheet .lps-tab-btn.active {
+  background-color: color-mix(in srgb, var(--main-color, #7FBBFF) 24%, rgba(255, 255, 255, 0.08)) !important;
+  border-color: color-mix(in srgb, var(--main-color, #7FBBFF) 60%, transparent) !important;
+  color: var(--lq-ink) !important;
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.38), 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+}
+
+html.theme-aqua .lps-sheet .lps-tab-btn.active,
+html.style-slab.theme-aqua .lps-sheet .lps-tab-btn.active {
+  background-color: color-mix(in srgb, var(--main-color, #00bcd4) 20%, rgba(255, 255, 255, 0.78)) !important;
+  border-color: color-mix(in srgb, var(--main-color, #00bcd4) 55%, #0b2a33) !important;
+  color: var(--lq-ink) !important;
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.85), 0 2px 6px rgba(11, 42, 51, 0.08) !important;
+}
+
+/* Active selection state for Logo / Size tiles */
+.lps-sheet .liquid-control.is-active,
+html.style-slab .lps-sheet .liquid-control.is-active {
+  background-color: color-mix(in srgb, var(--main-color, #7FBBFF) 20%, rgba(255, 255, 255, 0.06)) !important;
+  border-color: var(--main-color, #7FBBFF) !important;
+  color: var(--lq-ink) !important;
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.38), 0 0 14px color-mix(in srgb, var(--main-color, #7FBBFF) 22%, transparent) !important;
+}
+
+html.theme-aqua .lps-sheet .liquid-control.is-active,
+html.style-slab.theme-aqua .lps-sheet .liquid-control.is-active {
+  background-color: color-mix(in srgb, var(--main-color, #00bcd4) 18%, rgba(255, 255, 255, 0.78)) !important;
+  border-color: color-mix(in srgb, var(--main-color, #00bcd4) 65%, #0b2a33) !important;
+}
+
+/* Primary CTA Button (Apple HIG: single solid accent button per view) */
+.lps-sheet .lps-btn-primary,
+html.style-slab .lps-sheet .lps-btn-primary {
+  background-color: var(--main-color, #7FBBFF) !important;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0) 100%) !important;
+  color: #080b11 !important;
+  border: 1px solid rgba(255, 255, 255, 0.42) !important;
+  border-radius: 0.875rem !important;
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.70),
+    0 8px 24px -4px color-mix(in srgb, var(--main-color, #7FBBFF) 45%, transparent) !important;
+  backdrop-filter: none !important;
+}
+
+.lps-sheet .lps-btn-primary:hover:not(:disabled),
+html.style-slab .lps-sheet .lps-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.85),
+    0 12px 28px -4px color-mix(in srgb, var(--main-color, #7FBBFF) 60%, transparent) !important;
+}
+
+.lps-sheet .lps-btn-primary *,
+html.style-slab .lps-sheet .lps-btn-primary * {
+  color: #080b11 !important;
+}
+
+/* Semantic Status Tints on Controls (BLE, Backup XLSX, PDF exports) */
+.lps-sheet .liquid-control.lps-tone-emerald,
+html.style-slab .lps-sheet .liquid-control.lps-tone-emerald {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+  border-color: rgba(52, 211, 153, 0.40) !important;
+  color: #6ee7b7 !important;
+}
+html.theme-aqua .lps-sheet .liquid-control.lps-tone-emerald,
+html.style-slab.theme-aqua .lps-sheet .liquid-control.lps-tone-emerald {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(5, 150, 105, 0.45) !important;
+  color: #065f46 !important;
+}
+
+.lps-sheet .liquid-control.lps-tone-red,
+html.style-slab .lps-sheet .liquid-control.lps-tone-red {
+  background-color: rgba(239, 68, 68, 0.14) !important;
+  border-color: rgba(248, 113, 113, 0.38) !important;
+  color: #fca5a5 !important;
+}
+html.theme-aqua .lps-sheet .liquid-control.lps-tone-red,
+html.style-slab.theme-aqua .lps-sheet .liquid-control.lps-tone-red {
+  background-color: rgba(239, 68, 68, 0.14) !important;
+  border-color: rgba(185, 28, 28, 0.40) !important;
+  color: #991b1b !important;
+}
+
+.lps-sheet .liquid-control.lps-tone-blue,
+html.style-slab .lps-sheet .liquid-control.lps-tone-blue {
+  background-color: rgba(59, 130, 246, 0.14) !important;
+  border-color: rgba(96, 165, 250, 0.38) !important;
+  color: #93c5fd !important;
+}
+html.theme-aqua .lps-sheet .liquid-control.lps-tone-blue,
+html.style-slab.theme-aqua .lps-sheet .liquid-control.lps-tone-blue {
+  background-color: rgba(59, 130, 246, 0.14) !important;
+  border-color: rgba(29, 78, 216, 0.40) !important;
+  color: #1e40af !important;
+}
+
+/* Bluetooth Status Pill */
 .lps-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px !important;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
-/* Refraction effect guard (Chromium only) */
-@media not all { /* SVG refraction off everywhere */
-  .lps-refract {
-    backdrop-filter: url(#lq-refract);
+/* Inputs & Selects — override slab.css recessed wells for inline & glass fields */
+.lps-sheet .lps-batch-input,
+html.style-slab .lps-sheet .lps-batch-input,
+.lps-sheet .lps-qty-input,
+html.style-slab .lps-sheet .lps-qty-input {
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  color: var(--lq-ink) !important;
+}
+
+.lps-sheet .lps-batch-input:focus,
+html.style-slab .lps-sheet .lps-batch-input:focus {
+  border-bottom-color: var(--main-color, #7FBBFF) !important;
+}
+
+.lps-sheet .lps-field-input,
+html.style-slab .lps-sheet .lps-field-input {
+  background-color: var(--lq-fill-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.14) !important;
+  color: var(--lq-ink) !important;
+  backdrop-filter: none !important;
+}
+
+/* Branding Logo Inversion in Dark vs Light (Aqua) Theme */
+.lps-logo-invert {
+  filter: invert(1);
+}
+html.theme-aqua .lps-sheet .lps-logo-invert {
+  filter: none;
+}
+
+/* Preview Stage Tiles (PreviewLabels.tsx children) — denser card backing for legibility */
+.lps-preview-stage [class*="rounded-2xl"][class*="cursor-pointer"] {
+  background-color: var(--lq-fill-card) !important;
+  border-color: var(--lq-rim-subtle) !important;
+  box-shadow: var(--lq-highlight) !important;
+  backdrop-filter: none !important;
+}
+
+/* ── Aqua Theme Utility Mapping (for absorbed PrintCenter child panels) ─── */
+html.theme-aqua .lps-sheet {
+  color: var(--lq-ink, #0b2a33);
+}
+html.theme-aqua .lps-sheet .text-white {
+  color: var(--lq-ink, #0b2a33) !important;
+}
+html.theme-aqua .lps-sheet [class*="text-white/"] {
+  color: var(--lq-ink-secondary, rgba(11, 42, 51, 0.72)) !important;
+}
+html.theme-aqua .lps-sheet [class*="bg-black/"] {
+  background-color: var(--lq-fill-card, rgba(255, 255, 255, 0.52)) !important;
+}
+html.theme-aqua .lps-sheet [class*="bg-white/"] {
+  background-color: var(--lq-fill-control, rgba(11, 42, 51, 0.05)) !important;
+}
+html.theme-aqua .lps-sheet [class*="border-white/"] {
+  border-color: var(--lq-rim-subtle, rgba(11, 42, 51, 0.12)) !important;
+}
+
+/* ── Accessibility: Reduced Transparency Solid Fallbacks ────────────────── */
+@media (prefers-reduced-transparency: reduce) {
+  .lps-sheet,
+  .lps-sheet.liquid-surface,
+  html.style-slab .lps-sheet.liquid-surface {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-surface) !important;
+    background-image: none !important;
+  }
+
+  .lps-sheet.liquid-surface::before {
+    display: none !important;
+  }
+
+  .lps-header,
+  .lps-bottom-bar,
+  .lps-sidebar,
+  .lps-mobile-nav,
+  .lps-sheet .liquid-panel,
+  .lps-sheet .lps-card,
+  .lps-sheet .lps-readout,
+  .lps-sheet .lps-seg-group,
+  html.style-slab .lps-sheet .liquid-panel,
+  html.style-slab .lps-sheet .lps-card {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-panel) !important;
+    background-image: none !important;
+  }
+
+  .lps-sheet .liquid-control,
+  html.style-slab .lps-sheet .liquid-control {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-control) !important;
   }
 }
-
-/* Tab Switcher Buttons */
-.lps-tab-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-}
-
-.lps-tab-btn.active {
-  background-color: var(--main-color, #7FBBFF);
-  color: #000000;
-  box-shadow: 0 0 15px rgba(var(--main-color-rgb, 127, 187, 255), 0.4);
-}
-
-.lps-tab-btn:not(.active) {
-  color: var(--secondary-text-color, rgba(255, 255, 255, 0.5));
-}
-
-.lps-tab-btn:not(.active):hover {
-  color: var(--text-color, #ffffff);
-  background-color: var(--lq-fill-control-hover, rgba(255, 255, 255, 0.08));
-}
-
-/* Aqua (light) theme: the studio's utility colours are written for dark glass; map them onto light glass. */
-html.theme-aqua .lps-sheet { color: var(--lq-ink, #0b2a33); }
-html.theme-aqua .lps-sheet .text-white { color: var(--lq-ink, #0b2a33) !important; }
-html.theme-aqua .lps-sheet [class*="text-white/"] { color: color-mix(in srgb, var(--lq-ink, #0b2a33) 65%, transparent) !important; }
-html.theme-aqua .lps-sheet [class*="bg-black/"] { background-color: rgba(255, 255, 255, 0.35) !important; }
-html.theme-aqua .lps-sheet [class*="bg-white/"] { background-color: rgba(11, 42, 51, 0.06) !important; }
-html.theme-aqua .lps-sheet [class*="border-white/"] { border-color: rgba(11, 42, 51, 0.14) !important; }

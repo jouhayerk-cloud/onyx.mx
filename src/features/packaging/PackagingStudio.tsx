@@ -295,43 +295,41 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
   };
 
   const content = (
-    <div className="packaging-studio-root flex flex-col w-full h-full min-h-0 bg-[#090b0e] text-white">
+    <div className="packaging-studio-root liquid-surface relative flex flex-col w-full h-full min-h-0">
       {/* ── HEADER & WORKSPACE TOOLBAR ── */}
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-white/10 bg-black/40 backdrop-blur-xl shrink-0 z-10">
+      <header className="ps-header flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-2.5 shrink-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-cyan-500/20 border border-white/15 flex items-center justify-center text-cyan-300 shadow-md">
-            <Package size={20} />
+          <div className="liquid-panel w-10 h-10 rounded-xl flex items-center justify-center text-[var(--main-color)] shrink-0">
+            <Package size={19} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-bold tracking-tight text-white">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-[15px] sm:text-base font-bold tracking-tight text-[var(--lq-ink)]">
                 {tr('Packaging Studio')}
               </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">
+              <span className="liquid-control px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-[var(--main-color)]">
                 WAVE 1
               </span>
               {resolvedSpec.ispm15Ht && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center gap-1">
+                <span className="liquid-control px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-amber-500 flex items-center gap-1">
                   <Shield size={10} />
                   ISPM-15 HT
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-white/50 hidden sm:block">
+            <p className="text-[11px] text-[var(--lq-ink-tertiary)] hidden sm:block">
               {tr('Parametric dielines, ISPM-15 export crates, and freight pallets')}
             </p>
           </div>
         </div>
 
         {/* Packaging Kind Segmented Control */}
-        <div className="flex items-center bg-black/60 p-1 rounded-full border border-white/10">
+        <div className="ps-seg-group liquid-panel flex items-center gap-1">
           <button
             type="button"
             onClick={() => handleKindSwitch('cardboard')}
-            className={`hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              kind === 'cardboard'
-                ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
-                : 'text-white/60 hover:text-white'
+            className={`ps-seg-btn hig-touch-target px-3.5 py-1.5 rounded-[9px] text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
+              kind === 'cardboard' ? 'is-active' : ''
             }`}
           >
             <span>📦</span>
@@ -340,10 +338,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
           <button
             type="button"
             onClick={() => handleKindSwitch('crate')}
-            className={`hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              kind === 'crate'
-                ? 'bg-amber-500/30 text-amber-300 border border-amber-400/50 shadow-sm'
-                : 'text-white/60 hover:text-white'
+            className={`ps-seg-btn hig-touch-target px-3.5 py-1.5 rounded-[9px] text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
+              kind === 'crate' ? 'is-active' : ''
             }`}
           >
             <span>🪵</span>
@@ -352,10 +348,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
           <button
             type="button"
             onClick={() => handleKindSwitch('pallet')}
-            className={`hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              kind === 'pallet'
-                ? 'bg-sky-500/30 text-sky-300 border border-sky-400/50 shadow-sm'
-                : 'text-white/60 hover:text-white'
+            className={`ps-seg-btn hig-touch-target px-3.5 py-1.5 rounded-[9px] text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
+              kind === 'pallet' ? 'is-active' : ''
             }`}
           >
             <span>🚚</span>
@@ -369,10 +363,10 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             <button
               type="button"
               onClick={handleAutoFit}
-              className="hig-touch-target px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-xs font-semibold flex items-center gap-1.5 hover:bg-emerald-500/30 transition-all cursor-pointer shadow-sm"
+              className="liquid-control hig-touch-target px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
               title={tr('Auto-fit packaging dimensions to current staged items')}
             >
-              <Sparkles size={13} />
+              <Sparkles size={13} className="text-emerald-500" />
               <span>{tr('Auto-Fit')}</span>
             </button>
           )}
@@ -381,7 +375,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center border border-white/10 transition-all cursor-pointer"
+              className="liquid-control hig-touch-target w-11 h-11 rounded-full flex items-center justify-center cursor-pointer"
+              aria-label="Close Packaging Studio"
             >
               <X size={16} />
             </button>
@@ -390,8 +385,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
       </header>
 
       {/* ── STYLE SELECTOR PRESET BAR ── */}
-      <div className="flex items-center gap-2 px-4 sm:px-6 py-2.5 bg-black/30 border-b border-white/5 overflow-x-auto no-scrollbar shrink-0">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-white/40 shrink-0">
+      <div className="ps-preset-bar flex items-center gap-2 px-4 sm:px-6 py-2 overflow-x-auto no-scrollbar shrink-0">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--lq-ink-tertiary)] shrink-0">
           {tr('Style Preset:')}
         </span>
 
@@ -400,10 +395,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             <button
               type="button"
               onClick={() => setStyle('fefco_0201')}
-              className={`px-3 py-1 rounded-full text-xs font-medium shrink-0 transition-all ${
-                style === 'fefco_0201'
-                  ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 shadow-sm'
-                  : 'bg-white/5 text-white/70 hover:text-white border border-white/10'
+              className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer ${
+                style === 'fefco_0201' ? 'is-active' : ''
               }`}
             >
               FEFCO 0201 RSC (Standard Shipping)
@@ -414,7 +407,9 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
                 setStyle('fefco_0427');
                 toast(tr('FEFCO 0427 RETF Mailer dieline scheduled in Wave 2'), { icon: 'ℹ️' });
               }}
-              className="px-3 py-1 rounded-full text-xs font-medium shrink-0 bg-white/5 text-white/50 hover:text-white border border-white/10"
+              className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-medium shrink-0 cursor-pointer opacity-75 hover:opacity-100 ${
+                style === 'fefco_0427' ? 'is-active' : ''
+              }`}
             >
               FEFCO 0427 Mailer (Wave 2)
             </button>
@@ -424,7 +419,9 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
                 setStyle('fefco_0300');
                 toast(tr('FEFCO 0300 Telescope Box scheduled in Wave 2'), { icon: 'ℹ️' });
               }}
-              className="px-3 py-1 rounded-full text-xs font-medium shrink-0 bg-white/5 text-white/50 hover:text-white border border-white/10"
+              className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-medium shrink-0 cursor-pointer opacity-75 hover:opacity-100 ${
+                style === 'fefco_0300' ? 'is-active' : ''
+              }`}
             >
               FEFCO 0300 Telescope (Wave 2)
             </button>
@@ -436,10 +433,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             <button
               type="button"
               onClick={() => setStyle('crate_cleated')}
-              className={`px-3 py-1 rounded-full text-xs font-medium shrink-0 transition-all ${
-                style === 'crate_cleated'
-                  ? 'bg-amber-500/25 text-amber-300 border border-amber-400/40 shadow-sm'
-                  : 'bg-white/5 text-white/70 hover:text-white border border-white/10'
+              className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer ${
+                style === 'crate_cleated' ? 'is-active' : ''
               }`}
             >
               ISPM-15 Cleated Plywood Crate (4×4" Skids)
@@ -447,7 +442,9 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             <button
               type="button"
               onClick={() => setStyle('crate_slatted')}
-              className="px-3 py-1 rounded-full text-xs font-medium shrink-0 bg-white/5 text-white/50 hover:text-white border border-white/10"
+              className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer ${
+                style === 'crate_slatted' ? 'is-active' : ''
+              }`}
             >
               Slatted Open Lumber Crate
             </button>
@@ -464,10 +461,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
                 setInputL(PALLET_STANDARDS.gma.lengthCm);
                 setInputH(PALLET_STANDARDS.gma.heightCm);
               }}
-              className={`px-3 py-1 rounded-full text-xs font-medium shrink-0 transition-all ${
-                style === 'pallet_gma'
-                  ? 'bg-sky-500/25 text-sky-300 border border-sky-400/40 shadow-sm'
-                  : 'bg-white/5 text-white/70 hover:text-white border border-white/10'
+              className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer ${
+                style === 'pallet_gma' ? 'is-active' : ''
               }`}
             >
               GMA North America (48×40")
@@ -480,10 +475,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
                 setInputL(PALLET_STANDARDS.eur.lengthCm);
                 setInputH(PALLET_STANDARDS.eur.heightCm);
               }}
-              className={`px-3 py-1 rounded-full text-xs font-medium shrink-0 transition-all ${
-                style === 'pallet_eur'
-                  ? 'bg-sky-500/25 text-sky-300 border border-sky-400/40 shadow-sm'
-                  : 'bg-white/5 text-white/70 hover:text-white border border-white/10'
+              className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer ${
+                style === 'pallet_eur' ? 'is-active' : ''
               }`}
             >
               EUR / EPAL 1 (1200×800mm)
@@ -491,10 +484,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             <button
               type="button"
               onClick={() => setStyle('pallet_custom')}
-              className={`px-3 py-1 rounded-full text-xs font-medium shrink-0 transition-all ${
-                style === 'pallet_custom'
-                  ? 'bg-sky-500/25 text-sky-300 border border-sky-400/40 shadow-sm'
-                  : 'bg-white/5 text-white/70 hover:text-white border border-white/10'
+              className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 cursor-pointer ${
+                style === 'pallet_custom' ? 'is-active' : ''
               }`}
             >
               Custom Freight Skid
@@ -504,61 +495,65 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
       </div>
 
       {/* ── LIVE TELEMETRY RIBBON ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 px-4 sm:px-6 py-2 bg-black/50 border-b border-white/10 text-xs shrink-0 font-mono">
+      <div className="ps-telemetry-ribbon grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 px-4 sm:px-6 py-2.5 text-xs shrink-0 font-mono">
         {/* Usable Cavity */}
-        <div className="flex flex-col">
-          <span className="text-[10px] text-white/40 uppercase tracking-widest">{tr('Inner Cavity')}</span>
-          <span className="font-bold text-white tabular-figures">
+        <div className="ps-telemetry-card liquid-panel px-3 py-2 flex flex-col gap-0.5">
+          <span className="text-[10px] text-[var(--lq-ink-tertiary)] uppercase tracking-widest">{tr('Inner Cavity')}</span>
+          <span className="font-bold text-[var(--lq-ink)] tabular-nums">
             {resolvedSpec.innerCm.w}×{resolvedSpec.innerCm.l}×{resolvedSpec.innerCm.h} cm
           </span>
-          <span className="text-[10px] text-cyan-400">{((resolvedSpec.innerCm.w * resolvedSpec.innerCm.l * resolvedSpec.innerCm.h) / 1000).toFixed(1)} L</span>
+          <span className="text-[10px] text-[var(--main-color)] font-semibold">
+            {((resolvedSpec.innerCm.w * resolvedSpec.innerCm.l * resolvedSpec.innerCm.h) / 1000).toFixed(1)} L
+          </span>
         </div>
 
         {/* Outer Footprint */}
-        <div className="flex flex-col">
-          <span className="text-[10px] text-white/40 uppercase tracking-widest">{tr('Outer Footprint')}</span>
-          <span className="font-bold text-white tabular-figures">
+        <div className="ps-telemetry-card liquid-panel px-3 py-2 flex flex-col gap-0.5">
+          <span className="text-[10px] text-[var(--lq-ink-tertiary)] uppercase tracking-widest">{tr('Outer Footprint')}</span>
+          <span className="font-bold text-[var(--lq-ink)] tabular-nums">
             {resolvedSpec.outerCm.w}×{resolvedSpec.outerCm.l}×{resolvedSpec.outerCm.h} cm
           </span>
-          <span className="text-[10px] text-amber-400">{((resolvedSpec.outerCm.w * resolvedSpec.outerCm.l * resolvedSpec.outerCm.h) / 1000000).toFixed(3)} m³</span>
+          <span className="text-[10px] text-amber-500 font-semibold">
+            {((resolvedSpec.outerCm.w * resolvedSpec.outerCm.l * resolvedSpec.outerCm.h) / 1000000).toFixed(3)} m³
+          </span>
         </div>
 
         {/* Tare Weight */}
-        <div className="flex flex-col">
-          <span className="text-[10px] text-white/40 uppercase tracking-widest">{tr('Tare Weight')}</span>
-          <span className="font-bold text-white tabular-figures">{resolvedSpec.tareWeightKg} kg</span>
-          <span className="text-[10px] text-white/50">{(resolvedSpec.tareWeightKg * 2.20462).toFixed(1)} lbs</span>
+        <div className="ps-telemetry-card liquid-panel px-3 py-2 flex flex-col gap-0.5">
+          <span className="text-[10px] text-[var(--lq-ink-tertiary)] uppercase tracking-widest">{tr('Tare Weight')}</span>
+          <span className="font-bold text-[var(--lq-ink)] tabular-nums">{resolvedSpec.tareWeightKg} kg</span>
+          <span className="text-[10px] text-[var(--lq-ink-secondary)]">{(resolvedSpec.tareWeightKg * 2.20462).toFixed(1)} lbs</span>
         </div>
 
         {/* Gross Weight */}
-        <div className="flex flex-col">
-          <span className="text-[10px] text-white/40 uppercase tracking-widest">{tr('Gross Weight')}</span>
-          <span className="font-bold text-emerald-300 tabular-figures">{grossWeightKg} kg</span>
-          <span className="text-[10px] text-white/50">{grossWeightLbs} lbs ({stagedItems.length} items)</span>
+        <div className="ps-telemetry-card liquid-panel px-3 py-2 flex flex-col gap-0.5">
+          <span className="text-[10px] text-[var(--lq-ink-tertiary)] uppercase tracking-widest">{tr('Gross Weight')}</span>
+          <span className="font-bold text-emerald-500 tabular-nums">{grossWeightKg} kg</span>
+          <span className="text-[10px] text-[var(--lq-ink-secondary)]">{grossWeightLbs} lbs ({stagedItems.length} items)</span>
         </div>
 
         {/* Estimated Cost */}
-        <div className="flex flex-col">
-          <span className="text-[10px] text-white/40 uppercase tracking-widest">{tr('Material Cost')}</span>
-          <span className="font-bold text-white tabular-figures">${resolvedSpec.estimatedCostMxn.toLocaleString()} MXN</span>
-          <span className="text-[10px] text-cyan-400 font-bold">${costUsd} USD</span>
+        <div className="ps-telemetry-card liquid-panel px-3 py-2 flex flex-col gap-0.5">
+          <span className="text-[10px] text-[var(--lq-ink-tertiary)] uppercase tracking-widest">{tr('Material Cost')}</span>
+          <span className="font-bold text-[var(--lq-ink)] tabular-nums">${resolvedSpec.estimatedCostMxn.toLocaleString()} MXN</span>
+          <span className="text-[10px] text-[var(--main-color)] font-bold">${costUsd} USD</span>
         </div>
 
         {/* Standards Compliance */}
-        <div className="flex flex-col">
-          <span className="text-[10px] text-white/40 uppercase tracking-widest">{tr('Standard')}</span>
-          <span className="font-bold text-white">
+        <div className="ps-telemetry-card liquid-panel px-3 py-2 flex flex-col gap-0.5">
+          <span className="text-[10px] text-[var(--lq-ink-tertiary)] uppercase tracking-widest">{tr('Standard')}</span>
+          <span className="font-bold text-[var(--lq-ink)]">
             {kind === 'cardboard' ? 'FEFCO 0201' : kind === 'crate' ? 'IPPC ISPM-15' : 'NWPCA GMA'}
           </span>
-          <span className="text-[10px] text-emerald-400 font-bold">100% EXPORT READY</span>
+          <span className="text-[10px] text-emerald-500 font-bold">100% EXPORT READY</span>
         </div>
       </div>
 
       {/* ── MAIN WORKSPACE VIEWPORT ── */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden p-3 sm:p-4 gap-3 sm:gap-4">
         {/* ── LEFT / MAIN: 3D HAIRLINE VIEWPORT (55% desktop) ── */}
-        <div className={`flex-1 flex flex-col p-3 sm:p-4 min-h-0 ${mobileTab === '3d' ? 'flex' : 'hidden lg:flex'}`}>
-          <div className="flex-1 min-h-[350px] relative rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+        <div className={`flex-1 flex flex-col min-h-0 ${mobileTab === '3d' ? 'flex' : 'hidden lg:flex'}`}>
+          <div className="flex-1 min-h-[350px] relative rounded-2xl overflow-hidden">
             <Packaging3D
               spec={resolvedSpec}
               stagedItems={stagedItems}
@@ -569,19 +564,17 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
         </div>
 
         {/* ── RIGHT: PARAMETRIC INSPECTOR & 2D DIELINE / BOM CUT LIST (45% desktop) ── */}
-        <div className={`w-full lg:w-[480px] xl:w-[540px] flex flex-col border-t lg:border-t-0 lg:border-l border-white/10 bg-black/40 backdrop-blur-xl shrink-0 min-h-0 ${
+        <div className={`ps-inspector liquid-panel w-full lg:w-[480px] xl:w-[540px] flex flex-col shrink-0 min-h-0 overflow-hidden ${
           mobileTab !== '3d' ? 'flex' : 'hidden lg:flex'
         }`}>
           {/* Right Header: Segmented Tabs */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 shrink-0">
-            <div className="flex items-center gap-1 bg-black/60 p-1 rounded-full border border-white/10">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--lq-surface-border)] shrink-0 gap-2">
+            <div className="ps-seg-group liquid-panel flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setRightViewportTab('dieline')}
-                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                  rightViewportTab === 'dieline'
-                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-sm'
-                    : 'text-white/60 hover:text-white'
+                className={`ps-seg-btn hig-touch-target px-3 py-1 rounded-[9px] text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
+                  rightViewportTab === 'dieline' ? 'is-active' : ''
                 }`}
               >
                 <Scissors size={12} />
@@ -590,10 +583,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
               <button
                 type="button"
                 onClick={() => setRightViewportTab('bom')}
-                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                  rightViewportTab === 'bom'
-                    ? 'bg-amber-500/30 text-amber-300 border border-amber-400/40 shadow-sm'
-                    : 'text-white/60 hover:text-white'
+                className={`ps-seg-btn hig-touch-target px-3 py-1 rounded-[9px] text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
+                  rightViewportTab === 'bom' ? 'is-active' : ''
                 }`}
               >
                 <FileText size={12} />
@@ -602,10 +593,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
               <button
                 type="button"
                 onClick={() => setRightViewportTab('boxes')}
-                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                  rightViewportTab === 'boxes'
-                    ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 shadow-sm'
-                    : 'text-white/60 hover:text-white'
+                className={`ps-seg-btn hig-touch-target px-3 py-1 rounded-[9px] text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
+                  rightViewportTab === 'boxes' ? 'is-active' : ''
                 }`}
               >
                 <Box size={12} />
@@ -613,26 +602,24 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
               </button>
             </div>
 
-            <span className="text-[11px] font-mono text-white/50">
+            <span className="text-[11px] font-mono font-bold text-[var(--lq-ink-tertiary)]">
               {resolvedSpec.kind.toUpperCase()}
             </span>
           </div>
 
           {/* Form Inspector (Collapsible / Scrollable Top) */}
-          <div className="p-4 border-b border-white/10 flex flex-col gap-3.5 bg-black/20 shrink-0">
+          <div className="p-4 border-b border-[var(--lq-surface-border)] flex flex-col gap-3.5 shrink-0">
             {/* Dimension Basis Toggle */}
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono text-white/60 uppercase tracking-widest">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-[11px] font-mono text-[var(--lq-ink-secondary)] uppercase tracking-widest">
                 {tr('Dimension Input Basis:')}
               </span>
-              <div className="flex items-center bg-black/60 p-0.5 rounded-full border border-white/10">
+              <div className="ps-seg-group liquid-panel flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setDimBasis('inside')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
-                    dimBasis === 'inside'
-                      ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 shadow-sm'
-                      : 'text-white/60 hover:text-white'
+                  className={`ps-seg-btn hig-touch-target px-2.5 py-1 rounded-[8px] text-[11px] font-semibold cursor-pointer ${
+                    dimBasis === 'inside' ? 'is-active' : ''
                   }`}
                 >
                   Inside Cavity
@@ -640,10 +627,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
                 <button
                   type="button"
                   onClick={() => setDimBasis('outside')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
-                    dimBasis === 'outside'
-                      ? 'bg-amber-500/30 text-amber-300 border border-amber-400/40 shadow-sm'
-                      : 'text-white/60 hover:text-white'
+                  className={`ps-seg-btn hig-touch-target px-2.5 py-1 rounded-[8px] text-[11px] font-semibold cursor-pointer ${
+                    dimBasis === 'outside' ? 'is-active' : ''
                   }`}
                 >
                   Outside Footprint
@@ -654,36 +639,36 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             {/* Width, Length, Height Steppers */}
             <div className="grid grid-cols-3 gap-2.5">
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-mono text-white/40 uppercase">Width (cm)</label>
+                <label className="text-[10px] font-mono text-[var(--lq-ink-tertiary)] uppercase">Width (cm)</label>
                 <input
                   type="number"
                   min="10"
                   max="300"
                   value={inputW}
                   onChange={e => setInputW(Math.max(5, Number(e.target.value) || 10))}
-                  className="bg-black/60 border border-white/15 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-cyan-300 focus:outline-none focus:border-cyan-400"
+                  className="ps-input hig-touch-target px-3 py-1.5 text-xs font-mono font-bold tabular-nums"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-mono text-white/40 uppercase">Length (cm)</label>
+                <label className="text-[10px] font-mono text-[var(--lq-ink-tertiary)] uppercase">Length (cm)</label>
                 <input
                   type="number"
                   min="10"
                   max="300"
                   value={inputL}
                   onChange={e => setInputL(Math.max(5, Number(e.target.value) || 10))}
-                  className="bg-black/60 border border-white/15 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-cyan-300 focus:outline-none focus:border-cyan-400"
+                  className="ps-input hig-touch-target px-3 py-1.5 text-xs font-mono font-bold tabular-nums"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-mono text-white/40 uppercase">Height (cm)</label>
+                <label className="text-[10px] font-mono text-[var(--lq-ink-tertiary)] uppercase">Height (cm)</label>
                 <input
                   type="number"
                   min="8"
                   max="300"
                   value={inputH}
                   onChange={e => setInputH(Math.max(5, Number(e.target.value) || 10))}
-                  className="bg-black/60 border border-white/15 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-cyan-300 focus:outline-none focus:border-cyan-400"
+                  className="ps-input hig-touch-target px-3 py-1.5 text-xs font-mono font-bold tabular-nums"
                 />
               </div>
             </div>
@@ -691,11 +676,11 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             {/* Material & Foam Selectors */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-mono text-white/40 uppercase">Board Material</label>
+                <label className="text-[10px] font-mono text-[var(--lq-ink-tertiary)] uppercase">Board Material</label>
                 <select
                   value={materialId}
                   onChange={e => setMaterialId(e.target.value)}
-                  className="bg-black/60 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                  className="ps-input hig-touch-target px-2.5 py-1.5 text-xs font-semibold cursor-pointer"
                 >
                   {kind === 'cardboard' &&
                     CARDBOARD_MATERIALS.map(m => (
@@ -716,11 +701,11 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-mono text-white/40 uppercase">Foam Cushioning</label>
+                <label className="text-[10px] font-mono text-[var(--lq-ink-tertiary)] uppercase">Foam Cushioning</label>
                 <select
                   value={foamPaddingMm}
                   onChange={e => setFoamPaddingMm(Number(e.target.value))}
-                  className="bg-black/60 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                  className="ps-input hig-touch-target px-2.5 py-1.5 text-xs font-semibold cursor-pointer"
                 >
                   <option value={0}>0 mm (No Foam)</option>
                   <option value={15}>15 mm (Light Cushioning)</option>
@@ -732,29 +717,29 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
           </div>
 
           {/* Right Tab Content Viewport */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 packaging-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar">
             {/* TAB A: 2D Dieline / Layout Diagram */}
             {rightViewportTab === 'dieline' && (
               <div className="flex flex-col gap-3 h-full">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-white/80">
+                  <span className="font-bold text-[var(--lq-ink-secondary)]">
                     {kind === 'cardboard' ? 'Unfolded Blank Geometry' : 'Panel Fabrication Diagram'}
                   </span>
                   <button
                     type="button"
                     onClick={() => downloadSvgFile(`${kind}_${style}_dieline`, dielineSvgString)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-300 text-[11px] font-mono border border-white/10 transition-all cursor-pointer"
+                    className="liquid-control hig-touch-target flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-mono font-bold cursor-pointer"
                   >
-                    <Download size={11} />
+                    <Download size={12} className="text-[var(--main-color)]" />
                     <span>SVG</span>
                   </button>
                 </div>
 
-                <div className="flex-1 min-h-[280px] bg-[#07090c] rounded-2xl border border-white/10 p-2 flex items-center justify-center overflow-hidden">
+                <div className="ps-stage-frame liquid-panel flex-1 min-h-[280px] p-2 flex items-center justify-center overflow-hidden">
                   <img
                     src={dielineDataUri}
                     alt="Packaging 2D Dieline"
-                    className="max-w-full max-h-full object-contain pointer-events-auto"
+                    className="max-w-full max-h-full object-contain pointer-events-auto rounded-xl"
                   />
                 </div>
               </div>
@@ -764,43 +749,43 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             {rightViewportTab === 'bom' && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-white/80">Workshop Fabrication BOM</span>
+                  <span className="font-bold text-[var(--lq-ink-secondary)]">Workshop Fabrication BOM</span>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => exportPackagingPdf(resolvedSpec, bomCutList)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-300 text-[11px] font-mono border border-white/10 transition-all cursor-pointer"
+                      className="liquid-control hig-touch-target flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold cursor-pointer"
                     >
-                      <Download size={11} />
+                      <Download size={11} className="text-[var(--main-color)]" />
                       <span>PDF</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => exportPackagingXlsx(resolvedSpec, bomCutList)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-emerald-300 text-[11px] font-mono border border-white/10 transition-all cursor-pointer"
+                      className="liquid-control hig-touch-target flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold cursor-pointer"
                     >
-                      <Download size={11} />
+                      <Download size={11} className="text-emerald-500" />
                       <span>XLSX</span>
                     </button>
                   </div>
                 </div>
 
                 {/* BOM Items Table */}
-                <div className="rounded-xl border border-white/10 overflow-hidden bg-black/40">
+                <div className="ps-card liquid-panel overflow-hidden">
                   <table className="w-full text-left text-xs font-mono">
-                    <thead className="bg-white/5 border-b border-white/10 text-white/50 text-[10px] uppercase">
+                    <thead className="border-b border-[var(--lq-surface-border)] text-[var(--lq-ink-tertiary)] text-[10px] uppercase">
                       <tr>
-                        <th className="p-2">Part</th>
-                        <th className="p-2">Qty</th>
-                        <th className="p-2">Dimensions (mm)</th>
+                        <th className="p-2.5">Part</th>
+                        <th className="p-2.5">Qty</th>
+                        <th className="p-2.5">Dimensions (mm)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5 text-white/80">
+                    <tbody className="divide-y divide-[var(--lq-surface-border)] text-[var(--lq-ink-secondary)]">
                       {bomCutList.items.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-white/[0.02]">
-                          <td className="p-2 font-bold text-white">{item.part}</td>
-                          <td className="p-2 text-cyan-300 font-bold">{item.qty}×</td>
-                          <td className="p-2 text-white/70 text-[11px]">{item.dimsMm}</td>
+                        <tr key={idx}>
+                          <td className="p-2.5 font-bold text-[var(--lq-ink)]">{item.part}</td>
+                          <td className="p-2.5 text-[var(--main-color)] font-bold">{item.qty}×</td>
+                          <td className="p-2.5 text-[var(--lq-ink-secondary)] text-[11px]">{item.dimsMm}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -808,28 +793,28 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
                 </div>
 
                 {/* Totals Summary Card */}
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col gap-1 text-[11px] font-mono">
+                <div className="ps-card liquid-panel p-3.5 flex flex-col gap-1.5 text-[11px] font-mono">
                   {bomCutList.totalPlywoodM2 > 0 && (
-                    <div className="flex justify-between text-white/70">
+                    <div className="flex justify-between text-[var(--lq-ink-secondary)]">
                       <span>Total Plywood Area:</span>
-                      <span className="font-bold text-white">{bomCutList.totalPlywoodM2} m²</span>
+                      <span className="font-bold text-[var(--lq-ink)]">{bomCutList.totalPlywoodM2} m²</span>
                     </div>
                   )}
                   {bomCutList.totalLumberM > 0 && (
-                    <div className="flex justify-between text-white/70">
+                    <div className="flex justify-between text-[var(--lq-ink-secondary)]">
                       <span>Total HT Lumber:</span>
-                      <span className="font-bold text-white">{bomCutList.totalLumberM} linear meters</span>
+                      <span className="font-bold text-[var(--lq-ink)]">{bomCutList.totalLumberM} linear meters</span>
                     </div>
                   )}
                   {bomCutList.totalCardboardM2 > 0 && (
-                    <div className="flex justify-between text-white/70">
+                    <div className="flex justify-between text-[var(--lq-ink-secondary)]">
                       <span>Corrugated Blank Area:</span>
-                      <span className="font-bold text-white">{bomCutList.totalCardboardM2} m²</span>
+                      <span className="font-bold text-[var(--lq-ink)]">{bomCutList.totalCardboardM2} m²</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-white/70 pt-1 border-t border-white/10">
+                  <div className="flex justify-between text-[var(--lq-ink-secondary)] pt-1.5 border-t border-[var(--lq-surface-border)]">
                     <span>Estimated Material Cost:</span>
-                    <span className="font-bold text-emerald-400">${resolvedSpec.estimatedCostMxn.toLocaleString()} MXN</span>
+                    <span className="font-bold text-emerald-500">${resolvedSpec.estimatedCostMxn.toLocaleString()} MXN</span>
                   </div>
                 </div>
               </div>
@@ -839,23 +824,23 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             {rightViewportTab === 'boxes' && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-white/80">Boxes.py Workshop Laser Recipe</span>
+                  <span className="font-bold text-[var(--lq-ink-secondary)]">Boxes.py Workshop Laser Recipe</span>
                   <button
                     type="button"
                     onClick={handleCopyBoxesRecipe}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[11px] font-mono border border-emerald-400/40 hover:bg-emerald-500/30 transition-all cursor-pointer"
+                    className="liquid-control hig-touch-target flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-mono font-bold cursor-pointer"
                   >
-                    {copiedRecipe ? <Check size={12} /> : <Copy size={12} />}
+                    {copiedRecipe ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} className="text-emerald-500" />}
                     <span>{copiedRecipe ? 'Copied!' : 'Copy CLI'}</span>
                   </button>
                 </div>
 
-                <div className="p-3 rounded-xl bg-black/80 border border-white/10 font-mono text-[11px] text-emerald-400 overflow-x-auto">
+                <div className="ps-code-well p-3.5 font-mono text-[11px] text-emerald-500 overflow-x-auto custom-scrollbar">
                   <pre>{generateBoxesCliRecipe(resolvedSpec)}</pre>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col gap-1 text-[11px] text-white/60">
-                  <span className="font-bold text-white">Workshop Laser Note:</span>
+                <div className="ps-card liquid-panel p-3.5 flex flex-col gap-1 text-[11px] text-[var(--lq-ink-secondary)]">
+                  <span className="font-bold text-[var(--lq-ink)]">Workshop Laser Note:</span>
                   <p>
                     Paste this command into the laser cutting workstation terminal to cut slotted Baltic Birch partition grids for internal cavity organization.
                   </p>
@@ -867,12 +852,12 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
       </div>
 
       {/* ── MOBILE VIEWPORT SELECTOR (<1024px) ── */}
-      <div className="lg:hidden flex items-center justify-around py-2 px-4 border-t border-white/10 bg-black/80 shrink-0">
+      <div className="ps-mobile-nav lg:hidden flex items-center justify-around gap-1.5 py-2 px-4 shrink-0">
         <button
           type="button"
           onClick={() => setMobileTab('3d')}
-          className={`flex-1 py-1.5 rounded-full text-xs font-bold text-center transition-all ${
-            mobileTab === '3d' ? 'bg-cyan-500/30 text-cyan-300' : 'text-white/50'
+          className={`ps-seg-btn hig-touch-target flex-1 py-1.5 rounded-xl text-xs font-bold text-center cursor-pointer ${
+            mobileTab === '3d' ? 'is-active' : ''
           }`}
         >
           3D View
@@ -883,8 +868,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             setMobileTab('2d');
             setRightViewportTab('dieline');
           }}
-          className={`flex-1 py-1.5 rounded-full text-xs font-bold text-center transition-all ${
-            mobileTab === '2d' ? 'bg-cyan-500/30 text-cyan-300' : 'text-white/50'
+          className={`ps-seg-btn hig-touch-target flex-1 py-1.5 rounded-xl text-xs font-bold text-center cursor-pointer ${
+            mobileTab === '2d' ? 'is-active' : ''
           }`}
         >
           2D Dieline
@@ -895,8 +880,8 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             setMobileTab('bom');
             setRightViewportTab('bom');
           }}
-          className={`flex-1 py-1.5 rounded-full text-xs font-bold text-center transition-all ${
-            mobileTab === 'bom' ? 'bg-cyan-500/30 text-cyan-300' : 'text-white/50'
+          className={`ps-seg-btn hig-touch-target flex-1 py-1.5 rounded-xl text-xs font-bold text-center cursor-pointer ${
+            mobileTab === 'bom' ? 'is-active' : ''
           }`}
         >
           Cut List
@@ -904,23 +889,23 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
       </div>
 
       {/* ── BOTTOM ACTION FOOTER ── */}
-      <footer className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-t border-white/10 bg-black/60 backdrop-blur-xl shrink-0 z-10">
+      <footer className="ps-footer flex items-center justify-between gap-3 px-4 sm:px-6 py-2.5 shrink-0 z-10">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => exportPackagingPdf(resolvedSpec, bomCutList)}
-            className="hig-touch-target px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+            className="liquid-control hig-touch-target px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
           >
-            <Download size={13} />
+            <Download size={13} className="text-[var(--main-color)]" />
             <span className="hidden sm:inline">{tr('Export PDF Spec')}</span>
             <span className="sm:hidden">PDF</span>
           </button>
           <button
             type="button"
             onClick={() => exportPackagingXlsx(resolvedSpec, bomCutList)}
-            className="hig-touch-target px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+            className="liquid-control hig-touch-target px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
           >
-            <Download size={13} />
+            <Download size={13} className="text-emerald-500" />
             <span className="hidden sm:inline">{tr('Export XLSX BOM')}</span>
             <span className="sm:hidden">XLSX</span>
           </button>
@@ -931,7 +916,7 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             type="button"
             disabled={isSaving}
             onClick={handleSaveContainer}
-            className="hig-touch-target px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs sm:text-sm flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all cursor-pointer disabled:opacity-50"
+            className="ps-btn-primary hig-touch-target px-5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
           >
             <Box size={16} />
             <span>{isSaving ? tr('Saving...') : tr('Save Container to Warehouse')}</span>
@@ -947,8 +932,9 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
 
   // Standalone Fullscreen Portal Sheet
   return (
-    <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/80 backdrop-blur-2xl p-2 sm:p-6 overflow-hidden">
-      <div className="w-full h-full max-w-7xl max-h-[96vh] rounded-3xl overflow-hidden border border-white/15 shadow-2xl flex flex-col bg-[#090b0e]">
+    <div className="ps-overlay fixed inset-0 z-[600] overflow-hidden">
+      <div className="ps-scrim absolute inset-0" onClick={onClose} />
+      <div className="ps-modal-shell relative z-10">
         {content}
       </div>
     </div>

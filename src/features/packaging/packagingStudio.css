@@ -1,95 +1,482 @@
-/* PackagingStudio.css
- * Liquid Onyx Packaging Studio Styling
- * Conforms to Apple HIG, Liquid Onyx Tokens, and Responsive Glassmorphism.
- */
+/* ============================================================================
+ * PACKAGING STUDIO — Liquid Onyx Clear Glass Slab System (R3 + Apple HIG)
+ * Zero-to-low tint clear glass carried by blur(24px) saturate(180%),
+ * dual-edge specular rim, soft top sheen, and multi-stop ambient shadow.
+ * Content cards, telemetry cells & BOM readouts use --lq-fill-card for >= 4.5:1 contrast.
+ * NO SVG refraction url(#...) anywhere.
+ * ============================================================================ */
 
+/* ----------------------------------------------------------------------------
+ * 1. Component-Local Clear Glass Token Overrides (Dark Default)
+ * ---------------------------------------------------------------------------- */
 .packaging-studio-root {
-  isolation: isolate;
-  color: var(--lq-ink, #f0f0f0);
-  font-family: var(--font-body, system-ui, sans-serif);
+  /* Layer 1: Primary Modal / Studio Sheet (.liquid-surface) — ultra-clear slab */
+  --lq-fill-surface: rgba(10, 14, 22, 0.08);
+  /* Layer 2: Structural Sections / Inspector / Chrome Bands (.liquid-panel) */
+  --lq-fill-panel: rgba(10, 14, 22, 0.15);
+  /* Layer 2b: Content Cards, Telemetry Readouts, BOM Table & Code Wells (legibility >= 4.5:1) */
+  --lq-fill-card: rgba(10, 14, 22, 0.28);
+  --lq-fill-well: rgba(4, 7, 13, 0.34);
+  /* Layer 3: Interactive Pills, Chips & Buttons (.liquid-control) */
+  --lq-fill-control: rgba(255, 255, 255, 0.05);
+  --lq-fill-control-hover: rgba(255, 255, 255, 0.11);
+  --lq-fill-control-active: color-mix(in srgb, var(--main-color, #48e5f7) 20%, rgba(255, 255, 255, 0.08));
+
+  /* Backdrop Optical Parameters (single blur budget on root surface) */
+  --lq-blur: 24px;
+  --lq-saturate: 180%;
+
+  /* Specular Rim & Inner Highlight */
+  --lq-rim: rgba(255, 255, 255, 0.24);
+  --lq-rim-subtle: rgba(255, 255, 255, 0.12);
+  --lq-rim-active: color-mix(in srgb, var(--main-color, #48e5f7) 64%, rgba(255, 255, 255, 0.42));
+  --lq-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.34),
+                  inset 0 -1px 0 0 rgba(255, 255, 255, 0.08);
+  --lq-highlight-subtle: inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+                         inset 0 -1px 0 0 rgba(255, 255, 255, 0.04);
+
+  /* Top Specular Sheen */
+  --lq-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.05) 38%,
+    rgba(255, 255, 255, 0.00) 100%
+  );
+
+  /* Depth & Elevation Shadows */
+  --lq-shadow-elevated:
+    0 28px 68px -14px rgba(0, 0, 0, 0.52),
+    0 8px 24px -6px rgba(0, 0, 0, 0.30);
+  --lq-shadow-panel:
+    0 10px 28px -8px rgba(0, 0, 0, 0.26);
+
+  /* Ink Hierarchy */
+  --lq-ink: #f8fafc;
+  --lq-ink-secondary: rgba(241, 245, 249, 0.78);
+  --lq-ink-tertiary: rgba(203, 213, 225, 0.56);
+  --lq-surface-border: rgba(255, 255, 255, 0.10);
+
+  color: var(--lq-ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Chromium-Only SVG Refraction Guard */
-@supports (backdrop-filter: url(#lq-refract)) and (-webkit-app-region: inherit) {
-  .packaging-refract {
-    backdrop-filter: url(#lq-refract) blur(24px);
-  }
-}
-
-/* Tabular figures for dimensions, volumes, and costs */
-.tabular-figures,
-.font-mono {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-}
-
-/* Apple HIG Touch Targets (44x44pt on mobile touch, 28x28pt on desktop) */
-@media (max-width: 768px) {
-  .hig-touch-target {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-
-@media (min-width: 769px) {
-  .hig-touch-target {
-    min-height: 28px;
-  }
-}
-
-/* Light Theme (html.theme-aqua) adaptation */
+/* ----------------------------------------------------------------------------
+ * 2. Aqua Daylight Theme Overrides (html.theme-aqua)
+ * ---------------------------------------------------------------------------- */
 html.theme-aqua .packaging-studio-root {
-  color: #0f172a;
+  --lq-fill-surface: rgba(255, 255, 255, 0.14);
+  --lq-fill-panel: rgba(255, 255, 255, 0.24);
+  --lq-fill-card: rgba(255, 255, 255, 0.52);
+  --lq-fill-well: rgba(225, 240, 247, 0.58);
+  --lq-fill-control: rgba(11, 42, 51, 0.05);
+  --lq-fill-control-hover: rgba(11, 42, 51, 0.10);
+  --lq-fill-control-active: color-mix(in srgb, var(--main-color, #0077c8) 18%, rgba(255, 255, 255, 0.72));
+
+  --lq-rim: rgba(11, 42, 51, 0.18);
+  --lq-rim-subtle: rgba(11, 42, 51, 0.10);
+  --lq-rim-active: color-mix(in srgb, var(--main-color, #0077c8) 56%, rgba(11, 42, 51, 0.28));
+  --lq-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.88),
+                  inset 0 -1px 0 0 rgba(11, 42, 51, 0.06);
+  --lq-highlight-subtle: inset 0 1px 0 0 rgba(255, 255, 255, 0.65),
+                         inset 0 -1px 0 0 rgba(11, 42, 51, 0.04);
+
+  --lq-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(255, 255, 255, 0.16) 42%,
+    rgba(255, 255, 255, 0.00) 100%
+  );
+
+  --lq-shadow-elevated:
+    0 24px 56px -12px rgba(7, 55, 99, 0.18),
+    0 6px 18px -4px rgba(7, 55, 99, 0.08);
+  --lq-shadow-panel:
+    0 8px 22px -6px rgba(7, 55, 99, 0.10);
+
+  --lq-ink: #0b2a33;
+  --lq-ink-secondary: rgba(11, 42, 51, 0.76);
+  --lq-ink-tertiary: rgba(11, 42, 51, 0.54);
+  --lq-surface-border: rgba(11, 42, 51, 0.10);
 }
 
-html.theme-aqua .packaging-studio-root .bg-black\/60,
-html.theme-aqua .packaging-studio-root .bg-black\/70,
-html.theme-aqua .packaging-studio-root .bg-black\/40 {
-  background-color: rgba(255, 255, 255, 0.75);
-  border-color: rgba(15, 23, 42, 0.12);
-  color: #0f172a;
+/* ----------------------------------------------------------------------------
+ * 3. Layer 0 & Layer 1: Standalone Modal Scrim & Clear Glass Sheet
+ * ---------------------------------------------------------------------------- */
+.ps-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
 }
 
-html.theme-aqua .packaging-studio-root .text-white {
-  color: #0f172a !important;
+.ps-scrim {
+  background: rgba(2, 6, 16, 0.22);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-html.theme-aqua .packaging-studio-root .text-white\/70,
-html.theme-aqua .packaging-studio-root .text-white\/80 {
-  color: rgba(15, 23, 42, 0.8) !important;
+html.theme-aqua .ps-scrim {
+  background: rgba(11, 42, 51, 0.10);
 }
 
-html.theme-aqua .packaging-studio-root .text-white\/40,
-html.theme-aqua .packaging-studio-root .text-white\/60 {
-  color: rgba(15, 23, 42, 0.55) !important;
+.ps-modal-shell {
+  width: 100%;
+  max-width: 1640px;
+  height: min(92dvh, 980px);
+  border-radius: 26px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-html.theme-aqua .packaging-studio-root input,
-html.theme-aqua .packaging-studio-root select {
-  background-color: rgba(255, 255, 255, 0.9);
-  color: #0f172a;
-  border-color: rgba(15, 23, 42, 0.15);
+@media (max-width: 640px) {
+  .ps-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .ps-modal-shell {
+    height: 96dvh;
+    border-radius: 24px 24px 0 0;
+  }
 }
 
-/* Custom compact scrollbar */
-.packaging-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.packaging-studio-root.liquid-surface {
+  background: var(--lq-fill-surface) !important;
+  backdrop-filter: blur(var(--lq-blur)) saturate(var(--lq-saturate)) !important;
+  -webkit-backdrop-filter: blur(var(--lq-blur)) saturate(var(--lq-saturate)) !important;
+  border: 1px solid var(--lq-rim) !important;
+  box-shadow: var(--lq-highlight), var(--lq-shadow-elevated) !important;
 }
 
-.packaging-scrollbar::-webkit-scrollbar-track {
+/* Top specular edge refraction line — crisp 14px band, no milky wash */
+.packaging-studio-root.liquid-surface::before {
+  height: 14px;
+  opacity: 0.72;
+}
+
+/* Prevent nested backdrop-filter compounding inside the blurred root surface */
+.packaging-studio-root .liquid-panel,
+.packaging-studio-root .liquid-control,
+.packaging-studio-root [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ----------------------------------------------------------------------------
+ * 4. Layer 2: Structural Chrome Bands, Telemetry Ribbon & Inspector Panel
+ * ---------------------------------------------------------------------------- */
+.ps-header {
+  background: var(--lq-fill-panel);
+  border-bottom: 1px solid var(--lq-surface-border);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
+}
+
+html.theme-aqua .ps-header {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.75);
+}
+
+.ps-preset-bar {
+  background: color-mix(in srgb, var(--lq-fill-panel) 70%, transparent);
+  border-bottom: 1px solid var(--lq-surface-border);
+}
+
+.ps-telemetry-ribbon {
+  background: color-mix(in srgb, var(--lq-fill-panel) 55%, transparent);
+  border-bottom: 1px solid var(--lq-surface-border);
+}
+
+.packaging-studio-root .ps-telemetry-card.liquid-panel {
+  background: var(--lq-fill-card) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: var(--lq-highlight-subtle) !important;
+  border-radius: 12px;
+}
+
+.packaging-studio-root .ps-inspector.liquid-panel {
+  background: var(--lq-fill-panel) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: var(--lq-highlight-subtle), var(--lq-shadow-panel) !important;
+  border-radius: 18px;
+}
+
+/* Content Cards (BOM Table, Parameter Groups, CLI Box) — denser fill for >= 4.5:1 legibility */
+.packaging-studio-root .ps-card.liquid-panel {
+  background: var(--lq-fill-card) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: var(--lq-highlight-subtle), var(--lq-shadow-panel) !important;
+  border-radius: 16px;
+}
+
+.ps-code-well {
+  background: var(--lq-fill-well);
+  border: 1px solid var(--lq-rim-subtle);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.22);
+  border-radius: 12px;
+}
+
+html.theme-aqua .ps-code-well {
+  box-shadow: inset 0 1px 2px rgba(7, 55, 99, 0.08);
+}
+
+/* 2D Dieline & 3D Stage Frames */
+.packaging-studio-root .ps-stage-frame.liquid-panel,
+.packaging-studio-root .ps-3d-stage.liquid-panel {
+  background: var(--lq-fill-well) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: var(--lq-highlight-subtle), var(--lq-shadow-panel) !important;
+  border-radius: 18px;
+}
+
+.packaging-studio-root .ps-hud-pill.liquid-panel,
+.packaging-studio-root .ps-hud-bar.liquid-panel {
+  background: var(--lq-fill-card) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: var(--lq-highlight-subtle), var(--lq-shadow-panel) !important;
+}
+
+.ps-footer {
+  background: var(--lq-fill-panel);
+  border-top: 1px solid var(--lq-surface-border);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+}
+
+.ps-mobile-nav {
+  background: var(--lq-fill-panel);
+  border-bottom: 1px solid var(--lq-surface-border);
+}
+
+/* ----------------------------------------------------------------------------
+ * 5. Layer 3: Controls, Segmented Pills, Chips, Inputs & Primary Action CTA
+ *    Protected against global html.style-slab bare button/input overrides
+ * ---------------------------------------------------------------------------- */
+.ps-seg-group,
+.packaging-studio-root .ps-seg-group.liquid-panel {
+  background: var(--lq-fill-card) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18) !important;
+  border-radius: 12px;
+  padding: 3px;
+}
+
+html.theme-aqua .ps-seg-group,
+html.theme-aqua .packaging-studio-root .ps-seg-group.liquid-panel {
+  box-shadow: inset 0 1px 2px rgba(7, 55, 99, 0.07) !important;
+}
+
+.packaging-studio-root .liquid-control,
+html.style-slab .packaging-studio-root button.liquid-control {
+  background: var(--lq-fill-control) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: var(--lq-highlight-subtle) !important;
+  color: var(--lq-ink) !important;
+  transition:
+    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.packaging-studio-root .liquid-control:hover:not(:disabled),
+html.style-slab .packaging-studio-root button.liquid-control:hover:not(:disabled) {
+  background: var(--lq-fill-control-hover) !important;
+  border-color: var(--lq-rim) !important;
+}
+
+.packaging-studio-root .liquid-control:active:not(:disabled),
+html.style-slab .packaging-studio-root button.liquid-control:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Segmented Pill Button & Preset Chip */
+.packaging-studio-root .ps-seg-btn,
+html.style-slab .packaging-studio-root button.ps-seg-btn {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  color: var(--lq-ink-secondary) !important;
+  transition: all 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.packaging-studio-root .ps-seg-btn:hover:not(.is-active),
+html.style-slab .packaging-studio-root button.ps-seg-btn:hover:not(.is-active) {
+  background: var(--lq-fill-control) !important;
+  color: var(--lq-ink) !important;
+}
+
+.packaging-studio-root .ps-seg-btn.is-active,
+html.style-slab .packaging-studio-root button.ps-seg-btn.is-active,
+.packaging-studio-root .liquid-control.is-active,
+html.style-slab .packaging-studio-root button.liquid-control.is-active {
+  background: var(--lq-fill-control-active) !important;
+  border-color: var(--lq-rim-active) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.36),
+    0 2px 10px -2px color-mix(in srgb, var(--main-color, #48e5f7) 32%, transparent) !important;
+  color: var(--lq-ink) !important;
+}
+
+html.theme-aqua .packaging-studio-root .ps-seg-btn.is-active,
+html.theme-aqua.style-slab .packaging-studio-root button.ps-seg-btn.is-active,
+html.theme-aqua .packaging-studio-root .liquid-control.is-active,
+html.theme-aqua.style-slab .packaging-studio-root button.liquid-control.is-active {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.85),
+    0 2px 8px -2px rgba(7, 55, 99, 0.15) !important;
+}
+
+/* Primary Action CTA ("Save Container to Warehouse") — Crisp Luminous Slab Button */
+.packaging-studio-root .ps-btn-primary,
+html.style-slab .packaging-studio-root button.ps-btn-primary {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--main-color, #48e5f7) 94%, #ffffff) 0%,
+    var(--main-color, #48e5f7) 100%
+  ) !important;
+  border: 1px solid color-mix(in srgb, var(--main-color, #48e5f7) 65%, #ffffff) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
+    0 8px 22px -6px color-mix(in srgb, var(--main-color, #48e5f7) 45%, transparent) !important;
+  color: #070b11 !important;
+  font-weight: 800;
+}
+
+.packaging-studio-root .ps-btn-primary:hover:not(:disabled),
+html.style-slab .packaging-studio-root button.ps-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.72),
+    0 12px 28px -6px color-mix(in srgb, var(--main-color, #48e5f7) 58%, transparent) !important;
+}
+
+html.theme-aqua .packaging-studio-root .ps-btn-primary,
+html.theme-aqua.style-slab .packaging-studio-root button.ps-btn-primary {
+  color: #ffffff !important;
+}
+
+/* Form Inputs & Selects inside Packaging Studio */
+.packaging-studio-root .ps-input,
+html.style-slab .packaging-studio-root input.ps-input,
+html.style-slab .packaging-studio-root select.ps-input {
+  background: var(--lq-fill-card) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.14) !important;
+  color: var(--lq-ink) !important;
+  border-radius: 10px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.packaging-studio-root .ps-input:focus,
+html.style-slab .packaging-studio-root input.ps-input:focus,
+html.style-slab .packaging-studio-root select.ps-input:focus {
+  border-color: var(--lq-rim-active) !important;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.12),
+    0 0 0 2px color-mix(in srgb, var(--main-color, #48e5f7) 26%, transparent) !important;
+  outline: none;
+}
+
+.packaging-studio-root select.ps-input option {
+  background-color: #0e1420;
+  color: #f8fafc;
+}
+
+html.theme-aqua .packaging-studio-root select.ps-input option {
+  background-color: #f4f9fc;
+  color: #0b2a33;
+}
+
+/* Range Sliders */
+.packaging-studio-root input[type="range"] {
+  accent-color: var(--main-color, #48e5f7);
+}
+
+/* ----------------------------------------------------------------------------
+ * 6. Apple HIG 44x44pt Touch Target Floor & Scrollbar Polish
+ * ---------------------------------------------------------------------------- */
+.packaging-studio-root .hig-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+@media (pointer: coarse) {
+  .packaging-studio-root button,
+  .packaging-studio-root select,
+  .packaging-studio-root input[type="number"],
+  .packaging-studio-root input[type="text"],
+  .packaging-studio-root label {
+    min-height: 44px;
+  }
+}
+
+.packaging-studio-root .custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.packaging-studio-root .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.packaging-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+.packaging-studio-root .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--lq-rim-subtle);
   border-radius: 9999px;
 }
 
-.packaging-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+.packaging-studio-root .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--lq-rim);
 }
 
-html.theme-aqua .packaging-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+.packaging-studio-root .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.packaging-studio-root .no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ----------------------------------------------------------------------------
+ * 7. Accessibility: Reduced Transparency Solid Fallbacks (R3 Section 5)
+ * ---------------------------------------------------------------------------- */
+@media (prefers-reduced-transparency: reduce) {
+  .ps-scrim {
+    background: rgba(2, 6, 16, 0.78) !important;
+  }
+  html.theme-aqua .ps-scrim {
+    background: rgba(11, 42, 51, 0.45) !important;
+  }
+  .packaging-studio-root.liquid-surface {
+    background: var(--lq-solid-surface) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .packaging-studio-root .liquid-panel,
+  .packaging-studio-root .ps-header,
+  .packaging-studio-root .ps-preset-bar,
+  .packaging-studio-root .ps-telemetry-ribbon,
+  .packaging-studio-root .ps-footer,
+  .packaging-studio-root .ps-mobile-nav,
+  .packaging-studio-root .ps-telemetry-card.liquid-panel,
+  .packaging-studio-root .ps-inspector.liquid-panel,
+  .packaging-studio-root .ps-card.liquid-panel,
+  .packaging-studio-root .ps-stage-frame.liquid-panel,
+  .packaging-studio-root .ps-3d-stage.liquid-panel,
+  .packaging-studio-root .ps-hud-pill.liquid-panel,
+  .packaging-studio-root .ps-hud-bar.liquid-panel,
+  .packaging-studio-root .ps-seg-group.liquid-panel {
+    background: var(--lq-solid-panel) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .packaging-studio-root .liquid-control,
+  .packaging-studio-root .ps-input {
+    background: var(--lq-solid-control) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }
