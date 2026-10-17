@@ -3,6 +3,7 @@ import { X, Printer, CheckSquare, Square, Bluetooth } from 'lucide-react';
 import Barcode from 'react-barcode';
 import { QRCodeSVG } from 'qrcode.react';
 import { generateAxonometricDataUrl } from '../lib/axonometric';
+import { tr, trf } from '../lib/i18n';
 
 interface PreviewLabelsProps {
     items: any[];
@@ -48,9 +49,9 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({ items, quantities,
                 const tag = item.codes?.bookBarcode || '';
                 if (!cache[tag]) {
                     const norm = item.normData || {};
-                    const w = parseFloat(norm.w || '0');
-                    const h = parseFloat(norm.h || '0');
-                    const d = parseFloat(norm.d || '0');
+                    const w = parseFloat(String(norm.widthCm ?? norm.w ?? 0));
+                    const h = parseFloat(String(norm.heightCm ?? norm.h ?? 0));
+                    const d = parseFloat(String(norm.lengthCm ?? norm.d ?? 0));
                     const svg = await generateAxonometricDataUrl(w, h, d, norm.shape, norm.shortDescription, 'black');
                     cache[tag] = svg;
                 }
@@ -72,8 +73,8 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({ items, quantities,
             {/* Header */}
             <div className="shrink-0 relative z-10 flex items-center justify-between px-8 py-6 bg-black/50 border-b border-white/5">
                 <div>
-                    <h2 className="text-2xl font-black text-white tracking-tight">Preview Labels</h2>
-                    <p className="text-white/40 text-sm mt-1">{labelInstances.length} labels - Click to select/deselect</p>
+                    <h2 className="text-2xl font-black text-white tracking-tight">{tr('Preview Labels')}</h2>
+                    <p className="text-white/40 text-sm mt-1">{trf('{n} labels - Click to select/deselect', { n: labelInstances.length })}</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <button
@@ -81,7 +82,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({ items, quantities,
                         className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-white text-sm font-bold tracking-wide transition-all active:scale-95 border border-white/10"
                     >
                         <Printer size={16} />
-                        EDIT
+                        {tr('EDIT')}
                     </button>
                     <button
                         onClick={onClose}
@@ -192,7 +193,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({ items, quantities,
                         style={{ backgroundColor: 'var(--main-color)', boxShadow: '0 0 30px var(--main-color)' }}
                     >
                         <Printer size={18} />
-                        START BATCH
+                        {tr('START BATCH')}
                     </button>
                 </div>
             </div>

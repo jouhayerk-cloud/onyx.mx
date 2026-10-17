@@ -1,7 +1,7 @@
 import { recordDocumentJob } from '../../lib/documentJobs';
 import type { DocumentJob } from '../../lib/documentJobs';
 import type { DocumentKind, DocumentChannel } from './types';
-import { flushOutbox } from './jobService';
+import { flushOutbox, saveToOutbox } from './jobService';
 import { saveAs } from 'file-saver';
 
 export interface TrackMeta {
@@ -89,48 +89,14 @@ function minimizeSnapshot(v: unknown, depth = 0): unknown {
     return undefined;
 }
 
-const OUTBOX_CAP = 200;
-
 async function saveJobToOutbox(job: DocumentJob): Promise<void> {
-    const item = {
+    await saveToOutbox({
         id: generateId(),
         type: 'job',
         timestamp: Date.now(),
         payload: job
-    };
-    try {
-        if (typeof window !== 'undefined' && window.indexedDB) {
-            const req = indexedDB.open('OnyxPrintHub', 1);
-            req.onupgradeneeded = () => {
-                if (!req.result.objectStoreNames.contains('outbox')) {
-                    req.result.createObjectStore('outbox', { keyPath: 'id' });
-                }
-            };
-            req.onsuccess = () => {
-                const db = req.result;
-                if (!db.objectStoreNames.contains('outbox')) return;
-                try {
-                    const tx = db.transaction('outbox', 'readwrite');
-                    const store = tx.objectStore('outbox');
-                    const cnt = store.count();
-                    cnt.onsuccess = () => { if (cnt.result < OUTBOX_CAP) store.put(item); };
-                    tx.oncomplete = () => {
-                        flushOutbox().catch(() => {});
-                    };
-                } catch (e) {
-                    // fail soft
-                }
-            };
-        } else if (typeof localStorage !== 'undefined') {
-            const OUTBOX_KEY = 'onyx_document_jobs_outbox';
-            const existing = JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]');
-            existing.push(item);
-            localStorage.setItem(OUTBOX_KEY, JSON.stringify(existing.slice(-OUTBOX_CAP)));
-            flushOutbox().catch(() => {});
-        }
-    } catch (e) {
-        // fail soft
-    }
+    });
+    flushOutbox().catch(() => {});
 }
 
 async function computeSha256(buffer: ArrayBuffer): Promise<string | undefined> {

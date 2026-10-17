@@ -5,7 +5,7 @@ import type { DocumentJob } from '../../lib/documentJobs';
 
 const OUTBOX_KEY = 'onyx_document_jobs_outbox';
 
-interface OutboxItem {
+export interface OutboxItem {
     type: 'job' | 'event';
     payload: any;
     timestamp: number;
@@ -14,7 +14,7 @@ interface OutboxItem {
 
 let dbPromise: Promise<IDBDatabase | null> | null = null;
 
-function getDB(): Promise<IDBDatabase | null> {
+export function getDB(): Promise<IDBDatabase | null> {
     if (dbPromise) return dbPromise;
     dbPromise = new Promise((resolve) => {
         if (typeof window === 'undefined' || !window.indexedDB) {
@@ -33,7 +33,7 @@ function getDB(): Promise<IDBDatabase | null> {
     return dbPromise;
 }
 
-async function saveToOutbox(item: OutboxItem) {
+export async function saveToOutbox(item: OutboxItem): Promise<void> {
     try {
         const db = await getDB();
         if (db) {
@@ -46,7 +46,7 @@ async function saveToOutbox(item: OutboxItem) {
         } else {
             const existing = JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]');
             existing.push(item);
-            localStorage.setItem(OUTBOX_KEY, JSON.stringify(existing));
+            localStorage.setItem(OUTBOX_KEY, JSON.stringify(existing.slice(-200)));
         }
     } catch (e) {
         console.warn('Failed to save to outbox', e);

@@ -1,12 +1,30 @@
 import { vendors } from '../../lib/consts';
 
+function escapeHtml(val: unknown): string {
+    if (val === null || val === undefined) return '';
+    return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function safeScriptJson(val: unknown): string {
+    return JSON.stringify(val ?? null)
+        .replace(/<\//g, '<\\/')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+}
+
 /** Builds the printable HTML packing list for a manifest, with per-crate items and truck stats. */
 export function generatePackingListHtml(manifestId: string, metadata: any, payload: any) {
     const { crates, truckStats, timestamp } = payload;
-    const cratesJson = JSON.stringify(crates);
+    const cratesJson = safeScriptJson(crates);
     
-    const crateRows = crates.map((c: any) => {
-        const crateColor = c.color || (vendors as any)[c.subtitle]?.color || '#adb5bd';
+    const crateRows = (crates || []).map((c: any) => {
+        const rawColor = c.color || (vendors as any)[c.subtitle]?.color || '#adb5bd';
+        const crateColor = escapeHtml(rawColor);
         
         const itemRows = (c.items || []).map((it: any, idx: number) => `
             <tr>
@@ -14,24 +32,24 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
                     ${String(idx + 1).padStart(2, '0')}
                 </td>
                 <td style="padding: 15px 0; vertical-align: top;">
-                    <div style="display: inline-flex; border: 1px solid #000; border-left: 8px solid ${it.tagColor || (vendors as any)[it.vendorPrefix]?.color || '#000'}; border-radius: 6px; padding: 6px 12px; background: #fff; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 900; margin-bottom: 8px;">
-                        ${it.itemId}
+                    <div style="display: inline-flex; border: 1px solid #000; border-left: 8px solid ${escapeHtml(it.tagColor || (vendors as any)[it.vendorPrefix]?.color || '#000')}; border-radius: 6px; padding: 6px 12px; background: #fff; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 900; margin-bottom: 8px;">
+                        ${escapeHtml(it.itemId)}
                     </div>
                 </td>
                 <td style="padding: 15px 15px; vertical-align: top;">
                     <div style="font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; margin-bottom: 6px;">
-                        ${it.name}
+                        ${escapeHtml(it.name)}
                     </div>
                     <div style="display: flex; gap: 6px;">
-                        <span style="font-size: 8px; font-weight: 900; text-transform: uppercase; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; color: #64748b; letter-spacing: 0.1em;">${it.type || 'Unit'}</span>
-                        <span style="font-size: 8px; font-weight: 900; text-transform: uppercase; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; color: #64748b; letter-spacing: 0.1em;">${it.desc || '—'}</span>
+                        <span style="font-size: 8px; font-weight: 900; text-transform: uppercase; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; color: #64748b; letter-spacing: 0.1em;">${escapeHtml(it.type || 'Unit')}</span>
+                        <span style="font-size: 8px; font-weight: 900; text-transform: uppercase; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; color: #64748b; letter-spacing: 0.1em;">${escapeHtml(it.desc || '—')}</span>
                     </div>
                 </td>
                 <td style="padding: 15px 0; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; vertical-align: top;">
-                    ${it.combinedAttr || '—'}
+                    ${escapeHtml(it.combinedAttr || '—')}
                 </td>
                 <td style="padding: 15px 0; font-size: 24px; font-weight: 900; text-align: right; vertical-align: top;">
-                    ${it.qty}
+                    ${escapeHtml(it.qty)}
                 </td>
             </tr>
         `).join('');
@@ -41,11 +59,11 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 15px; border-bottom: 1px solid #000; margin-bottom: 20px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="width: 12px; height: 12px; border-radius: 50%; background: ${crateColor};"></div>
-                        <span style="font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em;">${c.label}</span>
-                        <span style="font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-left: 10px;">${c.subtitle}</span>
+                        <span style="font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em;">${escapeHtml(c.label)}</span>
+                        <span style="font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-left: 10px;">${escapeHtml(c.subtitle)}</span>
                     </div>
                     <div style="font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em;">
-                        ${c.l}×${c.w}×${c.h} CM &nbsp;·&nbsp; ${(c.items?.reduce((s:number,i:any)=>s+((i.weightKg||0)*(i.qty||1)),0) || 0).toFixed(1)} KG
+                        ${escapeHtml(c.l)}×${escapeHtml(c.w)}×${escapeHtml(c.h)} CM &nbsp;·&nbsp; ${(c.items?.reduce((s:number,i:any)=>s+((i.weightKg||0)*(i.qty||1)),0) || 0).toFixed(1)} KG
                     </div>
                 </div>
                 <table style="width: 100%; border-collapse: collapse;">
@@ -69,7 +87,7 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Packing List - ${manifestId}</title>
+    <title>Packing List - ${escapeHtml(manifestId)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@700;900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
@@ -89,55 +107,55 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
         <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #f1f5f9; padding-bottom: 40px; margin-bottom: 40px;">
             <div>
                 <h1 style="font-size: 24px; font-weight: 900; text-transform: uppercase; margin: 0 0 5px 0; letter-spacing: -0.01em;">Onyx Logistics Trailer Manifest</h1>
-                <p style="font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3em; margin: 0;">Digital Mirror Protocol v2.8 · Issued ${timestamp}</p>
+                <p style="font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3em; margin: 0;">Digital Mirror Protocol v2.8 · Issued ${escapeHtml(timestamp)}</p>
             </div>
             <div style="text-align: right;">
-                <div style="font-size: 32px; font-weight: 900; text-transform: uppercase; margin: 0; letter-spacing: -0.03em;">${manifestId}</div>
+                <div style="font-size: 32px; font-weight: 900; text-transform: uppercase; margin: 0; letter-spacing: -0.03em;">${escapeHtml(manifestId)}</div>
             </div>
         </div>
 
         <!-- Metrics -->
-        <div style="display: grid; grid-template-cols: 1fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 60px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 60px;">
             <div>
                 <label style="font-size: 9px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.15em; display: block; margin-bottom: 12px;">Payload Weight</label>
                 <div style="font-size: 42px; font-weight: 900; letter-spacing: -0.04em;">
-                    ${Math.round(truckStats?.totalWeight || 0).toLocaleString()} <span style="font-size: 14px; color: #cbd5e1;">KG</span>
+                    ${Math.round(Number(truckStats?.totalWeight) || 0).toLocaleString()} <span style="font-size: 14px; color: #cbd5e1;">KG</span>
                 </div>
-                <div style="font-size: 9px; font-weight: 900; color: #059669; text-transform: uppercase; margin-top: 5px;">${truckStats?.payloadPct || 0}% Utilization</div>
+                <div style="font-size: 9px; font-weight: 900; color: #059669; text-transform: uppercase; margin-top: 5px;">${escapeHtml(truckStats?.payloadPct ?? 0)}% Utilization</div>
             </div>
             <div>
                 <label style="font-size: 9px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.15em; display: block; margin-bottom: 12px;">Distribution</label>
                 <div style="height: 6px; background: #f1f5f9; border-radius: 3px; display: flex; overflow: hidden; margin-bottom: 10px;">
-                    <div style="flex: ${truckStats?.rPct || 1}; background: #94a3b8;"></div>
-                    <div style="flex: ${truckStats?.mPct || 1}; background: #cbd5e1;"></div>
-                    <div style="flex: ${truckStats?.fPct || 1}; background: #e2e8f0;"></div>
+                    <div style="flex: ${Number(truckStats?.rPct) || 1}; background: #94a3b8;"></div>
+                    <div style="flex: ${Number(truckStats?.mPct) || 1}; background: #cbd5e1;"></div>
+                    <div style="flex: ${Number(truckStats?.fPct) || 1}; background: #e2e8f0;"></div>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 9px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em;">
-                    <span>Rear: ${truckStats?.rPct || 0}%</span>
-                    <span>Front: ${truckStats?.fPct || 0}%</span>
+                    <span>Rear: ${escapeHtml(truckStats?.rPct ?? 0)}%</span>
+                    <span>Front: ${escapeHtml(truckStats?.fPct ?? 0)}%</span>
                 </div>
             </div>
             <div style="grid-column: span 2; border-left: 1px solid #f1f5f9; padding-left: 40px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
                 <div>
                     <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Volume Status</label>
-                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: ${truckStats?.statusColor || '#111827'};">${truckStats?.status || 'OPTIMAL'}</span>
-                    <span style="font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-left: 4px;">${truckStats?.volPct || 0}% FILLED</span>
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: ${escapeHtml(truckStats?.statusColor || '#111827')};">${escapeHtml(truckStats?.status || 'OPTIMAL')}</span>
+                    <span style="font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-left: 4px;">${escapeHtml(truckStats?.volPct ?? 0)}% FILLED</span>
                 </div>
                 <div>
                     <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Seal Number</label>
-                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${metadata?.sealNumber || '—'}</span>
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${escapeHtml(metadata?.sealNumber || '—')}</span>
                 </div>
                 <div>
                     <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Tractor / Plates</label>
-                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${metadata?.tractorNumber || '—'} ${metadata?.truckPlates ? '· ' + metadata.truckPlates : ''}</span>
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${escapeHtml(metadata?.tractorNumber || '—')} ${metadata?.truckPlates ? '· ' + escapeHtml(metadata.truckPlates) : ''}</span>
                 </div>
                 <div style="grid-column: span 3;">
                     <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Trailer / Plates</label>
-                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${metadata?.trailerNumber || '—'} ${metadata?.trailerPlates ? '· ' + metadata.trailerPlates : ''}</span>
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${escapeHtml(metadata?.trailerNumber || '—')} ${metadata?.trailerPlates ? '· ' + escapeHtml(metadata.trailerPlates) : ''}</span>
                 </div>
                 <div style="grid-column: span 3;">
                     <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Dispatch Personnel</label>
-                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${(metadata?.senders || []).join(' / ') || '—'}</span>
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${escapeHtml((metadata?.senders || []).join(' / ') || '—')}</span>
                 </div>
             </div>
         </div>
