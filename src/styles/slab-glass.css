@@ -999,8 +999,8 @@ html.style-slab .inv-sheet .inv-readout {
 
 /* Owner 2026-10-17: the compact item details under a list row read opaque; clearer glass there. */
 html.style-slab .inv-drawer-body {
-    background-color: color-mix(in srgb, var(--slab) 45%, transparent) !important;
+    background-color: color-mix(in srgb, var(--slab) 60%, transparent) !important;
     background-image: var(--lq-sheen) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(1.5) !important;
-    backdrop-filter: blur(20px) saturate(1.5) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(1.5) !important;
+    backdrop-filter: blur(32px) saturate(1.5) !important;
 }
