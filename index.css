@@ -54,6 +54,7 @@ html, body {
 
 #root {
   position: fixed;
+  z-index: 1;   /* above slab's body::after wash (z 0), which would otherwise dim the whole app */
   top: 0;
   left: 0;
   right: 0;
