@@ -11,6 +11,7 @@
     padding: 14px;
     width: 100%;
     box-sizing: border-box;
+    color: var(--lq-ink, var(--isl-ink));
 }
 
 /* Panel width from 768 px up: the picture on the left, everything about the piece on the right */
@@ -73,9 +74,9 @@
 .isl-item-picture-box {
     width: 100%;
     aspect-ratio: 4 / 3;
-    background: var(--isl-fill-1);
-    border-radius: var(--isl-radius-row);
-    border: 1px solid var(--isl-line);
+    background: var(--lq-fill-panel, var(--isl-fill-1));
+    border-radius: var(--lq-radius-panel, var(--isl-radius-row));
+    border: 1px solid var(--lq-rim-subtle, var(--isl-line));
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -111,7 +112,7 @@
 }
 
 .isl-item-title-primary {
-    color: var(--isl-ink);
+    color: var(--lq-ink, var(--isl-ink));
     font-size: 13px;
     font-weight: 600;
     line-height: 1.3;

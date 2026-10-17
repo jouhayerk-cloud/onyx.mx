@@ -10,7 +10,7 @@
     height: 100%;
     min-height: 0;
     width: 100%;
-    color: var(--isl-ink);
+    color: var(--lq-ink, var(--isl-ink));
     font-size: 13px;
     line-height: 1.4;
     overflow: hidden;
@@ -24,7 +24,7 @@
     justify-content: space-between;
     gap: 8px;
     padding: 8px 12px;
-    border-bottom: 1px solid var(--isl-line);
+    border-bottom: 1px solid var(--lq-rim-subtle, var(--isl-line));
     flex-shrink: 0;
     min-height: var(--isl-target);
 }
@@ -36,9 +36,9 @@
     align-items: center;
     gap: 2px;
     padding: 2px;
-    background: var(--isl-fill-1);
+    background: var(--lq-fill-control, var(--isl-fill-1));
     border-radius: var(--isl-radius-chip);
-    border: 1px solid var(--isl-line);
+    border: 1px solid var(--lq-rim-subtle, var(--isl-line));
 }
 
 .isl-inbox-tab {
@@ -60,12 +60,12 @@
 }
 
 .isl-inbox-tab:hover {
-    color: var(--isl-ink);
+    color: var(--lq-ink, var(--isl-ink));
 }
 
 .isl-inbox-tab--active {
-    background: var(--isl-fill-2);
-    color: var(--isl-ink);
+    background: var(--lq-fill-control-hover, var(--isl-fill-2));
+    color: var(--lq-ink, var(--isl-ink));
     border-bottom: 2px solid var(--isl-accent);
 }
 
@@ -89,9 +89,9 @@
 }
 
 .isl-btn--ghost:hover:not([disabled]) {
-    background: var(--isl-fill-2);
+    background: var(--lq-fill-control-hover, var(--isl-fill-2));
     border-color: transparent;
-    color: var(--isl-ink);
+    color: var(--lq-ink, var(--isl-ink));
 }
 
 .isl-btn--ghost:focus-visible {
@@ -151,11 +151,11 @@ button.isl-inbox-row {
     min-height: var(--isl-target);
     padding: 8px 12px;
     text-align: left;
-    color: var(--isl-ink);
+    color: var(--lq-ink, var(--isl-ink));
     cursor: pointer;
-    background: var(--isl-fill-1);
-    border-radius: var(--isl-radius-row);
-    border: 1px solid var(--isl-line);
+    background: var(--lq-fill-panel, var(--isl-fill-1));
+    border-radius: var(--lq-radius-panel, var(--isl-radius-row));
+    border: 1px solid var(--lq-rim-subtle, var(--isl-line));
     transition: background-color 0.1s ease, border-color 0.1s ease;
     position: relative;
     font: inherit;
@@ -163,7 +163,7 @@ button.isl-inbox-row {
 }
 
 button.isl-inbox-row:hover {
-    background: var(--isl-fill-2);
+    background: var(--lq-fill-control-hover, var(--isl-fill-2));
 }
 
 button.isl-inbox-row:focus-visible {
@@ -262,7 +262,7 @@ button.isl-inbox-row:focus-visible {
     gap: 8px;
     margin-top: 8px;
     padding-top: 6px;
-    border-top: 1px solid var(--isl-line);
+    border-top: 1px solid var(--lq-rim-subtle, var(--isl-line));
     width: 100%;
 }
 
@@ -287,7 +287,7 @@ button.isl-inbox-row:focus-visible {
 }
 
 .isl-inbox-empty-title {
-    color: var(--isl-ink);
+    color: var(--lq-ink, var(--isl-ink));
 }
 
 .isl-inbox-empty-caption {

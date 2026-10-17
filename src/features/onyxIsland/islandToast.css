@@ -7,7 +7,7 @@
   position: relative;
   width: 100%;
   min-width: 0;
-  color: var(--isl-ink);
+  color: var(--lq-ink, var(--isl-ink));
   cursor: pointer;
 }
 
@@ -119,8 +119,8 @@
   cursor: pointer;
   transition: background-color 0.1s ease, color 0.1s ease;
 }
-.isl-toast .isl-icon-btn:hover { --isl-bg: var(--isl-fill-2); color: var(--isl-ink); }
-.isl-toast .isl-icon-btn:active { --isl-bg: var(--isl-fill-3); }
+.isl-toast .isl-icon-btn:hover { --isl-bg: var(--lq-fill-control-hover, var(--isl-fill-2)); color: var(--lq-ink, var(--isl-ink)); }
+.isl-toast .isl-icon-btn:active { --isl-bg: var(--lq-fill-control, var(--isl-fill-3)); }
 
 /* custom render content and the footer do not expand the card on click */
 .isl-toast__custom { min-width: 0; margin-top: 4px; cursor: default; }
@@ -146,7 +146,7 @@
   border-radius: 999px;
   overflow: hidden;
   pointer-events: none;
-  background: var(--isl-line);
+  background: var(--lq-rim-subtle, var(--isl-line));
 }
 
 .isl-toast__timer-bar {

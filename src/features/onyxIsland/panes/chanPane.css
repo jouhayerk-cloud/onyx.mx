@@ -10,7 +10,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  color: var(--isl-ink);
+  color: var(--lq-ink, var(--isl-ink));
   font-size: 13px;
   line-height: 1.4;
 }
@@ -22,7 +22,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--isl-line);
+  border-bottom: 1px solid var(--lq-rim-subtle, var(--isl-line));
   flex-shrink: 0;
   min-height: calc(var(--isl-target) + 8px);
 }
@@ -71,8 +71,8 @@
   padding: 2px 8px;
   min-height: 22px;
   border-radius: var(--isl-radius-chip);
-  border: 1px solid var(--isl-line-strong);
-  background: var(--isl-fill-1);
+  border: 1px solid var(--lq-rim-subtle, var(--isl-line-strong));
+  background: var(--lq-fill-control, var(--isl-fill-1));
   color: var(--isl-ink-2);
   font-size: 10px;
   font-weight: 600;
@@ -82,8 +82,8 @@
 }
 
 .chan-local-pill:hover {
-  background: var(--isl-fill-2);
-  color: var(--isl-ink);
+  background: var(--lq-fill-control-hover, var(--isl-fill-2));
+  color: var(--lq-ink, var(--isl-ink));
 }
 
 .chan-local-pill--active {
@@ -111,9 +111,9 @@
   gap: 6px;
   margin: 0 12px 6px;
   padding: 5px 10px;
-  border-radius: var(--isl-radius-row);
-  border: 1px solid var(--isl-line);
-  background: var(--isl-fill-1);
+  border-radius: var(--lq-radius-panel, var(--isl-radius-row));
+  border: 1px solid var(--lq-rim-subtle, var(--isl-line));
+  background: var(--lq-fill-panel, var(--isl-fill-1));
   color: var(--isl-ink-2);
   font-size: 11px;
   line-height: 1.4;
@@ -147,9 +147,9 @@
   height: var(--isl-target);
   padding: 0 10px;
   border-radius: var(--isl-radius-chip);
-  border: 1px solid var(--isl-line-strong);
-  background: var(--isl-fill-1);
-  color: var(--isl-ink);
+  border: 1px solid var(--lq-rim-subtle, var(--isl-line-strong));
+  background: var(--lq-fill-control, var(--isl-fill-1));
+  color: var(--lq-ink, var(--isl-ink));
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -216,7 +216,7 @@
 .chan-helper-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--isl-ink);
+  color: var(--lq-ink, var(--isl-ink));
 }
 
 .chan-helper-caption {
@@ -245,9 +245,9 @@
   width: 100%;
   max-width: 380px;
   margin-top: 8px;
-  background: var(--isl-fill-1);
-  border: 1px solid var(--isl-line);
-  border-radius: var(--isl-radius-row);
+  background: var(--lq-fill-panel, var(--isl-fill-1));
+  border: 1px solid var(--lq-rim-subtle, var(--isl-line));
+  border-radius: var(--lq-radius-panel, var(--isl-radius-row));
   padding: 8px 12px;
   text-align: left;
 }
@@ -331,15 +331,15 @@
 
 .chan-bubble--user {
   background: var(--isl-accent-fill);
-  color: var(--isl-ink);
+  color: var(--lq-ink, var(--isl-ink));
   border-bottom-right-radius: 4px;
 }
 
 .chan-bubble--assistant {
   /* Chan's answers are the text people read: a stronger tint than the flat rows, larger type, a firmer edge */
-  background: color-mix(in srgb, var(--isl-ink) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--isl-ink) 26%, transparent);
-  color: var(--isl-ink);
+  background: var(--lq-fill-panel, color-mix(in srgb, var(--isl-ink) 15%, transparent));
+  border: 1px solid var(--lq-rim-subtle, color-mix(in srgb, var(--isl-ink) 26%, transparent));
+  color: var(--lq-ink, var(--isl-ink));
   font-size: 15px;
   line-height: 1.5;
   border-bottom-left-radius: 4px;
@@ -350,9 +350,9 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: var(--isl-fill-1);
-  border: 1px solid var(--isl-line);
-  border-radius: var(--isl-radius-row);
+  background: var(--lq-fill-panel, var(--isl-fill-1));
+  border: 1px solid var(--lq-rim-subtle, var(--isl-line));
+  border-radius: var(--lq-radius-panel, var(--isl-radius-row));
   border-bottom-left-radius: 4px;
   padding: 10px 14px;
 }
@@ -376,7 +376,7 @@
 .chan-confirm-summary {
   font-size: 13px;
   font-weight: 600;
-  color: var(--isl-ink);
+  color: var(--lq-ink, var(--isl-ink));
   line-height: 1.4;
 }
 
@@ -392,9 +392,9 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: var(--isl-radius-row);
+  border-radius: var(--lq-radius-panel, var(--isl-radius-row));
   border: 1px solid var(--isl-err);
-  background: var(--isl-fill-1);
+  background: var(--lq-fill-panel, var(--isl-fill-1));
   color: var(--isl-err);
   font-size: 12px;
   line-height: 1.4;
@@ -402,8 +402,8 @@
 
 /* 7. Action log */
 .chan-activity-details {
-  border-top: 1px solid var(--isl-line);
-  background: var(--isl-fill-1);
+  border-top: 1px solid var(--lq-rim-subtle, var(--isl-line));
+  background: var(--lq-fill-panel, var(--isl-fill-1));
   flex-shrink: 0;
 }
 
@@ -450,7 +450,7 @@
   gap: 8px;
   padding: 4px 8px;
   border-radius: 8px;
-  background: var(--isl-fill-2);
+  background: var(--lq-fill-control, var(--isl-fill-2));
   font-size: 11px;
 }
 
@@ -488,8 +488,8 @@
   align-items: flex-end;
   gap: 8px;
   padding: 10px 14px;
-  border-top: 1px solid var(--isl-line);
-  background: var(--isl-fill-1);
+  border-top: 1px solid var(--lq-rim-subtle, var(--isl-line));
+  background: var(--lq-fill-panel, var(--isl-fill-1));
   flex-shrink: 0;
 }
 
@@ -498,10 +498,10 @@
   min-height: var(--isl-target);
   max-height: 96px;
   padding: 8px 12px;
-  border-radius: var(--isl-radius-row);
-  border: 1px solid var(--isl-line-strong);
-  background: var(--isl-fill-2);
-  color: var(--isl-ink);
+  border-radius: 14px;
+  border: 1px solid var(--lq-rim-subtle, var(--isl-line-strong));
+  background: var(--lq-fill-control, var(--isl-fill-2));
+  color: var(--lq-ink, var(--isl-ink));
   font-size: 13px;
   line-height: 1.4;
   resize: none;
@@ -537,7 +537,7 @@
 }
 
 .chan-reset-btn:hover {
-  color: var(--isl-ink);
+  color: var(--lq-ink, var(--isl-ink));
 }
 
 /* Screen reader utility */

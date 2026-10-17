@@ -108,7 +108,7 @@ html.theme-aqua {
 
 /* ── Liquid Onyx (Liquid Glass) Design Tokens ────────────────────────────── */
 :root {
-  --lq-blur: 30px;
+  --lq-blur: var(--slab-glass-blur, 30px);
   --lq-blur-panel: 16px;
   --lq-blur-control: 14px;
   --lq-saturate: 1.9;

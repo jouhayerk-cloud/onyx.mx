@@ -2,13 +2,13 @@
 :root {
   --island-safe-top: 64px;
   --island-reserve: 0px;
-  --island-bg: rgba(14, 18, 24, 0.48);
-  --island-wing-bg: rgba(15, 20, 28, 0.38);
+  --island-bg: var(--lq-fill-surface);
+  --island-wing-bg: var(--lq-fill-panel);
 }
 
 html.theme-aqua {
-  --island-bg: rgba(248, 246, 240, 0.46);
-  --island-wing-bg: rgba(255, 255, 255, 0.55);
+  --island-bg: var(--lq-fill-surface);
+  --island-wing-bg: var(--lq-fill-panel);
 }
 
 @media (max-width: 768px) {
@@ -60,11 +60,11 @@ html.theme-aqua {
   left: 0;
   right: 0;
   margin-inline: auto;
-  color: #fff;
+  color: var(--lq-ink, #fff);
   will-change: auto;
 }
 .onyx-island.ui-root {
-  color: #fff;
+  color: var(--lq-ink, #fff);
   text-shadow: none;
 }
 /* the square root box must not block clicks around the rounded surface */
@@ -77,18 +77,14 @@ html.theme-aqua {
 html.style-slab .onyx-island-surface {
   position: relative;
   isolation: isolate;
-  background-color: rgba(14, 18, 28, 0.28) !important;
-  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.06) 38%, rgba(255, 255, 255, 0.01) 62%, rgba(255, 255, 255, 0.10) 100%) !important;
-  -webkit-backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  backdrop-filter: blur(var(--slab-glass-blur, 30px)) saturate(1.9) brightness(1.08) !important;
-  border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.22)) !important;
-  box-shadow:
-    inset 0 1px 0.5px rgba(255, 255, 255, 0.55),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.12),
-    inset 0 0 18px rgba(255, 255, 255, 0.07),
-    0 14px 40px rgba(2, 6, 16, 0.38),
-    0 1px 3px rgba(2, 6, 16, 0.30) !important;
-  border-radius: var(--island-r, 18px);
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: var(--lq-filter) !important;
+  backdrop-filter: var(--lq-filter) !important;
+  border: 1px solid var(--lq-rim) !important;
+  box-shadow: var(--lq-highlight), var(--lq-shadow) !important;
+  color: var(--lq-ink) !important;
+  border-radius: var(--island-r, var(--lq-radius-surface, 18px));
   overflow: hidden;
   max-width: calc(100vw - 24px);
   transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), height 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.25s ease;
@@ -125,15 +121,13 @@ html.style-slab .onyx-island-surface {
 /* Light / Aqua mode: translucent liquid glass (never solid white) */
 html.theme-aqua .onyx-island-surface,
 html.style-slab.theme-aqua .onyx-island-surface {
-  background-color: rgba(255, 255, 255, 0.28) !important;
-  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.12) 42%, rgba(255, 255, 255, 0.02) 65%, rgba(255, 255, 255, 0.22) 100%) !important;
-  border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
-  color: #0b2a33 !important;
-  box-shadow: 
-    inset 0 1px 0.5px rgba(255, 255, 255, 0.80),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.05),
-    0 14px 40px rgba(11, 42, 51, 0.15),
-    0 1px 3px rgba(11, 42, 51, 0.10) !important;
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: var(--lq-filter) !important;
+  backdrop-filter: var(--lq-filter) !important;
+  border: 1px solid var(--lq-rim) !important;
+  color: var(--lq-ink) !important;
+  box-shadow: var(--lq-highlight), var(--lq-shadow) !important;
 }
 
 html.theme-aqua .onyx-island-surface::before {
@@ -191,12 +185,12 @@ html.theme-aqua .onyx-island-surface::before {
 .onyx-island-dock-side .isl-sep {
   width: 1px;
   height: 22px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--lq-rim-subtle, rgba(255, 255, 255, 0.15));
   margin-inline: 4px;
   flex: none;
 }
 html.theme-aqua .onyx-island-dock-side .isl-sep {
-  background: rgba(11, 42, 51, 0.15);
+  background: var(--lq-rim-subtle, rgba(11, 42, 51, 0.15));
 }
 
 /* Inside the dock, the Chan face button is transparent so the outer island glass surface refracts and blurs */
@@ -210,7 +204,7 @@ html.theme-aqua .onyx-island-dock-side .isl-sep {
   justify-content: center;
   border-radius: 50% !important;
   background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 65%, transparent 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid var(--lq-rim-subtle, rgba(255, 255, 255, 0.16)) !important;
   box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.25) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -233,7 +227,7 @@ html.theme-aqua .onyx-island-dock-side .isl-sep {
 
 html.theme-aqua .isl-dock-face {
   background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.50) 0%, rgba(255, 255, 255, 0.20) 65%, transparent 100%) !important;
-  border: 1px solid rgba(11, 42, 51, 0.14) !important;
+  border: 1px solid var(--lq-rim-subtle, rgba(11, 42, 51, 0.14)) !important;
   box-shadow: 0 4px 12px -2px rgba(11, 42, 51, 0.10) !important;
 }
 
@@ -250,12 +244,12 @@ html.style-slab .onyx-island.onyx-island.onyx-island [role="button"] {
 
 /* Normal hover for not-active tools */
 html.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover {
-  background-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: var(--lq-fill-control-hover, rgba(255, 255, 255, 0.12)) !important;
 }
 
 /* Normal pressed (mouse down) state for not-active tools */
 html.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):active {
-  background-color: rgba(255, 255, 255, 0.18) !important;
+  background-color: var(--lq-fill-control-hover, rgba(255, 255, 255, 0.18)) !important;
 }
 
 /* Active state for tools (toggle pressed) */
@@ -312,13 +306,17 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 
 /* No blur available, or the user asked for less transparency: keep it legible with a denser tint. */
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .onyx-island-surface { --glass-tint: rgba(12, 14, 22, 0.90); }
+  .onyx-island-surface {
+    background-color: var(--lq-solid-surface, rgba(12, 14, 22, 0.90)) !important;
+    background-image: none !important;
+  }
 }
 @media (prefers-reduced-transparency: reduce) {
   .onyx-island-surface {
-    --glass-tint: rgba(12, 14, 22, 0.94);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+    background-color: var(--lq-solid-surface, rgba(12, 14, 22, 0.94)) !important;
+    background-image: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
   }
 }
 
@@ -364,13 +362,13 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 }
 
 /* Fills without the bg-white/* and bg-black/* utilities: slab.css flattens those to an opaque colour. */
-.isl-w5 { background-color: rgba(255, 255, 255, 0.05); }
-.isl-w10 { background-color: rgba(255, 255, 255, 0.10); }
+.isl-w5 { background-color: var(--lq-fill-control, rgba(255, 255, 255, 0.05)); }
+.isl-w10 { background-color: var(--lq-fill-control-hover, rgba(255, 255, 255, 0.10)); }
 .isl-w15 { background-color: rgba(255, 255, 255, 0.15); }
 .isl-w20 { background-color: rgba(255, 255, 255, 0.20); }
 .isl-w50 { background-color: rgba(255, 255, 255, 0.50); }
-.isl-hw5:hover { background-color: rgba(255, 255, 255, 0.05); }
-.isl-hw10:hover { background-color: rgba(255, 255, 255, 0.10); }
+.isl-hw5:hover { background-color: var(--lq-fill-control, rgba(255, 255, 255, 0.05)); }
+.isl-hw10:hover { background-color: var(--lq-fill-control-hover, rgba(255, 255, 255, 0.10)); }
 .isl-hw20:hover { background-color: rgba(255, 255, 255, 0.20); }
 .isl-b20 { background-color: rgba(0, 0, 0, 0.20); }
 
@@ -396,38 +394,21 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 }
 
 /* AQUA PASS: Light theme text contrast and states */
-html.theme-aqua .onyx-island-surface {
-  background-color: rgba(255, 255, 255, 0.28) !important;
-  border: 1px solid var(--slab-glass-rim, rgba(11, 42, 51, 0.15)) !important;
-  color: #0b2a33 !important; /* Text on glass needs 4.5:1 contrast */
-  box-shadow: 
-    inset 0 1px 0.5px rgba(255, 255, 255, 0.80),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.05),
-    0 14px 40px rgba(11, 42, 51, 0.15),
-    0 1px 3px rgba(11, 42, 51, 0.10) !important;
-}
-
-html.theme-aqua .onyx-island-surface::before {
-  background:
-    radial-gradient(120% 90% at 16% -25%, rgba(255, 255, 255, 0.60), transparent 55%),
-    radial-gradient(90% 80% at 86% 135%, color-mix(in srgb, var(--main-color, #00aeef) 15%, transparent), transparent 62%) !important;
-}
-
 html.theme-aqua .onyx-island {
-  color: #0b2a33 !important;
+  color: var(--lq-ink) !important;
 }
 html.theme-aqua .onyx-island.ui-root {
-  color: #0b2a33 !important;
+  color: var(--lq-ink) !important;
 }
 
 /* Light Theme: normal hover for not-active tools */
 html.theme-aqua.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):hover {
-  background-color: rgba(11, 42, 51, 0.07) !important;
+  background-color: var(--lq-fill-control-hover, rgba(11, 42, 51, 0.07)) !important;
 }
 
 /* Light Theme: normal pressed state */
 html.theme-aqua.style-slab .onyx-island.onyx-island button:not(:disabled):not([aria-pressed="true"]):not([data-active="true"]):active {
-  background-color: rgba(11, 42, 51, 0.13) !important;
+  background-color: var(--lq-fill-control-hover, rgba(11, 42, 51, 0.13)) !important;
 }
 
 /* Light Theme: active state for tools */
@@ -455,15 +436,15 @@ html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island button[data-acti
 }
 
 /* Light Theme fills */
-html.theme-aqua .isl-w5 { background-color: rgba(11, 42, 51, 0.05) !important; }
-html.theme-aqua .isl-w10 { background-color: rgba(11, 42, 51, 0.08) !important; }
+html.theme-aqua .isl-w5 { background-color: var(--lq-fill-control, rgba(11, 42, 51, 0.05)) !important; }
+html.theme-aqua .isl-w10 { background-color: var(--lq-fill-control-hover, rgba(11, 42, 51, 0.08)) !important; }
 html.theme-aqua .isl-w15 { background-color: rgba(11, 42, 51, 0.12) !important; }
 html.theme-aqua .isl-w20 { background-color: rgba(11, 42, 51, 0.16) !important; }
 html.theme-aqua .isl-w50 { background-color: rgba(11, 42, 51, 0.40) !important; }
-html.theme-aqua .isl-hw5:hover { background-color: rgba(11, 42, 51, 0.07) !important; }
-html.theme-aqua .isl-hw10:hover { background-color: rgba(11, 42, 51, 0.10) !important; }
+html.theme-aqua .isl-hw5:hover { background-color: var(--lq-fill-control, rgba(11, 42, 51, 0.07)) !important; }
+html.theme-aqua .isl-hw10:hover { background-color: var(--lq-fill-control-hover, rgba(11, 42, 51, 0.10)) !important; }
 html.theme-aqua .isl-hw20:hover { background-color: rgba(11, 42, 51, 0.22) !important; }
-html.theme-aqua .isl-b20 { background-color: rgba(255, 255, 255, 0.50) !important; border-color: rgba(11, 42, 51, 0.15) !important; }
+html.theme-aqua .isl-b20 { background-color: rgba(255, 255, 255, 0.50) !important; border-color: var(--lq-rim-subtle, rgba(11, 42, 51, 0.15)) !important; }
 
 /* Notches */
 html.theme-aqua.style-slab .onyx-island.onyx-island.onyx-island .info-notch-user { border-left-color: rgba(11, 42, 51, 0.18) !important; }
@@ -591,7 +572,8 @@ html.theme-aqua .onyx-island [class*="bg-red"] svg {
 /* Reduced transparency fallback */
 @media (prefers-reduced-transparency: reduce) {
   html.theme-aqua .onyx-island-surface {
-    background-color: #f0f7f9 !important;
+    background-color: var(--lq-solid-surface, #f0f7f9) !important;
+    background-image: none !important;
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }

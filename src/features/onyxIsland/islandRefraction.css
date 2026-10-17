@@ -2,8 +2,8 @@
  * Island refraction glass effect for Chromium
  */
 .onyx-island-surface[data-isl-refract="on"] {
-    -webkit-backdrop-filter: blur(var(--slab-glass-blur, 28px)) saturate(1.9) brightness(1.08) !important;
-    backdrop-filter: url(#isl-refract) blur(var(--slab-glass-blur, 28px)) saturate(1.9) brightness(1.08) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(1.9) brightness(1.08) !important;
+    backdrop-filter: url(#isl-refract) blur(28px) saturate(1.9) brightness(1.08) !important;
 }
 
 /* Lit specular rim for ALL browsers */
