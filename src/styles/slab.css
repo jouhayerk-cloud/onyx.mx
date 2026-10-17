@@ -147,7 +147,6 @@ html.style-slab.theme-talan {
    One colour, edge to edge. The mesh gradient behind the app is the ROCK
    metaphor and is suppressed — a slab has no atmosphere behind it. */
 
-html.style-slab,
 html.style-slab body {
     background-color: var(--slab);
     background-image: none !important;

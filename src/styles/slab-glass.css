@@ -136,7 +136,6 @@ html.style-slab.theme-talan {
    opposite is true — an opaque flat ground behind glass looks like frosted
    plastic. The mesh comes back, heavily diluted, as the thing the surfaces
    are lit by. --mesh-image is published by HeroBackground.tsx on each click. */
-html.style-slab,
 html.style-slab body {
     background-color: var(--slab);
     background-image: var(--mesh-image, none) !important;

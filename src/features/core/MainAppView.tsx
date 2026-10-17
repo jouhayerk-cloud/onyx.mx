@@ -98,6 +98,18 @@ export function MainAppView() {
     const t = useTranslation();
     const islandOn = useAtomValue(islandCommandsEnabledAtom);
     const isPrintCenterOpen = useAtomValue(isPrintCenterOpenAtom);
+    // Publish the top bar's height so the page can flow under it (topbarOverlay.css).
+    const appContentRef = useRef<HTMLDivElement | null>(null);
+    useLayoutEffect(() => {
+        const host = appContentRef.current;
+        const bar = host?.querySelector<HTMLElement>(':scope > .app-topbar');
+        if (!host || !bar) return;
+        const apply = () => host.style.setProperty('--app-topbar-h', `${bar.offsetHeight}px`);
+        apply();
+        const ro = new ResizeObserver(apply);
+        ro.observe(bar);
+        return () => ro.disconnect();
+    }, []);
     const [user] = useAtom(userAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
     const setUniversalView = useSetAtom(universalViewAtom);
@@ -317,6 +329,7 @@ export function MainAppView() {
             >
                 <IslandSidebar />
                 <div 
+                    ref={appContentRef}
                     className="app-content flex-1 min-h-0 overflow-y-auto scroll-smooth p-0 m-0 relative"
                     onScroll={(e) => {
                         const scrollTop = (e.currentTarget as HTMLDivElement).scrollTop;
