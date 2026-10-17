@@ -2,7 +2,7 @@ import React from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { Download, Shield, Users, Cpu, BarChart3, Radio } from 'lucide-react';
 import { tr } from '../../lib/i18n';
-import { userAtom, adminViewModeAtom } from '../../lib/atoms';
+import { userAtom, adminViewModeAtom, localStatusOpenAtom } from '../../lib/atoms';
 import { ONYX_MESH_TOPOLOGY } from '../../lib/network/localMeshMap';
 import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { isStaffRole, isFinanceRole } from '../core/miscViewTools';
@@ -20,70 +20,31 @@ export interface ControlHandlers {
 /** Builds the command tool entries for the Control view, wired to the given handlers. */
 export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
   const [adminViewMode, setAdminViewMode] = useAtom(adminViewModeAtom);
+  const [localStatusOpen, setLocalStatusOpen] = useAtom(localStatusOpenAtom);
   const user = useAtomValue(userAtom);
   const staff = isStaffRole(user?.role);
   const finance = isFinanceRole(user?.role);
   const tools: ToolDescriptor[] = [];
 
-  // Mesh, Operators, Edge Fleet and Colibri are Developer/Admin only; Financials also serves the finance client roles.
-  // 1. Mesh Node Icon (Docked Left of Face)
-  if (staff) tools.push({
-    id: 'control.mesh-node',
-    moduleId: 'control',
-    label: tr('Mesh Node'),
-    short: 'Mesh',
-    title: `Onyx G7 Mesh Node (${ONYX_MESH_TOPOLOGY.g7.ip})`,
-    icon: Shield,
-    kind: 'action',
-    group: tr('Presence'),
-    dock: 'left',
-    order: 10,
-    pinned: true,
-    essential: true,
-    run: () => {
-      const el = document.querySelector('.isl-dock-face') as HTMLButtonElement;
-      if (el) el.click();
-      toast.success(`G7 Node Active: ${ONYX_MESH_TOPOLOGY.g7.ip}`);
-    }
-  });
-
-  // 2. Operators Tab Selector (Docked Left of Face)
+  // 1. People & Devices Tab Selector (Docked Left of Face)
   if (staff) tools.push({
     id: 'control.tab.operators',
     moduleId: 'control',
-    label: tr('Operators'),
-    short: 'Users',
-    title: tr('Connected Operators & Registered Operatives'),
+    label: tr('People & Devices'),
+    short: 'People',
+    title: tr('Connected Operators, Registered Operatives & Edge Fleet'),
     icon: Users,
     kind: 'toggle',
     group: tr('Navigation'),
     dock: 'left',
-    order: 20,
+    order: 10,
     pinned: true,
     essential: true,
     pressed: adminViewMode === 'active_devices',
     run: () => setAdminViewMode('active_devices')
   });
 
-  // 3. Edge Fleet Tab Selector (Docked Right of Face)
-  if (staff) tools.push({
-    id: 'control.tab.edge_fleet',
-    moduleId: 'control',
-    label: tr('Edge Fleet'),
-    short: 'Fleet',
-    title: tr('Edge Nodes & Hardware Fleet'),
-    icon: Cpu,
-    kind: 'toggle',
-    group: tr('Navigation'),
-    dock: 'right',
-    order: 10,
-    pinned: true,
-    essential: true,
-    pressed: adminViewMode === 'edge_fleet',
-    run: () => setAdminViewMode('edge_fleet')
-  });
-
-  // 4. Financials Tab Selector (Docked Right of Face)
+  // 2. Financials Tab Selector (Docked Right of Face)
   if (finance) tools.push({
     id: 'control.tab.financials',
     moduleId: 'control',
@@ -101,25 +62,22 @@ export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
     run: () => setAdminViewMode('financials')
   });
 
-  // 5. Colibrì MoE Host Status Icon (Docked Right of Face)
+  // 3. Local AI & Mesh Status Toggle (Docked Right of Face)
   if (staff) tools.push({
-    id: 'control.colibri-moe',
+    id: 'control.local-status',
     moduleId: 'control',
-    label: tr('Colibrì MoE'),
-    short: 'MoE',
-    title: tr('Colibrì MoE Host Streaming (:8082)'),
+    label: tr('Local AI & Mesh'),
+    short: 'Local',
+    title: tr('Local Colibrì Models & LAN Mesh Status'),
     icon: Radio,
-    kind: 'action',
+    kind: 'toggle',
     group: tr('Presence'),
     dock: 'right',
     order: 30,
     pinned: true,
     essential: true,
-    run: () => {
-      const el = document.querySelector('.isl-dock-face') as HTMLButtonElement;
-      if (el) el.click();
-      toast.success(tr('Colibrì MoE Streaming Host Active'));
-    }
+    pressed: localStatusOpen,
+    run: () => setLocalStatusOpen(v => !v)
   });
 
   // Export actions in expanded surface

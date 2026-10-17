@@ -146,6 +146,38 @@ const swatchFor = (name: string) => {
     return SWATCHES[k] || 'transparent';
 };
 
+const CSS_COLOR_NAMES = new Set([
+    'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black', 'blanchedalmond',
+    'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse', 'chocolate', 'coral', 'cornflowerblue',
+    'cornsilk', 'crimson', 'cyan', 'darkblue', 'darkcyan', 'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey',
+    'darkkhaki', 'darkmagenta', 'darkolivegreen', 'darkorange', 'darkorchid', 'darkred', 'darksalmon',
+    'darkseagreen', 'darkslateblue', 'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet',
+    'deeppink', 'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen',
+    'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 'goldenrod', 'gray', 'green', 'greenyellow', 'grey', 'honeydew',
+    'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender', 'lavenderblush', 'lawngreen', 'lemonchiffon',
+    'lightblue', 'lightcoral', 'lightcyan', 'lightgoldenrodyellow', 'lightgray', 'lightgreen', 'lightgrey',
+    'lightpink', 'lightsalmon', 'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey',
+    'lightsteelblue', 'lightyellow', 'lime', 'limegreen', 'linen', 'magenta', 'maroon', 'mediumaquamarine',
+    'mediumblue', 'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue', 'mediumspringgreen',
+    'mediumturquoise', 'mediumvioletred', 'midnightblue', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite',
+    'navy', 'oldlace', 'olive', 'olivedrab', 'orange', 'orangered', 'orchid', 'palegoldenrod', 'palegreen',
+    'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink', 'plum', 'powderblue',
+    'purple', 'rebeccapurple', 'red', 'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown',
+    'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 'snow',
+    'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white',
+    'whitesmoke', 'yellow', 'yellowgreen', 'transparent', 'currentcolor'
+]);
+
+export function validateTagColor(color: unknown, fallback = '#9CA3AF'): string {
+    if (typeof color !== 'string') return fallback;
+    const c = color.trim().toLowerCase();
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c)) return c;
+    if (/^rgba?\(\s*[\d.%\s,/-]+\s*\)$/i.test(c)) return c;
+    if (/^hsla?\(\s*[\d.%\s,/-]+\s*\)$/i.test(c)) return c;
+    if (CSS_COLOR_NAMES.has(c)) return c;
+    return fallback;
+}
+
 /** Public page for one tagged artifact; it loads the record and locks the app shell scroll. */
 export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
     const [record, setRecord] = useState<PublicArtifactRecord | null>(null);
@@ -188,13 +220,14 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
         });
     }, [tagId]);
 
-    const vendorColor = (vendors as any)[(record?.vendor || tagId.slice(0, 2)).toUpperCase()]?.color || '#9CA3AF';
+    const rawVendorColor = (vendors as any)[(record?.vendor || tagId.slice(0, 2)).toUpperCase()]?.color || '#9CA3AF';
+    const tagColor = validateTagColor(rawVendorColor, '#9CA3AF');
     const tagText = (record?.tag || tagId).toUpperCase();
 
     // The tag key — the printed label, rendered: vendor colour block, then the code.
     const tagKey = (size: 'lg' | 'sm') => (
         <span className={`tv-tag tv-tag--${size}`} aria-label={`${tr("Tag")} ${tagText}`}>
-            <span className="tv-tag-v" style={{ backgroundColor: vendorColor }}>{tagText.slice(0, 5)}</span>
+            <span className="tv-tag-v" style={{ backgroundColor: tagColor }}>{tagText.slice(0, 5)}</span>
             <span className="tv-tag-c">{tagText.slice(5)}</span>
         </span>
     );

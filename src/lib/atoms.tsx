@@ -135,8 +135,9 @@ export const exchangeRateAtom = atomWithStorage<number>('exchangeRate.v17', DEFA
 export type CurrencyMode = 'MXN' | 'USD';
 export const currencyModeAtom = atomWithStorage<CurrencyMode>('currencyMode', 'MXN');
 
-export type AdminViewMode = 'active_devices' | 'edge_fleet' | 'financials';
+export type AdminViewMode = 'active_devices' | 'financials';
 export const adminViewModeAtom = atom<AdminViewMode>('active_devices');
+export const localStatusOpenAtom = atom<boolean>(false);
 
 // ── Offline / Sync State ─────────────────────────────────────────────────────
 export type SyncStatus = 'idle' | 'syncing' | 'error' | 'pending';

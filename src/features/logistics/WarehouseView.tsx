@@ -128,23 +128,36 @@ export const WarehouseView: React.FC = () => {
     const setSelectedInventoryIds = useSetAtom(selectedInventoryIdsAtom);
     const setIsPackingCrateWizardOpen = useSetAtom(isPackingCrateWizardOpenAtom);
 
-    // Three main warehouse tabs: 'packed' | 'available' | 'stencils'
-    const [warehouseTab, setWarehouseTab] = useState<'packed' | 'available' | 'stencils'>(() => {
-        if (subTab === 'packed' || subTab === 'crates') return 'packed';
+    // Expose active RxDB instance on window.onyxDb for child handlers and mutations
+    useEffect(() => {
+        if (db) {
+            (window as any).onyxDb = db;
+        }
+    }, [db]);
+
+    const getWarehouseTab = (st: string | undefined): 'packed' | 'available' | 'stencils' => {
+        if (st === 'empty' || st === 'available') return 'available';
+        if (st === 'boxes' || st === 'stencils') return 'stencils';
         return 'packed';
-    });
+    };
+
+    // Three main warehouse tabs: 'packed' | 'available' | 'stencils'
+    const [warehouseTab, setWarehouseTab] = useState<'packed' | 'available' | 'stencils'>(() => getWarehouseTab(subTab));
 
     // Container type filter state ('all' | 'crate' | 'pallet' | 'box' | 'empty')
     const [containerFilter, setContainerFilter] = useState<'all' | 'crate' | 'pallet' | 'box' | 'empty'>('all');
 
     // Sync from global logisticsSubTabAtom if it changes externally
     useEffect(() => {
-        if (subTab === 'packed' || subTab === 'crates') {
-            setWarehouseTab('packed');
-        } else if (subTab === 'empty') {
-            setWarehouseTab('available');
-        }
+        setWarehouseTab(getWarehouseTab(subTab));
     }, [subTab]);
+
+    const handleTabChange = (tab: 'packed' | 'available' | 'stencils') => {
+        setWarehouseTab(tab);
+        if (tab === 'packed') setSubTab('packed');
+        else if (tab === 'available') setSubTab('empty');
+        else if (tab === 'stencils') setSubTab('boxes');
+    };
 
     // Live crates from RxDB
     const [crates, setCrates] = useState<any[]>([]);
@@ -427,22 +440,20 @@ export const WarehouseView: React.FC = () => {
     }, [activeStencilCrate, allInventory, stencilWidth]);
 
     return (
-        <div className="ui-root flex flex-col h-full w-full min-h-0 bg-(--sidebar-bg) relative select-none">
+        <div className="ui-root flex flex-col h-full w-full min-h-0 bg-(--sidebar-bg) relative select-none text-[var(--lq-ink)]">
             {/* ── Apple HIG Two-Layer Liquid Glass Switcher Bar (Safe clearance for Onyx Dynamic Island) ── */}
-            <header className="sticky top-0 z-40 w-full flex flex-col items-center justify-center pt-16 sm:pt-20 pb-4 px-4 sm:px-8 border-b border-(--lq-rim) liquid-surface rounded-none shadow-2xl">
+            <header className="sticky top-0 z-40 w-full flex flex-col items-center justify-center pt-16 sm:pt-20 pb-4 px-4 sm:px-8 border-b border-[var(--lq-rim)] bg-[var(--lq-fill-surface)] backdrop-blur-3xl shadow-2xl liquid-surface rounded-none border-x-0 border-t-0">
                 {/* Segmented Switcher Controls */}
-                <div className="inline-flex items-center p-1.5 bg-(--lq-fill-control) border border-(--lq-rim-subtle) rounded-full shadow-lg gap-1 max-w-full overflow-x-auto no-scrollbar">
+                <div className="inline-flex items-center p-1.5 bg-[var(--lq-fill-panel)] backdrop-blur-2xl border border-[var(--lq-rim)] rounded-full shadow-xl gap-1 max-w-full overflow-x-auto no-scrollbar">
                     {/* [ 📦 Packed Crates & Pallets ] */}
                     <button
                         type="button"
-                        onClick={() => {
-                            setWarehouseTab('packed');
-                            setSubTab('packed');
-                        }}
-                        className={`min-h-[44px] sm:min-h-[36px] px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
+                        data-warehouse-tab="packed"
+                        onClick={() => handleTabChange('packed')}
+                        className={`min-h-[44px] px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
                             warehouseTab === 'packed'
-                                ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
-                                : 'text-(--lq-ink)/70 hover:text-(--lq-ink) hover:bg-white/10 border border-transparent'
+                                ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-400/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                                : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
                         }`}
                     >
                         <span className="text-sm">📦</span>
@@ -455,19 +466,17 @@ export const WarehouseView: React.FC = () => {
                     {/* [ 📋 Available to Pack ] */}
                     <button
                         type="button"
-                        onClick={() => {
-                            setWarehouseTab('available');
-                            setSubTab('empty');
-                        }}
-                        className={`min-h-[44px] sm:min-h-[36px] px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
+                        data-warehouse-tab="empty"
+                        onClick={() => handleTabChange('available')}
+                        className={`min-h-[44px] px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
                             warehouseTab === 'available'
-                                ? 'bg-white/20 text-(--lq-ink) border border-white/35 shadow-[0_0_20px_rgba(255,255,255,0.2)]'
-                                : 'text-(--lq-ink)/70 hover:text-(--lq-ink) hover:bg-white/10 border border-transparent'
+                                ? 'bg-white/20 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+                                : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
                         }`}
                     >
                         <span className="text-sm">📋</span>
                         <span>{tr("Available to Pack")}</span>
-                        <span className="px-2 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-(--lq-ink) font-bold border border-white/20">
+                        <span className="px-2 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-[var(--lq-ink)] font-bold border border-[var(--lq-rim-subtle)]">
                             {totalUnpackedUnits} {tr("units")}
                         </span>
                     </button>
@@ -475,15 +484,17 @@ export const WarehouseView: React.FC = () => {
                     {/* [ 📐 Boxes.py Laser Studio ] */}
                     <button
                         type="button"
-                        onClick={() => setWarehouseTab('stencils')}
-                        className={`min-h-[44px] sm:min-h-[36px] px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
+                        data-warehouse-tab="boxes"
+                        onClick={() => handleTabChange('stencils')}
+                        className={`min-h-[44px] px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
                             warehouseTab === 'stencils'
-                                ? 'bg-amber-500/25 text-amber-300 border border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
-                                : 'text-(--lq-ink)/70 hover:text-(--lq-ink) hover:bg-white/10 border border-transparent'
+                                ? 'bg-amber-500/25 text-amber-400 border border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                                : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
                         }`}
+                        title="Boxes.py Laser Studio"
                     >
                         <span className="text-sm">📐</span>
-                        <span>{tr("Laser Studio")}</span>
+                        <span>{tr("Laser Studio")} (Boxes.py)</span>
                         <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-[10px] font-mono text-amber-300 font-bold border border-amber-400/30">
                             v2.0
                         </span>
@@ -491,25 +502,25 @@ export const WarehouseView: React.FC = () => {
                 </div>
 
                 {/* ── Warehouse Status Telemetry & Filter Ribbon ── */}
-                <div className="w-full max-w-7xl mx-auto mt-3.5 pt-3.5 border-t border-(--lq-rim-subtle) flex flex-col lg:flex-row items-center justify-between gap-3 text-xs">
+                <div className="w-full max-w-7xl mx-auto mt-3.5 pt-3.5 border-t border-[var(--lq-rim-subtle)] flex flex-col lg:flex-row items-center justify-between gap-3 text-xs">
                     {/* Live KPI Status Filter Pills */}
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full lg:w-auto py-1">
                         {/* All Containers Pill */}
                         <button
                             type="button"
                             onClick={() => {
-                                setWarehouseTab('packed');
+                                handleTabChange('packed');
                                 setContainerFilter('all');
                             }}
-                            className={`min-h-[34px] px-3.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                                 warehouseTab === 'packed' && containerFilter === 'all'
-                                    ? 'bg-white/20 text-(--lq-ink) border border-(--lq-rim) shadow-sm'
-                                    : 'bg-(--lq-fill-control) text-(--lq-ink)/75 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle)'
+                                    ? 'bg-white/20 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-sm'
+                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
                             }`}
                         >
                             <span>📦</span>
                             <span>{tr("All Containers")}</span>
-                            <span className="font-mono font-bold text-(--lq-ink)/90">
+                            <span className="font-mono font-bold text-[var(--lq-ink)]/90">
                                 {packedCratesCount + freightPalletsCount + boxesCount}
                             </span>
                         </button>
@@ -518,13 +529,13 @@ export const WarehouseView: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => {
-                                setWarehouseTab('packed');
+                                handleTabChange('packed');
                                 setContainerFilter(containerFilter === 'crate' ? 'all' : 'crate');
                             }}
-                            className={`min-h-[34px] px-3.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                                 warehouseTab === 'packed' && containerFilter === 'crate'
                                     ? 'bg-amber-500/25 text-amber-300 border border-amber-400/50 shadow-sm'
-                                    : 'bg-(--lq-fill-control) text-(--lq-ink)/75 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle)'
+                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
                             }`}
                         >
                             <span>🪵</span>
@@ -536,13 +547,13 @@ export const WarehouseView: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => {
-                                setWarehouseTab('packed');
+                                handleTabChange('packed');
                                 setContainerFilter(containerFilter === 'pallet' ? 'all' : 'pallet');
                             }}
-                            className={`min-h-[34px] px-3.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                                 warehouseTab === 'packed' && containerFilter === 'pallet'
                                     ? 'bg-sky-500/25 text-sky-300 border border-sky-400/50 shadow-sm'
-                                    : 'bg-(--lq-fill-control) text-(--lq-ink)/75 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle)'
+                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
                             }`}
                         >
                             <span>📦</span>
@@ -554,13 +565,13 @@ export const WarehouseView: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => {
-                                setWarehouseTab('packed');
+                                handleTabChange('packed');
                                 setContainerFilter(containerFilter === 'box' ? 'all' : 'box');
                             }}
-                            className={`min-h-[34px] px-3.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                                 warehouseTab === 'packed' && containerFilter === 'box'
                                     ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-sm'
-                                    : 'bg-(--lq-fill-control) text-(--lq-ink)/75 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle)'
+                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
                             }`}
                         >
                             <span>📐</span>
@@ -572,31 +583,28 @@ export const WarehouseView: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => {
-                                setWarehouseTab('packed');
+                                handleTabChange('packed');
                                 setContainerFilter(containerFilter === 'empty' ? 'all' : 'empty');
                             }}
-                            className={`min-h-[34px] px-3.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                                 warehouseTab === 'packed' && containerFilter === 'empty'
-                                    ? 'bg-white/25 text-(--lq-ink) border border-(--lq-rim) shadow-sm'
-                                    : 'bg-(--lq-fill-control) text-(--lq-ink)/75 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle)'
+                                    ? 'bg-white/25 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-sm'
+                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
                             }`}
                         >
                             <span>📭</span>
                             <span>{tr("Empty Available")}</span>
-                            <span className="font-mono font-bold text-(--lq-ink)/90">{emptyContainersCount}</span>
+                            <span className="font-mono font-bold text-[var(--lq-ink)]/90">{emptyContainersCount}</span>
                         </button>
 
                         {/* Unpacked Inventory Units */}
                         <button
                             type="button"
-                            onClick={() => {
-                                setWarehouseTab('available');
-                                setSubTab('empty');
-                            }}
-                            className={`min-h-[34px] px-3.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                            onClick={() => handleTabChange('available')}
+                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                                 warehouseTab === 'available'
                                     ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 shadow-sm'
-                                    : 'bg-(--lq-fill-control) text-(--lq-ink)/75 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle)'
+                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
                             }`}
                         >
                             <span>📋</span>
@@ -609,15 +617,15 @@ export const WarehouseView: React.FC = () => {
                     <div className="flex items-center gap-3 shrink-0 py-1">
                         {/* Total Weight vs Truck Capacity */}
                         <div
-                            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-(--lq-fill-control) border border-(--lq-rim-subtle) text-[11px] font-mono shadow-sm"
+                            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] text-[11px] font-mono shadow-sm"
                             title={tr("Weight of the packed containers still in the warehouse against the truck weight limit set in the app")}
                         >
                             <Truck size={14} className="text-amber-400 shrink-0" />
-                            <span className="text-(--lq-ink)/60">{tr("Truck Load:")}</span>
-                            <span className="font-bold text-(--lq-ink)">
+                            <span className="text-[var(--lq-ink)]/60">{tr("Truck Load:")}</span>
+                            <span className="font-bold text-[var(--lq-ink)]">
                                 {totalPackedWeightKg.toLocaleString()} / {truckCapacityKg.toLocaleString()} kg
                             </span>
-                            <div className="w-14 h-1.5 bg-black/40 rounded-full overflow-hidden border border-(--lq-rim-subtle)">
+                            <div className="w-14 h-1.5 bg-black/40 rounded-full overflow-hidden border border-[var(--lq-rim-subtle)]">
                                 <div 
                                     className={`h-full transition-all ${truckUtilizationPct > 90 ? 'bg-rose-500' : truckUtilizationPct > 70 ? 'bg-amber-400' : 'bg-emerald-400'}`} 
                                     style={{ width: `${truckUtilizationPct}%` }}
@@ -649,21 +657,21 @@ export const WarehouseView: React.FC = () => {
                 {warehouseTab === 'available' && (
                     <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-6 pb-36 flex flex-col gap-6">
                         {/* Search & Action Bar */}
-                        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-2xl liquid-surface shadow-xl">
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-2xl bg-[var(--lq-fill-panel)] border border-[var(--lq-rim-subtle)] backdrop-blur-2xl shadow-xl">
                             {/* Search Field */}
                             <div className="relative flex-1">
-                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-(--lq-ink)/40" />
+                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--lq-ink)]/40" />
                                 <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder={tr("Search by item name, tag barcode, material, color, vendor...")}
-                                    className="w-full bg-(--lq-fill-control) border border-(--lq-rim-subtle) rounded-xl pl-11 pr-10 py-2.5 text-xs text-(--lq-ink) placeholder:text-(--lq-ink)/40 focus:outline-none focus:border-emerald-400/60 focus:ring-1 focus:ring-emerald-400/40 transition-all font-medium"
+                                    className="w-full bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] rounded-xl pl-11 pr-10 py-2.5 min-h-[44px] text-xs text-[var(--lq-ink)] placeholder-[var(--lq-ink)]/40 focus:outline-none focus:border-emerald-400/60 focus:ring-1 focus:ring-emerald-400/40 transition-all font-medium"
                                 />
                                 {searchQuery && (
                                     <button 
                                         onClick={() => setSearchQuery('')}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-(--lq-ink)/40 hover:text-(--lq-ink) text-xs p-1 cursor-pointer"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--lq-ink)]/40 hover:text-[var(--lq-ink)] text-xs p-1 cursor-pointer"
                                     >
                                         <X size={14} />
                                     </button>
@@ -675,13 +683,13 @@ export const WarehouseView: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={handleSelectAll}
-                                    className="min-h-[44px] sm:min-h-[36px] px-4 py-2 rounded-xl bg-(--lq-fill-control) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle) text-xs font-semibold text-(--lq-ink)/80 hover:text-(--lq-ink) flex items-center justify-center gap-2 transition-all cursor-pointer"
+                                    className="min-h-[44px] px-4 py-2 rounded-xl bg-[var(--lq-fill-control)] hover:bg-[var(--lq-fill-control-hover)] border border-[var(--lq-rim-subtle)] text-xs font-semibold text-[var(--lq-ink)]/80 hover:text-[var(--lq-ink)] flex items-center justify-center gap-2 transition-all cursor-pointer"
                                 >
-                                    <CheckCircle2 size={15} className={selectedItemIds.size === filteredAvailableItems.length && filteredAvailableItems.length > 0 ? 'text-emerald-400' : 'text-(--lq-ink)/40'} />
+                                    <CheckCircle2 size={15} className={selectedItemIds.size === filteredAvailableItems.length && filteredAvailableItems.length > 0 ? 'text-emerald-400' : 'text-[var(--lq-ink)]/40'} />
                                     <span>
                                         {selectedItemIds.size === filteredAvailableItems.length && filteredAvailableItems.length > 0
-                                             ? tr("Deselect All")
-                                             : tr("Select All Filtered")}
+                                            ? tr("Deselect All")
+                                            : tr("Select All Filtered")}
                                     </span>
                                 </button>
 
@@ -693,7 +701,7 @@ export const WarehouseView: React.FC = () => {
                                                 setSelectedItemIds(new Set());
                                                 setSelectedInventoryIds([]);
                                             }}
-                                            className="min-h-[44px] sm:min-h-[36px] px-3 py-2 rounded-xl bg-(--lq-fill-control) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle) text-xs text-(--lq-ink)/70 hover:text-(--lq-ink) flex items-center gap-1 transition-all cursor-pointer"
+                                            className="min-h-[44px] px-3 py-2 rounded-xl bg-[var(--lq-fill-control)] hover:bg-[var(--lq-fill-control-hover)] border border-[var(--lq-rim-subtle)] text-xs text-[var(--lq-ink)]/60 hover:text-[var(--lq-ink)] flex items-center gap-1 transition-all cursor-pointer"
                                         >
                                             <X size={14} />
                                             <span>{tr("Clear")}</span>
@@ -702,7 +710,7 @@ export const WarehouseView: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={handleLaunchPackWizard}
-                                            className="min-h-[44px] sm:min-h-[36px] px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
+                                            className="min-h-[44px] px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
                                         >
                                             <PackagePlus size={15} />
                                             <span>{tr("Pack Selected")} ({selectedItemIds.size})</span>
@@ -715,19 +723,19 @@ export const WarehouseView: React.FC = () => {
                         {/* Vendor Filter Chips */}
                         {availableVendors.length > 0 && (
                             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-                                <span className="text-[10px] font-mono uppercase tracking-widest text-(--lq-ink)/40 mr-1 shrink-0">
+                                <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--lq-ink)]/40 mr-1 shrink-0">
                                     {tr("Vendor:")}
                                 </span>
                                 <button
                                     onClick={() => setVendorFilter(null)}
-                                    className={`min-h-[36px] px-3.5 py-1 rounded-full text-xs transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                                    className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1 rounded-full text-xs transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                                         !vendorFilter
-                                            ? 'bg-(--lq-fill-control-hover) text-(--lq-ink) font-bold border border-(--lq-rim) shadow-md'
-                                            : 'bg-(--lq-fill-control) text-(--lq-ink)/70 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle)'
+                                            ? 'bg-white/20 text-[var(--lq-ink)] font-bold border border-[var(--lq-rim)] shadow-md'
+                                            : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/60 hover:text-[var(--lq-ink)] hover:bg-[var(--lq-fill-control-hover)] border border-[var(--lq-rim-subtle)]'
                                     }`}
                                 >
                                     <span>{tr("ALL")}</span>
-                                    <span className="px-1.5 py-0.2 rounded-full bg-(--lq-fill-control) text-[10px] font-mono text-(--lq-ink)/80">
+                                    <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-[10px] font-mono text-[var(--lq-ink)]/80">
                                         {availableItems.length}
                                     </span>
                                 </button>
@@ -739,10 +747,10 @@ export const WarehouseView: React.FC = () => {
                                         <button
                                             key={v}
                                             onClick={() => setVendorFilter(isActive ? null : v)}
-                                            className={`min-h-[36px] px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                                            className={`min-h-[44px] sm:min-h-[36px] px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                                                 isActive
-                                                    ? 'bg-(--lq-fill-control-hover) text-(--lq-ink) font-bold border border-(--lq-rim) shadow-md'
-                                                    : 'bg-(--lq-fill-control) text-(--lq-ink)/70 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle)'
+                                                    ? 'bg-white/20 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-md'
+                                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/60 hover:text-[var(--lq-ink)] hover:bg-[var(--lq-fill-control-hover)] border border-[var(--lq-rim-subtle)]'
                                             }`}
                                         >
                                             <span 
@@ -750,7 +758,7 @@ export const WarehouseView: React.FC = () => {
                                                 style={{ backgroundColor: vCol, boxShadow: isActive ? `0 0 10px ${vCol}` : 'none' }} 
                                             />
                                             <span>{v}</span>
-                                            <span className="px-1.5 py-0.2 rounded-full bg-(--lq-fill-control) text-[10px] font-mono text-(--lq-ink)/80">
+                                            <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-[10px] font-mono text-[var(--lq-ink)]/80">
                                                 {countForVendor}
                                             </span>
                                         </button>
@@ -761,10 +769,10 @@ export const WarehouseView: React.FC = () => {
 
                         {/* Inventory List */}
                         {filteredAvailableItems.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 text-center gap-4 liquid-panel rounded-3xl p-12">
-                                <Package size={48} className="text-(--lq-ink)/30" strokeWidth={1} />
-                                <h3 className="text-lg font-bold text-(--lq-ink)">{tr("No available items found")}</h3>
-                                <p className="text-xs text-(--lq-ink)/50 max-w-md">
+                            <div className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-[var(--lq-fill-panel)] border border-[var(--lq-rim-subtle)] rounded-3xl p-12">
+                                <Package size={48} className="text-[var(--lq-ink)]/20" strokeWidth={1} />
+                                <h3 className="text-lg font-bold text-[var(--lq-ink)]">{tr("No available items found")}</h3>
+                                <p className="text-xs text-[var(--lq-ink)]/40 max-w-md">
                                     {tr("All inventory items may already be packed into crates, or the current search/filter combination returned 0 results.")}
                                 </p>
                             </div>
@@ -777,11 +785,20 @@ export const WarehouseView: React.FC = () => {
                                     return (
                                         <div
                                             key={item.id}
+                                            role="checkbox"
+                                            tabIndex={0}
+                                            aria-checked={isSelected}
                                             onClick={() => toggleItemSelection(item.id)}
-                                            className={`group relative flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer gap-4 liquid-panel ${
+                                            onKeyDown={(e) => {
+                                                if (e.key === ' ' || e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    toggleItemSelection(item.id);
+                                                }
+                                            }}
+                                            className={`group relative flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer gap-4 ${
                                                 isSelected
                                                     ? 'bg-emerald-500/15 border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.18)] ring-1 ring-emerald-500/40'
-                                                    : 'hover:bg-(--lq-fill-control-hover) border-(--lq-rim-subtle) shadow-md'
+                                                    : 'bg-[var(--lq-fill-panel)] hover:bg-[var(--lq-fill-panel)]/90 border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)] shadow-md'
                                             }`}
                                         >
                                             {/* Left: Checkbox Pill + Thumb + Identity + Container Recommendation Tag */}
@@ -797,14 +814,14 @@ export const WarehouseView: React.FC = () => {
                                                     <div className={`w-6 h-6 rounded-xl flex items-center justify-center transition-all border ${
                                                         isSelected
                                                             ? 'bg-emerald-500 border-emerald-400 text-black shadow-md'
-                                                            : 'bg-(--lq-fill-control) border-(--lq-rim-subtle) group-hover:border-white/40'
+                                                            : 'bg-black/50 border-white/20 group-hover:border-white/40'
                                                     }`}>
                                                         {isSelected && <Check size={14} strokeWidth={3.5} />}
                                                     </div>
                                                 </div>
 
                                                 {/* Image Thumbnail / High Contrast Vector Icon */}
-                                                <div className="w-14 h-14 rounded-xl bg-(--lq-fill-control) overflow-hidden shrink-0 border border-(--lq-rim-subtle) flex items-center justify-center relative shadow-inner">
+                                                <div className="w-14 h-14 rounded-xl bg-black/80 overflow-hidden shrink-0 border border-white/15 flex items-center justify-center relative shadow-inner">
                                                     {item.imageUrl ? (
                                                         <img src={item.imageUrl} alt={item.norm.shape} className="w-full h-full object-cover" />
                                                     ) : (
@@ -821,16 +838,16 @@ export const WarehouseView: React.FC = () => {
                                                         >
                                                             {item.vendorPrefix}
                                                         </span>
-                                                        <h4 className="text-sm font-semibold text-(--lq-ink) truncate">
+                                                        <h4 className="text-sm font-semibold text-[var(--lq-ink)] truncate">
                                                             {item.norm.shape || tr("Artifact")} {item.norm.shortDescription ? `· ${item.norm.shortDescription}` : ''}
                                                         </h4>
                                                     </div>
 
-                                                    <div className="flex items-center gap-2 mt-1 text-[11px] text-(--lq-ink)/70 font-mono">
-                                                        {item.norm.material && <span className="text-(--lq-ink)/90">{item.norm.material}</span>}
+                                                    <div className="flex items-center gap-2 mt-1 text-[11px] text-[var(--lq-ink)]/65 font-mono">
+                                                        {item.norm.material && <span className="text-[var(--lq-ink)]/80">{item.norm.material}</span>}
                                                         {item.norm.color && <span>• {item.norm.color}</span>}
                                                         {item.norm.book_barcode && (
-                                                            <span className="text-(--lq-ink)/50 hidden sm:inline">
+                                                            <span className="text-[var(--lq-ink)]/40 hidden sm:inline">
                                                                 • {item.norm.book_barcode}
                                                             </span>
                                                         )}
@@ -844,13 +861,13 @@ export const WarehouseView: React.FC = () => {
                                                             if (maxDim > 40) {
                                                                 return (
                                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/30">
-                                                                        <span>🪵</span> {tr("Crate")} (&gt;40cm)
+                                                                        <span>🪵</span> {tr("Crate (>40cm)")}
                                                                     </span>
                                                                 );
                                                             } else if (isFlatOrHeavy) {
                                                                 return (
                                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-sky-950/80 text-sky-300 border border-sky-500/30">
-                                                                        <span>📦</span> {tr("Pallet")} (Flat/Heavy)
+                                                                        <span>📦</span> {tr("Pallet (Flat/Heavy)")}
                                                                     </span>
                                                                 );
                                                             } else {
@@ -904,10 +921,11 @@ export const WarehouseView: React.FC = () => {
                                                             setSelectedInventoryIds([item.id]);
                                                             setIsPackingCrateWizardOpen(true);
                                                         }}
-                                                        className="w-7 h-7 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 flex items-center justify-center transition-all cursor-pointer"
+                                                        className="min-h-[44px] min-w-[44px] rounded-xl bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 flex items-center justify-center transition-all cursor-pointer"
                                                         title={tr("Quick Pack this item")}
+                                                        aria-label={tr("Quick Pack this item")}
                                                     >
-                                                        <Package size={14} />
+                                                        <Package size={16} />
                                                     </button>
                                                 </div>
                                             </div>
@@ -921,32 +939,32 @@ export const WarehouseView: React.FC = () => {
                         {selectedItemIds.size > 0 && (
                             <aside 
                                 aria-label={tr("Selected items packing dock")}
-                                className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl animate-in slide-in-from-bottom duration-300"
+                                className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl animate-in slide-in-from-bottom duration-300 motion-reduce:animate-none"
                             >
-                                <div className="liquid-surface rounded-3xl p-4 sm:p-5 shadow-[0_25px_70px_rgba(0,0,0,0.5)] flex flex-col lg:flex-row items-center justify-between gap-4">
+                                <div className="liquid-surface bg-[var(--lq-fill-surface)] backdrop-blur-3xl border border-[var(--lq-rim)] rounded-3xl p-4 sm:p-5 shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col lg:flex-row items-center justify-between gap-4">
                                     {/* Selection Count & Metrics */}
                                     <div className="flex items-center gap-3 w-full lg:w-auto">
                                         <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-sm">
                                             <CheckCircle2 size={22} />
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-(--lq-ink)">
+                                            <span className="text-sm font-bold text-[var(--lq-ink)]">
                                                 {selectedItemIds.size} {tr("Items Selected")} ({totalSelectedUnits} {tr("Units")})
                                             </span>
-                                            <span className="text-[11px] text-(--lq-ink)/70 font-mono">
+                                            <span className="text-[11px] text-[var(--lq-ink)]/60 font-mono">
                                                 {tr("Vol:")} {(totalSelectedVolumeCm3 / 1000).toFixed(1)} L · {totalSelectedWeightKg.toFixed(1)} kg
                                             </span>
                                         </div>
                                     </div>
 
                                     {/* Volumetric Crate Estimator Chip */}
-                                    <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl liquid-panel w-full lg:w-auto">
+                                    <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] w-full lg:w-auto">
                                         <span className="text-xl">📐</span>
                                         <div className="flex flex-col text-left">
                                             <span className="text-[9px] font-mono text-cyan-300 uppercase tracking-wider font-bold">
                                                 {tr("Recommended Container")}
                                             </span>
-                                            <span className="text-xs font-bold text-(--lq-ink)">
+                                            <span className="text-xs font-bold text-[var(--lq-ink)]">
                                                 {recommendedCrate.name} ({recommendedCrate.dims}) · <span className="text-emerald-400 font-mono">~{recommendedCrate.fillPct}% fill</span>
                                             </span>
                                         </div>
@@ -984,19 +1002,19 @@ export const WarehouseView: React.FC = () => {
                 {warehouseTab === 'stencils' && (
                     <div className="w-full h-full p-4 sm:p-8 flex flex-col gap-6">
                         {/* Stencil Crate Selector Bar */}
-                        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-3xl liquid-surface shadow-lg">
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-3xl bg-[var(--lq-fill-panel)] backdrop-blur-2xl border border-[var(--lq-rim-subtle)] shadow-lg">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
                                     <Scissors size={20} />
                                 </div>
                                 <div className="flex flex-col">
-                                    <h3 className="text-sm font-bold text-(--lq-ink) flex items-center gap-2">
+                                    <h3 className="text-sm font-bold text-[var(--lq-ink)] flex items-center gap-2">
                                         <span>{tr("Laser Stencil Studio (approximate preview)")}</span>
                                         <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold">
                                             v2.0
                                         </span>
                                     </h3>
-                                    <p className="text-[11px] text-(--lq-ink)/60">
+                                    <p className="text-[11px] text-[var(--lq-ink)]/50">
                                         {tr("Generate parametric cutfiles, nesting telemetry, and LightBurn jobs.")}
                                     </p>
                                 </div>
@@ -1004,13 +1022,13 @@ export const WarehouseView: React.FC = () => {
 
                             {/* Crate Selection Controls */}
                             <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
-                                <span className="text-[10px] font-mono uppercase tracking-widest text-(--lq-ink)/40 shrink-0">
+                                <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--lq-ink)]/40 shrink-0">
                                     {tr("Source Unit:")}
                                 </span>
                                 <select
                                     value={stencilSelectedCrateId}
                                     onChange={(e) => setStencilSelectedCrateId(e.target.value)}
-                                    className="bg-(--lq-fill-control) border border-(--lq-rim-subtle) rounded-2xl px-4 py-2 text-xs font-semibold text-(--lq-ink) focus:outline-none focus:border-amber-400/50 transition-all cursor-pointer"
+                                    className="bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] rounded-2xl px-4 py-2.5 min-h-[44px] text-xs font-semibold text-[var(--lq-ink)] focus:outline-none focus:border-amber-400/50 transition-all cursor-pointer"
                                 >
                                     <option value="custom">⚙️ {tr("Custom Parametric Crate")}</option>
                                     {crates.map(c => {
@@ -1027,9 +1045,9 @@ export const WarehouseView: React.FC = () => {
 
                         {/* If Custom Crate: Numerical Inputs */}
                         {stencilSelectedCrateId === 'custom' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-3xl liquid-panel">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-3xl bg-[var(--lq-fill-panel)] border border-[var(--lq-rim-subtle)] backdrop-blur-xl">
                                 <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] font-mono uppercase tracking-widest text-(--lq-ink)/40">
+                                    <label className="text-[10px] font-mono uppercase tracking-widest text-[var(--lq-ink)]/40">
                                         {tr("Width (cm)")}
                                     </label>
                                     <input
@@ -1038,11 +1056,11 @@ export const WarehouseView: React.FC = () => {
                                         max="300"
                                         value={customDims.width}
                                         onChange={(e) => setCustomDims(prev => ({ ...prev, width: Number(e.target.value) || 60 }))}
-                                        className="bg-(--lq-fill-control) border border-(--lq-rim-subtle) rounded-2xl px-4 py-2 text-sm font-mono text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                                        className="bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] rounded-2xl px-4 py-2 min-h-[44px] text-sm font-mono text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] font-mono uppercase tracking-widest text-(--lq-ink)/40">
+                                    <label className="text-[10px] font-mono uppercase tracking-widest text-[var(--lq-ink)]/40">
                                         {tr("Length (cm)")}
                                     </label>
                                     <input
@@ -1051,11 +1069,11 @@ export const WarehouseView: React.FC = () => {
                                         max="300"
                                         value={customDims.length}
                                         onChange={(e) => setCustomDims(prev => ({ ...prev, length: Number(e.target.value) || 60 }))}
-                                        className="bg-(--lq-fill-control) border border-(--lq-rim-subtle) rounded-2xl px-4 py-2 text-sm font-mono text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                                        className="bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] rounded-2xl px-4 py-2 min-h-[44px] text-sm font-mono text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
                                     />
                                 </div>
                                 <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] font-mono uppercase tracking-widest text-(--lq-ink)/40">
+                                    <label className="text-[10px] font-mono uppercase tracking-widest text-[var(--lq-ink)]/40">
                                         {tr("Height (cm)")}
                                     </label>
                                     <input
@@ -1064,14 +1082,14 @@ export const WarehouseView: React.FC = () => {
                                         max="300"
                                         value={customDims.height}
                                         onChange={(e) => setCustomDims(prev => ({ ...prev, height: Number(e.target.value) || 60 }))}
-                                        className="bg-(--lq-fill-control) border border-(--lq-rim-subtle) rounded-2xl px-4 py-2 text-sm font-mono text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                                        className="bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] rounded-2xl px-4 py-2 min-h-[44px] text-sm font-mono text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
                                     />
                                 </div>
                             </div>
                         )}
 
                         {/* Embedded Full Interactive CrateCutfileStencilView */}
-                        <div className="flex-1 min-h-[600px] rounded-3xl overflow-hidden border border-(--lq-rim-subtle) liquid-panel shadow-2xl relative">
+                        <div className="flex-1 min-h-[600px] rounded-3xl overflow-hidden border border-white/10 bg-black/40 shadow-2xl relative">
                             <CrateCutfileStencilView
                                 width={stencilWidth}
                                 length={stencilLength}

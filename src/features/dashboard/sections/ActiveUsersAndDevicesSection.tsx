@@ -25,13 +25,19 @@ import {
     Check,
     X,
     AlertCircle,
+    Download,
+    Zap,
 } from 'lucide-react';
-import { useAtomValue } from 'jotai';
-import { userAtom } from '../../../lib/atoms';
+import { useAtomValue, useSetAtom } from 'jotai';
+import { userAtom, localStatusOpenAtom } from '../../../lib/atoms';
 import { useUserPresence, UserActiveSession } from '../../../lib/presence/useUserPresence';
 import { ONYX_MESH_TOPOLOGY } from '../../../lib/network/localMeshMap';
 import { colibriRealtimeBridge } from '../../../lib/ai/colibriRealtimeBridge';
+import { getColibriStatus } from '../../../lib/ai/providers/colibri';
+import { getProviderConfig } from '../../../lib/ai/providerKeys';
 import { useDeviceFleet } from '../../pico/surfaces/useDeviceFleet';
+import { connectivity, DeviceState } from '../../pico/surfaces/types';
+import { EdgeControllersGrid, probeLayaStatus } from './EdgeFleetOverviewSection';
 import { supabase } from '../../../lib/supabase';
 import { tr } from '../../../lib/i18n';
 import toast from 'react-hot-toast';
@@ -86,10 +92,11 @@ function getInitials(name?: string | null, email?: string | null): string {
 }
 
 function resolveMeshBadge(session: UserActiveSession) {
-    const dev = session.device_name.toLowerCase();
-    const ip = session.ip_address || '';
+    const dev = (session.device_name || '').toLowerCase();
+    const ip = (session.ip_address || '').trim();
 
-    if (ip === ONYX_MESH_TOPOLOGY.g7.ip || dev.includes('g7')) {
+    const g7Ip = (ONYX_MESH_TOPOLOGY.g7.ip || '').trim();
+    if ((ip && g7Ip && ip === g7Ip) || dev.includes('g7')) {
         return {
             isMesh: true,
             label: 'G7 Host Node',
@@ -98,7 +105,8 @@ function resolveMeshBadge(session: UserActiveSession) {
             roleDesc: 'Primary Colibrì MoE Host',
         };
     }
-    if (ip === ONYX_MESH_TOPOLOGY.second_laptop.ip || dev.includes('martha')) {
+    const relayIp = (ONYX_MESH_TOPOLOGY.second_laptop.ip || '').trim();
+    if ((ip && relayIp && ip === relayIp) || dev.includes('martha')) {
         return {
             isMesh: true,
             label: 'Second Relay Node',
@@ -107,7 +115,8 @@ function resolveMeshBadge(session: UserActiveSession) {
             roleDesc: 'Mesh Relay Gateway',
         };
     }
-    if (ip === ONYX_MESH_TOPOLOGY.phone.ip || dev.includes('phone') || dev.includes('iphone')) {
+    const phoneIp = (ONYX_MESH_TOPOLOGY.phone.ip || '').trim();
+    if ((ip && phoneIp && ip === phoneIp) || dev.includes('phone') || dev.includes('iphone')) {
         return {
             isMesh: true,
             label: 'iPhone Client Node',
@@ -201,7 +210,10 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
     } = useUserPresence({ pollIntervalMs: 15_000 });
 
     const { devices: savedFleetDevices } = useDeviceFleet();
+    const effectivePicoDevices = useMemo<DeviceState[]>(() => (savedFleetDevices as DeviceState[]) || [], [savedFleetDevices]);
+    const setLocalStatusOpen = useSetAtom(localStatusOpenAtom);
     const [colibriHostOnline, setColibriHostOnline] = useState<boolean>(() => colibriRealtimeBridge.isHostOnline());
+    const [layaOnline, setLayaOnline] = useState<boolean>(false);
     const [registeredUsers, setRegisteredUsers] = useState<AppUser[]>([]);
     const [loadingUsers, setLoadingUsers] = useState<boolean>(true);
     const [filterOnlyOnline, setFilterOnlyOnline] = useState<boolean>(false);
@@ -212,6 +224,24 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
     const [editRole, setEditRole] = useState<string>('');
     const [editIsActive, setEditIsActive] = useState<boolean>(true);
     const [isSavingUser, setIsSavingUser] = useState<boolean>(false);
+
+    const refreshLocalAi = useCallback(async () => {
+        try {
+            const [c, l] = await Promise.all([
+                getColibriStatus(getProviderConfig('colibri')).catch(() => null),
+                probeLayaStatus().catch(() => null),
+            ]);
+            setColibriHostOnline(Boolean(c?.ok || colibriRealtimeBridge.isHostOnline()));
+            setLayaOnline(Boolean(l?.ok));
+        } catch {
+            setColibriHostOnline(colibriRealtimeBridge.isHostOnline());
+            setLayaOnline(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void refreshLocalAi();
+    }, [refreshLocalAi]);
 
     // Listen to Colibri MoE host status
     useEffect(() => {
@@ -244,8 +274,8 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
     }, [fetchRegisteredUsers]);
 
     const handleRefreshAll = useCallback(async () => {
-        await Promise.all([refetchPresence(), fetchRegisteredUsers()]);
-    }, [refetchPresence, fetchRegisteredUsers]);
+        await Promise.all([refetchPresence(), fetchRegisteredUsers(), refreshLocalAi()]);
+    }, [refetchPresence, fetchRegisteredUsers, refreshLocalAi]);
 
     // Open edit dialog for an operative
     const handleOpenEdit = (u: UserFleetGroup) => {
@@ -348,55 +378,19 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
         }
     };
 
-    // Fallback sessions in case network is disconnected
+    // Live sessions strictly from presence (no fabricated fallback sessions)
     const displaySessions = useMemo<UserActiveSession[]>(() => {
-        const fallbackSessions: UserActiveSession[] = [
-            {
-                session_id: mySessionId || 'g7-local-session',
-                user_id: 'usr-ramses-01',
-                user_email: 'ramses@jouhayerk.com',
-                user_name: 'Ramses Jouhayerk',
-                device_name: 'G7 Laptop',
-                device_type: 'desktop',
-                client_platform: 'Windows',
-                browser: 'Chrome 129 / PWA',
-                ip_address: '192.0.2.71',
-                current_view: 'admin',
-                last_action: 'Inspecting Control Center',
-                is_idle: false,
-                last_seen_at: new Date().toISOString(),
-                created_at: new Date(Date.now() - 3600000).toISOString(),
-            },
-            {
-                session_id: 'iphone-client-session',
-                user_id: 'usr-ramses-01',
-                user_email: 'ramses@jouhayerk.com',
-                user_name: 'Ramses iPhone',
-                device_name: 'Ramses iPhone',
-                device_type: 'mobile',
-                client_platform: 'iOS',
-                browser: 'Mobile Safari / Companion App',
-                ip_address: '192.0.2.100',
-                current_view: 'dashboard',
-                last_action: 'Viewing Dashboard',
-                is_idle: false,
-                last_seen_at: new Date(Date.now() - 39000).toISOString(),
-                created_at: new Date(Date.now() - 10800000).toISOString(),
-            },
-        ];
-
         // The public Realtime channel carries no identity, so this device's own live session is labelled from the login.
         const live = sessions.map((s) =>
             s.session_id === mySessionId && !s.user_email && currentUser
                 ? { ...s, user_id: s.user_id || currentUser.id, user_email: currentUser.email, user_name: s.user_name || currentUser.name }
                 : s
         );
-        const raw = live.length > 0 ? live : fallbackSessions;
 
         // Deduplicate multiple browser tabs on the same hardware
         const deviceMap = new Map<string, { session: UserActiveSession; hasMySession: boolean }>();
 
-        for (const s of raw) {
+        for (const s of live) {
             const who = s.user_email || s.user_id;
             const key = who
                 ? `${who.toLowerCase()}::${s.device_name.toLowerCase()}::${s.client_platform.toLowerCase()}`
@@ -570,96 +564,104 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
     }, [allUserGroups, filterOnlyOnline]);
 
     const onlineUsersCount = allUserGroups.filter((u) => u.isActiveOnline).length;
-    const totalPhysicalDevicesCount = displaySessions.length;
+    const now = Date.now();
+    const picoOnlineCount = useMemo(() => {
+        return effectivePicoDevices.filter((d) => connectivity(d, now) === 'online').length;
+    }, [effectivePicoDevices, now]);
 
-    // Helper to calculate recent devices summary for an operative
-    const getDeviceSummary = (u: UserFleetGroup) => {
-        if (u.sessions.length > 0) {
-            const sortedSessions = [...u.sessions].sort(
-                (a, b) => (Date.parse(b.last_seen_at) || 0) - (Date.parse(a.last_seen_at) || 0)
-            );
-            const latest = sortedSessions[0];
-            const uniqueNames = Array.from(new Set(u.sessions.map((s) => s.device_name)));
-            const uniquePlatforms = Array.from(new Set(u.sessions.map((s) => s.client_platform)));
-
-            return {
-                deviceCount: u.sessions.length,
-                deviceNames: uniqueNames.join(', '),
-                platforms: uniquePlatforms.join(', '),
-                latestDeviceName: latest.device_name,
-                latestPlatform: latest.client_platform,
-                latestBrowser: latest.browser || 'App',
-                latestIp: latest.ip_address || '127.0.0.1',
-                lastConnectedAgo: formatTimeAgo(latest.last_seen_at),
-                lastConnectedDate: formatDate(latest.last_seen_at),
-                currentView: latest.current_view || 'active',
-            };
-        }
-        if (u.savedDevices.length > 0) {
-            return {
-                deviceCount: u.savedDevices.length,
-                deviceNames: u.savedDevices.map((d: any) => d.name || 'IoT Node').join(', '),
-                platforms: 'ESP32 / BLE',
-                latestDeviceName: u.savedDevices[0].name || 'Pico Hardware',
-                latestPlatform: 'ESP32 / MicroPython',
-                latestBrowser: 'Pico BLE',
-                latestIp: u.savedDevices[0].mac || 'BLE',
-                lastConnectedAgo: u.lastSubmitAt ? formatTimeAgo(u.lastSubmitAt) : tr("registered"),
-                lastConnectedDate: formatDate(u.lastSubmitAt),
-                currentView: 'standby',
-            };
-        }
-        return {
-            deviceCount: 0,
-            deviceNames: tr("Web Workstation"),
-            platforms: 'Web Client',
-            latestDeviceName: tr("Registered Station"),
-            latestPlatform: 'Web / PWA',
-            latestBrowser: 'Browser',
-            latestIp: 'Pending Connection',
-            lastConnectedAgo: u.lastSubmitAt ? formatTimeAgo(u.lastSubmitAt) : tr("never"),
-            lastConnectedDate: formatDate(u.lastSubmitAt),
-            currentView: 'offline',
+    const handleExportTelemetry = useCallback(() => {
+        const payload = {
+            exportTimestamp: new Date().toISOString(),
+            topology: ONYX_MESH_TOPOLOGY,
+            colibriOnline: colibriHostOnline,
+            layaOnline,
+            sessions: displaySessions,
+            registeredUsers: registeredUsers.length,
+            onlineUsersCount,
+            picoDevices: effectivePicoDevices,
         };
-    };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `onyx-fleet-telemetry-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, [colibriHostOnline, layaOnline, displaySessions, registeredUsers.length, onlineUsersCount, effectivePicoDevices]);
 
     return (
         <section aria-label="Active Users & Devices Fleet" className="space-y-8 animate-in fade-in duration-300">
-            {/* Compact Slab Telemetry HUD (Apple HIG Data-Dense HUD) */}
-            <div className="acc-hud-strip">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                        <span className="acc-dot acc-dot-emerald acc-pulse-emerald" />
-                        <h2 className="text-xs font-black uppercase tracking-wider text-(--text-color)">
-                            {tr("Active Presence HUD")}
-                        </h2>
-                        <span className="acc-badge acc-badge-mesh">
-                            <Wifi size={10} />
-                            G7 Wi-Fi Mesh
-                        </span>
-                        <span
-                            className={`acc-badge ${
-                                colibriHostOnline
-                                    ? 'acc-badge-root text-emerald-400 border-emerald-500/30'
-                                    : 'text-cyan-400 border-cyan-500/30'
-                            }`}
+            {/* Unified Telemetry Strip (.liquid-panel, single row) */}
+            <div className="liquid-panel p-4 mb-6">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    {/* 4 non-overlapping tabular counters */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1">
+                        {/* 1. Online Operatives */}
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-(--text-color-secondary)">
+                                {tr("Online Operatives")}
+                            </span>
+                            <span className="text-base font-black font-mono text-(--text-color) tabular-figures">
+                                <span className="text-emerald-400">{onlineUsersCount}</span> / {registeredUsers.length}
+                            </span>
+                        </div>
+
+                        {/* 2. Live Sessions */}
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-(--text-color-secondary)">
+                                {tr("Live Sessions")}
+                            </span>
+                            <span className="text-base font-black font-mono text-emerald-400 tabular-figures">
+                                {displaySessions.length}
+                            </span>
+                        </div>
+
+                        {/* 3. Edge Hardware */}
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-(--text-color-secondary)">
+                                {tr("Edge Hardware")}
+                            </span>
+                            <span className="text-base font-black font-mono text-cyan-400 tabular-figures">
+                                {picoOnlineCount} / {effectivePicoDevices.length} <span className="text-[10px] font-normal text-(--text-color-secondary)">{tr("up")}</span>
+                            </span>
+                        </div>
+
+                        {/* 4. Local AI */}
+                        <button
+                            type="button"
+                            onClick={() => setLocalStatusOpen((v) => !v)}
+                            className="liquid-control flex flex-col min-w-0 p-2 cursor-pointer hover:border-cyan-500/40 text-left"
+                            title={tr("Click to toggle Local AI & Mesh Drawer")}
                         >
-                            <Radio size={10} className={colibriHostOnline ? 'animate-pulse' : ''} />
-                            {colibriHostOnline ? 'Colibrì MoE Online' : 'Supabase Relay'}
-                        </span>
+                            <span className="text-[9px] font-black uppercase tracking-wider text-(--text-color-secondary) flex items-center gap-1">
+                                <Zap size={10} className="text-cyan-400" />
+                                {tr("Local AI")}
+                            </span>
+                            <div className="flex items-center gap-2 text-xs font-mono font-bold mt-0.5">
+                                <span className="flex items-center gap-1 text-(--text-color)">
+                                    :8000 <span className={`acc-dot ${colibriHostOnline ? 'acc-dot-cyan acc-pulse-cyan' : 'bg-white/20'}`} />
+                                </span>
+                                <span className="text-white/20">|</span>
+                                <span className="flex items-center gap-1 text-(--text-color)">
+                                    :8001 <span className={`acc-dot ${layaOnline ? 'acc-dot-emerald' : 'bg-white/20'}`} />
+                                </span>
+                            </div>
+                        </button>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    {/* Action cluster */}
+                    <div className="flex flex-wrap items-center gap-2">
                         <button
                             type="button"
                             onClick={() => setFilterOnlyOnline(!filterOnlyOnline)}
-                            className={`acc-badge cursor-pointer transition-all ${
-                                filterOnlyOnline
-                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50'
-                                    : 'bg-(--slab-glass-lo) text-(--text-color-secondary) hover:text-(--text-color) border-(--border-color)'
+                            className={`liquid-control px-3 py-1.5 text-[11px] font-mono flex items-center gap-1.5 cursor-pointer min-h-[36px] sm:min-h-[28px] ${
+                                filterOnlyOnline ? 'text-emerald-300 border-emerald-400/50' : 'text-(--text-color-secondary)'
                             }`}
                         >
-                            <Filter size={10} />
+                            <Filter size={12} />
                             <span>{filterOnlyOnline ? tr("Filtered: Online Only") : tr("All Operatives")}</span>
                         </button>
 
@@ -667,8 +669,8 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                             type="button"
                             onClick={handleRefreshAll}
                             disabled={presenceLoading || loadingUsers}
-                            className="acc-action-btn hover:border-emerald-500/40 text-[10px] py-1 px-2.5 min-h-[28px]"
-                            title="Refresh active session heartbeats & identity registry"
+                            className="liquid-control px-3 py-1.5 text-[11px] font-mono flex items-center gap-1.5 cursor-pointer min-h-[36px] sm:min-h-[28px] hover:border-emerald-500/40 text-(--text-color)"
+                            title={tr("Refresh active session heartbeats & identity registry")}
                         >
                             <RefreshCw
                                 size={12}
@@ -676,57 +678,16 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                             />
                             <span>{presenceLoading || loadingUsers ? tr("Syncing...") : tr("Refresh Fleet")}</span>
                         </button>
-                    </div>
-                </div>
 
-                {/* Compact Data Tiles */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-(--border-color)">
-                    <div className="acc-hud-tile">
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-wider text-(--text-color-secondary)">
-                                {tr("Active Sessions")}
-                            </span>
-                            <span className="text-base font-black font-mono text-emerald-400">
-                                {displaySessions.length}
-                            </span>
-                        </div>
-                        <Activity size={14} className="text-emerald-400 shrink-0 acc-pulse-emerald" />
-                    </div>
-
-                    <div className="acc-hud-tile">
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-wider text-(--text-color-secondary)">
-                                {tr("Online Operatives")}
-                            </span>
-                            <span className="text-base font-black font-mono text-(--text-color)">
-                                {onlineUsersCount}
-                            </span>
-                        </div>
-                        <Users size={14} className="text-(--main-color) shrink-0" />
-                    </div>
-
-                    <div className="acc-hud-tile">
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-wider text-(--text-color-secondary)">
-                                {tr("Hardware Nodes")}
-                            </span>
-                            <span className="text-base font-black font-mono text-(--text-color)">
-                                {totalPhysicalDevicesCount}
-                            </span>
-                        </div>
-                        <Monitor size={14} className="text-purple-400 shrink-0" />
-                    </div>
-
-                    <div className="acc-hud-tile">
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-wider text-(--text-color-secondary)">
-                                {tr("Total Registered")}
-                            </span>
-                            <span className="text-base font-black font-mono text-(--text-color)">
-                                {registeredUsers.length}
-                            </span>
-                        </div>
-                        <UserCheck size={14} className="text-emerald-400 shrink-0" />
+                        <button
+                            type="button"
+                            onClick={handleExportTelemetry}
+                            className="liquid-control px-3 py-1.5 text-[11px] font-mono flex items-center gap-1.5 cursor-pointer min-h-[36px] sm:min-h-[28px] hover:border-cyan-500/40 text-(--text-color)"
+                            title={tr("Download complete telemetry JSON file")}
+                        >
+                            <Download size={12} className="text-cyan-400" />
+                            <span>{tr("Export JSON")}</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -749,10 +710,9 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {tier1ActiveUsers.map((u) => {
                         const totalNodes = u.sessions.length + u.savedDevices.length;
-                        const deviceSummary = getDeviceSummary(u);
 
                         return (
-                            <div key={u.key} className="acc-user-container">
+                            <div key={u.key} className="acc-user-container liquid-panel">
                                 {/* User Header Row */}
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-(--border-color)">
                                     <div className="flex items-center gap-3 min-w-0">
@@ -813,34 +773,13 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
 
                                         {u.totalSubmits > 0 && (
                                             <span
-                                                className="text-[10px] font-mono text-(--text-color-secondary) flex items-center gap-1 bg-(--slab-glass-lo) px-2 py-1 rounded-md border border-(--border-color)"
+                                                className="text-[10px] font-mono text-(--text-color-secondary) flex items-center gap-1 bg-(--slab-glass-lo) px-2 py-1 rounded-md border border-(--border-color) tabular-figures"
                                                 title={`${u.totalSubmits} recorded submissions in registry`}
                                             >
                                                 <Activity size={10} className="text-(--main-color)" />
                                                 {u.totalSubmits} {tr("logs")}
                                             </span>
                                         )}
-                                    </div>
-                                </div>
-
-                                {/* Summary of Recent Devices & Last Connected Pill */}
-                                <div className="acc-device-summary-pill flex flex-wrap items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <Monitor size={12} className="text-(--main-color) shrink-0" />
-                                        <span className="font-semibold text-(--text-color) truncate">
-                                            {deviceSummary.deviceCount > 1
-                                                ? `${deviceSummary.deviceCount} Devices: ${deviceSummary.deviceNames}`
-                                                : deviceSummary.latestDeviceName}
-                                        </span>
-                                        <span className="text-[10px] font-mono text-(--text-color-secondary) hidden sm:inline">
-                                            ({deviceSummary.latestPlatform} • {deviceSummary.latestBrowser})
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0 font-mono text-[10px]">
-                                        <span className="text-(--text-color-secondary)">{tr("Last connected")}:</span>
-                                        <span className="text-emerald-400 font-bold">{deviceSummary.lastConnectedAgo}</span>
-                                        <span className="text-(--text-color-secondary) opacity-40">·</span>
-                                        <span className="text-(--text-color-secondary)">{deviceSummary.latestIp}</span>
                                     </div>
                                 </div>
 
@@ -864,7 +803,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                                         return (
                                             <div
                                                 key={session.session_id}
-                                                className={`acc-device-row ${isThisDevice ? 'acc-device-row-this' : ''}`}
+                                                className={`acc-device-row liquid-control ${isThisDevice ? 'acc-device-row-this' : ''}`}
                                             >
                                                 <div className="flex items-center gap-2.5 min-w-0">
                                                     <DeviceIcon size={14} className="text-(--main-color) shrink-0" />
@@ -894,7 +833,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                                                     <span className="acc-badge acc-badge-view text-[9px]">
                                                         VIEW: {session.current_view?.toUpperCase() || 'ACTIVE'}
                                                     </span>
-                                                    <span className="text-[10px] font-mono text-emerald-400 font-semibold">
+                                                    <span className="text-[10px] font-mono text-emerald-400 font-semibold tabular-figures">
                                                         {formatTimeAgo(session.last_seen_at)}
                                                     </span>
                                                 </div>
@@ -906,7 +845,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                                     {u.savedDevices.map((dev: any) => (
                                         <div
                                             key={dev.id || dev.name}
-                                            className="acc-device-row border-purple-500/20 bg-purple-500/5"
+                                            className="acc-device-row liquid-control border-purple-500/20 bg-purple-500/5"
                                         >
                                             <div className="flex items-center gap-2.5 min-w-0">
                                                 <Bot size={14} className="text-purple-400 shrink-0" />
@@ -930,7 +869,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
 
                                     {/* 3. Offline recent operative notice */}
                                     {!u.isActiveOnline && u.sessions.length === 0 && u.savedDevices.length === 0 && (
-                                        <div className="acc-device-row opacity-80">
+                                        <div className="acc-device-row liquid-control opacity-80">
                                             <div className="flex items-center gap-2">
                                                 <Shield size={13} className="text-(--text-color-secondary) shrink-0" />
                                                 <span className="text-xs text-(--text-color)">
@@ -952,6 +891,11 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
             </div>
 
             {/* ════════════════════════════════════════════════════════════════════
+                EDGE HARDWARE FLEET
+                ════════════════════════════════════════════════════════════════════ */}
+            <EdgeControllersGrid onRefresh={handleRefreshAll} isRefreshing={presenceLoading} />
+
+            {/* ════════════════════════════════════════════════════════════════════
                 TIER 2: INACTIVE OPERATIVES (> 2 MONTHS INACTIVE)
                 Rendered in a compact panel mode showing last activity summary
                 ════════════════════════════════════════════════════════════════════ */}
@@ -969,7 +913,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
 
                     <div className="space-y-2">
                         {tier2InactiveUsers.map((u) => (
-                            <div key={u.key} className="acc-user-compact-panel">
+                            <div key={u.key} className="acc-user-compact-panel liquid-panel">
                                 {/* Left: Operative info */}
                                 <div className="flex items-center gap-3 min-w-0">
                                     <div className="w-8 h-8 rounded-full bg-(--slab-glass-hi) border border-(--border-color) flex items-center justify-center font-mono font-bold text-xs text-(--text-color) shrink-0">
@@ -996,7 +940,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
                                 {/* Center: Activity summary */}
                                 <div className="flex items-center gap-2 text-[10px] font-mono text-(--text-color-secondary) bg-(--slab-glass) px-2.5 py-1 rounded-lg border border-(--border-color)">
                                     <Clock size={11} className="text-amber-400 shrink-0" />
-                                    <span>
+                                    <span className="tabular-figures">
                                         {tr("Inactive > 2mo")} • {tr("Last active")}: {formatDate(u.latestSeenAt)} ({formatTimeAgo(u.latestSeenAt)}) • {u.totalSubmits} {tr("logs")}
                                     </span>
                                 </div>
@@ -1065,7 +1009,7 @@ export const ActiveUsersAndDevicesSection: React.FC = () => {
 
                     <div className="flex flex-wrap items-center gap-2.5">
                         {tier3NoLogUsers.map((u) => (
-                            <div key={u.key} className="acc-user-bubble">
+                            <div key={u.key} className="acc-user-bubble liquid-control">
                                 <div className="w-5 h-5 rounded-full bg-(--slab-glass-hi) border border-(--border-color) flex items-center justify-center font-mono font-bold text-[9px] text-(--text-color) shrink-0">
                                     {u.initials}
                                 </div>

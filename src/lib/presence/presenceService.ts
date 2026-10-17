@@ -329,6 +329,7 @@ export class PresenceService {
 
   // Supabase Realtime wss:// Channel & Presence state (<100ms instant updates)
   private realtimeChannel: RealtimeChannel | null = null;
+  private realtimeUnauthorized: boolean = false;
   private fleetListeners = new Set<(sessions: UserActiveSession[]) => void>();
   private activeRealtimePresences = new Map<string, any>();
   private activeDbSessions = new Map<string, UserActiveSession>();
@@ -401,13 +402,13 @@ export class PresenceService {
    * Initializes the Supabase Realtime channel for instant presence tracking and DB changes.
    */
   public initRealtimeChannel(): void {
-    if (this.realtimeChannel) return;
+    if (this.realtimeChannel || this.realtimeUnauthorized) return;
 
     try {
-      // Public channel: see the privacy note at the top of the file. Move to `private: true` together with the
-      // realtime.messages policies in swarm/tasks/FX/FX1_proposed.sql, once those are applied.
+      // Private channel: RLS policies on realtime.messages allow Developer/Admin only.
       this.realtimeChannel = supabase.channel('onyx_live_presence', {
         config: {
+          private: true,
           presence: { key: this.sessionId },
         },
       });
@@ -429,9 +430,25 @@ export class PresenceService {
             this.handleDbSessionChange(payload);
           }
         )
-        .subscribe(async (status) => {
+        .subscribe(async (status, err) => {
           if (status === 'SUBSCRIBED') {
             await this.trackRealtimePresence();
+          } else if (
+            status === 'CHANNEL_ERROR' ||
+            String(status).toLowerCase().includes('unauthorized') ||
+            Boolean(err && /unauthorized/i.test(err.message || String(err)))
+          ) {
+            if (!this.realtimeUnauthorized) {
+              this.realtimeUnauthorized = true;
+              console.warn(
+                '[PresenceService] Realtime presence unauthorized or channel error; stopped retrying.'
+              );
+            }
+            if (this.realtimeChannel) {
+              const channel = this.realtimeChannel;
+              this.realtimeChannel = null;
+              void supabase.removeChannel(channel);
+            }
           }
         });
     } catch (err) {

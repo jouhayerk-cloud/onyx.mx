@@ -20,6 +20,7 @@ import {
     logisticsDataAtom,
     financeTotalsAtom,
     adminViewModeAtom,
+    localStatusOpenAtom,
     userAtom,
     AdminViewMode,
 } from '../../lib/atoms';
@@ -32,7 +33,7 @@ import { tr } from '../../lib/i18n';
 
 // Sections
 import { ActiveUsersAndDevicesSection } from './sections/ActiveUsersAndDevicesSection';
-import { EdgeFleetOverviewSection } from './sections/EdgeFleetOverviewSection';
+import { LocalMeshColibriSheet } from './sections/EdgeFleetOverviewSection';
 import { KpiStrip } from './sections/KpiStrip';
 import { FinanceSummarySection } from './sections/FinanceSummarySection';
 import { InventoryStatusSection } from './sections/InventoryStatusSection';
@@ -48,23 +49,12 @@ export { type AdminViewMode } from '../../lib/atoms';
 export const AdminControlCenter: React.FC = () => {
     // Current Active Mode Switcher (Synced with Onyx Island Dock)
     const [selectedViewMode, setViewMode] = useAtom(adminViewModeAtom);
+    const localStatusOpen = useAtomValue(localStatusOpenAtom);
 
-    // Operators and Edge Fleet are Developer/Admin only; any other role that reaches this screen sees financials only.
+    // People & Devices is Developer/Admin only; any other role that reaches this screen sees financials only.
     const user = useAtomValue(userAtom);
     const isStaff = user?.role === 'Developer' || user?.role === 'Admin';
     const viewMode: AdminViewMode = isStaff ? selectedViewMode : 'financials';
-
-    // Live clock for live time badge
-    const [currentTimeStr, setCurrentTimeStr] = useState<string>(() => {
-        return new Date().toLocaleTimeString('en-US', { hour12: false });
-    });
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTimeStr(new Date().toLocaleTimeString('en-US', { hour12: false }));
-        }, 1000);
-        return () => clearInterval(timer);
-    }, []);
 
     // Financial Data for 'financials' mode
     const exchangeRate = useAtomValue(exchangeRateAtom);
@@ -410,17 +400,17 @@ export const AdminControlCenter: React.FC = () => {
         <div className="flex flex-col h-full overflow-hidden relative animate-in fade-in duration-500 bg-(--app-bg) ui-root">
             {/* Scrollable Viewport — Content flows smoothly beneath the floating Onyx Island */}
             <div className="h-full overflow-y-auto custom-scrollbar relative px-6 md:px-10 pt-20 sm:pt-24 pb-24">
-                {/* 1. Active Users & Devices Mode */}
+                {/* Local AI & Mesh Drawer (triggered by Island Local status toggle) */}
+                {isStaff && localStatusOpen && (
+                    <LocalMeshColibriSheet />
+                )}
+
+                {/* 1. People & Devices (Active Users & Edge Fleet) Mode */}
                 {viewMode === 'active_devices' && (
                     <ActiveUsersAndDevicesSection />
                 )}
 
-                    {/* 2. Edge & Colibrì Fleet Mode */}
-                    {viewMode === 'edge_fleet' && (
-                        <EdgeFleetOverviewSection />
-                    )}
-
-                    {/* 3. KPI & Financials Mode */}
+                {/* 2. KPI & Financials Mode */}
                     {viewMode === 'financials' && (
                         <div className="space-y-12 animate-in fade-in duration-300">
                             {/* KPI Strip */}

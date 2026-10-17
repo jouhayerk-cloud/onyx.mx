@@ -16,7 +16,7 @@ import { tr, trf } from '../../lib/i18n';
 import { onyxAgentMessagesAtom, onyxAgentHistoryOwnerAtom, saveHistory, clearHistory } from './agentHistory';
 import { getRoute, type Route } from '../../lib/ai/routing';
 import { getProviderConfig, hasProviderKey } from '../../lib/ai/providerKeys';
-import { getProvider } from '../../lib/ai/providers';
+import { getProvider, isColibriAvailable } from '../../lib/ai/providers';
 import type { AiProviderImpl, ChatResult, ChatToolCall, ChatToolDef, ChatTurn, ProviderConfig } from '../../lib/ai/providers/types';
 import { aiErrorMessage } from '../../lib/ai/errors';
 
@@ -252,7 +252,8 @@ CRITICAL IDENTIFIER RULE: DO NOT read out 'book_barcode' (Tag IDs like DH3261HFN
 Instead, give a short, helpful verbal summary of what you found (e.g., "I've found two items from Gerardo, deploying the manifest for you now.") along with the artifact deployment.
 Use Tag IDs ONLY in tool calls. 
 When deploying artifacts via 'deploy_inventory_artifact', you MUST use the database 'id' field if available to ensure reliable manifest resolution. 
-Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
+Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.
+CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or tool in text (e.g. never write 'Executing search_in_app...'). You MUST call the real tool function directly. If you cannot execute a tool, state clearly that you could not run it.`;
         return options.systemPrompt ? `${systemBase}\n\n${options.systemPrompt}` : systemBase;
     }, [userName, appLanguage, options.systemPrompt]);
 
@@ -341,17 +342,26 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
 
         // Gemini (the default) keeps its own caller and its own key; any other route goes through that provider's chat()
         const route = getRoute('chat');
-        const viaGemini = route.provider === 'gemini';
-        const chatSetup = viaGemini ? null : resolveChatRoute(route);
-        const apiKey = getGeminiKey();
-        if (viaGemini && !apiKey) {
-            setError(tr("Neural link credentials missing."));
-            setPhase('error');
-            setTimeout(() => { setPhase('idle'); setError(null); }, 4000);
-            return;
+        let effectiveViaGemini = route.provider === 'gemini';
+        let fallbackNotice: string | null = null;
+        let chatSetup = effectiveViaGemini ? null : resolveChatRoute(route);
+
+        if (!effectiveViaGemini) {
+            if (chatSetup && !chatSetup.ok) {
+                fallbackNotice = `${chatSetup.message}. ${tr('Falling back to Gemini for this turn.')}`;
+                effectiveViaGemini = true;
+            } else if (route.provider === 'colibri') {
+                const isUp = await isColibriAvailable(chatSetup?.cfg?.baseUrl);
+                if (!isUp) {
+                    fallbackNotice = `${tr('Colibrì is not running on this PC.')} ${tr('Falling back to Gemini for this turn.')}`;
+                    effectiveViaGemini = true;
+                }
+            }
         }
-        if (chatSetup && chatSetup.ok === false) {
-            setError(chatSetup.message);
+
+        const apiKey = getGeminiKey();
+        if (effectiveViaGemini && !apiKey) {
+            setError(tr("Neural link credentials missing."));
             setPhase('error');
             setTimeout(() => { setPhase('idle'); setError(null); }, 4000);
             return;
@@ -376,27 +386,39 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
         }));
 
         try {
-            // Read model from getRoute('chat').model first, fallback to 3.8 Flash then 2.5 Flash
-            const preferredModel = (viaGemini && route.model) ? [route.model] : [];
-            const modelsToTry = viaGemini
-                ? Array.from(new Set([...preferredModel, "gemini-3.8-flash", "gemini-2.5-flash"]))
+            // route model first (user choice), then 2.5 Flash primary, 3.8 Flash fallback; offline provider falls back to Gemini for that turn
+            const modelsToTry = effectiveViaGemini
+                ? Array.from(new Set([...(route.model && viaGemini ? [route.model] : []), "gemini-2.5-flash", "gemini-3.8-flash"]))
                 : [];
             let resp = null;
             let usedModel = "";
             let lastAttemptError = "";
 
-            if (chatSetup?.ok) {
-                resp = await callModel(chatSetup.impl, chatSetup.cfg, contents, allDefinitions, signal);
+            if (chatSetup?.ok && !effectiveViaGemini) {
+                try {
+                    resp = await callModel(chatSetup.impl, chatSetup.cfg, contents, allDefinitions, signal);
+                } catch (e: any) {
+                    if (signal.aborted) throw e;
+                    console.warn(`[onyxAgent] ${route.provider} call failed, falling back to Gemini:`, e);
+                    const providerLabel = chatSetup.impl.info?.label || route.provider;
+                    fallbackNotice = `${providerLabel} ${tr('is offline or unreachable. Falling back to Gemini for this turn.')}`;
+                    effectiveViaGemini = true;
+                }
             }
 
-            for (const m of modelsToTry) {
-                try {
-                    resp = await callGemini(apiKey, contents, allDefinitions, m, signal);
-                    usedModel = m;
-                    break;
-                } catch (e: any) {
-                    if (e.message === 'aborted') throw e;
-                    lastAttemptError = e.message;
+            if (effectiveViaGemini && !resp) {
+                if (!apiKey) {
+                    throw new Error(tr("Neural link credentials missing."));
+                }
+                for (const m of modelsToTry) {
+                    try {
+                        resp = await callGemini(apiKey, contents, allDefinitions, m, signal);
+                        usedModel = m;
+                        break;
+                    } catch (e: any) {
+                        if (e.message === 'aborted') throw e;
+                        lastAttemptError = e.message;
+                    }
                 }
             }
 
@@ -407,11 +429,48 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             }
 
             let iter = 0;
+            let hasReprompted = false;
+            const executedTools = new Set<string>();
+
             while (iter < 6 && !signal.aborted) {
                 const parts = resp.candidates?.[0]?.content?.parts || [];
                 const calls = parts.filter((p: any) => p.functionCall);
                 const textParts = parts.filter((p: any) => typeof p.text === 'string' && p.text).map((p: any) => p.text);
-                const modelText = textParts.length > 0 ? textParts.join('\n') : undefined;
+                let modelText: string | undefined = textParts.length > 0 ? textParts.join('
+') : undefined;
+
+                if (calls.length === 0 && modelText) {
+                    const unexecutedTool = allDefinitions.find((d: any) =>
+                        d?.name && !executedTools.has(d.name) && new RegExp(`\\b${d.name}\\b`).test(modelText!)
+                    );
+
+                    if (unexecutedTool) {
+                        if (!hasReprompted) {
+                            hasReprompted = true;
+                            if (resp.candidates?.[0]?.content) {
+                                contents.push(resp.candidates[0].content);
+                            }
+                            contents.push({
+                                role: 'user',
+                                parts: [{
+                                    text: `You mentioned '${unexecutedTool.name}' without calling it. Do not narrate tool calls. You must invoke the tool as a function call. Tool schema:\n${JSON.stringify(unexecutedTool)}`
+                                }]
+                            });
+                            setPhase('thinking');
+                            resp = chatSetup?.ok && !effectiveViaGemini
+                                ? await callModel(chatSetup.impl, chatSetup.cfg, contents, allDefinitions, signal)
+                                : await callGemini(apiKey, contents, allDefinitions, usedModel || 'gemini-2.5-flash', signal);
+                            continue;
+                        } else {
+                            modelText = tr("I could not run that.");
+                        }
+                    }
+                }
+
+                if (fallbackNotice && (modelText || calls.length === 0)) {
+                    modelText = modelText ? `${fallbackNotice}\n\n${modelText}` : fallbackNotice;
+                    fallbackNotice = null;
+                }
 
                 if (modelText) {
                     setPhase('speaking');
@@ -442,7 +501,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 }
 
                 if (calls.length === 0) {
-                    if (!modelText && !viaGemini) throw new Error(tr('The model returned an empty answer'));
+                    if (!modelText && !effectiveViaGemini) throw new Error(tr('The model returned an empty answer'));
                     setPhase('idle');
                     break;
                 }
@@ -454,6 +513,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 for (const c of calls) {
                     if (signal.aborted) break;   // Stop pressed: do not run the remaining queued tool calls
                     setPhase('thinking');
+                    executedTools.add(c.functionCall.name);
                     const risk = allRisks[c.functionCall.name] || 'read';
                     const needsConfirm = risk === 'write' || allConfirms[c.functionCall.name] === true;
                     let result;
@@ -585,9 +645,20 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 
                 if (!signal.aborted) {
                     setPhase('thinking');
-                    resp = chatSetup?.ok
-                        ? await callModel(chatSetup.impl, chatSetup.cfg, contents, allDefinitions, signal)
-                        : await callGemini(apiKey, contents, allDefinitions, usedModel, signal);
+                    if (chatSetup?.ok && !effectiveViaGemini) {
+                        try {
+                            resp = await callModel(chatSetup.impl, chatSetup.cfg, contents, allDefinitions, signal);
+                        } catch (e: any) {
+                            if (signal.aborted) throw e;
+                            console.warn(`[onyxAgent] ${route.provider} mid-turn call failed, falling back to Gemini:`, e);
+                            const providerLabel = chatSetup.impl.info?.label || route.provider;
+                            fallbackNotice = `${providerLabel} ${tr('is offline or unreachable. Falling back to Gemini for this turn.')}`;
+                            effectiveViaGemini = true;
+                            resp = await callGemini(apiKey, contents, allDefinitions, usedModel || 'gemini-2.5-flash', signal);
+                        }
+                    } else {
+                        resp = await callGemini(apiKey, contents, allDefinitions, usedModel || 'gemini-2.5-flash', signal);
+                    }
                 }
                 iter++;
                 
@@ -599,7 +670,7 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             if (signal.aborted) return;
             const errMsg = e?.message?.toLowerCase() || '';
             const isKeyError = errMsg.includes('key') || errMsg.includes('api') || errMsg.includes('404') || errMsg.includes('unauthorized');
-            const safeError = !viaGemini
+            const safeError = !effectiveViaGemini
                 ? aiErrorMessage(e)
                 : isKeyError
                 ? tr('Neural Link Denied. Verify API credentials in settings.')
