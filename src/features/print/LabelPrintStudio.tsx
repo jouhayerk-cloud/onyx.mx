@@ -702,9 +702,11 @@ export const LabelPrintStudio: React.FC = () => {
     // Iframe designer message handler
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
+            // only the same-origin designer frame may talk to the studio
+            if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
             if (event.data?.type === 'DESIGNER_READY' && pendingBatchRef.current && iframeRef.current?.contentWindow) {
-                iframeRef.current.contentWindow.postMessage({ type: 'ONYX_LOAD_BATCH', payload: pendingBatchRef.current }, '*');
-                iframeRef.current.contentWindow.postMessage({ type: 'LOAD_DESIGN', payload: { templateData: pendingBatchRef.current.records, labelSize: pendingBatchRef.current.labelSize } }, '*');
+                iframeRef.current.contentWindow.postMessage({ type: 'ONYX_LOAD_BATCH', payload: pendingBatchRef.current }, window.location.origin);
+                iframeRef.current.contentWindow.postMessage({ type: 'LOAD_DESIGN', payload: { templateData: pendingBatchRef.current.records, labelSize: pendingBatchRef.current.labelSize } }, window.location.origin);
             }
             if (event.data?.type === 'PRINT_COMPLETE' || event.data?.type === 'PRINT_DONE') {
                 const printedTags = Array.isArray(event.data.payload?.printedTags) ? event.data.payload.printedTags : [];
@@ -1372,7 +1374,7 @@ export const LabelPrintStudio: React.FC = () => {
                         <div className="flex-1 w-full h-full relative">
                             <iframe
                                 ref={iframeRef}
-                                src={`/phomemo-designer/index.html?v=${selectedItems.length}&theme=${theme}`}
+                                src={`${import.meta.env.BASE_URL}phomemo-designer/index.html?v=${selectedItems.length}&theme=${theme}`}
                                 className="w-full h-full border-none bg-transparent"
                                 title="Phomemo Designer"
                                 allow="bluetooth"
