@@ -1293,3 +1293,12 @@ html.theme-aqua .lps-tray-modal-card {
   border-color: var(--lq-rim, rgba(11, 42, 51, 0.18));
 }
 
+/* Designer iframe overlay - highest modal layer */
+.lps-designer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100050;
+  display: flex;
+  flex-direction: column;
+}
+

@@ -113,6 +113,9 @@ export const LabelPrintStudio: React.FC = () => {
     const [labelTemplate, setLabelTemplate] = useState<'standard' | 'barkod'>('standard');
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [isDesignerOpen, setIsDesignerOpen] = useState(false);
+    const [isDesignerUserActive, setIsDesignerUserActive] = useState(false);
+    const triggerFocusRef = useRef<HTMLElement | null>(null);
+    const designerOverlayRef = useRef<HTMLDivElement | null>(null);
 
     // Printer Selection & Driver State Machine
     const isBluetoothSupported = isWebBluetoothSupported();
@@ -431,11 +434,38 @@ export const LabelPrintStudio: React.FC = () => {
         };
     }, [printerType]);
 
+    // Designer overlay close & focus return handler
+    const handleCloseDesigner = useCallback(() => {
+        setIsDesignerUserActive(false);
+        if (runStatus !== 'running') {
+            pendingPrintJobRef.current = null;
+            setIsDesignerOpen(false);
+        }
+        setTimeout(() => {
+            triggerFocusRef.current?.focus();
+        }, 50);
+    }, [runStatus]);
+
+    // Handle Escape key to close active designer modal and return focus to trigger
+    useEffect(() => {
+        if (!isDesignerUserActive) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                e.preventDefault();
+                handleCloseDesigner();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [isDesignerUserActive, handleCloseDesigner]);
+
     // Close handler
     const handleClose = () => {
         setIsOpen(false);
         setIsPrintCenterOpen(false);
         setIsDesignerOpen(false);
+        setIsDesignerUserActive(false);
     };
 
     // Printer Connect (Virtual or Bluetooth)
@@ -692,12 +722,15 @@ export const LabelPrintStudio: React.FC = () => {
                 const additions: VirtualTrayItem[] = [];
                 detail.decodedLabels.forEach((dl: any, idx: number) => {
                     if (dl && dl.dataUrl && !existingIds.has(dl.id)) {
+                        const tag = printedTags[idx] || `LABEL-${idx + 1}`;
+                        const matchingItem = selectedItems.find(it => (it.codes?.bookBarcode || '') === tag) || selectedItems[idx];
                         additions.push({
                             id: dl.id || `vt-${Date.now()}-${idx}`,
-                            tagId: printedTags[idx] || `LABEL-${idx + 1}`,
+                            tagId: tag,
                             dataUrl: dl.dataUrl,
                             index: idx + 1,
                             timestamp: dl.timestamp || Date.now(),
+                            item: matchingItem,
                         });
                     }
                 });
@@ -1211,14 +1244,15 @@ export const LabelPrintStudio: React.FC = () => {
     };
 
     // Edit Label (Handoff to iframe designer)
-    const handleOpenDesigner = async () => {
-        if (selectedItems.length === 0) {
+    const handleOpenDesigner = async (targetItems?: any[]) => {
+        const itemsToUse = (targetItems && targetItems.length > 0) ? targetItems : selectedItems;
+        if (itemsToUse.length === 0) {
             toast.error("No labels selected to edit");
             return;
         }
         const tid = toast.loading(tr("Generating dynamic 3D structures for labels..."));
         try {
-            const batchProject = await buildBatchJSONAsync(selectedItems, workbookPrefix, activeLabelSize, logoVariant);
+            const batchProject = await buildBatchJSONAsync(itemsToUse, workbookPrefix, activeLabelSize, logoVariant);
             try {
                 localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
             } catch (storageError) {
@@ -1227,13 +1261,13 @@ export const LabelPrintStudio: React.FC = () => {
             pendingBatchRef.current = batchProject;
 
             const tagById: Record<string, string> = {};
-            selectedItems.forEach((it: any) => {
+            itemsToUse.forEach((it: any) => {
                 const id = it.row ?? it.data?.id ?? it.id;
                 if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
             });
             const isVirtual = printerType === 'virtual';
             pendingPrintJobRef.current = {
-                ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
+                ids: itemsToUse.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
                 tagById,
                 checksum: await computeJobChecksum(batchProject),
                 jobId: `${isVirtual ? 'VPJ' : 'PJ'}-${Date.now().toString(36).toUpperCase()}`,
@@ -1243,6 +1277,7 @@ export const LabelPrintStudio: React.FC = () => {
 
             toast.success(tr("Batch Prepared! Launching Visual Designer"), { id: tid });
             setIsDesignerOpen(true);
+            setIsDesignerUserActive(true);
 
             if (iframeRef.current?.contentWindow) {
                 iframeRef.current.contentWindow.postMessage(
@@ -1270,6 +1305,9 @@ export const LabelPrintStudio: React.FC = () => {
                     );
                 }, 300);
             }
+            setTimeout(() => {
+                designerOverlayRef.current?.focus();
+            }, 100);
         } catch (e: any) {
             console.error('[LabelPrintStudio] handleOpenDesigner failed:', e);
             toast.error(`Designer setup failed: ${e?.message || 'unknown error'}`, { id: tid });
@@ -2040,6 +2078,10 @@ export const LabelPrintStudio: React.FC = () => {
                                         logoVariant={logoVariant}
                                         showChrome={false}
                                         template={labelTemplate}
+                                        onLaunchIframe={(_indices, instances) => {
+                                            const items = instances.map(inst => inst.item);
+                                            handleOpenDesigner(items.length > 0 ? items : undefined);
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -2202,7 +2244,10 @@ export const LabelPrintStudio: React.FC = () => {
                                 {/* EDIT LABEL Button */}
                                 <button
                                     type="button"
-                                    onClick={handleOpenDesigner}
+                                    onClick={(e) => {
+                                        triggerFocusRef.current = e.currentTarget;
+                                        handleOpenDesigner();
+                                    }}
                                     className="lps-bar-btn liquid-control px-3 md:px-4 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shrink-0"
                                     title="Open Visual Phomemo Label Editor"
                                 >
@@ -2610,11 +2655,19 @@ export const LabelPrintStudio: React.FC = () => {
 
                 {/* ── DESIGNER IFRAME MODAL OVERLAY ── */}
                 {isDesignerOpen && (
-                    <div className={`fixed inset-0 z-[100010] flex flex-col liquid-surface rounded-none ${isLiveRunOpen ? 'opacity-0 pointer-events-none -z-10' : ''}`}>
+                    <div 
+                        ref={designerOverlayRef}
+                        tabIndex={-1}
+                        className={`lps-designer-overlay fixed inset-0 z-[100050] flex flex-col liquid-surface rounded-none outline-none ${
+                            isDesignerUserActive 
+                                ? 'opacity-100 pointer-events-auto' 
+                                : 'opacity-0 pointer-events-none -z-10'
+                        }`}
+                    >
                         <div className="lps-header px-6 flex items-center justify-between shrink-0">
                             <div className="flex items-center gap-3">
                                 <button
-                                    onClick={() => { pendingPrintJobRef.current = null; setIsDesignerOpen(false); }}
+                                    onClick={handleCloseDesigner}
                                     className="lps-touch-target px-3 py-1.5 liquid-control text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer"
                                 >
                                     <ArrowLeft size={16} />
@@ -2623,7 +2676,7 @@ export const LabelPrintStudio: React.FC = () => {
                                 <span className="text-sm font-bold">Phomemo Visual Designer</span>
                             </div>
                             <button
-                                onClick={() => { pendingPrintJobRef.current = null; setIsDesignerOpen(false); }}
+                                onClick={handleCloseDesigner}
                                 className="lps-touch-target liquid-control rounded-full flex items-center justify-center cursor-pointer"
                                 aria-label="Close Visual Designer"
                             >
@@ -2655,13 +2708,26 @@ export const LabelPrintStudio: React.FC = () => {
                                     <span className="text-[11px] lps-text-muted">#{trayModalLabel.index}</span>
                                     {trayModalLabel.scanResult && (
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase font-mono tracking-wider ${
-                                            trayModalLabel.scanResult.passed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                             trayModalLabel.scanResult.passed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                                         }`}>
                                             SCAN {trayModalLabel.scanResult.passed ? 'PASS' : 'FAIL'}
                                         </span>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            triggerFocusRef.current = e.currentTarget;
+                                            const targetItem = trayModalLabel.item || selectedItems.find(it => (it.codes?.bookBarcode || '') === trayModalLabel.tagId) || selectedItems[0];
+                                            handleOpenDesigner(targetItem ? [targetItem] : undefined);
+                                        }}
+                                        className="lps-micro-btn liquid-control cursor-pointer flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold"
+                                        title="Edit this label in Visual Designer"
+                                    >
+                                        <Sliders size={13} />
+                                        <span>Edit in Designer</span>
+                                    </button>
                                     <a
                                         href={trayModalLabel.dataUrl}
                                         download={`virtual-label-${trayModalLabel.tagId || 'print'}.png`}

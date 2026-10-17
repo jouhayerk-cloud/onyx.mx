@@ -3,6 +3,24 @@ import JsBarcode from "jsbarcode";
 import { LABEL_STOCK_PRESETS, LABEL_TYPE_SCALE, LABEL_PALETTE } from '../design/labelDesignSystem';
 import { renderBarkodToContext, BarkodStyle } from '../barkod/barkod';
 import type { Dims } from '../../entry/hairline/types';
+import { decodeRasterToDataUrl } from '../../../utils/PhomemoM110';
+
+const labelImageCache = new Map<string, HTMLImageElement>();
+export function loadLabelImage(src: string): Promise<HTMLImageElement> {
+    if (labelImageCache.has(src)) {
+        return Promise.resolve(labelImageCache.get(src)!);
+    }
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            labelImageCache.set(src, img);
+            resolve(img);
+        };
+        img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+        img.src = src;
+    });
+}
 
 export type LabelElement =
     | { type: 'text'; x: number; y: number; text: string; fontSize: number; fontWeight?: string; fontFamily?: string; align?: 'left' | 'center' | 'right' | 'justify'; maxWidth?: number; rotation?: number }
@@ -436,7 +454,7 @@ export function buildBarkodItemLabelSpec(item: InventoryItemForLabel, options: I
         };
     }
 
-    // Default 50x30 mm "Studio Balanced" layout (384x230 dots)
+    // Default 50x30 mm "Studio Balanced" layout (384x240 dots)
     elements.push({
         type: 'text',
         x: 16,
@@ -507,7 +525,7 @@ export function buildBarkodItemLabelSpec(item: InventoryItemForLabel, options: I
     return {
         presetId: 'M110_48x28',
         widthDots: 384,
-        heightDots: 230,
+        heightDots: 240,
         orientation: 'landscape',
         elements
     };
@@ -658,7 +676,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
         };
     }
 
-    // Default 50x30 mm landscape layout (384x230 dots for M110 printhead)
+    // Default 50x30 mm landscape layout (384x240 dots for M110 printhead)
     elements.push({
         type: 'text',
         x: 16,
@@ -759,7 +777,7 @@ export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLab
     return {
         presetId: 'M110_48x28',
         widthDots: 384,
-        heightDots: 230,
+        heightDots: 240,
         orientation: 'landscape',
         elements
     };
@@ -773,6 +791,75 @@ export async function renderLabelBatch(specs: LabelSpec[]): Promise<MonoBitmap[]
         bitmaps.push(bitmap);
     }
     return bitmaps;
+}
+
+export async function renderLabelToRasterDataUrl(spec: LabelSpec): Promise<string> {
+    const canvas = await renderLabelToCanvas(spec);
+    const bitmap = canvasToMonoBitmap(canvas);
+    return decodeRasterToDataUrl(bitmap.data, bitmap.widthBytes, bitmap.height);
+}
+
+export async function renderItemLabelToRaster(
+    item: any,
+    options: {
+        tagId?: string;
+        qrData?: string;
+        labelSize?: '50x30' | '50x50';
+        logoVariant?: 'ArtOfDecor' | 'RareEarth';
+        template?: 'standard' | 'barkod';
+        axoImage?: HTMLCanvasElement | ImageBitmap | HTMLImageElement;
+        logoImage?: HTMLCanvasElement | ImageBitmap | HTMLImageElement;
+        axoSvg?: string;
+    } = {}
+): Promise<string> {
+    const tagId = options.tagId || item?.codes?.bookBarcode || '000';
+    const qrData = options.qrData || `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${tagId}`;
+    const labelSize = options.labelSize || '50x30';
+    const logoVariant = options.logoVariant || 'ArtOfDecor';
+    const template = options.template || 'standard';
+
+    let axoImage = options.axoImage;
+    if (!axoImage && options.axoSvg) {
+        try {
+            axoImage = await loadLabelImage(options.axoSvg);
+        } catch {
+            // axo load failed, continue without image
+        }
+    }
+
+    let logoImage = options.logoImage;
+    if (!logoImage && labelSize === '50x50') {
+        const logoSrc = logoVariant === 'RareEarth' 
+            ? `${import.meta.env.BASE_URL}REG_LogoGrayscale.png` 
+            : `${import.meta.env.BASE_URL}ArtOfDecorLogo.png`;
+        try {
+            logoImage = await loadLabelImage(logoSrc);
+        } catch {
+            // logo load failed, fallback to text logo in spec
+        }
+    }
+
+    const spec = template === 'barkod'
+        ? buildBarkodItemLabelSpec(item, {
+            tagId,
+            qrData,
+            labelSize,
+            logoVariant,
+            template,
+            axoImage,
+            logoImage
+        })
+        : buildItemLabelSpec(item, {
+            tagId,
+            qrData,
+            labelSize,
+            logoVariant,
+            template,
+            axoImage,
+            logoImage
+        });
+
+    return renderLabelToRasterDataUrl(spec);
 }
 
 // EXTENSION POINT: Phomemo transport and WebBluetooth queueing will be connected here later.

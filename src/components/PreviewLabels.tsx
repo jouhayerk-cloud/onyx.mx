@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Printer, ChevronLeft, ChevronRight, Check, ZoomIn } from 'lucide-react';
-import Barcode from 'react-barcode';
-import { QRCodeSVG } from 'qrcode.react';
 import { generateAxonometricDataUrl } from '../lib/axonometric';
 import { tr, trf } from '../lib/i18n';
-import { generateBarkodSvg } from '../features/print/barkod/barkod';
+import { renderItemLabelToRaster } from '../features/print/renderers/labelRenderer';
 
 export interface PreviewLabelsProps {
     items: any[];
@@ -19,9 +17,11 @@ export interface PreviewLabelsProps {
 }
 
 export const LABEL_WIDTH_50x30 = 384;
-export const LABEL_HEIGHT_50x30 = 230;
+export const LABEL_HEIGHT_50x30 = 240;
 export const LABEL_WIDTH_50x50 = 384;
 export const LABEL_HEIGHT_50x50 = 384;
+
+export const labelRasterCache = new Map<string, string>();
 
 export interface PixelLabelViewProps {
     instance: { item: any; index: number; globalIndex: number };
@@ -32,12 +32,13 @@ export interface PixelLabelViewProps {
     is1Bit?: boolean;
     scale?: number;
     className?: string;
+    dataUrl?: string;
 }
 
 /**
- * PixelLabelView: High-fidelity, crisp, pixel-perfect label preview
- * rendered identically to the Phomemo M110 designer/print engine.
- * Supports 1-bit monochrome thermal appearance with crisp pixelated scaling.
+ * PixelLabelView: Renders exact 1-bit printer raster at 203 DPI.
+ * Pixel-for-pixel parity with virtual printer tray and Phomemo M110 printhead.
+ * Displayed with integer scaling and image-rendering: pixelated (no separate HTML/CSS re-layout).
  */
 export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
     instance,
@@ -45,201 +46,70 @@ export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
     logoVariant = 'ArtOfDecor',
     template = 'standard',
     axoSvg,
-    is1Bit = true,
     scale,
-    className = ''
+    className = '',
+    dataUrl: propDataUrl
 }) => {
     const { item } = instance;
-    const tag = item.codes?.bookBarcode || '';
-    const norm = item.normData || {};
-    const codes = item.codes || {};
+    const tag = item?.codes?.bookBarcode || '';
     const isSquare = activeLabelSize === '50x50';
     const targetWidth = isSquare ? LABEL_WIDTH_50x50 : LABEL_WIDTH_50x30;
     const targetHeight = isSquare ? LABEL_HEIGHT_50x50 : LABEL_HEIGHT_50x30;
 
-    const bookv = String(norm.workbook || '326').replace(/v/gi, '');
-    const retailStr = String(codes.bookRetail || '0').padStart(4, '0');
-    const retail = `${codes.bookAqCode || ''}-${bookv}${retailStr}`;
-    const desc = `${norm.shape || ''} ${norm.itemType || norm.type || norm.shortDescription || norm.description || ''}`.trim() || 'Onyx Piece';
-    const matColor = `${norm.color || ''} ${norm.material || 'Onyx'}`.trim();
-    const lengthVal = norm.lengthCm ?? norm.widthCm ?? 0;
-    const dimsStr = `${norm.widthCm || 0}*${lengthVal}*${norm.heightCm || 0} CM${norm.weightKg ? `  WT ${norm.weightKg} KG` : ''}`;
+    const cacheKey = `${tag}_${activeLabelSize}_${template}_${logoVariant}_${axoSvg ? 'axo' : 'noaxo'}`;
+    const [rasterUrl, setRasterUrl] = useState<string>(() => propDataUrl || labelRasterCache.get(cacheKey) || '');
 
-    const logoSrc = logoVariant === 'RareEarth' 
-        ? `${import.meta.env.BASE_URL}REG_LogoGrayscale.png` 
-        : `${import.meta.env.BASE_URL}ArtOfDecorLogo.png`;
-
-    const barkodSvg = useMemo(() => {
-        if (template !== 'barkod') return null;
-        try {
-            return generateBarkodSvg(tag || '000', {
-                totalHeight: isSquare ? 156 : 114,
-                scanBandHeight: isSquare ? 52 : 48,
-                moduleWidth: 2,
-                typeId: norm.shape || norm.itemType || norm.type,
-                variant: norm.variant || norm.shape,
-                style: 'totem',
-                includeText: true,
-                textFontSize: isSquare ? 15 : 13,
-                dims: { w: parseFloat(norm.widthCm) || 10, h: parseFloat(norm.heightCm) || 10, d: parseFloat(lengthVal) || 10 }
-            });
-        } catch {
-            return null;
+    useEffect(() => {
+        if (propDataUrl) {
+            setRasterUrl(propDataUrl);
+            return;
         }
-    }, [template, tag, isSquare, norm, lengthVal]);
+        if (labelRasterCache.has(cacheKey)) {
+            setRasterUrl(labelRasterCache.get(cacheKey)!);
+            return;
+        }
+
+        let isCurrent = true;
+        renderItemLabelToRaster(item, {
+            tagId: tag,
+            labelSize: activeLabelSize,
+            logoVariant,
+            template,
+            axoSvg
+        }).then(url => {
+            labelRasterCache.set(cacheKey, url);
+            if (isCurrent) setRasterUrl(url);
+        }).catch(err => {
+            console.warn('[PixelLabelView] Raster render failed:', err);
+        });
+
+        return () => { isCurrent = false; };
+    }, [item, tag, activeLabelSize, logoVariant, template, axoSvg, propDataUrl, cacheKey]);
+
+    const displayWidth = scale ? targetWidth * scale : undefined;
+    const displayHeight = scale ? targetHeight * scale : undefined;
 
     return (
         <div 
-            className={`pixel-label-surface select-none relative bg-white text-black font-sans overflow-hidden border border-black/10 shadow-sm ${is1Bit ? 'pixel-label-1bit' : ''} ${className}`}
+            className={`pixel-label-surface select-none relative bg-white text-black overflow-hidden border border-black/10 shadow-sm flex items-center justify-center ${className}`}
             style={{
-                width: targetWidth,
-                height: targetHeight,
-                transform: scale ? `scale(${scale})` : undefined,
-                transformOrigin: 'top left',
+                width: displayWidth,
+                height: displayHeight,
                 imageRendering: 'pixelated',
             }}
         >
-            {template === 'barkod' ? (
-                isSquare ? (
-                    /* Barkod 50x50 mm square layout */
-                    <div className="w-full h-full p-3.5 flex flex-col justify-between relative bg-white text-black">
-                        <div className="flex justify-between items-start gap-2">
-                            <div className="flex-1 min-w-0">
-                                <span className="text-[11px] font-black tracking-widest uppercase font-mono">
-                                    {logoVariant === 'RareEarth' ? 'RARE EARTH GALLERY' : 'ART OF DECOR'}
-                                </span>
-                                <h1 className="text-[17px] font-black leading-tight truncate text-black mt-0.5">{desc}</h1>
-                                <h2 className="text-[13px] text-black/80 font-bold leading-tight mt-0.5 truncate">{matColor}</h2>
-                                <p className="text-[11px] font-black text-black mt-0.5">{dimsStr}</p>
-                                <p className="text-[10.5px] font-bold text-black/70 font-mono mt-0.5">RETAIL: {retail} · ORIGIN MX</p>
-                            </div>
-                            <div className="w-16 h-16 border-[2px] border-black p-0.5 flex items-center justify-center shrink-0 bg-white">
-                                <QRCodeSVG value={tag} size={58} level="M" />
-                            </div>
-                        </div>
-                        <div className="flex justify-center items-end mt-1 overflow-hidden">
-                            {barkodSvg && <div dangerouslySetInnerHTML={{ __html: barkodSvg.svg }} />}
-                        </div>
-                    </div>
-                ) : (
-                    /* Barkod 50x30 mm "Studio Balanced" layout */
-                    <div className="w-full h-full p-2.5 flex flex-col justify-between relative bg-white text-black">
-                        <div className="flex justify-between items-start gap-2">
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[11px] font-mono font-black bg-black text-white px-1 py-0.2 rounded-xs">{tag}</span>
-                                    <span className="text-[9px] font-mono font-bold tracking-wider text-black/70">{tr('MADE IN MEXICO')}</span>
-                                </div>
-                                <h1 className="text-[13.5px] font-black leading-tight truncate text-black mt-1">{desc}</h1>
-                                <p className="text-[10px] text-black font-semibold truncate mt-0.5 font-mono">{matColor} · {dimsStr}</p>
-                            </div>
-                            <div className="w-13 h-13 border-[1.5px] border-black p-0.5 flex items-center justify-center shrink-0 bg-white">
-                                <QRCodeSVG value={tag} size={46} level="M" />
-                            </div>
-                        </div>
-                        <div className="flex justify-center items-end -mb-0.5 overflow-hidden">
-                            {barkodSvg && <div dangerouslySetInnerHTML={{ __html: barkodSvg.svg }} />}
-                        </div>
-                    </div>
-                )
-            ) : isSquare ? (
-                /* 50x50 mm square layout (matches ONYX_MASTER_TEMPLATE_50x50) */
-                <div className="w-full h-full p-4 flex flex-col justify-between relative bg-white text-black">
-                    <div className="flex gap-3">
-                        <div className="w-20 h-20 border-[3px] border-black p-1 flex items-center justify-center shrink-0 bg-white">
-                            <QRCodeSVG value={tag} size={68} level="M" />
-                        </div>
-                        <div className="flex-1 flex flex-col justify-start min-w-0 pt-0.5">
-                            <h1 className="text-[17px] font-black leading-tight truncate text-black">{desc}</h1>
-                            <h2 className="text-[14px] text-black/80 font-bold leading-tight mt-1 truncate">{matColor}</h2>
-                            <p className="text-[11px] font-black text-black mt-1">
-                                {dimsStr}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 mt-2">
-                        <div className="flex flex-col">
-                            <span className="text-[15px] font-black tracking-tight text-black">{retail}</span>
-                            <span className="text-[11px] text-black/70 font-bold mt-0.5">{tr('Made in Mexico For')}</span>
-                            <div className="h-7 flex items-center mt-1">
-                                <img 
-                                    src={logoSrc} 
-                                    alt="Brand" 
-                                    className="max-h-6 max-w-[140px] object-contain filter grayscale contrast-200" 
-                                    style={{ imageRendering: 'pixelated' }}
-                                />
-                            </div>
-                        </div>
-                        {axoSvg && (
-                            <div className="w-20 h-20 flex items-center justify-center shrink-0">
-                                <img src={axoSvg} alt="axo" className="w-full h-full object-contain filter grayscale contrast-200" style={{ imageRendering: 'pixelated' }} />
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="mt-2 flex flex-col items-center">
-                        <div className="w-full flex justify-center">
-                            <Barcode 
-                                value={tag || "000"} 
-                                width={1.6} 
-                                height={50} 
-                                displayValue={false} 
-                                margin={0} 
-                                background="transparent"
-                                lineColor="#000000"
-                            />
-                        </div>
-                        <span className="text-[13px] font-black tracking-[0.2em] mt-1 text-black font-mono">{tag}</span>
-                    </div>
-                </div>
+            {rasterUrl ? (
+                <img
+                    src={rasterUrl}
+                    alt={`Label ${tag}`}
+                    width={displayWidth || targetWidth}
+                    height={displayHeight || targetHeight}
+                    className="w-full h-full object-contain pointer-events-none"
+                    style={{ imageRendering: 'pixelated' }}
+                />
             ) : (
-                /* 50x30 mm landscape layout (matches ONYX_MASTER_TEMPLATE_V4) */
-                <div className="w-full h-full p-2.5 flex flex-col justify-between relative bg-white text-black">
-                    <div className="flex flex-1 gap-2 items-start">
-                        {/* Vertical text */}
-                        <div className="w-4 h-24 flex items-center justify-center shrink-0">
-                            <span className="text-[8px] font-black -rotate-90 whitespace-nowrap uppercase tracking-widest text-black">
-                                {tr('MADE IN MEXICO')}
-                            </span>
-                        </div>
-
-                        {/* Axo icon */}
-                        {axoSvg && (
-                            <div className="w-12 h-16 flex items-center justify-center shrink-0">
-                                <img src={axoSvg} alt="axo" className="w-full h-full object-contain filter grayscale contrast-200" style={{ imageRendering: 'pixelated' }} />
-                            </div>
-                        )}
-
-                        {/* Info stack */}
-                        <div className="flex-1 flex flex-col justify-start min-w-0 pt-0.5 text-center">
-                            <div className="text-[10px] font-black tracking-tight leading-none truncate text-black">{retail}</div>
-                            <div className="text-[13px] font-black leading-tight mt-1 truncate text-black">{desc}</div>
-                            <div className="text-[11px] text-black/80 font-bold leading-none mt-1 truncate">{matColor}</div>
-                            <div className="text-[9px] font-black text-black mt-1 leading-none truncate">
-                                {dimsStr}
-                            </div>
-                        </div>
-
-                        {/* QR code */}
-                        <div className="w-14 h-14 border-[2px] border-black p-0.5 flex items-center justify-center shrink-0 bg-white">
-                            <QRCodeSVG value={tag} size={48} level="M" />
-                        </div>
-                    </div>
-
-                    {/* Barcode */}
-                    <div className="flex flex-col items-center mt-1">
-                        <Barcode 
-                            value={tag || "000"} 
-                            width={1.5} 
-                            height={40} 
-                            displayValue={false} 
-                            margin={0} 
-                            background="transparent"
-                            lineColor="#000000"
-                        />
-                        <span className="text-[10px] font-black tracking-[0.25em] mt-0.5 text-black font-mono">{tag}</span>
-                    </div>
+                <div className="w-full h-full flex items-center justify-center bg-white text-black/40 text-[10px] font-mono animate-pulse">
+                    Rendering 1-Bit...
                 </div>
             )}
         </div>
@@ -259,7 +129,12 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
 }) => {
     const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
     const [axoCache, setAxoCache] = useState<Record<string, string>>({});
+    const [rasterMap, setRasterMap] = useState<Record<string, string>>({});
     const [inspectIndex, setInspectIndex] = useState<number | null>(null);
+    const [integerScale, setIntegerScale] = useState<number>(() => {
+        if (typeof window !== 'undefined' && window.innerHeight < 700) return 1;
+        return 2;
+    });
     
     const containerRef = useRef<HTMLDivElement>(null);
     const isSquare = activeLabelSize === '50x50';
@@ -327,6 +202,39 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
         loadAxo();
         return () => { active = false; };
     }, [items]);
+
+    // Pre-generate true 1-bit printer rasters for unique items
+    useEffect(() => {
+        let active = true;
+        const generateBatchRasters = async () => {
+            const map: Record<string, string> = {};
+            for (const item of items) {
+                const tag = item.codes?.bookBarcode || '';
+                const axoSvg = axoCache[tag];
+                const key = `${tag}_${activeLabelSize}_${template}_${logoVariant}_${axoSvg ? 'axo' : 'noaxo'}`;
+                if (labelRasterCache.has(key)) {
+                    map[tag] = labelRasterCache.get(key)!;
+                } else {
+                    try {
+                        const url = await renderItemLabelToRaster(item, {
+                            tagId: tag,
+                            labelSize: activeLabelSize,
+                            logoVariant,
+                            template,
+                            axoSvg
+                        });
+                        labelRasterCache.set(key, url);
+                        map[tag] = url;
+                    } catch (err) {
+                        console.warn('[PreviewLabels] Raster pre-render failed:', err);
+                    }
+                }
+            }
+            if (active) setRasterMap(map);
+        };
+        generateBatchRasters();
+        return () => { active = false; };
+    }, [items, activeLabelSize, template, logoVariant, axoCache]);
 
     const toggleSelection = (index: number) => {
         const next = new Set(selectedIndices);
@@ -400,34 +308,18 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                 {/* Render Label Card wrapper */}
                                 <div 
                                     className="bg-white rounded-xl shadow-md overflow-hidden relative w-full group-hover:ring-2 group-hover:ring-[var(--main-color,#7FBBFF)] transition-all" 
-                                    style={{ paddingBottom: isSquare ? '100%' : '60%' }}
+                                    style={{ paddingBottom: isSquare ? '100%' : '62.5%' }}
                                 >
-                                    {/* Unclipped absolute container for accurate scale mapping */}
-                                    <div className="absolute inset-0 overflow-hidden">
-                                        <div 
-                                            id={`label-render-${globalIndex}`}
-                                            className="bg-white absolute top-0 left-0 text-black font-sans select-none"
-                                            style={{ 
-                                                width: targetWidth, 
-                                                height: targetHeight,
-                                                transformOrigin: 'top left'
-                                            }}
-                                            ref={(el) => {
-                                                if (el && el.parentElement) {
-                                                    const scale = el.parentElement.clientWidth / targetWidth;
-                                                    el.style.transform = `scale(${scale})`;
-                                                }
-                                            }}
-                                        >
-                                            <PixelLabelView 
-                                                instance={instance}
-                                                activeLabelSize={activeLabelSize}
-                                                logoVariant={logoVariant}
-                                                axoSvg={axoSvg}
-                                                is1Bit={false}
-                                                template={template}
-                                            />
-                                        </div>
+                                    <div className="absolute inset-0 flex items-center justify-center p-1 bg-white">
+                                        <PixelLabelView 
+                                            instance={instance}
+                                            activeLabelSize={activeLabelSize}
+                                            logoVariant={logoVariant}
+                                            axoSvg={axoSvg}
+                                            template={template}
+                                            className="w-full h-full border-none shadow-none"
+                                            dataUrl={rasterMap[tag]}
+                                        />
                                     </div>
 
                                     {/* Subtle hover inspect prompt overlay */}
@@ -516,29 +408,40 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                         {/* Modal Body: Center Stage with Integer Scaling Container */}
                         <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col items-center justify-center min-h-0 bg-black/20">
                             <div className="lps-pixel-frame relative p-2 sm:p-4 rounded-xl bg-[var(--lq-fill-control,rgba(255,255,255,0.04))] border border-[var(--lq-rim-subtle)] flex flex-col items-center shadow-2xl">
-                                {/* Crisp 1-bit monochrome rendering with exact proportions */}
-                                <div 
-                                    className="relative overflow-hidden bg-white rounded shadow-lg"
-                                    style={{
-                                        width: targetWidth,
-                                        height: targetHeight,
-                                        imageRendering: 'pixelated',
-                                    }}
-                                >
-                                    <PixelLabelView 
-                                        instance={inspectedInstance}
-                                        activeLabelSize={activeLabelSize}
-                                        logoVariant={logoVariant}
-                                        axoSvg={axoCache[inspectedInstance.item.codes?.bookBarcode || '']}
-                                        is1Bit={true}
-                                        template={template}
-                                    />
-                                </div>
+                                {/* Crisp 1-bit monochrome rendering with exact proportions and integer scaling */}
+                                <PixelLabelView 
+                                    instance={inspectedInstance}
+                                    activeLabelSize={activeLabelSize}
+                                    logoVariant={logoVariant}
+                                    axoSvg={axoCache[inspectedInstance.item.codes?.bookBarcode || '']}
+                                    scale={integerScale}
+                                    template={template}
+                                    dataUrl={rasterMap[inspectedInstance.item.codes?.bookBarcode || '']}
+                                    className="rounded shadow-lg"
+                                />
 
                                 {/* Spec chip bar under preview */}
                                 <div className="flex items-center justify-between w-full mt-3 px-1 text-[10px] text-[var(--lq-ink-muted,rgba(255,255,255,0.5))] font-mono uppercase tracking-wider">
-                                    <span>{activeLabelSize === '50x50' ? '50 × 50 mm (384 × 384 px)' : '50 × 30 mm (384 × 230 px)'}</span>
-                                    <span>203 DPI · 1-BIT DITHERED</span>
+                                    <span>{activeLabelSize === '50x50' ? '50 × 50 mm (384 × 384 px)' : '50 × 30 mm (384 × 240 px)'}</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center bg-black/30 rounded px-1 py-0.5 border border-white/10">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setIntegerScale(1)}
+                                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${integerScale === 1 ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'text-white/60 hover:text-white'}`}
+                                            >
+                                                1X
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setIntegerScale(2)}
+                                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${integerScale === 2 ? 'bg-[var(--main-color,#7FBBFF)] text-black' : 'text-white/60 hover:text-white'}`}
+                                            >
+                                                2X
+                                            </button>
+                                        </div>
+                                        <span>203 DPI · 1-BIT DITHERED</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
