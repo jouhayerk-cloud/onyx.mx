@@ -133,7 +133,13 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                         const codes = item.codes || {};
                         const isSelected = selectedIndices.has(globalIndex);
                         const axoSvg = axoCache[tag];
-                        const retail = `${codes.bookAqCode || ''}-${String(norm.workbook || '326').replace(/v/gi, '')}${String(codes.bookRetail || '0').padStart(4, '0')}`;
+                        const bookv = String(norm.workbook || '326').replace(/v/gi, '');
+                        const retailStr = String(codes.bookRetail || '0').padStart(4, '0');
+                        const retail = `${codes.bookAqCode || ''}-${bookv}${retailStr}`;
+                        const desc = `${norm.shape || ''} ${norm.itemType || norm.type || norm.shortDescription || norm.description || ''}`.trim() || 'Onyx Piece';
+                        const matColor = `${norm.color || ''} ${norm.material || 'Onyx'}`.trim();
+                        const lengthVal = norm.lengthCm ?? norm.widthCm ?? 0;
+                        const dimsStr = `${norm.widthCm || 0}*${lengthVal}*${norm.heightCm || 0} CM${norm.weightKg ? `  WT ${norm.weightKg} KG` : ''}`;
 
                         return (
                             <div 
@@ -146,11 +152,11 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                     className="bg-white rounded-xl shadow-md overflow-hidden relative w-full" 
                                     style={{ paddingBottom: isSquare ? '100%' : '60%' }}
                                 >
-                                    {/* Actual DOM for rendering */}
-                                    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center overflow-hidden">
+                                    {/* Unclipped absolute container for accurate scale mapping */}
+                                    <div className="absolute inset-0 overflow-hidden">
                                         <div 
                                             id={`label-render-${globalIndex}`}
-                                            className="bg-white flex relative text-black font-sans select-none"
+                                            className="bg-white absolute top-0 left-0 text-black font-sans select-none"
                                             style={{ 
                                                 width: targetWidth, 
                                                 height: targetHeight,
@@ -171,10 +177,10 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                                             <QRCodeSVG value={tag} size={68} level="M" />
                                                         </div>
                                                         <div className="flex-1 flex flex-col justify-start min-w-0 pt-0.5">
-                                                            <h1 className="text-[17px] font-black leading-tight truncate">{norm.shortDescription || norm.type || 'Onyx Piece'}</h1>
-                                                            <h2 className="text-[14px] text-gray-700 leading-tight mt-1 truncate">{norm.color} {norm.material}</h2>
+                                                            <h1 className="text-[17px] font-black leading-tight truncate">{desc}</h1>
+                                                            <h2 className="text-[14px] text-gray-700 leading-tight mt-1 truncate">{matColor}</h2>
                                                             <p className="text-[11px] font-black text-black/80 mt-1">
-                                                                {norm.widthCm || 0}*{norm.lengthCm || 0}*{norm.heightCm || 0} CM  WT {norm.weightKg || 0} KG
+                                                                {dimsStr}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -233,10 +239,10 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                                         {/* Info stack */}
                                                         <div className="flex-1 flex flex-col justify-start min-w-0 pt-0.5 text-center">
                                                             <div className="text-[10px] font-black tracking-tight leading-none truncate">{retail}</div>
-                                                            <div className="text-[13px] font-black leading-tight mt-1 truncate">{norm.shortDescription || norm.type || 'Onyx Piece'}</div>
-                                                            <div className="text-[11px] text-gray-700 leading-none mt-1 truncate">{norm.color} {norm.material}</div>
+                                                            <div className="text-[13px] font-black leading-tight mt-1 truncate">{desc}</div>
+                                                            <div className="text-[11px] text-gray-700 leading-none mt-1 truncate">{matColor}</div>
                                                             <div className="text-[9px] font-black text-black/80 mt-1 leading-none truncate">
-                                                                {norm.widthCm || 0}*{norm.lengthCm || 0}*{norm.heightCm || 0} CM  WT {norm.weightKg || 0} KG
+                                                                {dimsStr}
                                                             </div>
                                                         </div>
 

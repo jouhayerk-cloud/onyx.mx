@@ -297,10 +297,15 @@ export async function monoBitmapToPngBlob(bitmap: MonoBitmap): Promise<Blob> {
 export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLabelOptions): LabelSpec {
     const elements: LabelElement[] = [];
     const isSquare = options.labelSize === '50x50';
-    const retail = `${item.codes.bookAqCode || ''}-${item.codes.bookBarcode || ''}`;
-    const desc = `${item.normData.shape || ''} ${item.normData.shortDescription || ''}`.trim() || 'Onyx Piece';
-    const matColor = `${item.normData.color || ''} ${item.normData.material || ''}`.trim() || 'Onyx';
-    const sizes = `${item.normData.widthCm || 0}*${item.normData.lengthCm || 0}*${item.normData.heightCm || 0} CM  WT ${item.normData.weightKg || 0} KG`;
+    const norm = item.normData as any;
+    const codes = item.codes as any;
+    const bookv = String(norm.workbook || '326').replace(/v/gi, '');
+    const retailStr = String(codes.bookRetail || '0').padStart(4, '0');
+    const retail = `${codes.bookAqCode || ''}-${bookv}${retailStr}`;
+    const desc = `${norm.shape || ''} ${norm.itemType || norm.type || norm.shortDescription || norm.description || ''}`.trim() || 'Onyx Piece';
+    const matColor = `${norm.color || ''} ${norm.material || 'Onyx'}`.trim();
+    const lengthVal = norm.lengthCm ?? norm.widthCm ?? 0;
+    const sizes = `${norm.widthCm || 0}*${lengthVal}*${norm.heightCm || 0} CM${norm.weightKg ? `  WT ${norm.weightKg} KG` : ''}`;
 
     if (isSquare) {
         // 50x50 mm square layout (384x384 dots for M110 printhead)

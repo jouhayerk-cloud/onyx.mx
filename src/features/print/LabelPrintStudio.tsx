@@ -267,10 +267,10 @@ export const LabelPrintStudio: React.FC = () => {
     };
 
     // Bluetooth Connect
-    const handleConnectBluetooth = async () => {
+    const handleConnectBluetooth = async (): Promise<boolean> => {
         if (!isBluetoothSupported) {
-            toast.error("Web Bluetooth is not supported in this browser.");
-            return;
+            toast.error("Web Bluetooth unsupported on iOS Safari. Use Chrome, Edge, or Bluefy on iOS.");
+            return false;
         }
         setBleState('connecting');
         setBleError(null);
@@ -279,11 +279,13 @@ export const LabelPrintStudio: React.FC = () => {
             setDeviceName(name || 'Phomemo M110');
             setBleState('connected');
             toast.success(`Paired with ${name || 'Phomemo M110'}`);
+            return true;
         } catch (e: any) {
             console.error('Bluetooth connection failed:', e);
             setBleState('error');
             setBleError(e?.message || 'Bluetooth pairing failed');
             toast.error(e?.message || 'Bluetooth connection failed');
+            return false;
         }
     };
 
@@ -430,7 +432,8 @@ export const LabelPrintStudio: React.FC = () => {
 
         if (!driverRef.current.isConnected()) {
             try {
-                await handleConnectBluetooth();
+                const connected = await handleConnectBluetooth();
+                if (!connected) return;
             } catch {
                 return;
             }
@@ -537,6 +540,7 @@ export const LabelPrintStudio: React.FC = () => {
                 a.href = URL.createObjectURL(blob);
                 a.download = `Labels_${name}.xlsx`;
                 a.click();
+                return blob;
             } else {
                 throw new Error('XLSX generation failed');
             }
@@ -675,12 +679,33 @@ export const LabelPrintStudio: React.FC = () => {
 
     // Edit Label (Handoff to iframe designer)
     const handleOpenDesigner = () => {
+        const batchProject = {
+            name: `Onyx_Batch_${new Date().toISOString().split('T')[0]}`,
+            exportedAt: new Date().toISOString(),
+            labelSize: { width: activeLabelSize === '50x50' ? 50 : 50, height: activeLabelSize === '50x50' ? 50 : 30 },
+            records: labelInstances.map(inst => ({
+                "TAG ID": String(inst.item.codes?.bookBarcode || ''),
+                "DESCRIPTION": `${inst.item.normData?.shape || ''} ${inst.item.normData?.itemType || inst.item.normData?.type || inst.item.normData?.shortDescription || ''}`.trim() || 'Onyx Piece',
+                "COLOR MATERIAL": `${inst.item.normData?.color || ''} ${inst.item.normData?.material || 'Onyx'}`.trim(),
+                "SIZES": `${inst.item.normData?.widthCm || 0}*${inst.item.normData?.lengthCm ?? inst.item.normData?.widthCm ?? 0}*${inst.item.normData?.heightCm || 0} CM`,
+                "BOOK RETAIL": `${inst.item.codes?.bookAqCode || ''}-${String(inst.item.normData?.workbook || '326').replace(/v/gi, '')}${String(inst.item.codes?.bookRetail || '0').padStart(4, '0')}`,
+                "QUANTITY": 1,
+                "QR DATA": String(inst.item.codes?.bookBarcode || ''),
+                "AXO_IMAGE": axoCache[String(inst.item.codes?.bookBarcode || '')] || ''
+            }))
+        };
+        try { localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject)); } catch {}
+        pendingBatchRef.current = batchProject;
         setIsDesignerOpen(true);
     };
 
     // Iframe designer message handler
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'DESIGNER_READY' && pendingBatchRef.current && iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage({ type: 'ONYX_LOAD_BATCH', payload: pendingBatchRef.current }, '*');
+                iframeRef.current.contentWindow.postMessage({ type: 'LOAD_DESIGN', payload: { templateData: pendingBatchRef.current.records, labelSize: pendingBatchRef.current.labelSize } }, '*');
+            }
             if (event.data?.type === 'PRINT_COMPLETE' || event.data?.type === 'PRINT_DONE') {
                 const printedTags = Array.isArray(event.data.payload?.printedTags) ? event.data.payload.printedTags : [];
                 const tagById: Record<string, string> = {};
@@ -707,7 +732,7 @@ export const LabelPrintStudio: React.FC = () => {
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [commitPrintJob, selectedItems, activeLabelSize]);
+    }, [commitPrintJob, selectedItems, activeLabelSize, labelInstances, axoCache]);
 
     // Self-test handler for absorbed Verify tab
     const handleRunSelfTest = async () => {
