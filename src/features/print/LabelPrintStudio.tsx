@@ -784,7 +784,7 @@ export const LabelPrintStudio: React.FC = () => {
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl" onClick={handleClose} />
 
                 {/* Master Window Shell (Liquid Panel) */}
-                <div className="lps-sheet liquid-panel relative z-10 bg-[var(--bg-color,#0a0a0f)] text-[var(--text-color,#fff)]">
+                <div className="lps-sheet liquid-panel relative z-10 text-[var(--lq-ink,var(--text-color,#fff))]">
                     
                     {/* Top Bar (Liquid Surface) */}
                     <div className="lps-header liquid-surface relative">
@@ -1259,7 +1259,7 @@ export const LabelPrintStudio: React.FC = () => {
 
                     {/* Sticky Bottom Action Bar (Thumb-Zone) */}
                     {mode === 'studio' && (
-                        <div className="lps-bottom-bar liquid-surface relative bg-black/60">
+                        <div className="lps-bottom-bar liquid-surface relative">
                             <div className="flex items-center gap-2 md:gap-3 w-full">
                                 {/* EDIT LABEL Button */}
                                 <button
