@@ -54,14 +54,14 @@
   <link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: light)" href="/onyx.mx/apple-touch-icon.png?v=1.87" />
   <link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: dark)" href="/onyx.mx/apple-touch-icon-dark.png?v=1.87" />
   <meta name="theme-color" content="#fdfcf0" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0d0b0a" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#0d0b0a" media="(prefers-color-scheme: dark)" />
 
   <script>
     /* Start-up safety net. It exists for ONE case: this page was served from a
        stale cache (an old index.html that points at JS or CSS chunks a newer
        deploy deleted), so the app can never mount. Only a REAL load failure of
        a same-origin script or stylesheet, or of a lazy chunk, may unregister the
-       service worker and wipe the caches, and only once per build (2.0.0-mvcnr3t6).
+       service worker and wipe the caches, and only once per build (2.0.0-mvcnt4xw).
 
        What it must never do: act on a timer alone. On a slow phone or a weak
        signal the 2.4 MB main chunk can take longer than any fixed timeout, and
@@ -69,7 +69,7 @@
        timers below only change the splash text and offer a plain reload. It
        also never wipes while the device is offline: nothing could be refetched. */
     (function () {
-      var BUILD = '2.0.0-mvcnr3t6';
+      var BUILD = '2.0.0-mvcnt4xw';
       var HEAL_KEY = 'onyx_healed_build';
       var recovered = false;
       var errorShown = false; // a failure message is on screen: the slow-start hints must not overwrite it
@@ -222,15 +222,15 @@
       filter: drop-shadow(0 10px 24px rgba(0,0,0,0.6));
     }
   </style>
-  <script type="module" crossorigin src="/onyx.mx/assets/main-DC0ZAqfT.js"></script>
-  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-react-CpEZhx2u.js">
-  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-animation-Db3XAz55.js">
+  <script type="module" crossorigin src="/onyx.mx/assets/main-Ba644Y00.js"></script>
+  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-react-zRlLwT7O.js">
+  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-animation-Dtw-rtWl.js">
   <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-supabase-CHLpTVyu.js">
   <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-db-BbqE7tWj.js">
-  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-pdf-2_Rp8GWm.js">
-  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-excel-CDabdJdp.js">
-  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-icons-CUkJ25WV.js">
-  <link rel="stylesheet" crossorigin href="/onyx.mx/assets/main-qHpMA6jf.css">
+  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-pdf--CgHJ1yf.js">
+  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-excel-BNgZNOR5.js">
+  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-icons-D2nZeL-9.js">
+  <link rel="stylesheet" crossorigin href="/onyx.mx/assets/main-DpBUnBDl.css">
 <link rel="manifest" href="/onyx.mx/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/onyx.mx/registerSW.js"></script></head>
 
 <body>
@@ -573,7 +573,7 @@
 
   </svg>
 
-
+
 </body>
 
 </html>
