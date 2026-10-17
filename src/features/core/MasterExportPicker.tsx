@@ -163,7 +163,7 @@ export function MasterExportPicker() {
                             <div className="flex-1 min-w-0 flex flex-col gap-1">
                                 <div className="flex items-center gap-2">
                                     <span className="text-[14px] font-bold text-[var(--ui-ink)] tracking-tight">
-                                        {tr('Workbook V2')}
+                                        {tr('Book 326')}
                                     </span>
                                     <span
                                         className={cx(
@@ -216,7 +216,7 @@ export function MasterExportPicker() {
                             <div className="flex-1 min-w-0 flex flex-col gap-1">
                                 <div className="flex items-center gap-2">
                                     <span className="text-[14px] font-bold text-[var(--ui-ink)] tracking-tight">
-                                        {tr('Workbook V3')}
+                                        {tr('Book 826')}
                                     </span>
                                     <span
                                         className={cx(

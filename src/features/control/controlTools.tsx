@@ -108,8 +108,8 @@ export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
   tools.push({
     id: 'control-export-workbook-v2',
     moduleId: 'control',
-    label: 'Download Workbook V2',
-    title: 'Download Workbook V2 (workbooks 825 and 326, Rare Earth Format)',
+    label: 'Download Book 326',
+    title: 'Download Book 326 (workbooks 825 and 326, Rare Earth Format)',
     icon: Download,
     kind: 'action',
     group: tr('Export'),
@@ -121,8 +121,8 @@ export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
   tools.push({
     id: 'control-export-workbook-v3',
     moduleId: 'control',
-    label: tr('Download Workbook V3'),
-    title: tr('Download Workbook V3 (workbook 826, ledger from September 2026)'),
+    label: tr('Download Book 826'),
+    title: tr('Download Book 826 (workbook 826, ledger from September 2026)'),
     icon: Download,
     kind: 'action',
     group: tr('Export'),

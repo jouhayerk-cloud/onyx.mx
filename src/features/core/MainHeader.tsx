@@ -3693,9 +3693,11 @@ export function MainHeader() {
             if (workbook.worksheets.length === 0) { toast.error(tr("Nothing to export: no sheets were created. Check your filters and selection.")); return; }
             const buffer = await workbook.xlsx.writeBuffer();
             const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
-            const fileName = variant === 'v3' ? `Onyx-mx_Workbook_V3_${dateStr}.xlsx` : `Onyx-mx_Workbook_V2_${dateStr}.xlsx`;
+            const d = new Date(), pad = (n: number) => String(n).padStart(2, '0');
+            const shortDate = `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${String(d.getFullYear()).slice(-2)}`;
+            const fileName = `Onyx-Book${variant === 'v3' ? '826' : '326'}_${shortDate}.xlsx`;
             saveExportFile(new Blob([buffer], { type: XLSX_MIME }), fileName);
-            toast.success(variant === 'v3' ? tr("Workbook V3 Ready") : tr("Workbook V2 Ready"), { icon: '📊' });
+            toast.success(variant === 'v3' ? tr("Book 826 Ready") : tr("Book 326 Ready"), { icon: '📊' });
         } catch (error) {
             console.error('Export failed:', error);
             toast.error(variant === 'v3' ? tr("V3 Export Failed") : tr("V2 Export Failed"));
@@ -4505,8 +4507,8 @@ export function MainHeader() {
             { id: 'onyx.language', moduleId: 'onyx', label: appLanguage.toUpperCase(), title: tr('Toggle Neural Language'), icon: Languages, kind: 'action' as const, group: tr('Onyx'), order: 10, run: () => setAppLanguage(prev => prev === 'en' ? 'es' : 'en') },
             { id: 'onyx.reset', moduleId: 'onyx', label: tr('Reset credentials'), title: tr('Reset Neural Credentials'), icon: RefreshCw, kind: 'action' as const, group: tr('Onyx'), order: 20, run: () => { if (confirm(tr('Reset Neural Link credentials to system default?'))) { localStorage.removeItem('onyxApiKey'); setOnyxApiKey(''); } } },
         ] : []),        
-        { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (workbooks 825 and 326, Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
-        { id: 'global.export.workbookV3', moduleId: 'global', label: tr('Workbook V3'), title: tr('Download Workbook V3 (workbook 826, ledger from September 2026)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 11, disabled: isExporting, run: handleMasterExportXLSX_V3 },
+        { id: 'global.export.workbook', moduleId: 'global', label: tr('Book 326'), title: tr('Download Book 326 (workbooks 825 and 326, Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
+        { id: 'global.export.workbookV3', moduleId: 'global', label: tr('Book 826'), title: tr('Download Book 826 (workbook 826, ledger from September 2026)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 11, disabled: isExporting, run: handleMasterExportXLSX_V3 },
     ], islandOn);
 
     return (
@@ -4695,7 +4697,7 @@ export function MainHeader() {
                                             isExporting ? 'opacity-50 cursor-not-allowed' : ''
                                         }`}
                                         style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
-                                        title={tr("Download Workbook V2 (workbooks 825 and 326, Rare Earth Format)")}
+                                        title={tr("Download Book 326 (workbooks 825 and 326, Rare Earth Format)")}
                                     >
                                         <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
                                     </button>
@@ -4706,7 +4708,7 @@ export function MainHeader() {
                                             isExporting ? 'opacity-50 cursor-not-allowed' : ''
                                         }`}
                                         style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
-                                        title={tr("Download Workbook V3 (workbook 826, ledger from September 2026)")}
+                                        title={tr("Download Book 826 (workbook 826, ledger from September 2026)")}
                                     >
                                         <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
                                         <span aria-hidden="true" className="absolute -bottom-1 -right-1 rounded-md px-1 text-[10px] leading-4 font-black" style={{ backgroundColor: '#000', color: 'var(--main-color)' }}>V3</span>
