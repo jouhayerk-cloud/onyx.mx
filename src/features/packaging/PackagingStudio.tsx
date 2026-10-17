@@ -21,6 +21,7 @@ import {
   Sparkles,
   Sliders,
   X,
+  ArrowLeft,
   ChevronRight,
   Check,
   Copy,
@@ -133,6 +134,17 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
       setIspm15Ht(rec.ispm15Ht);
     }
   }, [stagedItems, initialSpec]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   // Handle kind switch
   const handleKindSwitch = (newKind: PackagingKind) => {
@@ -332,7 +344,7 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
               kind === 'cardboard' ? 'is-active' : ''
             }`}
           >
-            <span>📦</span>
+            <Box size={14} />
             <span>{tr('Cardboard')}</span>
           </button>
           <button
@@ -342,7 +354,7 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
               kind === 'crate' ? 'is-active' : ''
             }`}
           >
-            <span>🪵</span>
+            <Layers size={14} />
             <span>{tr('Wood Crate')}</span>
           </button>
           <button
@@ -352,7 +364,7 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
               kind === 'pallet' ? 'is-active' : ''
             }`}
           >
-            <span>🚚</span>
+            <Truck size={14} />
             <span>{tr('Pallet')}</span>
           </button>
         </div>
@@ -371,14 +383,17 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
             </button>
           )}
 
-          {!embedded && onClose && (
+          {onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="liquid-control hig-touch-target w-11 h-11 rounded-full flex items-center justify-center cursor-pointer"
-              aria-label="Close Packaging Studio"
+              className="liquid-control hig-touch-target px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer text-[var(--lq-ink)]"
+              title={tr('Close Studio and return to Warehouse')}
+              aria-label="Back to Warehouse"
             >
-              <X size={16} />
+              <ArrowLeft size={14} />
+              <span className="hidden sm:inline">{tr('Back to Warehouse')}</span>
+              <span className="sm:hidden">{tr('Back')}</span>
             </button>
           )}
         </div>
@@ -405,7 +420,7 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
               type="button"
               onClick={() => {
                 setStyle('fefco_0427');
-                toast(tr('FEFCO 0427 RETF Mailer dieline scheduled in Wave 2'), { icon: 'ℹ️' });
+                toast(tr('FEFCO 0427 RETF Mailer dieline scheduled in Wave 2'));
               }}
               className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-medium shrink-0 cursor-pointer opacity-75 hover:opacity-100 ${
                 style === 'fefco_0427' ? 'is-active' : ''
@@ -417,7 +432,7 @@ export const PackagingStudio: React.FC<PackagingStudioProps> = ({
               type="button"
               onClick={() => {
                 setStyle('fefco_0300');
-                toast(tr('FEFCO 0300 Telescope Box scheduled in Wave 2'), { icon: 'ℹ️' });
+                toast(tr('FEFCO 0300 Telescope Box scheduled in Wave 2'));
               }}
               className={`liquid-control hig-touch-target px-3.5 py-1.5 rounded-full text-xs font-medium shrink-0 cursor-pointer opacity-75 hover:opacity-100 ${
                 style === 'fefco_0300' ? 'is-active' : ''

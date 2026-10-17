@@ -45,7 +45,10 @@ import {
     X,
     Info,
     Warehouse,
-    Activity
+    Activity,
+    Boxes,
+    PackageOpen,
+    Sliders
 } from 'lucide-react';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
@@ -112,9 +115,9 @@ function getTotalPackedForItem(itemId: string, allCrates: any[]): number {
 /**
  * WarehouseView
  * Complete Apple HIG Liquid Glass warehouse portal:
- * Tab 1: [ 📦 Packed Crates ]
- * Tab 2: [ 📋 Available to Pack ] with Volumetric Estimator & Launch Studio
- * Tab 3: [ 📐 Laser Stencils (Boxes.py) ] with live 2D CNC fabrication studio
+ * Tab 1: [ Packed Crates ]
+ * Tab 2: [ Available to Pack ] with Volumetric Estimator & Launch Studio
+ * Tab 3: [ Laser Stencils (Boxes.py) ] with live 2D CNC fabrication studio
  */
 export const WarehouseView: React.FC = () => {
     const db = useDatabase();
@@ -159,6 +162,27 @@ export const WarehouseView: React.FC = () => {
         else if (tab === 'available') setSubTab('empty');
         else if (tab === 'stencils') setSubTab('boxes');
     };
+
+    // Keyboard navigation (1: Packed, 2: To Pack, 3: Packaging Studio, Esc: return to Packed)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+                return;
+            }
+            if (e.key === '1') {
+                handleTabChange('packed');
+            } else if (e.key === '2') {
+                handleTabChange('available');
+            } else if (e.key === '3') {
+                handleTabChange('stencils');
+            } else if (e.key === 'Escape' && warehouseTab === 'stencils') {
+                handleTabChange('packed');
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [warehouseTab]);
 
     // Live crates from RxDB
     const [crates, setCrates] = useState<any[]>([]);
@@ -370,8 +394,7 @@ export const WarehouseView: React.FC = () => {
         setSelectedInventoryIds(Array.from(selectedItemIds));
         setIsPackingCrateWizardOpen(true);
         toast.success(
-            tr(`Opening Pack Wizard with ${selectedItemIds.size} staged items...`), 
-            { icon: '📦' }
+            tr(`Opening Pack Wizard with ${selectedItemIds.size} staged items...`)
         );
     };
 
@@ -384,8 +407,7 @@ export const WarehouseView: React.FC = () => {
         setSelectedInventoryIds(Array.from(selectedItemIds));
         setIsPackingManagerOpen(true);
         toast.success(
-            trf('Launching 3D & laser studio with {n} items...', { n: selectedItemIds.size }), 
-            { icon: '📐' }
+            trf('Launching 3D & laser studio with {n} items...', { n: selectedItemIds.size })
         );
     };
 
@@ -442,201 +464,156 @@ export const WarehouseView: React.FC = () => {
 
     return (
         <div className="ui-root flex flex-col h-full w-full min-h-0 bg-(--sidebar-bg) relative select-none text-[var(--lq-ink)]">
-            {/* ── Apple HIG Two-Layer Liquid Glass Switcher Bar (Safe clearance for Onyx Dynamic Island) ── */}
-            <header className="sticky top-0 z-40 w-full flex flex-col items-center justify-center pt-16 sm:pt-20 pb-4 px-4 sm:px-8 border-b border-[var(--lq-rim)] bg-[var(--lq-fill-surface)] backdrop-blur-3xl shadow-2xl liquid-surface rounded-none border-x-0 border-t-0">
-                {/* Segmented Switcher Controls */}
-                <div className="inline-flex items-center p-1.5 bg-[var(--lq-fill-panel)] backdrop-blur-2xl border border-[var(--lq-rim)] rounded-full shadow-xl gap-1 max-w-full overflow-x-auto no-scrollbar">
-                    {/* [ 📦 Packed Crates & Pallets ] */}
-                    <button
-                        type="button"
-                        data-warehouse-tab="packed"
-                        onClick={() => handleTabChange('packed')}
-                        className={`min-h-[44px] px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
-                            warehouseTab === 'packed'
-                                ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-400/50 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
-                                : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
-                        }`}
-                    >
-                        <span className="text-sm">📦</span>
-                        <span>{tr("Packed Crates & Pallets")}</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-[10px] font-mono text-emerald-300 font-bold border border-emerald-400/30">
-                            {packedCratesCount + freightPalletsCount + boxesCount}
-                        </span>
-                    </button>
-
-                    {/* [ 📋 Available to Pack ] */}
-                    <button
-                        type="button"
-                        data-warehouse-tab="empty"
-                        onClick={() => handleTabChange('available')}
-                        className={`min-h-[44px] px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
-                            warehouseTab === 'available'
-                                ? 'bg-white/20 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-[0_0_20px_rgba(255,255,255,0.2)]'
-                                : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
-                        }`}
-                    >
-                        <span className="text-sm">📋</span>
-                        <span>{tr("Available to Pack")}</span>
-                        <span className="px-2 py-0.5 rounded-full bg-white/15 text-[10px] font-mono text-[var(--lq-ink)] font-bold border border-[var(--lq-rim-subtle)]">
-                            {totalUnpackedUnits} {tr("units")}
-                        </span>
-                    </button>
-
-                    {/* [ 📦 Packaging Studio ] */}
-                    <button
-                        type="button"
-                        data-warehouse-tab="boxes"
-                        onClick={() => handleTabChange('stencils')}
-                        className={`min-h-[44px] px-5 py-2 rounded-full text-xs font-bold flex items-center gap-2.5 transition-all duration-200 cursor-pointer ${
-                            warehouseTab === 'stencils'
-                                ? 'bg-amber-500/25 text-amber-400 border border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
-                                : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
-                        }`}
-                        title="Packaging Studio"
-                    >
-                        <span className="text-sm">📦</span>
-                        <span>{tr("Packaging Studio")}</span>
-                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-[10px] font-mono text-amber-300 font-bold border border-amber-400/30">
-                            v1.0
-                        </span>
-                    </button>
-                </div>
-
-                {/* ── Warehouse Status Telemetry & Filter Ribbon ── */}
-                <div className="w-full max-w-7xl mx-auto mt-3.5 pt-3.5 border-t border-[var(--lq-rim-subtle)] flex flex-col lg:flex-row items-center justify-between gap-3 text-xs">
-                    {/* Live KPI Status Filter Pills */}
-                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full lg:w-auto py-1">
-                        {/* All Containers Pill */}
+            {/* ── Apple HIG Compact Single Top Navigation Bar ── */}
+            <header className="sticky top-0 z-40 w-full border-b border-[var(--lq-rim)] bg-[var(--lq-fill-surface)] backdrop-blur-3xl shadow-md liquid-surface rounded-none border-x-0 border-t-0 px-4 sm:px-6 py-2.5 shrink-0">
+                <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+                    {/* Primary Section Switcher: Packed, To Pack, Packaging Studio */}
+                    <div className="ps-seg-group liquid-panel inline-flex items-center gap-1 p-1 rounded-xl">
                         <button
                             type="button"
-                            onClick={() => {
-                                handleTabChange('packed');
-                                setContainerFilter('all');
-                            }}
-                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                                warehouseTab === 'packed' && containerFilter === 'all'
-                                    ? 'bg-white/20 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-sm'
-                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
+                            data-warehouse-tab="packed"
+                            onClick={() => handleTabChange('packed')}
+                            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                                warehouseTab === 'packed'
+                                    ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-400/40 shadow-xs'
+                                    : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
                             }`}
                         >
-                            <span>📦</span>
-                            <span>{tr("All Containers")}</span>
-                            <span className="font-mono font-bold text-[var(--lq-ink)]/90">
+                            <Package size={14} />
+                            <span>{tr("Packed")}</span>
+                            <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[10px] font-mono text-emerald-300 font-bold border border-emerald-400/30">
                                 {packedCratesCount + freightPalletsCount + boxesCount}
                             </span>
                         </button>
 
-                        {/* Wooden Crates */}
                         <button
                             type="button"
-                            onClick={() => {
-                                handleTabChange('packed');
-                                setContainerFilter(containerFilter === 'crate' ? 'all' : 'crate');
-                            }}
-                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                                warehouseTab === 'packed' && containerFilter === 'crate'
-                                    ? 'bg-amber-500/25 text-amber-300 border border-amber-400/50 shadow-sm'
-                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
-                            }`}
-                        >
-                            <span>🪵</span>
-                            <span>{tr("Wooden Crates")}</span>
-                            <span className="font-mono font-bold text-amber-300">{packedCratesCount}</span>
-                        </button>
-
-                        {/* Freight Pallets */}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                handleTabChange('packed');
-                                setContainerFilter(containerFilter === 'pallet' ? 'all' : 'pallet');
-                            }}
-                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                                warehouseTab === 'packed' && containerFilter === 'pallet'
-                                    ? 'bg-sky-500/25 text-sky-300 border border-sky-400/50 shadow-sm'
-                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
-                            }`}
-                        >
-                            <span>📦</span>
-                            <span>{tr("Freight Pallets")}</span>
-                            <span className="font-mono font-bold text-sky-300">{freightPalletsCount}</span>
-                        </button>
-
-                        {/* Cardboard / Laser Boxes */}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                handleTabChange('packed');
-                                setContainerFilter(containerFilter === 'box' ? 'all' : 'box');
-                            }}
-                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                                warehouseTab === 'packed' && containerFilter === 'box'
-                                    ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-sm'
-                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
-                            }`}
-                        >
-                            <span>📐</span>
-                            <span>{tr("Laser Boxes")}</span>
-                            <span className="font-mono font-bold text-cyan-300">{boxesCount}</span>
-                        </button>
-
-                        {/* Empty & Available Containers */}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                handleTabChange('packed');
-                                setContainerFilter(containerFilter === 'empty' ? 'all' : 'empty');
-                            }}
-                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                                warehouseTab === 'packed' && containerFilter === 'empty'
-                                    ? 'bg-white/25 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-sm'
-                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
-                            }`}
-                        >
-                            <span>📭</span>
-                            <span>{tr("Empty Available")}</span>
-                            <span className="font-mono font-bold text-[var(--lq-ink)]/90">{emptyContainersCount}</span>
-                        </button>
-
-                        {/* Unpacked Inventory Units */}
-                        <button
-                            type="button"
+                            data-warehouse-tab="empty"
                             onClick={() => handleTabChange('available')}
-                            className={`min-h-[44px] sm:min-h-[36px] px-3.5 py-1.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
                                 warehouseTab === 'available'
-                                    ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/50 shadow-sm'
-                                    : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)] hover:border-[var(--lq-rim)]'
+                                    ? 'bg-white/20 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-xs'
+                                    : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
                             }`}
                         >
-                            <span>📋</span>
-                            <span>{tr("Unpacked Units")}</span>
-                            <span className="font-mono font-bold text-emerald-300">{totalUnpackedUnits}</span>
+                            <Boxes size={14} />
+                            <span>{tr("To Pack")}</span>
+                            <span className="px-1.5 py-0.2 rounded-full bg-white/15 text-[10px] font-mono text-[var(--lq-ink)] font-bold border border-[var(--lq-rim-subtle)]">
+                                {totalUnpackedUnits}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            data-warehouse-tab="boxes"
+                            onClick={() => handleTabChange('stencils')}
+                            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                                warehouseTab === 'stencils'
+                                    ? 'bg-amber-500/25 text-amber-400 border border-amber-400/40 shadow-xs'
+                                    : 'text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] hover:bg-white/5 border border-transparent'
+                            }`}
+                            title={tr("Packaging Studio")}
+                        >
+                            <Sliders size={14} />
+                            <span>{tr("Packaging Studio")}</span>
                         </button>
                     </div>
 
-                    {/* Right: Freight Truck Capacity */}
-                    <div className="flex items-center gap-3 shrink-0 py-1">
-                        {/* Total Weight vs Truck Capacity */}
-                        <div
-                            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] text-[11px] font-mono shadow-sm"
-                            title={tr("Weight of the packed containers still in the warehouse against the truck weight limit set in the app")}
-                        >
-                            <Truck size={14} className="text-amber-400 shrink-0" />
-                            <span className="text-[var(--lq-ink)]/60">{tr("Truck Load:")}</span>
-                            <span className="font-bold text-[var(--lq-ink)]">
-                                {totalPackedWeightKg.toLocaleString()} / {truckCapacityKg.toLocaleString()} kg
-                            </span>
-                            <div className="w-14 h-1.5 bg-black/40 rounded-full overflow-hidden border border-[var(--lq-rim-subtle)]">
-                                <div 
-                                    className={`h-full transition-all ${truckUtilizationPct > 90 ? 'bg-rose-500' : truckUtilizationPct > 70 ? 'bg-amber-400' : 'bg-emerald-400'}`} 
-                                    style={{ width: `${truckUtilizationPct}%` }}
-                                />
-                            </div>
-                            <span className={`text-[10px] font-bold ${truckUtilizationPct > 90 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                                {truckUtilizationPct}%
-                            </span>
-                        </div>
+                    {/* Compact Filter Control with Counts (Only in list section) */}
+                    {warehouseTab === 'packed' && (
+                        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                            <button
+                                type="button"
+                                onClick={() => setContainerFilter('all')}
+                                className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                                    containerFilter === 'all'
+                                        ? 'bg-white/20 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-xs'
+                                        : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)]'
+                                }`}
+                            >
+                                <span>{tr("All")}</span>
+                                <span className="font-mono text-[10px] font-bold">
+                                    {packedCratesCount + freightPalletsCount + boxesCount}
+                                </span>
+                            </button>
 
+                            <button
+                                type="button"
+                                onClick={() => setContainerFilter(containerFilter === 'crate' ? 'all' : 'crate')}
+                                className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                                    containerFilter === 'crate'
+                                        ? 'bg-amber-500/25 text-amber-300 border border-amber-400/50 shadow-xs'
+                                        : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)]'
+                                }`}
+                            >
+                                <Box size={12} className="text-amber-400" />
+                                <span>{tr("Crates")}</span>
+                                <span className="font-mono text-[10px] font-bold text-amber-300">{packedCratesCount}</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setContainerFilter(containerFilter === 'pallet' ? 'all' : 'pallet')}
+                                className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                                    containerFilter === 'pallet'
+                                        ? 'bg-sky-500/25 text-sky-300 border border-sky-400/50 shadow-xs'
+                                        : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)]'
+                                }`}
+                            >
+                                <Layers size={12} className="text-sky-400" />
+                                <span>{tr("Pallets")}</span>
+                                <span className="font-mono text-[10px] font-bold text-sky-300">{freightPalletsCount}</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setContainerFilter(containerFilter === 'box' ? 'all' : 'box')}
+                                className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                                    containerFilter === 'box'
+                                        ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-xs'
+                                        : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)]'
+                                }`}
+                            >
+                                <Scissors size={12} className="text-cyan-400" />
+                                <span>{tr("Boxes")}</span>
+                                <span className="font-mono text-[10px] font-bold text-cyan-300">{boxesCount}</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setContainerFilter(containerFilter === 'empty' ? 'all' : 'empty')}
+                                className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                                    containerFilter === 'empty'
+                                        ? 'bg-white/25 text-[var(--lq-ink)] border border-[var(--lq-rim)] shadow-xs'
+                                        : 'bg-[var(--lq-fill-control)] text-[var(--lq-ink)]/70 hover:text-[var(--lq-ink)] border border-[var(--lq-rim-subtle)]'
+                                }`}
+                            >
+                                <PackageOpen size={12} className="text-slate-300" />
+                                <span>{tr("Empty")}</span>
+                                <span className="font-mono text-[10px] font-bold">{emptyContainersCount}</span>
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Small Inline Truck Load Meter */}
+                    <div
+                        className="flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] text-[11px] font-mono shadow-xs shrink-0"
+                        title={tr("Truck weight capacity utilization")}
+                    >
+                        <Truck size={13} className="text-amber-400 shrink-0" />
+                        <span className="text-[var(--lq-ink)]/60 text-[10px] hidden sm:inline">{tr("Truck Load:")}</span>
+                        <span className="font-bold text-[var(--lq-ink)] text-[10px] sm:text-[11px]">
+                            {totalPackedWeightKg.toLocaleString()} / {truckCapacityKg.toLocaleString()} kg
+                        </span>
+                        <div className="w-12 sm:w-16 h-1.5 bg-black/40 rounded-full overflow-hidden border border-[var(--lq-rim-subtle)]">
+                            <div 
+                                className={`h-full transition-all ${truckUtilizationPct > 90 ? 'bg-rose-500' : truckUtilizationPct > 70 ? 'bg-amber-400' : 'bg-emerald-400'}`} 
+                                style={{ width: `${truckUtilizationPct}%` }}
+                            />
+                        </div>
+                        <span className={`text-[10px] font-bold ${truckUtilizationPct > 90 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                            {truckUtilizationPct}%
+                        </span>
                     </div>
                 </div>
             </header>
@@ -862,19 +839,19 @@ export const WarehouseView: React.FC = () => {
                                                             if (maxDim > 40) {
                                                                 return (
                                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-amber-950/80 text-amber-300 border border-amber-500/30">
-                                                                        <span>🪵</span> {tr("Crate (>40cm)")}
+                                                                        <Box size={10} className="text-amber-400" /> {tr("Crate (>40cm)")}
                                                                     </span>
                                                                 );
                                                             } else if (isFlatOrHeavy) {
                                                                 return (
                                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-sky-950/80 text-sky-300 border border-sky-500/30">
-                                                                        <span>📦</span> {tr("Pallet (Flat/Heavy)")}
+                                                                        <Layers size={10} className="text-sky-400" /> {tr("Pallet (Flat/Heavy)")}
                                                                     </span>
                                                                 );
                                                             } else {
                                                                 return (
                                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/30">
-                                                                        <span>📐</span> {tr("Laser Tray/Box")}
+                                                                        <Scissors size={10} className="text-cyan-400" /> {tr("Laser Tray/Box")}
                                                                     </span>
                                                                 );
                                                             }
@@ -960,7 +937,7 @@ export const WarehouseView: React.FC = () => {
 
                                     {/* Volumetric Crate Estimator Chip */}
                                     <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[var(--lq-fill-control)] border border-[var(--lq-rim-subtle)] w-full lg:w-auto">
-                                        <span className="text-xl">📐</span>
+                                        <Ruler size={18} className="text-cyan-400 shrink-0" />
                                         <div className="flex flex-col text-left">
                                             <span className="text-[9px] font-mono text-cyan-300 uppercase tracking-wider font-bold">
                                                 {tr("Recommended Container")}
@@ -1004,6 +981,7 @@ export const WarehouseView: React.FC = () => {
                     <div className="w-full h-full pb-16 flex flex-col">
                         <PackagingStudio
                             embedded={true}
+                            onClose={() => handleTabChange('packed')}
                             initialStagedItems={selectedItemIds.size > 0 
                                 ? (allInventory || []).filter(i => selectedItemIds.has(String(i.row)))
                                 : undefined}

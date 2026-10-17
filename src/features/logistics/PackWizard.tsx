@@ -114,7 +114,7 @@ function getContainerCategory(c: CrateRecord): {
     category: 'crate' | 'pallet' | 'box';
     label: string;
     badgeStyle: string;
-    icon: string;
+    icon?: string;
 } {
     const typeStr = (c.type || '').toLowerCase();
     const idStr = (c.id || '').toUpperCase();
@@ -127,7 +127,6 @@ function getContainerCategory(c: CrateRecord): {
             category: 'pallet',
             label: 'FREIGHT PALLET',
             badgeStyle: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-            icon: '🪵',
         };
     }
     if (typeStr === 'box' || typeStr === 'cardboard' || idStr.startsWith('BOX') || idStr.startsWith('LBL') || (h <= 30 && w <= 50 && l <= 50)) {
@@ -135,14 +134,12 @@ function getContainerCategory(c: CrateRecord): {
             category: 'box',
             label: 'CARDBOARD / LASER BOX',
             badgeStyle: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
-            icon: '📐',
         };
     }
     return {
         category: 'crate',
         label: 'WOOD CRATE',
         badgeStyle: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-        icon: '📦',
     };
 }
 
@@ -398,7 +395,7 @@ export const PackWizard: React.FC = () => {
         }
         setIsManagerOpen(true);
         setIsOpen(false);
-        toast.success(tr("Entering 3D / Boxes.py Studio"), { icon: '📐' });
+        toast.success(tr("Entering 3D / Boxes.py Studio"));
     };
 
     // Confirm pack manifest sync
@@ -579,7 +576,8 @@ export const PackWizard: React.FC = () => {
                                     : 'bg-(--lq-fill-control) text-amber-300/70 border-(--lq-rim-subtle) hover:bg-amber-500/10 hover:text-amber-300'
                             }`}
                         >
-                            <span>📦</span> Crates ({taxonomyCounts.crates})
+                            <Box size={12} className="text-amber-400" />
+                            <span>Crates ({taxonomyCounts.crates})</span>
                         </button>
 
                         <button
@@ -590,7 +588,8 @@ export const PackWizard: React.FC = () => {
                                     : 'bg-(--lq-fill-control) text-sky-300/70 border-(--lq-rim-subtle) hover:bg-sky-500/10 hover:text-sky-300'
                             }`}
                         >
-                            <span>🪵</span> Pallets ({taxonomyCounts.pallets})
+                            <Layers size={12} className="text-sky-400" />
+                            <span>Pallets ({taxonomyCounts.pallets})</span>
                         </button>
 
                         <button
@@ -601,7 +600,8 @@ export const PackWizard: React.FC = () => {
                                     : 'bg-(--lq-fill-control) text-cyan-300/70 border-(--lq-rim-subtle) hover:bg-cyan-500/10 hover:text-cyan-300'
                             }`}
                         >
-                            <span>📐</span> Boxes & Laser ({taxonomyCounts.boxes})
+                            <Scissors size={12} className="text-cyan-400" />
+                            <span>Boxes & Laser ({taxonomyCounts.boxes})</span>
                         </button>
 
                         <button
@@ -612,7 +612,8 @@ export const PackWizard: React.FC = () => {
                                     : 'bg-(--lq-fill-control) text-(--lq-ink)/60 border-(--lq-rim-subtle) hover:bg-(--lq-fill-control-hover) hover:text-(--lq-ink)'
                             }`}
                         >
-                            <span>✨</span> Empty ({taxonomyCounts.empty})
+                            <Package size={12} className="text-slate-300" />
+                            <span>Empty ({taxonomyCounts.empty})</span>
                         </button>
 
                         <button
@@ -623,7 +624,8 @@ export const PackWizard: React.FC = () => {
                                     : 'bg-(--lq-fill-control) text-emerald-300/70 border-(--lq-rim-subtle) hover:bg-emerald-500/10 hover:text-emerald-300'
                             }`}
                         >
-                            <span>🟢</span> Best Fit ({taxonomyCounts.bestFit})
+                            <CheckCircle2 size={12} className="text-emerald-400" />
+                            <span>Best Fit ({taxonomyCounts.bestFit})</span>
                         </button>
                     </div>
                 </div>
@@ -645,7 +647,7 @@ export const PackWizard: React.FC = () => {
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                                 
-                                {/* 🌟 SPECIAL FIRST CARD: Auto-Fit Boxes.py Parametric Container */}
+                                {/* SPECIAL FIRST CARD: Auto-Fit Boxes.py Parametric Container */}
                                 {customBoxesCrate && (
                                     <div
                                         onClick={() => setSelectedCrate(customBoxesCrate.record)}
@@ -777,8 +779,9 @@ export const PackWizard: React.FC = () => {
 
                                             {/* Header: Type Badge + Semantic Status Badge */}
                                             <div className="flex items-start justify-between gap-2 mb-2">
-                                                <span className={`text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded border ${tax.badgeStyle}`}>
-                                                    {tax.icon} {tax.label}
+                                                <span className={`text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded border flex items-center gap-1 ${tax.badgeStyle}`}>
+                                                    {tax.category === 'crate' ? <Box size={10} /> : tax.category === 'pallet' ? <Layers size={10} /> : <Scissors size={10} />}
+                                                    <span>{tax.label}</span>
                                                 </span>
 
                                                 {/* Semantic Status Badge: Neutral Slate if empty, Emerald if packed */}
@@ -915,7 +918,7 @@ export const PackWizard: React.FC = () => {
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className={`text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded border ${tax.badgeStyle}`}>
-                                                    {tax.icon} {tax.label}
+                                                    {tax.label}
                                                 </span>
                                                 <span className="text-[8px] font-bold text-(--lq-ink)/40 uppercase tracking-widest">
                                                     Target Destination
