@@ -166,6 +166,12 @@ html.theme-aqua {
   --lq-rim-contrast: currentColor;
 }
 
+/* WebKit (iOS/macOS Safari): no SVG refraction, so the glass needs more body (pre-B1 look ~0.30-0.40) */
+@supports (font: -apple-system-body) {
+  :root { --lq-fill-surface: rgba(10, 12, 16, 0.30); --lq-fill-panel: rgba(10, 12, 16, 0.36); }
+  html.theme-aqua { --lq-fill-surface: rgba(255, 255, 255, 0.32); --lq-fill-panel: rgba(255, 255, 255, 0.38); }
+}
+
 /* Theme Gradient Tokens */
 :root {
   --gradient-talan: linear-gradient(135deg, #0d0b0a, #b8860b, #161210);
