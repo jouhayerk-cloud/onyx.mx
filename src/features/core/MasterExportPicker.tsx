@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { tr } from '../../lib/i18n';
 import { Dialog, Key, cx } from '../../components/ui';
