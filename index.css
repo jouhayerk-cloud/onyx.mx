@@ -54,9 +54,14 @@ html, body {
 
 #root {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   width: 100%;
+  /* iOS Home Screen (black-translucent): 100% / inset:0 resolve to the screen minus the status bar,
+     leaving a band at the bottom. lvh is the full screen there and equals 100% everywhere else. */
   height: 100%;
+  height: max(100%, 100lvh);
   margin: 0;
   padding: 0;
   overflow: hidden;
