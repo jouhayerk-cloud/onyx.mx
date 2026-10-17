@@ -1,8 +1,6 @@
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 import { LABEL_STOCK_PRESETS, LABEL_TYPE_SCALE, LABEL_PALETTE } from '../design/labelDesignSystem';
-import { renderBarkodToContext, BarkodStyle } from '../barkod/barkod';
-import type { Dims } from '../../entry/hairline/types';
 import { decodeRasterToDataUrl } from '../../../utils/PhomemoM110';
 
 export const labelRasterCache = new Map<string, string>();
@@ -27,7 +25,6 @@ export type LabelElement =
     | { type: 'text'; x: number; y: number; text: string; fontSize: number; fontWeight?: string; fontFamily?: string; align?: 'left' | 'center' | 'right' | 'justify'; maxWidth?: number; rotation?: number }
     | { type: 'qr'; x: number; y: number; size: number; data: string; }
     | { type: 'barcode'; x: number; y: number; width: number; height: number; data: string; rotation?: number }
-    | { type: 'barkod'; x: number; y: number; data: string; totalHeight: number; scanBandHeight?: number; moduleWidth?: number; typeId?: string; variant?: string; style?: BarkodStyle; textFontSize?: number; includeText?: boolean; dims?: Dims | null }
     | { type: 'line'; x1: number; y1: number; x2: number; y2: number; thickness: number }
     | { type: 'rect'; x: number; y: number; width: number; height: number; thickness: number; fill?: boolean }
     | { type: 'image'; x: number; y: number; width: number; height: number; image: ImageBitmap | HTMLCanvasElement | HTMLImageElement; rotation?: number };
@@ -76,7 +73,6 @@ export interface ItemLabelOptions {
     labelSize?: '50x30' | '50x50';
     logoVariant?: 'ArtOfDecor' | 'RareEarth';
     logoImage?: HTMLCanvasElement | ImageBitmap | HTMLImageElement;
-    template?: 'standard' | 'barkod';
 }
 
 export async function renderLabelToCanvas(spec: LabelSpec): Promise<HTMLCanvasElement> {
@@ -248,20 +244,6 @@ export async function renderLabelToCanvas(spec: LabelSpec): Promise<HTMLCanvasEl
                     console.warn("Barcode generation failed", e);
                 }
             }
-        } else if (el.type === 'barkod') {
-            renderBarkodToContext(ctx, el.x, el.y, el.data, {
-                totalHeight: el.totalHeight,
-                scanBandHeight: el.scanBandHeight,
-                moduleWidth: el.moduleWidth ?? 2,
-                typeId: el.typeId,
-                variant: el.variant,
-                style: el.style ?? 'totem',
-                textFontSize: el.textFontSize ?? 13,
-                includeText: el.includeText ?? true,
-                dims: el.dims,
-                barColor: LABEL_PALETTE.black,
-                backgroundColor: LABEL_PALETTE.white,
-            });
         } else if (el.type === 'line') {
             ctx.beginPath();
             ctx.moveTo(el.x1, el.y1);
@@ -411,206 +393,7 @@ export async function monoBitmapToPngBlob(bitmap: MonoBitmap): Promise<Blob> {
     });
 }
 
-export function buildBarkodItemLabelSpec(item: InventoryItemForLabel, options: ItemLabelOptions): LabelSpec {
-    const elements: LabelElement[] = [];
-    const isSquare = options.labelSize === '50x50';
-    const norm = item.normData as any;
-    const codes = item.codes as any;
-    const bookv = String(norm.workbook || '326').replace(/v/gi, '');
-    const retailStr = String(codes.bookRetail || '0').padStart(4, '0');
-    const retail = `${codes.bookAqCode || ''}-${bookv}${retailStr}`;
-    const desc = `${norm.shape || ''} ${norm.itemType || norm.type || norm.shortDescription || norm.description || ''}`.trim() || 'Onyx Piece';
-    const matColor = `${norm.color || ''} ${norm.material || 'Onyx'}`.trim();
-    const lengthVal = norm.lengthCm ?? norm.widthCm ?? 0;
-    const sizes = `${norm.widthCm || 0}*${lengthVal}*${norm.heightCm || 0} CM${norm.weightKg ? `  WT ${norm.weightKg} KG` : ''}`;
-    const dims = {
-        w: parseFloat(norm.widthCm) || 10,
-        h: parseFloat(norm.heightCm) || 10,
-        d: parseFloat(lengthVal) || 10
-    };
-
-    if (isSquare) {
-        // 50x50 mm square layout (384x384 dots for M110 printhead)
-        if (options.logoImage) {
-            elements.push({
-                type: 'image',
-                x: 18,
-                y: 14,
-                width: 150,
-                height: 32,
-                image: options.logoImage
-            });
-        } else {
-            elements.push({
-                type: 'text',
-                x: 18,
-                y: 16,
-                text: options.logoVariant === 'RareEarth' ? 'RARE EARTH GALLERY' : 'ART OF DECOR',
-                fontSize: 14,
-                fontFamily: 'monospace',
-                fontWeight: 'bold'
-            });
-        }
-
-        // Real QR code generated via qrcode
-        elements.push({
-            type: 'qr',
-            x: 294,
-            y: 14,
-            size: 74,
-            data: options.qrData || options.tagId
-        });
-
-        elements.push({
-            type: 'text',
-            x: 18,
-            y: 52,
-            text: desc,
-            fontSize: 20,
-            fontFamily: 'sans-serif',
-            fontWeight: 'bold',
-            maxWidth: 265
-        });
-
-        elements.push({
-            type: 'text',
-            x: 18,
-            y: 82,
-            text: matColor,
-            fontSize: 16,
-            fontFamily: 'monospace',
-            maxWidth: 265
-        });
-
-        elements.push({
-            type: 'text',
-            x: 18,
-            y: 110,
-            text: sizes,
-            fontSize: 13,
-            fontFamily: 'monospace',
-            fontWeight: 'bold',
-            maxWidth: 265
-        });
-
-        elements.push({
-            type: 'text',
-            x: 18,
-            y: 136,
-            text: `RETAIL: ${retail} · ORIGIN MX`,
-            fontSize: 13,
-            fontFamily: 'monospace',
-            maxWidth: 265
-        });
-
-        // Barkod element with integrated hairline silhouette
-        elements.push({
-            type: 'barkod',
-            x: 16,
-            y: 180,
-            data: options.tagId,
-            totalHeight: 160,
-            scanBandHeight: 52,
-            moduleWidth: 2,
-            typeId: norm.shape || norm.itemType || norm.type,
-            variant: norm.variant || norm.shape,
-            style: 'totem',
-            includeText: true,
-            textFontSize: 15,
-            dims
-        });
-
-        return {
-            presetId: 'Standard_50x50',
-            widthDots: 384,
-            heightDots: 384,
-            orientation: 'portrait',
-            elements
-        };
-    }
-
-    // Default 50x30 mm "Studio Balanced" layout (384x240 dots)
-    elements.push({
-        type: 'text',
-        x: 16,
-        y: 8,
-        text: options.tagId,
-        fontSize: 13,
-        fontFamily: 'monospace',
-        fontWeight: 'bold'
-    });
-
-    elements.push({
-        type: 'text',
-        x: 135,
-        y: 10,
-        text: "MADE IN MEXICO",
-        fontSize: 10,
-        fontFamily: 'monospace',
-        fontWeight: 'bold'
-    });
-
-    // Real QR code generated via qrcode
-    elements.push({
-        type: 'qr',
-        x: 314,
-        y: 8,
-        size: 54,
-        data: options.qrData || options.tagId
-    });
-
-    elements.push({
-        type: 'text',
-        x: 16,
-        y: 28,
-        text: desc,
-        fontSize: 18,
-        fontFamily: 'sans-serif',
-        fontWeight: 'bold',
-        maxWidth: 290
-    });
-
-    elements.push({
-        type: 'text',
-        x: 16,
-        y: 56,
-        text: `${matColor} · ${sizes}`,
-        fontSize: 12,
-        fontFamily: 'monospace',
-        maxWidth: 290
-    });
-
-    // Barkod element with integrated hairline silhouette
-    elements.push({
-        type: 'barkod',
-        x: 16,
-        y: 88,
-        data: options.tagId,
-        totalHeight: 116,
-        scanBandHeight: 48,
-        moduleWidth: 2,
-        typeId: norm.shape || norm.itemType || norm.type,
-        variant: norm.variant || norm.shape,
-        style: 'totem',
-        includeText: true,
-        textFontSize: 13,
-        dims
-    });
-
-    return {
-        presetId: 'M110_48x28',
-        widthDots: 384,
-        heightDots: 240,
-        orientation: 'landscape',
-        elements
-    };
-}
-
 export function buildItemLabelSpec(item: InventoryItemForLabel, options: ItemLabelOptions): LabelSpec {
-    if (options.template === 'barkod') {
-        return buildBarkodItemLabelSpec(item, options);
-    }
-
     const elements: LabelElement[] = [];
     const isSquare = options.labelSize === '50x50';
     const norm = item.normData as any;
@@ -881,7 +664,6 @@ export async function renderItemLabelToRaster(
         qrData?: string;
         labelSize?: '50x30' | '50x50';
         logoVariant?: 'ArtOfDecor' | 'RareEarth';
-        template?: 'standard' | 'barkod';
         axoImage?: HTMLCanvasElement | ImageBitmap | HTMLImageElement;
         logoImage?: HTMLCanvasElement | ImageBitmap | HTMLImageElement;
         axoSvg?: string;
@@ -891,9 +673,8 @@ export async function renderItemLabelToRaster(
     const qrData = options.qrData || `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${tagId}`;
     const labelSize = options.labelSize || '50x30';
     const logoVariant = options.logoVariant || 'ArtOfDecor';
-    const template = options.template || 'standard';
 
-    const cacheKey = `${tagId}_${labelSize}_${template}_${logoVariant}_${options.axoSvg ? 'axo' : 'noaxo'}`;
+    const cacheKey = `${tagId}_${labelSize}_${logoVariant}_${options.axoSvg ? 'axo' : 'noaxo'}`;
     if (labelRasterCache.has(cacheKey)) {
         return labelRasterCache.get(cacheKey)!;
     }
@@ -922,25 +703,14 @@ export async function renderItemLabelToRaster(
         }
     }
 
-    const spec = template === 'barkod'
-        ? buildBarkodItemLabelSpec(item, {
-            tagId,
-            qrData,
-            labelSize,
-            logoVariant,
-            template,
-            axoImage,
-            logoImage
-        })
-        : buildItemLabelSpec(item, {
-            tagId,
-            qrData,
-            labelSize,
-            logoVariant,
-            template,
-            axoImage,
-            logoImage
-        });
+    const spec = buildItemLabelSpec(item, {
+        tagId,
+        qrData,
+        labelSize,
+        logoVariant,
+        axoImage,
+        logoImage
+    });
 
     return renderLabelToRasterDataUrl(spec);
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Printer, ChevronLeft, ChevronRight, Check, ZoomIn } from 'lucide-react';
 import { generateAxonometricDataUrl } from '../lib/axonometric';
 import { tr, trf } from '../lib/i18n';
-import { renderItemLabelToRaster, labelRasterCache } from '../features/print/renderers/labelRenderer';
+import { labelRasterCache } from '../features/print/renderers/labelRenderer';
 import { ItemTag } from './ui/ItemTag';
 
 export interface PreviewLabelsProps {
@@ -12,7 +12,6 @@ export interface PreviewLabelsProps {
     onLaunchIframe?: (selectedIndices: Set<number>, allLabelInstances: any[]) => void;
     activeLabelSize?: '50x30' | '50x50';
     logoVariant?: 'ArtOfDecor' | 'RareEarth';
-    template?: 'standard' | 'barkod';
     onQuantityChange?: (row: string, qty: number) => void;
     showChrome?: boolean;
     designerRasters?: Record<string, string>;
@@ -29,7 +28,6 @@ export interface PixelLabelViewProps {
     instance: { item: any; index: number; globalIndex: number };
     activeLabelSize?: '50x30' | '50x50';
     logoVariant?: 'ArtOfDecor' | 'RareEarth';
-    template?: 'standard' | 'barkod';
     axoSvg?: string;
     is1Bit?: boolean;
     scale?: number;
@@ -46,7 +44,6 @@ export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
     instance,
     activeLabelSize = '50x30',
     logoVariant = 'ArtOfDecor',
-    template = 'standard',
     axoSvg,
     scale,
     className = '',
@@ -58,7 +55,7 @@ export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
     const targetWidth = isSquare ? LABEL_WIDTH_50x50 : LABEL_WIDTH_50x30;
     const targetHeight = isSquare ? LABEL_HEIGHT_50x50 : LABEL_HEIGHT_50x30;
 
-    const cacheKey = `${tag}_${activeLabelSize}_${template}_${logoVariant}_${axoSvg ? 'axo' : 'noaxo'}`;
+    const cacheKey = `${tag}_${activeLabelSize}_${logoVariant}_${axoSvg ? 'axo' : 'noaxo'}`;
     const initialRaster = propDataUrl || labelRasterCache.get(tag) || labelRasterCache.get(cacheKey) || '';
     const [rasterUrl, setRasterUrl] = useState<string>(() => initialRaster);
 
@@ -66,29 +63,8 @@ export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
         const resolved = propDataUrl || labelRasterCache.get(tag) || labelRasterCache.get(cacheKey);
         if (resolved) {
             setRasterUrl(resolved);
-            return;
         }
-
-        // Standard batch labels must come from designer print engine (public/phomemo-designer)
-        // Fall back to local canvas generator only for non-standard (e.g. barkod) templates
-        if (template === 'barkod') {
-            let isCurrent = true;
-            renderItemLabelToRaster(item, {
-                tagId: tag,
-                labelSize: activeLabelSize,
-                logoVariant,
-                template,
-                axoSvg
-            }).then(url => {
-                labelRasterCache.set(cacheKey, url);
-                if (isCurrent) setRasterUrl(url);
-            }).catch(err => {
-                console.warn('[PixelLabelView] Raster render failed:', err);
-            });
-
-            return () => { isCurrent = false; };
-        }
-    }, [item, tag, activeLabelSize, logoVariant, template, axoSvg, propDataUrl, cacheKey]);
+    }, [tag, activeLabelSize, logoVariant, axoSvg, propDataUrl, cacheKey]);
 
     const displayWidth = scale ? targetWidth * scale : undefined;
     const displayHeight = scale ? targetHeight * scale : undefined;
@@ -128,7 +104,6 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
     onLaunchIframe,
     activeLabelSize = '50x30',
     logoVariant = 'ArtOfDecor',
-    template = 'standard',
     onQuantityChange,
     showChrome = true,
     designerRasters
@@ -261,30 +236,16 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                     continue;
                 }
                 const axoSvg = axoCache[tag];
-                const key = `${tag}_${activeLabelSize}_${template}_${logoVariant}_${axoSvg ? 'axo' : 'noaxo'}`;
+                const key = `${tag}_${activeLabelSize}_${logoVariant}_${axoSvg ? 'axo' : 'noaxo'}`;
                 if (labelRasterCache.has(key)) {
                     map[tag] = labelRasterCache.get(key)!;
-                } else if (template === 'barkod') {
-                    try {
-                        const url = await renderItemLabelToRaster(item, {
-                            tagId: tag,
-                            labelSize: activeLabelSize,
-                            logoVariant,
-                            template,
-                            axoSvg
-                        });
-                        labelRasterCache.set(key, url);
-                        map[tag] = url;
-                    } catch (err) {
-                        console.warn('[PreviewLabels] Raster pre-render failed:', err);
-                    }
                 }
             }
             if (active) setRasterMap(map);
         };
         generateBatchRasters();
         return () => { active = false; };
-    }, [items, activeLabelSize, template, logoVariant, axoCache, designerRasters]);
+    }, [items, activeLabelSize, logoVariant, axoCache, designerRasters]);
 
     const toggleSelection = (index: number) => {
         const next = new Set(selectedIndices);
@@ -368,7 +329,6 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                             activeLabelSize={activeLabelSize}
                                             logoVariant={logoVariant}
                                             axoSvg={axoSvg}
-                                            template={template}
                                             className="w-full h-full border-none shadow-none"
                                             dataUrl={effectiveRasters[tag]}
                                         />
@@ -492,7 +452,6 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                     logoVariant={logoVariant}
                                     axoSvg={axoCache[inspectedTag]}
                                     scale={integerScale}
-                                    template={template}
                                     dataUrl={effectiveRasters[inspectedTag]}
                                     className="rounded shadow-lg"
                                 />
