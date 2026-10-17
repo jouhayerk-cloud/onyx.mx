@@ -24,22 +24,30 @@ import {
 export const STONE_FIGURE_IDS = [
     'rock',
     'fountain',
+    'fountain-set',
     'sculpture',
+    'sculpture-set',
     'pillar',
     'ball',
     'bag',
+    'boulder',
+    'pebble-stone',
 ] as const;
 
 export type StoneFigureId = (typeof STONE_FIGURE_IDS)[number];
 
 /** Sensible default dimensions in cm per stone Type. */
 export const DEFAULTS: Record<StoneFigureId, Dims> = {
-    'rock':      { w: 42, h: 36, d: 38 },
-    'fountain':  { w: 60, h: 75, d: 55 },
-    'sculpture': { w: 40, h: 85, d: 40 },
-    'pillar':    { w: 30, h: 120, d: 30 },
-    'ball':      { w: 6,  h: 6.5, d: 6 },
-    'bag':       { w: 20, h: 60, d: 20 },
+    'rock':          { w: 42, h: 36, d: 38 },
+    'fountain':      { w: 60, h: 75, d: 55 },
+    'fountain-set':  { w: 60, h: 54, d: 60 },
+    'sculpture':     { w: 40, h: 85, d: 40 },
+    'sculpture-set': { w: 60, h: 54, d: 50 },
+    'pillar':        { w: 30, h: 120, d: 30 },
+    'ball':          { w: 6,  h: 6.5, d: 6 },
+    'bag':           { w: 20, h: 60, d: 20 },
+    'boulder':       { w: 42, h: 36, d: 38 },
+    'pebble-stone':  { w: 20, h: 60, d: 20 },
 };
 
 /** Option-specific fallback dimensions when rawDims is null. */
@@ -1025,6 +1033,110 @@ function buildBag(cam: Cam, dims: Dims): FigurePart[] {
     ];
 }
 
+/**
+ * B6 fountain-set: set of 3 fountain monoliths on a shadow plinth with apex spouts.
+ */
+function buildFountainSet(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const plinthH = Math.max(1.0, h * 0.08);
+    const plinth = prism(cam, 0, 0, 0, w, d, plinthH, Math.min(w, d) * 0.15);
+
+    const w1 = w * 0.24;
+    const d1 = d * 0.55;
+    const h1 = h * 0.70;
+    const x1 = w * 0.06;
+    const y1 = d * 0.22;
+    const f1 = prism(cam, x1, y1, plinthH, w1, d1, h1 - plinthH, Math.min(w1, d1) * 0.35);
+
+    const w2 = w * 0.28;
+    const d2 = d * 0.60;
+    const h2 = h * 0.92;
+    const x2 = w * 0.36;
+    const y2 = d * 0.18;
+    const f2 = prism(cam, x2, y2, plinthH, w2, d2, h2 - plinthH, Math.min(w2, d2) * 0.35);
+
+    const w3 = w * 0.24;
+    const d3 = d * 0.52;
+    const h3 = h * 0.80;
+    const x3 = w * 0.70;
+    const y3 = d * 0.24;
+    const f3 = prism(cam, x3, y3, plinthH, w3, d3, h3 - plinthH, Math.min(w3, d3) * 0.35);
+
+    const groove2 = pathOf([
+        proj(cam, x2 + w2 * 0.5, y2 + d2, h2 * 0.9),
+        proj(cam, x2 + w2 * 0.5, y2 + d2, plinthH + 1),
+    ], false);
+
+    const [sx, sy] = proj(cam, x2 + w2 * 0.5, y2 + d2 * 0.5, h2);
+    const spout = pathOf([
+        [sx - 1.8, sy],
+        [sx, sy - 2.0],
+        [sx + 1.8, sy],
+        [sx, sy + 2.0],
+    ]);
+
+    return [
+        ...solidParts(plinth),
+        ...solidParts(f1),
+        ...solidParts(f3),
+        ...solidParts(f2),
+        { d: groove2, kind: 'crease' },
+        { d: spout, kind: 'bright' },
+    ];
+}
+
+/**
+ * B7 sculpture-set: set of 3 sculptures on shared plinth with varying heights.
+ */
+function buildSculptureSet(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const plinthH = Math.max(1.0, h * 0.08);
+    const plinth = prism(cam, 0, 0, 0, w, d, plinthH, Math.min(w, d) * 0.15);
+
+    const w1 = w * 0.25;
+    const d1 = d * 0.52;
+    const h1 = h * 0.72;
+    const x1 = w * 0.06;
+    const y1 = d * 0.24;
+    const s1 = prism(cam, x1, y1, plinthH, w1, d1, h1 - plinthH, Math.min(w1, d1) * 0.4);
+
+    const w2 = w * 0.30;
+    const d2 = d * 0.58;
+    const h2 = h * 0.94;
+    const x2 = w * 0.35;
+    const y2 = d * 0.20;
+    const s2 = prism(cam, x2, y2, plinthH, w2, d2, h2 - plinthH, Math.min(w2, d2) * 0.4);
+
+    const w3 = w * 0.25;
+    const d3 = d * 0.50;
+    const h3 = h * 0.82;
+    const x3 = w * 0.69;
+    const y3 = d * 0.25;
+    const s3 = prism(cam, x3, y3, plinthH, w3, d3, h3 - plinthH, Math.min(w3, d3) * 0.4);
+
+    const rib = pathOf([
+        proj(cam, x2 + w2 * 0.5, y2 + d2, h2 * 0.88),
+        proj(cam, x2 + w2 * 0.5, y2 + d2, plinthH + 1),
+    ], false);
+
+    const [ax, ay] = proj(cam, x2 + w2 * 0.5, y2 + d2 * 0.5, h2);
+    const glint = pathOf([
+        [ax - 1.8, ay],
+        [ax, ay - 1.8],
+        [ax + 1.8, ay],
+        [ax, ay + 1.8],
+    ]);
+
+    return [
+        ...solidParts(plinth),
+        ...solidParts(s1),
+        ...solidParts(s3),
+        ...solidParts(s2),
+        { d: rib, kind: 'crease' },
+        { d: glint, kind: 'bright' },
+    ];
+}
+
 // ── public entry point ──────────────────────────────────────────────────────
 
 /**
@@ -1042,7 +1154,7 @@ export function buildStoneFigure(
     const opt = resolveVariant(id, variant);
 
     let fallback = DEFAULTS[id as StoneFigureId];
-    if (id === 'rock') {
+    if (id === 'rock' || id === 'boulder') {
         fallback = ROCK_FALLBACKS[opt ?? 'boulder'] ?? DEFAULTS['rock'];
     } else if (id === 'fountain') {
         fallback = FOUNTAIN_FALLBACKS[opt ?? 'boulder'] ?? DEFAULTS['fountain'];
@@ -1062,15 +1174,23 @@ export function buildStoneFigure(
             return opt === 'free-form'
                 ? buildRockFreeForm(cam, dims)
                 : buildRockBoulder(cam, dims);
+        case 'boulder':
+            return buildRockBoulder(cam, dims);
+        case 'pebble-stone':
+            return buildBag(cam, dims);
         case 'fountain':
             if (opt === 'sphere') return buildFountainSphere(cam, dims);
             if (opt === 's-shaped') return buildFountainSShaped(cam, dims);
             return buildFountainBoulder(cam, dims);
+        case 'fountain-set':
+            return buildFountainSet(cam, dims);
         case 'sculpture':
             if (opt === 'flame') return buildSculptureFlame(cam, dims);
             if (opt === 'venus') return buildSculptureVenus(cam, dims);
             if (opt === 'cactus') return buildSculptureCactus(cam, dims);
             return buildSculptureDefault(cam, dims);
+        case 'sculpture-set':
+            return buildSculptureSet(cam, dims);
         case 'pillar':
             return opt === 'cylinder'
                 ? buildPillarCylinder(cam, dims)

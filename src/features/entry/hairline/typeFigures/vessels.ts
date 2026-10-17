@@ -18,6 +18,11 @@ export const VESSEL_FIGURE_IDS: readonly string[] = [
     'canoe',
     'plate',
     'basin',
+    'tray',
+    'sink',
+    'bathtub',
+    'vase',
+    'shot-glass',
 ] as const;
 
 /**
@@ -25,10 +30,15 @@ export const VESSEL_FIGURE_IDS: readonly string[] = [
  * Scaled by normalizeDims so the longest side is FIGURE_SIZE (30 world units).
  */
 export const DEFAULTS: Record<string, Dims> = {
-    'bowl':  { w: 36, h: 15, d: 24 },
-    'canoe': { w: 100, h: 10, d: 23 },
-    'plate': { w: 55, h: 3.5, d: 55 },
-    'basin': { w: 42, h: 14, d: 42 },
+    'bowl':       { w: 36, h: 15, d: 24 },
+    'canoe':      { w: 100, h: 10, d: 23 },
+    'plate':      { w: 55, h: 3.5, d: 55 },
+    'basin':      { w: 42, h: 14, d: 42 },
+    'tray':       { w: 45, h: 4, d: 30 },
+    'sink':       { w: 75, h: 35, d: 50 },
+    'bathtub':    { w: 75, h: 60, d: 170 },
+    'vase':       { w: 20, h: 45, d: 20 },
+    'shot-glass': { w: 5, h: 7, d: 5 },
 };
 
 /** Option-specific fallback dimensions when rawDims is null. */
@@ -37,6 +47,12 @@ const BOWL_FALLBACKS: Record<string, Dims> = {
     'small':  { w: 25, h: 12, d: 20 },
     'medium': { w: 36, h: 15, d: 24 },
     'large':  { w: 48, h: 18, d: 32 },
+};
+
+const TRAY_FALLBACKS: Record<string, Dims> = {
+    'rectangular': { w: 45, h: 4, d: 30 },
+    'round':       { w: 35, h: 4, d: 35 },
+    'oval':        { w: 50, h: 4, d: 30 },
 };
 
 const CANOE_FALLBACKS: Record<string, Dims> = {
@@ -390,11 +406,245 @@ function buildBasin(cam: Cam, dims: Dims): FigurePart[] {
     ];
 }
 
+/** A lofted solid between two rounded rings: hull silhouette plus top crease. */
+function loft(cam: Cam, bRing: P2[], z0: number, tRing: P2[], z1: number): { body: string; crease: string } {
+    const bottom = bRing.map(([x, y]) => proj(cam, x, y, z0));
+    const top = tRing.map(([x, y]) => proj(cam, x, y, z1));
+    return { body: pathOf(hull([...bottom, ...top])), crease: pathOf(top) };
+}
+
+/**
+ * B1 tray (rectangular, round, oval; shallow):
+ * Flat slab with raised rim on plan W x L, inner cavity as slot, rim crease. Open top always.
+ */
+function buildTray(cam: Cam, dims: Dims, variant: string): FigurePart[] {
+    const { w, h, d } = dims;
+    const isRound = variant === 'round';
+    const isOval = variant === 'oval';
+    const r = isRound
+        ? Math.min(w, d) / 2
+        : isOval
+            ? Math.min(w, d) / 2
+            : Math.min(w, d) * 0.18;
+
+    const bRing = ring(0, 0, w, d, r, 8);
+    const tRing = ring(0, 0, w, d, r, 8);
+    const solid = loft(cam, bRing, 0, tRing, h);
+
+    const rimW = Math.max(1.2, w * 0.10);
+    const rimD = Math.max(1.2, d * 0.10);
+    const iw = w - 2 * rimW;
+    const id = d - 2 * rimD;
+    const ir = Math.max(0.5, r - Math.min(rimW, rimD));
+    const cavRing = ring(rimW, rimD, iw, id, ir, 8);
+    const cavityPts = cavRing.map(([x, y]) => proj(cam, x, y, h));
+
+    const floorZ = h * 0.25;
+    const floorPts = ring(rimW, rimD, iw, id, ir, 8).map(([x, y]) => proj(cam, x, y, floorZ));
+
+    const bright = discY(cam, w / 2, d - rimD / 2, h - 0.2, 0.45, 8);
+
+    return [
+        { d: solid.body, kind: 'plate' },
+        { d: solid.crease, kind: 'crease' },
+        { d: pathOf(cavityPts), kind: 'slot' },
+        { d: pathOf(floorPts), kind: 'crease' },
+        { d: bright, kind: 'bright' },
+    ];
+}
+
+/**
+ * B2 sink (basin with drain slot on cavity floor).
+ */
+function buildSink(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const r = Math.min(w, d) * 0.26;
+    const p = prism(cam, 0, 0, 0, w, d, h, r);
+
+    const rimW = Math.max(1.8, w * 0.12);
+    const rimD = Math.max(1.8, d * 0.12);
+    const iw = w - 2 * rimW;
+    const id = d - 2 * rimD;
+    const ir = Math.max(0.8, r - Math.min(rimW, rimD));
+    const innerTop = ring(rimW, rimD, iw, id, ir, 8).map(([x, y]) => proj(cam, x, y, h));
+
+    const floorZ = h * 0.28;
+    const hollowFloor = ring(rimW, rimD, iw, id, ir, 8).map(([x, y]) => proj(cam, x, y, floorZ));
+
+    const cx = w / 2;
+    const cy = d / 2;
+    const drainR = Math.max(0.8, Math.min(w, d) * 0.06);
+    const drainPts: P2[] = [];
+    const drainSteps = 12;
+    for (let i = 0; i < drainSteps; i++) {
+        const a = (i / drainSteps) * Math.PI * 2;
+        drainPts.push(proj(cam, cx + drainR * Math.cos(a), cy + drainR * Math.sin(a), floorZ));
+    }
+    const drainSlot = pathOf(drainPts);
+
+    const stopperR = drainR * 0.45;
+    const stopperPts: P2[] = [];
+    for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        stopperPts.push(proj(cam, cx + stopperR * Math.cos(a), cy + stopperR * Math.sin(a), floorZ));
+    }
+
+    return [
+        { d: p.body, kind: 'plate' },
+        { d: p.crease, kind: 'crease' },
+        { d: pathOf(innerTop), kind: 'slot' },
+        { d: pathOf(hollowFloor), kind: 'crease' },
+        { d: drainSlot, kind: 'slot' },
+        { d: pathOf(stopperPts), kind: 'bright' },
+    ];
+}
+
+/**
+ * B3 bathtub (long box with recessed cavity and rounded ends).
+ */
+function buildBathtub(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const r = Math.min(w, d) * 0.28;
+    const p = prism(cam, 0, 0, 0, w, d, h, r);
+
+    const rim = Math.max(1.8, Math.min(w, d) * 0.12);
+    const iw = w - 2 * rim;
+    const id = d - 2 * rim;
+    const ir = Math.min(iw, id) / 2;
+    const innerTop = ring(rim, rim, iw, id, ir, 8).map(([x, y]) => proj(cam, x, y, h));
+
+    const floorZ = h * 0.40;
+    const floorPts = ring(rim, rim, iw, id, ir, 8).map(([x, y]) => proj(cam, x, y, floorZ));
+
+    const cx = w / 2;
+    const cy = d * 0.78;
+    const drainR = Math.max(0.6, Math.min(w, d) * 0.04);
+    const drainPts: P2[] = [];
+    for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        drainPts.push(proj(cam, cx + drainR * Math.cos(a), cy + drainR * Math.sin(a), floorZ));
+    }
+
+    const [sx, sy] = proj(cam, cx, rim, h);
+    const bright = pathOf([
+        [sx - 1.2, sy],
+        [sx, sy - 1.2],
+        [sx + 1.2, sy],
+        [sx, sy + 1.2],
+    ]);
+
+    return [
+        { d: p.body, kind: 'plate' },
+        { d: p.crease, kind: 'crease' },
+        { d: pathOf(innerTop), kind: 'slot' },
+        { d: pathOf(floorPts), kind: 'crease' },
+        { d: pathOf(drainPts), kind: 'slot' },
+        { d: bright, kind: 'bright' },
+    ];
+}
+
+/**
+ * B4 vase (tall body narrowing to neck with open mouth).
+ */
+function buildVase(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const cx = w / 2;
+    const cy = d / 2;
+    const baseR = Math.min(w, d) * 0.32;
+    const bellyR = Math.min(w, d) * 0.48;
+    const neckR = Math.min(w, d) * 0.22;
+    const mouthR = Math.min(w, d) * 0.28;
+
+    const baseRing = ring(cx - baseR, cy - baseR, baseR * 2, baseR * 2, baseR, 8);
+    const bellyRing = ring(cx - bellyR, cy - bellyR, bellyR * 2, bellyR * 2, bellyR, 8);
+    const neckRing = ring(cx - neckR, cy - neckR, neckR * 2, neckR * 2, neckR, 8);
+    const mouthRing = ring(cx - mouthR, cy - mouthR, mouthR * 2, mouthR * 2, mouthR, 8);
+
+    const ptsBase = baseRing.map(([x, y]) => proj(cam, x, y, 0));
+    const ptsBelly = bellyRing.map(([x, y]) => proj(cam, x, y, h * 0.35));
+    const ptsNeck = neckRing.map(([x, y]) => proj(cam, x, y, h * 0.72));
+    const ptsMouth = mouthRing.map(([x, y]) => proj(cam, x, y, h));
+
+    const body = pathOf(hull([...ptsBase, ...ptsBelly, ...ptsNeck, ...ptsMouth]));
+    const mouthCrease = pathOf(ptsMouth);
+    const neckCrease = pathOf(ptsNeck);
+
+    const footPts = ring(cx - baseR * 1.05, cy - baseR * 1.05, baseR * 2.1, baseR * 2.1, baseR * 1.05, 8)
+        .map(([x, y]) => proj(cam, x, y, h * 0.08));
+    const footCrease = pathOf(footPts);
+
+    const innerMouth = ring(cx - mouthR * 0.75, cy - mouthR * 0.75, mouthR * 1.5, mouthR * 1.5, mouthR * 0.75, 8)
+        .map(([x, y]) => proj(cam, x, y, h));
+    const mouthSlot = pathOf(innerMouth);
+
+    const [hx, hy] = proj(cam, cx + bellyR * 0.45, cy + bellyR * 0.45, h * 0.52);
+    const bright = pathOf([
+        [hx - 1.2, hy],
+        [hx, hy - 1.2],
+        [hx + 1.2, hy],
+        [hx, hy + 1.2],
+    ]);
+
+    return [
+        { d: body, kind: 'plate' },
+        { d: footCrease, kind: 'crease' },
+        { d: neckCrease, kind: 'crease' },
+        { d: mouthCrease, kind: 'crease' },
+        { d: mouthSlot, kind: 'slot' },
+        { d: bright, kind: 'bright' },
+    ];
+}
+
+/**
+ * B5 shot glass (small tapered tumbler, flat base, open top).
+ */
+function buildShotGlass(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const cx = w / 2;
+    const cy = d / 2;
+    const baseR = Math.min(w, d) * 0.36;
+    const topR = Math.min(w, d) * 0.48;
+
+    const baseRing = ring(cx - baseR, cy - baseR, baseR * 2, baseR * 2, baseR, 8);
+    const topRing = ring(cx - topR, cy - topR, topR * 2, topR * 2, topR, 8);
+
+    const glassLoft = loft(cam, baseRing, 0, topRing, h);
+
+    const solidBasePts = ring(cx - baseR * 1.02, cy - baseR * 1.02, baseR * 2.04, baseR * 2.04, baseR * 1.02, 8)
+        .map(([x, y]) => proj(cam, x, y, h * 0.28));
+    const baseCrease = pathOf(solidBasePts);
+
+    const mouthCavityPts = ring(cx - topR * 0.78, cy - topR * 0.78, topR * 1.56, topR * 1.56, topR * 0.78, 8)
+        .map(([x, y]) => proj(cam, x, y, h));
+    const mouthSlot = pathOf(mouthCavityPts);
+
+    const floorPts = ring(cx - baseR * 0.70, cy - baseR * 0.70, baseR * 1.4, baseR * 1.4, baseR * 0.7, 8)
+        .map(([x, y]) => proj(cam, x, y, h * 0.32));
+    const floorCrease = pathOf(floorPts);
+
+    const [rx, ry] = proj(cam, cx, cy + topR, h);
+    const bright = pathOf([
+        [rx - 1.2, ry],
+        [rx, ry - 1.2],
+        [rx + 1.2, ry],
+        [rx, ry + 1.2],
+    ]);
+
+    return [
+        { d: glassLoft.body, kind: 'plate' },
+        { d: glassLoft.crease, kind: 'crease' },
+        { d: baseCrease, kind: 'crease' },
+        { d: mouthSlot, kind: 'slot' },
+        { d: floorCrease, kind: 'crease' },
+        { d: bright, kind: 'bright' },
+    ];
+}
+
 // ── public entry point ──────────────────────────────────────────────────────
 
 /**
  * Draw the hairline figure parts for canonical vessel Types:
- * 'bowl' | 'canoe' | 'plate' | 'basin'.
+ * 'bowl' | 'canoe' | 'plate' | 'basin' | 'tray' | 'sink' | 'bathtub' | 'vase' | 'shot-glass'.
  * Parts are ordered back-to-front. Returns null for any unrecognized id.
  */
 export function buildVesselFigure(
@@ -414,6 +664,8 @@ export function buildVesselFigure(
         fallback = CANOE_FALLBACKS[opt ?? 'medium'] ?? DEFAULTS['canoe'];
     } else if (id === 'plate') {
         fallback = PLATE_FALLBACKS[opt ?? 'large'] ?? DEFAULTS['plate'];
+    } else if (id === 'tray') {
+        fallback = TRAY_FALLBACKS[opt ?? 'rectangular'] ?? DEFAULTS['tray'];
     }
 
     const dims = normalizeDims(rawDims, fallback);
@@ -428,6 +680,16 @@ export function buildVesselFigure(
             return buildPlate(cam, dims, opt ?? 'large');
         case 'basin':
             return buildBasin(cam, dims);
+        case 'tray':
+            return buildTray(cam, dims, opt ?? 'rectangular');
+        case 'sink':
+            return buildSink(cam, dims);
+        case 'bathtub':
+            return buildBathtub(cam, dims);
+        case 'vase':
+            return buildVase(cam, dims);
+        case 'shot-glass':
+            return buildShotGlass(cam, dims);
         default:
             return null;
     }

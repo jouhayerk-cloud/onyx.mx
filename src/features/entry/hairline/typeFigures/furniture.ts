@@ -35,7 +35,10 @@ export const DEFAULTS: Record<string, Dims> = {
     'mirror':             { w: 80, h: 120, d: 8 },
     'wine-rack':          { w: 32, h: 32, d: 15 },
     'table':              { w: 96, h: 50, d: 96 },
+    'coffee-table':       { w: 120, h: 42, d: 75 },
+    'table-set':          { w: 120, h: 50, d: 60 },
     'couch':              { w: 210, h: 75, d: 210 },
+    'chair':              { w: 45, h: 90, d: 50 },
     'bar':                { w: 180, h: 105, d: 140 },
 };
 
@@ -77,7 +80,10 @@ export const FURNITURE_FIGURE_IDS: readonly string[] = [
     'mirror',
     'wine-rack',
     'table',
+    'coffee-table',
+    'table-set',
     'couch',
+    'chair',
     'bar',
 ] as const;
 
@@ -1145,6 +1151,100 @@ function buildBar(cam: Cam, dims: Dims): FigurePart[] {
     ];
 }
 
+// ── coffee-table, table-set, chair ──────────────────────────────────────────
+
+/**
+ * B8 coffee-table: low top slab (height 0.2 H) on central pedestal (0.58 W x 0.58 D from floor).
+ */
+function buildCoffeeTable(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const cx = w / 2;
+    const cy = d / 2;
+    const pedH = h * 0.8;
+    const pedW = w * 0.58;
+    const pedD = d * 0.58;
+    const ped = prism(cam, cx - pedW / 2, cy - pedD / 2, 0, pedW, pedD, pedH, Math.min(pedW, pedD) * 0.25);
+
+    const slabH = h * 0.2;
+    const r = Math.min(w, d) * 0.22;
+    const top = prism(cam, 0, 0, pedH, w, d, slabH, r);
+
+    const vein = pathOf([
+        proj(cam, w * 0.18, d * 0.28, h),
+        proj(cam, w * 0.82, d * 0.72, h),
+    ], false);
+
+    const bright = rectY(cam, d, w * 0.76, w * 0.88, h - slabH * 0.65, h - slabH * 0.15);
+
+    return [
+        ...solidParts(ped),
+        ...solidParts(top),
+        { d: vein, kind: 'crease' },
+        { d: bright, kind: 'bright' },
+    ];
+}
+
+/**
+ * B9 table-set: two table units side by side sharing height.
+ */
+function buildTableSet(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const unitW = w * 0.46;
+    const unitD = d * 0.86;
+    const pedH = h * 0.8;
+    const slabH = h * 0.2;
+
+    // Unit 1 (left)
+    const ped1 = prism(cam, unitW * 0.2, (d - unitD * 0.6) / 2, 0, unitW * 0.6, unitD * 0.6, pedH, 0.4);
+    const top1 = prism(cam, 0, (d - unitD) / 2, pedH, unitW, unitD, slabH, Math.min(unitW, unitD) * 0.2);
+
+    // Unit 2 (right)
+    const x2 = w * 0.54;
+    const ped2 = prism(cam, x2 + unitW * 0.2, (d - unitD * 0.6) / 2, 0, unitW * 0.6, unitD * 0.6, pedH, 0.4);
+    const top2 = prism(cam, x2, (d - unitD) / 2, pedH, unitW, unitD, slabH, Math.min(unitW, unitD) * 0.2);
+
+    const bright = rectY(cam, (d + unitD) / 2, x2 + unitW * 0.70, x2 + unitW * 0.84, h - slabH * 0.65, h - slabH * 0.15);
+
+    return [
+        ...solidParts(ped1),
+        ...solidParts(top1),
+        ...solidParts(ped2),
+        ...solidParts(top2),
+        { d: bright, kind: 'bright' },
+    ];
+}
+
+/**
+ * B10 chair: seat block with back slab and four legs at corners.
+ */
+function buildChair(cam: Cam, dims: Dims): FigurePart[] {
+    const { w, h, d } = dims;
+    const seatZ = h * 0.48;
+    const seatH = h * 0.08;
+    const lw = Math.max(1.5, w * 0.08);
+    const ld = Math.max(1.5, d * 0.08);
+
+    const bl = prism(cam, 0, 0, 0, lw, ld, seatZ, 0.3);
+    const br = prism(cam, w - lw, 0, 0, lw, ld, seatZ, 0.3);
+    const back = prism(cam, 0, 0, seatZ, w, ld * 1.5, h - seatZ, 0.4);
+    const seat = prism(cam, 0, ld, seatZ, w, d - ld, seatH, 0.4);
+    const fl = prism(cam, 0, d - ld, 0, lw, ld, seatZ, 0.3);
+    const fr = prism(cam, w - lw, d - ld, 0, lw, ld, seatZ, 0.3);
+
+    const ferruleH = Math.min(2, seatZ * 0.18);
+    const ferrule = prism(cam, w - lw, d - ld, 0, lw, ld, ferruleH, 0.3);
+
+    return [
+        ...solidParts(bl),
+        ...solidParts(br),
+        ...solidParts(back),
+        ...solidParts(seat),
+        ...solidParts(fl),
+        ...solidParts(fr),
+        { d: ferrule.body, kind: 'bright' },
+    ];
+}
+
 // ── public entry point ──────────────────────────────────────────────────────
 
 /**
@@ -1234,8 +1334,14 @@ export function buildFurnitureFigure(
             return buildWineRack(cam, dims, holes, v);
         case 'table':
             return buildTable(cam, dims, v);
+        case 'coffee-table':
+            return buildCoffeeTable(cam, dims);
+        case 'table-set':
+            return buildTableSet(cam, dims);
         case 'couch':
             return buildCouch(cam, dims);
+        case 'chair':
+            return buildChair(cam, dims);
         case 'bar':
             return buildBar(cam, dims);
         default:

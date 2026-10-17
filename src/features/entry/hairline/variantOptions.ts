@@ -61,6 +61,7 @@ const FORM_SQUARED_COLUMN = opt('squared', 'Squared', ['square', 'squares', 'cua
 const FORM_ROUND = opt('round', 'Round', ['circle', 'circular', 'oval', 'redondo', 'redonda']);
 const FORM_FREE = opt('free-form', 'Free Form', ['freeform', 'free form', 'organic', 'organico', 'wavy']);
 const FORM_IRREGULAR = opt('irregular', 'Irregular');
+const FORM_OVAL = opt('oval', 'Oval', ['ovalado', 'ovular']);
 
 const SIZES_ALL = [opt('large', 'Large', ['grande']), opt('medium', 'Medium', ['mediano', 'mediana']), opt('small', 'Small', ['chico', 'chica', 'pequeno', 'pequena']), opt('mini', 'Mini')];
 
@@ -86,23 +87,40 @@ export const SUB_SHAPES: Readonly<Record<string, TypeSubShapes>> = {
     'floor-lamp': ids('floor-lamp', 'form', 'Form', [FORM_SQUARED_COLUMN], 'squared', [TOP_AXIS]),
     'bowl': ids('bowl', 'size', 'Size', SIZES_ALL, 'medium'),
     'canoe': ids('canoe', 'size', 'Size', SIZES_ALL.slice(0, 3), 'medium'),
+    'tray': ids('tray', 'form', 'Form', [FORM_RECT, FORM_ROUND, FORM_OVAL], 'rectangular'),
     'plate': ids('plate', 'size', 'Size', SIZES_ALL.slice(0, 3), 'large'),
     'basin': none('basin'),
+    'sink': none('sink'),
+    'bathtub': none('bathtub'),
+    'vase': none('vase'),
+    'shot-glass': none('shot-glass'),
     'rock': ids('rock', 'form', 'Form', [opt('boulder', 'Boulder'), FORM_FREE], 'boulder'),
+    'boulder': none('boulder'),
+    'pebble-stone': none('pebble-stone'),
     'fountain': ids('fountain', 'form', 'Form', [opt('boulder', 'Boulder'), opt('sphere', 'Sphere', ['ball']), opt('s-shaped', 'S-shaped', ['s shaped', 's'])], 'boulder'),
+    'fountain-set': none('fountain-set'),
     // One hairline for every sculpture (owner decision, 11 Oct 2026): flame, venus and cactus are not sub-shapes.
     'sculpture': none('sculpture'),
+    'sculpture-set': none('sculpture-set'),
     'pillar': ids('pillar', 'form', 'Form', [FORM_SQUARED, FORM_CYLINDER], 'squared'),
     'ball': ids('ball', 'size', 'Size', [opt('mini', 'Mini'), opt('small', 'Small')], 'mini'),
     'bag': none('bag'),
     'wall-panel': ids('wall-panel', 'form', 'Form', [FORM_RECT, FORM_IRREGULAR, FORM_FREE, opt('pair', 'Pair', ['panel pair', 'wall panel pair', 'par'])], 'rectangular'),
+    'panel-pair': ids('panel-pair', 'form', 'Form', [opt('pair', 'Pair', ['panel pair', 'par'])], 'pair'),
     // One hairline for every painted wall panel (owner decision, 11 Oct 2026): the animal on it is not a sub-shape.
     'painted-wall-panel': none('painted-wall-panel'),
     'mirror': ids('mirror', 'form', 'Form', [FORM_RECT, FORM_ROUND, FORM_SQUARED], 'rectangular'),
     'wine-rack': ids('wine-rack', 'holes', 'Holes', [2, 3, 4, 5, 6, 8, 9, 10, 20, 21].map(n => opt(String(n), n + ' holes', [String(n)])), '6'),
     'table': ids('table', 'form', 'Form', [opt('diamond', 'Diamond'), FORM_ROUND, FORM_FREE, FORM_RECT], 'diamond'),
+    'coffee-table': none('coffee-table'),
+    'table-set': none('table-set'),
     'couch': ids('couch', 'form', 'Form', [opt('v-shaped', 'V-shaped', ['v shaped', 'v'])], 'v-shaped'),
+    'chair': none('chair'),
     'bar': ids('bar', 'form', 'Form', [opt('l-shaped', 'L-shaped', ['l shaped', 'l'])], 'l-shaped'),
+    'chess-set': none('chess-set'),
+    'candleholder': none('candleholder'),
+    'coaster': none('coaster'),
+    'wine-stopper': none('wine-stopper'),
 };
 
 const NONE: TypeSubShapes = none('');

@@ -67,6 +67,10 @@ function getShapeColor(typeId: string | null | undefined, family: Geometry, isMi
         typeId === 'plate' ||
         typeId === 'basin' ||
         typeId === 'sink' ||
+        typeId === 'tray' ||
+        typeId === 'bathtub' ||
+        typeId === 'vase' ||
+        typeId === 'shot-glass' ||
         family === 'bowl' ||
         family === 'plate'
     ) {
@@ -74,9 +78,13 @@ function getShapeColor(typeId: string | null | undefined, family: Geometry, isMi
     }
     if (
         typeId === 'wall-panel' ||
+        typeId === 'panel-pair' ||
         typeId === 'painted-wall-panel' ||
         typeId === 'table' ||
+        typeId === 'coffee-table' ||
+        typeId === 'table-set' ||
         typeId === 'couch' ||
+        typeId === 'chair' ||
         typeId === 'bar' ||
         typeId === 'wine-rack'
     ) {

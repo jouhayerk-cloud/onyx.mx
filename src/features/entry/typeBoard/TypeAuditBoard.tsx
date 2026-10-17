@@ -10,6 +10,7 @@ import { ShapeFigure } from '../hairline/ShapeFigure';
 import type { Dims, Motif } from '../hairline/types';
 import { MIRROR_VARIANTS, mirrorVariantOf, type MirrorVariant } from '../hairline/typeFigures/mirrors';
 import { lampVariantOf, type LampVariant } from '../hairline/typeFigures/lamps';
+import { AxoIconPreview } from './AxoIconPreview';
 import './typeBoard.css';
 
 /**
@@ -485,33 +486,60 @@ export const TypeAuditBoard: React.FC = () => {
     const rows = useAtomValue(inventoryAtom);
     const { groups, totals } = useMemo(() => buildBoard(rows), [rows]);
     const [dark, setDark] = useState(true);
+    const [tab, setTab] = useState<'types' | 'axo826'>('types');
 
     return (
         <div className="tb-board">
-            <div className="tb-banner" role="note">{tr('Dev only: Type review board')}</div>
-
-            <header className="tb-head">
-                <h1 className="tb-title">{tr('Type review board')}</h1>
-                <dl className="tb-totals">
-                    <div><dt>{tr('Items')}</dt><dd>{totals.items}</dd></div>
-                    <div><dt>{tr('Raw Types')}</dt><dd>{totals.rawTypes}</dd></div>
-                    <div><dt>{tr('Canonical Types')}</dt><dd>{totals.canonical}</dd></div>
-                    <div><dt>{tr('Rows with a real cleaned photo')}</dt><dd>{totals.cleaned}</dd></div>
-                    <div><dt>{tr('Rows with a stored icon')}</dt><dd>{totals.stored}</dd></div>
-                </dl>
-                <button
-                    type="button"
-                    className="tb-toggle"
-                    aria-pressed={dark}
-                    onClick={() => setDark(v => !v)}
-                >
-                    {tr('Dark figure backgrounds')}
-                </button>
-            </header>
-
-            <div className="tb-grid">
-                {groups.map(g => <TypeCard key={g.key} group={g} dark={dark} />)}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+                <div className="tb-banner" role="note">{tr('Dev only: Type review board')}</div>
+                <div style={{ display: 'inline-flex', gap: 8 }}>
+                    <button
+                        type="button"
+                        className="tb-toggle"
+                        aria-pressed={tab === 'types'}
+                        onClick={() => setTab('types')}
+                    >
+                        {tr('Type review')}
+                    </button>
+                    <button
+                        type="button"
+                        className="tb-toggle"
+                        aria-pressed={tab === 'axo826'}
+                        onClick={() => setTab('axo826')}
+                    >
+                        {tr('Axo icons 826')}
+                    </button>
+                </div>
             </div>
+
+            {tab === 'axo826' ? (
+                <AxoIconPreview onClose={() => setTab('types')} />
+            ) : (
+                <>
+                    <header className="tb-head">
+                        <h1 className="tb-title">{tr('Type review board')}</h1>
+                        <dl className="tb-totals">
+                            <div><dt>{tr('Items')}</dt><dd>{totals.items}</dd></div>
+                            <div><dt>{tr('Raw Types')}</dt><dd>{totals.rawTypes}</dd></div>
+                            <div><dt>{tr('Canonical Types')}</dt><dd>{totals.canonical}</dd></div>
+                            <div><dt>{tr('Rows with a real cleaned photo')}</dt><dd>{totals.cleaned}</dd></div>
+                            <div><dt>{tr('Rows with a stored icon')}</dt><dd>{totals.stored}</dd></div>
+                        </dl>
+                        <button
+                            type="button"
+                            className="tb-toggle"
+                            aria-pressed={dark}
+                            onClick={() => setDark(v => !v)}
+                        >
+                            {tr('Dark figure backgrounds')}
+                        </button>
+                    </header>
+
+                    <div className="tb-grid">
+                        {groups.map(g => <TypeCard key={g.key} group={g} dark={dark} />)}
+                    </div>
+                </>
+            )}
         </div>
     );
 };

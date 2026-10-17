@@ -4,6 +4,7 @@ import { buildVesselFigure } from './vessels';
 import { buildStoneFigure } from './stone';
 import { buildFurnitureFigure } from './furniture';
 import { buildMirrorFigure, mirrorVariantOf } from './mirrors';
+import { buildSmallItemFigure } from './smallItems';
 import { currentTypeId, resolveVariant } from '../variantOptions';
 
 /**
@@ -22,5 +23,6 @@ export function buildTypeFigure(rawId: string | null | undefined, dims: Dims | n
     return buildLampFigure(id, dims, holes, v, top)
         ?? buildVesselFigure(id, dims, holes, v)
         ?? buildStoneFigure(id, dims, holes, v)
-        ?? buildFurnitureFigure(id, dims, holes, v);
+        ?? buildFurnitureFigure(id, dims, holes, v)
+        ?? buildSmallItemFigure(id, dims, holes, v);
 }
