@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 
 import { LiquidBar } from '../../components/LiquidBar';
-import { LiquidOnyxFilters } from '../../components/LiquidOnyxFilters';
+import { LiquidOnyxFilters } from './LiquidOnyxFilters';
 import { MainHeader } from './MainHeader';
 import { IslandSidebar } from './IslandSidebar';
 import { isPrintCenterOpenAtom } from '../print/printState';
