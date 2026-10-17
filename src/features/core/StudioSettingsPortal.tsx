@@ -6,7 +6,6 @@ import {
     studioSettingsViewModeAtom,
     themeAtom,
     appStyleAtom,
-    APP_STYLES,
     performanceModeAtom,
     userAtom,
     languageAtom,
@@ -51,11 +50,6 @@ import './settingsKit.css';
 import './studioSettings.css';
 
 import { APP_VERSION_LABEL } from '../../lib/appVersion';
-
-const STYLE_META: Record<AppStyle, { label: string; icon: LucideIcon }> = {
-    rock: { label: 'ROCK', icon: Layers },
-    slab: { label: 'SLAB', icon: Box },
-};
 
 const parseChangelog = (text: string) => {
     const lines = text.replace(/<!--[\s\S]*?-->/g, '').split('\n');
@@ -134,7 +128,7 @@ export const StudioSettingsPortal: React.FC = () => {
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
     const [connectorMode, setConnectorMode] = useState<'mcp' | 'siri'>('mcp');
     const [theme, setTheme] = useAtom(themeAtom);
-    const [appStyle, setAppStyle] = useAtom(appStyleAtom);
+    const appStyle = useAtomValue(appStyleAtom);
     const [performanceMode, setPerf] = useAtom(performanceModeAtom);
     const [user] = useAtom(userAtom);
     const [isOffline] = useAtom(isOfflineModeAtom);
@@ -652,46 +646,14 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                     </div>
                                                                 </div>
 
-                                                                {/* Surface Style Row */}
+                                                                {/* Surface style: LiquidOnyx is the only style (slab and rock retired 2026-10-17) */}
                                                                 <div className="sk-row">
                                                                     <div className="sk-row-label">
                                                                         <span className="sk-row-title">{tr("Surface style")}</span>
-                                                                        <span className="sk-row-sub">
-                                                                            {appStyle === 'slab'
-                                                                                ? tr("Liquid glass sheen")
-                                                                                : tr("Solid stone surface")}
-                                                                        </span>
+                                                                        <span className="sk-row-sub">{tr("Liquid glass sheen")}</span>
                                                                     </div>
                                                                     <div className="sk-row-value">
-                                                                        <div
-                                                                            className="sk-seg"
-                                                                            role="radiogroup"
-                                                                            aria-label={tr("Surface style")}
-                                                                        >
-                                                                            {APP_STYLES.map((s) => {
-                                                                                const meta =
-                                                                                    STYLE_META[s] ?? STYLE_META.rock;
-                                                                                const Icon = meta.icon;
-                                                                                const isChecked = appStyle === s;
-                                                                                return (
-                                                                                    <button
-                                                                                        key={s}
-                                                                                        type="button"
-                                                                                        role="radio"
-                                                                                        aria-checked={isChecked}
-                                                                                        aria-pressed={isChecked}
-                                                                                        aria-label={meta.label}
-                                                                                        className="sk-seg-btn"
-                                                                                        onClick={() => setAppStyle(s)}
-                                                                                    >
-                                                                                        <Icon size={12} />
-                                                                                        <span className="sk-seg-label">
-                                                                                            {meta.label}
-                                                                                        </span>
-                                                                                    </button>
-                                                                                );
-                                                                            })}
-                                                                        </div>
+                                                                        <span className="text-[12px] font-semibold text-(--ss-fg)">LiquidOnyx</span>
                                                                     </div>
                                                                 </div>
 

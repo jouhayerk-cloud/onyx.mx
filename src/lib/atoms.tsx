@@ -114,16 +114,16 @@ export const themeAtom = atomWithStorage<string>('appTheme', 'talan', themeStora
  *  style, and the same safe default StudioSettingsPortal already used for an
  *  unrecognized value — at the storage boundary, same reasoning as themeStorage. */
 export type AppStyle = 'rock' | 'slab';
-export const APP_STYLES: AppStyle[] = ['rock', 'slab'];
+export const APP_STYLES: AppStyle[] = ['slab'];   // 'slab' is displayed as LiquidOnyx, the only style (rock retired 2026-10-17)
 const rawStyleStorage = createJSONStorage<AppStyle>();
 const appStyleStorage = {
   ...rawStyleStorage,
   getItem: (key: string, initialValue: AppStyle) => {
-    const stored = rawStyleStorage.getItem(key, initialValue) as AppStyle | 'paper';
-    return stored === 'paper' ? 'rock' : stored;
+    void rawStyleStorage.getItem(key, initialValue);
+    return 'slab' as AppStyle;   // LiquidOnyx only: any stored 'rock' / 'paper' becomes the LiquidOnyx (slab) style
   },
 };
-export const appStyleAtom = atomWithStorage<AppStyle>('appStyle', 'rock', appStyleStorage);
+export const appStyleAtom = atomWithStorage<AppStyle>('appStyle', 'slab', appStyleStorage);
 export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v2', true);
 export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
 // NOTE: atomWithStorage persists, so a browser that stored an older rate keeps it
