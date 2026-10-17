@@ -4,6 +4,7 @@ import Barcode from 'react-barcode';
 import { QRCodeSVG } from 'qrcode.react';
 import { generateAxonometricDataUrl } from '../lib/axonometric';
 import { tr, trf } from '../lib/i18n';
+import { generateBarkodSvg } from '../features/print/barkod/barkod';
 
 export interface PreviewLabelsProps {
     items: any[];
@@ -12,6 +13,7 @@ export interface PreviewLabelsProps {
     onLaunchIframe?: (selectedIndices: Set<number>, allLabelInstances: any[]) => void;
     activeLabelSize?: '50x30' | '50x50';
     logoVariant?: 'ArtOfDecor' | 'RareEarth';
+    template?: 'standard' | 'barkod';
     onQuantityChange?: (row: string, qty: number) => void;
     showChrome?: boolean;
 }
@@ -25,6 +27,7 @@ export interface PixelLabelViewProps {
     instance: { item: any; index: number; globalIndex: number };
     activeLabelSize?: '50x30' | '50x50';
     logoVariant?: 'ArtOfDecor' | 'RareEarth';
+    template?: 'standard' | 'barkod';
     axoSvg?: string;
     is1Bit?: boolean;
     scale?: number;
@@ -40,6 +43,7 @@ export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
     instance,
     activeLabelSize = '50x30',
     logoVariant = 'ArtOfDecor',
+    template = 'standard',
     axoSvg,
     is1Bit = true,
     scale,
@@ -65,6 +69,25 @@ export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
         ? `${import.meta.env.BASE_URL}REG_LogoGrayscale.png` 
         : `${import.meta.env.BASE_URL}ArtOfDecorLogo.png`;
 
+    const barkodSvg = useMemo(() => {
+        if (template !== 'barkod') return null;
+        try {
+            return generateBarkodSvg(tag || '000', {
+                totalHeight: isSquare ? 156 : 114,
+                scanBandHeight: isSquare ? 52 : 48,
+                moduleWidth: 2,
+                typeId: norm.shape || norm.itemType || norm.type,
+                variant: norm.variant || norm.shape,
+                style: 'totem',
+                includeText: true,
+                textFontSize: isSquare ? 15 : 13,
+                dims: { w: parseFloat(norm.widthCm) || 10, h: parseFloat(norm.heightCm) || 10, d: parseFloat(lengthVal) || 10 }
+            });
+        } catch {
+            return null;
+        }
+    }, [template, tag, isSquare, norm, lengthVal]);
+
     return (
         <div 
             className={`pixel-label-surface select-none relative bg-white text-black font-sans overflow-hidden border border-black/10 shadow-sm ${is1Bit ? 'pixel-label-1bit' : ''} ${className}`}
@@ -76,7 +99,50 @@ export const PixelLabelView: React.FC<PixelLabelViewProps> = ({
                 imageRendering: 'pixelated',
             }}
         >
-            {isSquare ? (
+            {template === 'barkod' ? (
+                isSquare ? (
+                    /* Barkod 50x50 mm square layout */
+                    <div className="w-full h-full p-3.5 flex flex-col justify-between relative bg-white text-black">
+                        <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                                <span className="text-[11px] font-black tracking-widest uppercase font-mono">
+                                    {logoVariant === 'RareEarth' ? 'RARE EARTH GALLERY' : 'ART OF DECOR'}
+                                </span>
+                                <h1 className="text-[17px] font-black leading-tight truncate text-black mt-0.5">{desc}</h1>
+                                <h2 className="text-[13px] text-black/80 font-bold leading-tight mt-0.5 truncate">{matColor}</h2>
+                                <p className="text-[11px] font-black text-black mt-0.5">{dimsStr}</p>
+                                <p className="text-[10.5px] font-bold text-black/70 font-mono mt-0.5">RETAIL: {retail} · ORIGIN MX</p>
+                            </div>
+                            <div className="w-16 h-16 border-[2px] border-black p-0.5 flex items-center justify-center shrink-0 bg-white">
+                                <QRCodeSVG value={tag} size={58} level="M" />
+                            </div>
+                        </div>
+                        <div className="flex justify-center items-end mt-1 overflow-hidden">
+                            {barkodSvg && <div dangerouslySetInnerHTML={{ __html: barkodSvg.svg }} />}
+                        </div>
+                    </div>
+                ) : (
+                    /* Barkod 50x30 mm "Studio Balanced" layout */
+                    <div className="w-full h-full p-2.5 flex flex-col justify-between relative bg-white text-black">
+                        <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-mono font-black bg-black text-white px-1 py-0.2 rounded-xs">{tag}</span>
+                                    <span className="text-[9px] font-mono font-bold tracking-wider text-black/70">{tr('MADE IN MEXICO')}</span>
+                                </div>
+                                <h1 className="text-[13.5px] font-black leading-tight truncate text-black mt-1">{desc}</h1>
+                                <p className="text-[10px] text-black font-semibold truncate mt-0.5 font-mono">{matColor} · {dimsStr}</p>
+                            </div>
+                            <div className="w-13 h-13 border-[1.5px] border-black p-0.5 flex items-center justify-center shrink-0 bg-white">
+                                <QRCodeSVG value={tag} size={46} level="M" />
+                            </div>
+                        </div>
+                        <div className="flex justify-center items-end -mb-0.5 overflow-hidden">
+                            {barkodSvg && <div dangerouslySetInnerHTML={{ __html: barkodSvg.svg }} />}
+                        </div>
+                    </div>
+                )
+            ) : isSquare ? (
                 /* 50x50 mm square layout (matches ONYX_MASTER_TEMPLATE_50x50) */
                 <div className="w-full h-full p-4 flex flex-col justify-between relative bg-white text-black">
                     <div className="flex gap-3">
@@ -187,6 +253,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
     onLaunchIframe,
     activeLabelSize = '50x30',
     logoVariant = 'ArtOfDecor',
+    template = 'standard',
     onQuantityChange,
     showChrome = true
 }) => {
@@ -358,6 +425,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                                 logoVariant={logoVariant}
                                                 axoSvg={axoSvg}
                                                 is1Bit={false}
+                                                template={template}
                                             />
                                         </div>
                                     </div>
@@ -463,6 +531,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                         logoVariant={logoVariant}
                                         axoSvg={axoCache[inspectedInstance.item.codes?.bookBarcode || '']}
                                         is1Bit={true}
+                                        template={template}
                                     />
                                 </div>
 

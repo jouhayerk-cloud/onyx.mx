@@ -59,6 +59,8 @@ import {
 } from '../../lib/documentJobs';
 import { runDjSelfTest, SelfTestResult } from './selfTest';
 import { ItemTag } from '../../components/ui/ItemTag';
+import { buildBarkodItemLabelSpec, renderLabelToCanvas } from './renderers/labelRenderer';
+import { verifyBarcodeInCanvas, BarkodScanCheckResult } from './barkod/barkod';
 import './labelPrintStudio.css';
 
 export interface VirtualTrayItem {
@@ -68,6 +70,7 @@ export interface VirtualTrayItem {
     index: number;
     timestamp: number;
     item?: any;
+    scanResult?: BarkodScanCheckResult;
 }
 
 type StudioMode = 'studio' | 'history' | 'queue' | 'verify' | 'templates';
@@ -107,6 +110,7 @@ export const LabelPrintStudio: React.FC = () => {
         return persistedLabelSize === '50x50' ? '50x50' : '50x30';
     });
     const [logoVariant, setLogoVariant] = useState<'ArtOfDecor' | 'RareEarth'>('ArtOfDecor');
+    const [labelTemplate, setLabelTemplate] = useState<'standard' | 'barkod'>('standard');
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [isDesignerOpen, setIsDesignerOpen] = useState(false);
 
@@ -130,6 +134,13 @@ export const LabelPrintStudio: React.FC = () => {
     const [bleError, setBleError] = useState<string | null>(null);
     const [printProgress, setPrintProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
     const cancelPrintRef = useRef(false);
+
+    // Ensure experimental barkod template is disabled when switching to physical bluetooth
+    useEffect(() => {
+        if (printerType === 'bluetooth' && labelTemplate === 'barkod') {
+            setLabelTemplate('standard');
+        }
+    }, [printerType, labelTemplate]);
 
     // Document Generation & Review State
     const [progress, setProgress] = useState({ xlsx: -1, pdf: -1, catalog: -1 });
@@ -184,6 +195,7 @@ export const LabelPrintStudio: React.FC = () => {
         checksum: string;
         completedAt: string;
         dataUrl?: string;
+        scanResult?: BarkodScanCheckResult;
     }>>([]);
     const [failedList, setFailedList] = useState<Array<{
         tagId: string;
@@ -766,11 +778,159 @@ export const LabelPrintStudio: React.FC = () => {
         }
     }, [user, selectedItems, printerType]);
 
-    // Print All (through designer print engine)
+    // Print All (through designer print engine or Barkod direct virtual simulator)
     const handlePrintAll = async (isReprint = false) => {
         if (selectedItems.length === 0) {
             toast.error("No labels selected to print");
             return;
+        }
+
+        cancelPrintRef.current = false;
+
+        // EXPERIMENTAL BARKOD PATH: Runs through VirtualM110Driver simulator & optical self-check
+        if (labelTemplate === 'barkod') {
+            const isVirtual = printerType === 'virtual';
+            if (!isVirtual) {
+                toast.error("Barkod experimental template requires Virtual printer");
+                return;
+            }
+
+            const tid = toast.loading("Rendering Barkod layout & initializing Virtual M110...");
+            try {
+                if (!virtualDriverRef.current.isConnected()) {
+                    await virtualDriverRef.current.connect();
+                }
+
+                virtualDriverRef.current.setSpeedMultiplier(virtualSpeedMultiplier);
+                virtualDriverRef.current.setSimulatePaperOut(virtualSimulatePaperOut);
+                virtualDriverRef.current.setSimulateDisconnect(virtualSimulateDisconnect);
+
+                const fallbackJobId = `VPJ-BARKOD-${Date.now().toString(36).toUpperCase()}`;
+                pendingPrintJobRef.current = {
+                    ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
+                    tagById: Object.fromEntries(selectedItems.map((it: any) => [String(it.row ?? it.data?.id ?? it.id), String(it.codes?.bookBarcode || '')])),
+                    checksum: `barkod-${Date.now().toString(16)}`,
+                    jobId: fallbackJobId,
+                    isReprint,
+                    isVirtual: true,
+                };
+
+                setIsLiveRunOpen(true);
+                setRunStatus('running');
+                setRunCurrentIndex(1);
+                setRunTotalLabels(labelInstances.length);
+                setRunChunkIndex(1);
+                setRunTotalChunks(1);
+                setRunDriverProgress(0);
+
+                const tStart = Date.now();
+                setBatchStartedAt(tStart);
+                setChunkStartedAt(tStart);
+                setLabelStartedAt(tStart);
+                setDoneList([]);
+                setFailedList([]);
+                setCompletedDurations([]);
+
+                toast.success("Barkod Batch Started! Streaming to Virtual Printer...", { id: tid });
+
+                const newTrayItems: VirtualTrayItem[] = [];
+
+                for (let i = 0; i < labelInstances.length; i++) {
+                    if (cancelPrintRef.current) {
+                        setRunStatus('cancelled');
+                        break;
+                    }
+
+                    const inst = labelInstances[i];
+                    const labelStart = Date.now();
+                    setRunCurrentIndex(i + 1);
+                    setLabelStartedAt(labelStart);
+                    setRunDriverProgress(15);
+
+                    const tagId = String(inst.item.codes?.bookBarcode || `LABEL-${i + 1}`);
+                    const qrData = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${tagId}`;
+
+                    // 1. Build Barkod item spec with real item data and qrcode
+                    const spec = buildBarkodItemLabelSpec(inst.item, {
+                        tagId,
+                        qrData,
+                        labelSize: activeLabelSize,
+                        logoVariant,
+                        template: 'barkod',
+                    });
+                    setRunDriverProgress(35);
+
+                    // 2. Render to 1-bit / 203 DPI Canvas
+                    const canvas = await renderLabelToCanvas(spec);
+                    setRunDriverProgress(60);
+
+                    // 3. Optical self-check on the scan band
+                    const scanResult = verifyBarcodeInCanvas(canvas, tagId, {
+                        y: activeLabelSize === '50x50' ? 180 : 84,
+                        totalHeight: activeLabelSize === '50x50' ? 160 : 120,
+                        scanBandHeight: activeLabelSize === '50x50' ? 52 : 48
+                    });
+
+                    // 4. Send ESC/POS raster byte stream to Virtual M110 Driver
+                    await virtualDriverRef.current.printCanvas(canvas);
+                    setRunDriverProgress(100);
+
+                    // 5. Retrieve decoded 1-bit label from driver
+                    const printed = virtualDriverRef.current.getPrintedLabels();
+                    const lastDecoded = printed[printed.length - 1];
+                    const dataUrl = lastDecoded?.dataUrl || canvas.toDataURL('image/png');
+
+                    const labelEnd = Date.now();
+                    const duration = Math.max(100, labelEnd - labelStart);
+                    setCompletedDurations(prev => [...prev, duration]);
+
+                    const trayItem: VirtualTrayItem = {
+                        id: lastDecoded?.id || `vt-bk-${Date.now()}-${i}`,
+                        tagId,
+                        dataUrl,
+                        index: i + 1,
+                        timestamp: labelEnd,
+                        item: inst.item,
+                        scanResult
+                    };
+
+                    newTrayItems.unshift(trayItem);
+                    setVirtualTray(prev => [trayItem, ...prev]);
+
+                    setDoneList(prev => [
+                        {
+                            tagId,
+                            item: inst.item,
+                            index: i + 1,
+                            durationMs: duration,
+                            checksum: scanResult.passed ? 'SCAN:PASS' : 'SCAN:FAIL',
+                            completedAt: new Date(labelEnd).toLocaleTimeString(),
+                            dataUrl,
+                            scanResult
+                        },
+                        ...prev
+                    ]);
+                }
+
+                if (!cancelPrintRef.current) {
+                    setRunStatus('complete');
+                    setLastPrintJob({
+                        jobId: fallbackJobId,
+                        labelCount: labelInstances.length,
+                        itemCount: selectedItems.length,
+                        at: new Date().toISOString(),
+                        isReprint
+                    });
+                    const passCount = newTrayItems.filter(t => t.scanResult?.passed).length;
+                    toast.success(`[BARKOD] Verified & simulated ${labelInstances.length} labels (${passCount}/${labelInstances.length} scan pass)`);
+                }
+                return;
+            } catch (err: any) {
+                console.error('[LabelPrintStudio] Barkod virtual print failed:', err);
+                toast.error(`Barkod print error: ${err?.message || 'unknown error'}`, { id: tid });
+                setRunStatus('error');
+                return;
+            }
         }
 
         const tid = toast.loading(tr("Generating dynamic 3D structures for labels..."));
@@ -862,6 +1022,7 @@ export const LabelPrintStudio: React.FC = () => {
     };
 
     const handleCancelRun = () => {
+        cancelPrintRef.current = true;
         iframeRef.current?.contentWindow?.postMessage({ type: 'PRINT_CANCEL' }, window.location.origin);
         setRunStatus('cancelled');
     };
@@ -1542,6 +1703,42 @@ export const LabelPrintStudio: React.FC = () => {
                                         </div>
                                     </div>
 
+                                    {/* Template Selector: Standard vs Barkod (experimental) */}
+                                    <div className="flex items-center justify-between gap-2 shrink-0">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="lps-mini-label">
+                                                TEMPLATE
+                                            </span>
+                                            {labelTemplate === 'barkod' && (
+                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                                    EXP
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="liquid-panel lps-seg-group flex gap-0.5 p-0.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => setLabelTemplate('standard')}
+                                                className={`lps-tab-btn lps-seg-sm ${labelTemplate === 'standard' ? 'active' : ''}`}
+                                            >
+                                                Standard
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={printerType !== 'virtual'}
+                                                onClick={() => {
+                                                    if (printerType === 'virtual') {
+                                                        setLabelTemplate('barkod');
+                                                    }
+                                                }}
+                                                className={`lps-tab-btn lps-seg-sm ${labelTemplate === 'barkod' ? 'active' : ''} ${printerType !== 'virtual' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                                title={printerType !== 'virtual' ? 'Select Virtual printer to enable experimental Barkod layout' : 'Experimental Barkod Code128-B + Hairline silhouette layout'}
+                                            >
+                                                Barkod (exp)
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     {/* 2. Branding Logo Selector — Larger visual choice chips */}
                                     <div className="flex flex-col gap-1 shrink-0">
                                         <span className="lps-mini-label">
@@ -1684,7 +1881,7 @@ export const LabelPrintStudio: React.FC = () => {
                                                 {virtualTray.map((label, idx) => (
                                                     <div
                                                         key={label.id || idx}
-                                                        className="lps-tray-item group"
+                                                        className="lps-tray-item group relative"
                                                         onClick={() => setTrayModalLabel(label)}
                                                         title={`Click to inspect #${label.index} (${label.tagId}) large`}
                                                     >
@@ -1693,6 +1890,13 @@ export const LabelPrintStudio: React.FC = () => {
                                                             alt={`Label ${label.tagId}`}
                                                             className="lps-tray-thumb h-12 w-auto"
                                                         />
+                                                        {label.scanResult && (
+                                                            <span className={`absolute top-0.5 right-0.5 px-1 py-0.2 rounded text-[7.5px] font-black uppercase font-mono tracking-wider shadow ${
+                                                                label.scanResult.passed ? 'bg-emerald-500 text-black' : 'bg-rose-500 text-white'
+                                                            }`}>
+                                                                {label.scanResult.passed ? 'PASS' : 'FAIL'}
+                                                            </span>
+                                                        )}
                                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                             <Eye size={12} className="text-white" />
                                                         </div>
@@ -1835,6 +2039,7 @@ export const LabelPrintStudio: React.FC = () => {
                                         activeLabelSize={activeLabelSize}
                                         logoVariant={logoVariant}
                                         showChrome={false}
+                                        template={labelTemplate}
                                     />
                                 </div>
                             </div>
@@ -2272,7 +2477,7 @@ export const LabelPrintStudio: React.FC = () => {
                                                         {virtualTray.map((label, idx) => (
                                                             <div
                                                                 key={label.id || idx}
-                                                                className="lps-tray-item group"
+                                                                className="lps-tray-item group relative"
                                                                 onClick={() => setTrayModalLabel(label)}
                                                                 title={`Click to inspect #${label.index} (${label.tagId}) large`}
                                                             >
@@ -2281,6 +2486,13 @@ export const LabelPrintStudio: React.FC = () => {
                                                                     alt={`Label ${label.tagId}`}
                                                                     className="lps-tray-thumb h-12 w-auto"
                                                                 />
+                                                                {label.scanResult && (
+                                                                    <span className={`absolute top-0.5 right-0.5 px-1 py-0.2 rounded text-[7.5px] font-black uppercase font-mono tracking-wider shadow ${
+                                                                        label.scanResult.passed ? 'bg-emerald-500 text-black' : 'bg-rose-500 text-white'
+                                                                    }`}>
+                                                                        {label.scanResult.passed ? 'PASS' : 'FAIL'}
+                                                                    </span>
+                                                                )}
                                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                                     <Eye size={12} className="text-white" />
                                                                 </div>
@@ -2359,6 +2571,7 @@ export const LabelPrintStudio: React.FC = () => {
                                                                         index: entry.index,
                                                                         timestamp: Date.now(),
                                                                         item: entry.item,
+                                                                        scanResult: entry.scanResult
                                                                     })}
                                                                     className="lps-tray-item shrink-0 h-6 w-auto overflow-hidden rounded border border-black/10 cursor-pointer"
                                                                     title={`Inspect decoded 1-bit label #${entry.index}`}
@@ -2369,6 +2582,13 @@ export const LabelPrintStudio: React.FC = () => {
                                                         </div>
 
                                                         <div className="flex items-center gap-2 shrink-0">
+                                                            {entry.scanResult && (
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase font-mono tracking-wider ${
+                                                                    entry.scanResult.passed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                                                }`}>
+                                                                    {entry.scanResult.passed ? 'PASS' : 'FAIL'}
+                                                                </span>
+                                                            )}
                                                             <span className="text-[10px] font-mono lps-text-secondary">
                                                                 +{fmtDuration(entry.durationMs)}
                                                             </span>
@@ -2431,8 +2651,15 @@ export const LabelPrintStudio: React.FC = () => {
                             <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2">
                                     <span className="lps-virtual-badge">VIRTUAL OUTPUT</span>
-                                    <span className="text-xs font-bold tabular-figures">{trayModalLabel.tagId}</span>
+                                    <span className="text-xs font-bold tabular-figures font-mono">{trayModalLabel.tagId}</span>
                                     <span className="text-[11px] lps-text-muted">#{trayModalLabel.index}</span>
+                                    {trayModalLabel.scanResult && (
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase font-mono tracking-wider ${
+                                            trayModalLabel.scanResult.passed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                        }`}>
+                                            SCAN {trayModalLabel.scanResult.passed ? 'PASS' : 'FAIL'}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <a
@@ -2454,6 +2681,32 @@ export const LabelPrintStudio: React.FC = () => {
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Optical Self-Check Diagnostics Panel */}
+                            {trayModalLabel.scanResult && (
+                                <div className={`p-2.5 rounded-lg border text-xs flex flex-col gap-1.5 ${
+                                    trayModalLabel.scanResult.passed 
+                                        ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-300' 
+                                        : 'bg-rose-950/30 border-rose-500/40 text-rose-300'
+                                }`}>
+                                    <div className="flex items-center justify-between font-bold">
+                                        <span className="flex items-center gap-1.5 font-mono text-[11px]">
+                                            <span className={`w-2 h-2 rounded-full ${trayModalLabel.scanResult.passed ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                                            OPTICAL SCAN SELF-CHECK: {trayModalLabel.scanResult.passed ? 'PASS (100% Code128-B Validated)' : 'FAIL'}
+                                        </span>
+                                        <span className="font-mono text-[10px] opacity-80">
+                                            {trayModalLabel.scanResult.passed ? 'Continuous Scan Band Readable' : (trayModalLabel.scanResult.error || 'Decode Error')}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono pt-1 border-t border-current/20">
+                                        <div><span className="opacity-70">EXPECTED:</span> {trayModalLabel.scanResult.expectedText}</div>
+                                        <div><span className="opacity-70">DECODED:</span> {trayModalLabel.scanResult.decodedText || '(none)'}</div>
+                                        <div><span className="opacity-70">MODULE:</span> {trayModalLabel.scanResult.moduleWidth}px</div>
+                                        <div><span className="opacity-70">CHECKSUM:</span> {trayModalLabel.scanResult.readChecksum ?? 'N/A'} (mod 103)</div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex items-center justify-center p-4 bg-white/5 rounded-lg border border-[var(--lq-rim-subtle)] overflow-auto max-h-[70vh]">
                                 <img
                                     src={trayModalLabel.dataUrl}
