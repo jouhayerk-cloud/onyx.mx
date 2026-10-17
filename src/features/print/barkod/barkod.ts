@@ -39,7 +39,7 @@ export const CODE128_PATTERNS: ReadonlyArray<readonly number[]> = [
 export const START_B = 104;
 export const STOP = 106;
 
-export type BarkodStyle = 'totem' | 'skyline' | 'contour';
+export type BarkodStyle = 'totem' | 'skyline' | 'contour' | 'layered';
 
 export interface BarkodBar {
   startModule: number;
@@ -60,7 +60,10 @@ export interface BarkodOptions {
   quietZoneModules?: number;    // default 10 modules
   typeId?: string;               // e.g. 'floor-lamp', 'bowl', etc.
   variant?: string;
+  top?: string;                  // 'open' | 'closed' for lamps
+  holes?: number;                // hole count for wine rack
   style?: BarkodStyle;
+  negativeStrokeWidth?: number;  // stroke width in dots (min 2 dots for 203 DPI thermal, default 2)
   includeText?: boolean;
   textFontSize?: number;
   barColor?: string;
@@ -329,9 +332,14 @@ export function getHairlineSilhouetteModel(
   };
 }
 
-export const DEFAULT_BARKOD_OPTIONS: Required<Omit<BarkodOptions, 'typeId' | 'variant' | 'className' | 'dims'>> & {
+let clipIdSeed = 0;
+
+export const DEFAULT_BARKOD_OPTIONS: Required<Omit<BarkodOptions, 'typeId' | 'variant' | 'className' | 'dims' | 'top' | 'holes' | 'negativeStrokeWidth'>> & {
   typeId: string;
   variant: string;
+  top: string;
+  holes: number;
+  negativeStrokeWidth: number;
   className: string;
   dims: Dims | null;
 } = {
@@ -341,7 +349,10 @@ export const DEFAULT_BARKOD_OPTIONS: Required<Omit<BarkodOptions, 'typeId' | 'va
   quietZoneModules: 10,
   typeId: 'floor-lamp',
   variant: 'squared',
-  style: 'totem',
+  top: 'closed',
+  holes: 6,
+  style: 'layered',
+  negativeStrokeWidth: 2,
   includeText: true,
   textFontSize: 13,
   barColor: '#000000',
@@ -349,6 +360,103 @@ export const DEFAULT_BARKOD_OPTIONS: Required<Omit<BarkodOptions, 'typeId' | 'va
   className: '',
   dims: null,
 };
+
+export interface LayeredFigureGeometry {
+  plates: FigurePart[];
+  faces: FigurePart[];
+  creases: FigurePart[];
+  slots: FigurePart[];
+  figW: number;
+  figH: number;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+export function getLayeredFigureGeometry(
+  typeId?: string | null,
+  variant?: string | null,
+  dims?: Dims | null,
+  holes?: number,
+  top?: string | null
+): LayeredFigureGeometry | null {
+  const normType = String(typeId || 'floor-lamp').toLowerCase();
+  let figureParts: FigurePart[] | null = null;
+  try {
+    figureParts = buildTypeFigure(normType, dims || null, holes, variant || null, top || null);
+  } catch {
+    figureParts = null;
+  }
+
+  // If no figureParts returned from buildTypeFigure, create fallback parts from model
+  if (!figureParts || figureParts.length === 0) {
+    const model = getHairlineSilhouetteModel(typeId, variant, dims);
+    if (model.contour) {
+      const contourPath = model.contour.map((p, i) => `${i ? 'L' : 'M'}${p[0] * 100} ${p[1] * 100}`).join('') + 'Z';
+      figureParts = [{ d: contourPath, kind: 'plate' }];
+      if (model.creases) {
+        for (const c of model.creases) {
+          const creasePath = c.map((p, i) => `${i ? 'L' : 'M'}${p[0] * 100} ${p[1] * 100}`).join('');
+          figureParts.push({ d: creasePath, kind: 'crease' });
+        }
+      }
+    }
+  }
+
+  if (!figureParts || figureParts.length === 0) return null;
+
+  const plateParts: FigurePart[] = [];
+  const faceParts: FigurePart[] = [];
+  const creaseParts: FigurePart[] = [];
+  const slotParts: FigurePart[] = [];
+
+  for (const p of figureParts) {
+    if (p.kind === 'plate') plateParts.push(p);
+    else if (p.kind === 'face') faceParts.push(p);
+    else if (p.kind === 'crease') creaseParts.push(p);
+    else if (p.kind === 'slot') slotParts.push(p);
+  }
+
+  // If no plate parts, treat all non-crease parts as plates
+  if (plateParts.length === 0) {
+    for (const p of figureParts) {
+      if (p.kind !== 'crease') plateParts.push(p);
+    }
+  }
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const p of figureParts) {
+    const pts = extractPathPoints(p.d);
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+
+  if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY) || maxX <= minX || maxY <= minY) {
+    return null;
+  }
+
+  return {
+    plates: plateParts,
+    faces: faceParts,
+    creases: creaseParts,
+    slots: slotParts,
+    figW: maxX - minX,
+    figH: maxY - minY,
+    minX,
+    minY,
+    maxX,
+    maxY
+  };
+}
 
 /**
  * Generates an SVG string of the Barkod-style Code128 barcode with isometric silhouette top.
@@ -369,6 +477,101 @@ export function generateBarkodSvg(text: string, userOptions: BarkodOptions = {})
   const textH = opt.includeText ? (opt.textFontSize + 6) : 0;
   const viewBoxH = totalH + textH;
 
+  const scanBandTopY = silhouetteMaxH;
+  const scanBandBottomY = totalH;
+
+  // Layered style: Positive silhouette clip + negative contour strokes
+  if (opt.style === 'layered') {
+    const geom = getLayeredFigureGeometry(opt.typeId, opt.variant, opt.dims, opt.holes, opt.top);
+    if (geom) {
+      const paddingTop = 4;
+      const availableH = scanBandTopY - paddingTop;
+      const availableW = symbolWidth * 0.78;
+      const scale = Math.min(availableW / geom.figW, availableH / geom.figH);
+      const scaledW = geom.figW * scale;
+      const scaledH = geom.figH * scale;
+
+      const tx = qzPx + (symbolWidth - scaledW) / 2 - geom.minX * scale;
+      const ty = scanBandTopY - geom.maxY * scale;
+      const topY = ty + geom.minY * scale;
+
+      const clipId = `barkod-clip-${++clipIdSeed}-${Math.random().toString(36).slice(2, 6)}`;
+      const negStroke = Math.max(2, Math.round(opt.negativeStrokeWidth ?? 2));
+      const strokeInFigUnits = (negStroke / scale).toFixed(2);
+
+      // Extended vertical barcode bars in silhouette zone
+      const silBars = encoded.bars.map(bar => {
+        const bx = qzPx + bar.startModule * mWidth;
+        const bw = bar.moduleWidth * mWidth;
+        const by = Math.max(0, topY - 1);
+        const bh = scanBandTopY - by + 1;
+        return `<rect x="${bx}" y="${by.toFixed(1)}" width="${bw}" height="${bh.toFixed(1)}" fill="${opt.barColor}" />`;
+      }).join('\n    ');
+
+      // Continuous protected scan band
+      const scanBars = encoded.bars.map(bar => {
+        const bx = qzPx + bar.startModule * mWidth;
+        const bw = bar.moduleWidth * mWidth;
+        return `<rect x="${bx}" y="${scanBandTopY.toFixed(1)}" width="${bw}" height="${scanBandH.toFixed(1)}" fill="${opt.barColor}" />`;
+      }).join('\n    ');
+
+      // Negative contour elements
+      const creaseSvg = geom.creases.map(p =>
+        `<path d="${p.d}" fill="none" stroke="${opt.backgroundColor}" stroke-width="${strokeInFigUnits}" stroke-linecap="round" stroke-linejoin="round" />`
+      ).join('\n    ');
+
+      const faceSvg = geom.faces.map(p =>
+        `<path d="${p.d}" fill="none" stroke="${opt.backgroundColor}" stroke-width="${strokeInFigUnits}" stroke-linecap="round" stroke-linejoin="round" />`
+      ).join('\n    ');
+
+      const slotSvg = geom.slots.map(p =>
+        `<path d="${p.d}" fill="${opt.backgroundColor}" stroke="${opt.backgroundColor}" stroke-width="${strokeInFigUnits}" stroke-linecap="round" stroke-linejoin="round" />`
+      ).join('\n    ');
+
+      let textElement = '';
+      if (opt.includeText) {
+        const textY = totalH + opt.textFontSize + 1;
+        const formatted = encoded.text.split('').join(' ');
+        textElement = `<text x="${totalSvgWidth / 2}" y="${textY}" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="${opt.textFontSize}" font-weight="700" letter-spacing="0.22em" text-anchor="middle" fill="${opt.barColor}">${formatted}</text>`;
+      }
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalSvgWidth} ${viewBoxH}" width="${totalSvgWidth}" height="${viewBoxH}" class="${opt.className}" style="shape-rendering: crispEdges;">
+  <defs>
+    <clipPath id="${clipId}">
+      <g transform="translate(${tx.toFixed(2)}, ${ty.toFixed(2)}) scale(${scale.toFixed(4)})">
+        ${geom.plates.map(p => `<path d="${p.d}" />`).join('\n        ')}
+      </g>
+    </clipPath>
+  </defs>
+  <rect x="0" y="0" width="${totalSvgWidth}" height="${viewBoxH}" fill="${opt.backgroundColor}" />
+  <g id="barkod-silhouette-bars" clip-path="url(#${clipId})">
+    ${silBars}
+  </g>
+  <g id="barkod-negative-contours" transform="translate(${tx.toFixed(2)}, ${ty.toFixed(2)}) scale(${scale.toFixed(4)})">
+    ${creaseSvg}
+    ${faceSvg}
+    ${slotSvg}
+  </g>
+  <g id="barkod-scan-band">
+    ${scanBars}
+  </g>
+  ${textElement}
+</svg>`;
+
+      return {
+        svg,
+        width: totalSvgWidth,
+        height: viewBoxH,
+        scanBandHeight: scanBandH,
+        moduleWidth: mWidth,
+        totalModules: encoded.totalModules,
+        quietZonePx: qzPx,
+        data: encoded.text
+      };
+    }
+  }
+
+  // Legacy fallback styles (totem, skyline, contour)
   const model = getHairlineSilhouetteModel(opt.typeId, opt.variant, opt.dims);
 
   const silWidth = Math.min(symbolWidth * 0.72, silhouetteMaxH * model.aspectRatio);
@@ -377,9 +580,6 @@ export function generateBarkodSvg(text: string, userOptions: BarkodOptions = {})
 
   const rects: string[] = [];
   const whiteMasks: string[] = [];
-
-  const scanBandTopY = silhouetteMaxH;
-  const scanBandBottomY = totalH;
 
   for (let i = 0; i < encoded.bars.length; i++) {
     const bar = encoded.bars[i];
@@ -479,14 +679,120 @@ export function renderBarkodToContext(
   const textH = opt.includeText ? (opt.textFontSize + 6) : 0;
   const viewBoxH = totalH + textH;
 
+  const scanBandTopY = silhouetteMaxH;
+  const scanBandBottomY = totalH;
+
+  // Layered style: Canvas 2-layer implementation
+  if (opt.style === 'layered') {
+    const geom = getLayeredFigureGeometry(opt.typeId, opt.variant, opt.dims, opt.holes, opt.top);
+    if (geom) {
+      const paddingTop = 4;
+      const availableH = scanBandTopY - paddingTop;
+      const availableW = symbolWidth * 0.78;
+      const scale = Math.min(availableW / geom.figW, availableH / geom.figH);
+      const scaledW = geom.figW * scale;
+      const scaledH = geom.figH * scale;
+
+      const tx = qzPx + (symbolWidth - scaledW) / 2 - geom.minX * scale;
+      const ty = scanBandTopY - geom.maxY * scale;
+      const topY = ty + geom.minY * scale;
+
+      ctx.save();
+      ctx.translate(startX, startY);
+
+      // Background
+      ctx.fillStyle = opt.backgroundColor;
+      ctx.fillRect(0, 0, totalSvgWidth, viewBoxH);
+
+      // Protected Scan Band (Continuous, pristine)
+      ctx.fillStyle = opt.barColor;
+      for (let i = 0; i < encoded.bars.length; i++) {
+        const bar = encoded.bars[i];
+        const barX = qzPx + bar.startModule * mWidth;
+        const barW = bar.moduleWidth * mWidth;
+        ctx.fillRect(barX, scanBandTopY, barW, scanBandH);
+      }
+
+      // Layer 1 - Positive Clipped Silhouette
+      if (typeof Path2D !== 'undefined') {
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.scale(scale, scale);
+
+        const clipPath = new Path2D();
+        for (const p of geom.plates) {
+          clipPath.addPath(new Path2D(p.d));
+        }
+        ctx.clip(clipPath);
+
+        ctx.fillStyle = opt.barColor;
+        for (let i = 0; i < encoded.bars.length; i++) {
+          const bar = encoded.bars[i];
+          const barX = qzPx + bar.startModule * mWidth;
+          const barW = bar.moduleWidth * mWidth;
+          const by = Math.max(0, topY - 1);
+          const bh = scanBandTopY - by + 1;
+          ctx.fillRect((barX - tx) / scale, (by - ty) / scale, barW / scale, bh / scale);
+        }
+        ctx.restore();
+
+        // Layer 2 - Negative Contours
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.scale(scale, scale);
+
+        const negStroke = Math.max(2, Math.round(opt.negativeStrokeWidth ?? 2));
+        ctx.strokeStyle = opt.backgroundColor;
+        ctx.fillStyle = opt.backgroundColor;
+        ctx.lineWidth = negStroke / scale;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        for (const p of geom.faces) {
+          ctx.stroke(new Path2D(p.d));
+        }
+        for (const p of geom.creases) {
+          ctx.stroke(new Path2D(p.d));
+        }
+        for (const p of geom.slots) {
+          const sp = new Path2D(p.d);
+          ctx.fill(sp);
+          ctx.stroke(sp);
+        }
+        ctx.restore();
+      }
+
+      // Human-readable text
+      if (opt.includeText) {
+        ctx.fillStyle = opt.barColor;
+        ctx.font = `bold ${opt.textFontSize}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        const spaced = encoded.text.split('').join(' ');
+        ctx.fillText(spaced, totalSvgWidth / 2, totalH + 2);
+      }
+
+      ctx.restore();
+
+      return {
+        svg: '',
+        width: totalSvgWidth,
+        height: viewBoxH,
+        scanBandHeight: scanBandH,
+        moduleWidth: mWidth,
+        totalModules: encoded.totalModules,
+        quietZonePx: qzPx,
+        data: encoded.text
+      };
+    }
+  }
+
+  // Legacy fallback
   const model = getHairlineSilhouetteModel(opt.typeId, opt.variant, opt.dims);
 
   const silWidth = Math.min(symbolWidth * 0.72, silhouetteMaxH * model.aspectRatio);
   const silStartX = qzPx + (symbolWidth - silWidth) / 2;
   const silEndX = silStartX + silWidth;
-
-  const scanBandTopY = silhouetteMaxH;
-  const scanBandBottomY = totalH;
 
   ctx.save();
   ctx.translate(startX, startY);
