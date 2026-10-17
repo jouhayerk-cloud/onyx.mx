@@ -81,8 +81,9 @@ html.style-slab {
     --slab-glass-band:      color-mix(in srgb, var(--slab) 24%, transparent);  /* top band, no lens */
     --slab-glass-lens:      color-mix(in srgb, var(--slab) 20%, transparent);  /* top band under a live lens */
     --slab-glass-well:      color-mix(in srgb, var(--slab) 38%, transparent);  /* inputs, readouts */
-    --slab-glass-row:       color-mix(in srgb, var(--slab-hi) 14%, color-mix(in srgb, var(--slab) 28%, transparent));
-    --slab-glass-row-hover: color-mix(in srgb, var(--slab-hi) 44%, transparent);
+    /* Owner 2026-10-16: rows and cards are solid like the Rock style (glass rows read dim on iPhone). */
+    --slab-glass-row:       var(--slab);
+    --slab-glass-row-hover: var(--slab-tint-hover);
     --slab-glass-hover:     color-mix(in srgb, var(--slab-tint-hover) 52%, transparent);
     --slab-glass-on:        color-mix(in srgb, var(--slab-tint-on) 64%, transparent);
     --slab-glass-wash:      color-mix(in srgb, var(--slab) 40%, transparent);  /* over the mesh ground */
