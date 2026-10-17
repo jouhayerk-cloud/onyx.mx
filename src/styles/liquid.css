@@ -3,7 +3,6 @@
 
 /* 1. Floating chrome: island, sheets, docks */
 .liquid-surface {
-  position: relative;
   isolation: isolate;
   background-color: var(--lq-fill-surface);
   background-image: var(--lq-sheen);
@@ -17,7 +16,6 @@
 
 /* 2. Embedded functional containers: cards inside a surface (lighter or no blur) */
 .liquid-panel {
-  position: relative;
   background-color: var(--lq-fill-panel);
   background-image: var(--lq-sheen);
   -webkit-backdrop-filter: var(--lq-filter-panel);
