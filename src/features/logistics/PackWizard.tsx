@@ -475,10 +475,17 @@ export const PackWizard: React.FC = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[10060] ui-root flex flex-col bg-[#0b0d0e]/95 backdrop-blur-3xl animate-in fade-in duration-300 overflow-hidden select-none">
+        <>
+            {/* Scrim: dark backdrop layer behind the glass */}
+            <div 
+                className="fixed inset-0 z-[10059] pointer-events-none animate-in fade-in duration-300" 
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.45)' }} 
+                aria-hidden="true" 
+            />
+            <div className="fixed inset-0 z-[10060] ui-root flex flex-col liquid-surface rounded-none border-0 animate-in fade-in duration-300 overflow-hidden select-none text-(--lq-ink)">
             
             {/* ━━ 1. TOP FUNCTIONAL HEADER BAR (Two-Layer Liquid Glass) ━━ */}
-            <div className="shrink-0 border-b border-white/10 bg-[#111416]/90 backdrop-blur-2xl px-6 pt-12 pb-4 sm:px-10 flex flex-wrap items-center justify-between gap-4 z-20">
+            <div className="shrink-0 border-b border-(--lq-rim-subtle) bg-(--lq-fill-panel) px-6 pt-12 pb-4 sm:px-10 flex flex-wrap items-center justify-between gap-4 z-20">
                 {/* Left: Step indicator + Title + Telemetry summary */}
                 <div className="flex items-center gap-4">
                     <div className="w-11 h-11 rounded-2xl bg-(--main-color) flex items-center justify-center text-black shadow-[0_0_25px_rgba(var(--main-color-rgb),0.35)] shrink-0">
@@ -487,22 +494,22 @@ export const PackWizard: React.FC = () => {
 
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black tracking-[0.25em] uppercase text-white/50">
+                            <span className="text-[10px] font-black tracking-[0.25em] uppercase text-(--lq-ink)/50">
                                 {step === 'SELECT_CRATE' ? 'STEP 1 · SELECT CONTAINER' : 'STEP 2 · REVIEW & CONFIRM MANIFEST'}
                             </span>
                         </div>
-                        <h1 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase leading-tight">
+                        <h1 className="text-xl sm:text-2xl font-black text-(--lq-ink) tracking-wide uppercase leading-tight">
                             {tr("Pack Staged Inventory")}
                         </h1>
                     </div>
 
                     {/* Staged Telemetry Pill */}
-                    <div className="hidden lg:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-white/80 ml-2">
+                    <div className="hidden lg:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-(--lq-fill-control) border border-(--lq-rim-subtle) text-xs font-bold text-(--lq-ink)/80 ml-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-white font-black">{stagedMetrics.totalUnits} Units</span>
-                        <span className="text-white/30">·</span>
+                        <span className="text-(--lq-ink) font-black">{stagedMetrics.totalUnits} Units</span>
+                        <span className="text-(--lq-ink)/30">·</span>
                         <span>{stagedMetrics.weightKg.toFixed(1)} kg</span>
-                        <span className="text-white/30">·</span>
+                        <span className="text-(--lq-ink)/30">·</span>
                         <span className="text-cyan-400 font-mono font-bold">{stagedMetrics.volLiters.toFixed(1)} L Required</span>
                     </div>
                 </div>
@@ -522,7 +529,7 @@ export const PackWizard: React.FC = () => {
 
                     <button
                         onClick={() => setIsOpen(false)}
-                        className="w-10 h-10 rounded-full border border-white/15 bg-white/5 hover:bg-white/15 text-white/40 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-lg group"
+                        className="w-10 h-10 rounded-full border border-(--lq-rim-subtle) bg-(--lq-fill-control) hover:bg-(--lq-fill-control-hover) text-(--lq-ink)/40 hover:text-(--lq-ink) flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-lg group"
                         title={tr("Close Pack Wizard")}
                     >
                         <X size={20} className="group-hover:rotate-90 transition-transform duration-300" strokeWidth={2} />
@@ -532,21 +539,21 @@ export const PackWizard: React.FC = () => {
 
             {/* ━━ 2. FILTER & SEARCH CONTROL BAR (Step 1 Only) ━━ */}
             {step === 'SELECT_CRATE' && (
-                <div className="shrink-0 px-6 sm:px-10 py-3 bg-[#14181a]/80 border-b border-white/8 flex flex-wrap items-center justify-between gap-3 z-10">
+                <div className="shrink-0 px-6 sm:px-10 py-3 bg-(--lq-fill-panel) border-b border-(--lq-rim-subtle) flex flex-wrap items-center justify-between gap-3 z-10">
                     {/* Obsidian Glass Search Box */}
                     <div className="relative flex-1 min-w-[260px] max-w-md group">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-(--main-color) transition-colors" size={16} />
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-(--lq-ink)/40 group-focus-within:text-(--main-color) transition-colors" size={16} />
                         <input
                             type="text"
                             placeholder={tr("Search container ID, vendor, dimensions...")}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full bg-black/50 border border-white/10 focus:border-cyan-500/50 rounded-xl pl-10 pr-9 py-2 text-xs text-white focus:outline-none transition-all placeholder:text-white/25 uppercase font-medium tracking-wider"
+                            className="w-full bg-(--lq-fill-control) border border-(--lq-rim-subtle) focus:border-cyan-500/50 rounded-xl pl-10 pr-9 py-2 text-xs text-(--lq-ink) focus:outline-none transition-all placeholder:text-(--lq-ink)/30 uppercase font-medium tracking-wider"
                         />
                         {searchTerm && (
                             <button 
                                 onClick={() => setSearchTerm('')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-(--lq-ink)/40 hover:text-(--lq-ink)"
                             >
                                 <X size={14} />
                             </button>
@@ -560,7 +567,7 @@ export const PackWizard: React.FC = () => {
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 ${
                                 selectedTaxonomy === 'all'
                                     ? 'bg-white text-black border-white shadow-md'
-                                    : 'bg-white/5 text-white/50 border-white/8 hover:bg-white/10 hover:text-white'
+                                    : 'bg-(--lq-fill-control) text-(--lq-ink)/60 border-(--lq-rim-subtle) hover:bg-(--lq-fill-control-hover) hover:text-(--lq-ink)'
                             }`}
                         >
                             All Containers ({taxonomyCounts.all})
@@ -571,7 +578,7 @@ export const PackWizard: React.FC = () => {
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
                                 selectedTaxonomy === 'crates'
                                     ? 'bg-amber-400 text-black border-amber-300 shadow-md'
-                                    : 'bg-white/5 text-amber-300/70 border-white/8 hover:bg-amber-500/10 hover:text-amber-300'
+                                    : 'bg-(--lq-fill-control) text-amber-300/70 border-(--lq-rim-subtle) hover:bg-amber-500/10 hover:text-amber-300'
                             }`}
                         >
                             <span>📦</span> Crates ({taxonomyCounts.crates})
@@ -582,7 +589,7 @@ export const PackWizard: React.FC = () => {
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
                                 selectedTaxonomy === 'pallets'
                                     ? 'bg-sky-400 text-black border-sky-300 shadow-md'
-                                    : 'bg-white/5 text-sky-300/70 border-white/8 hover:bg-sky-500/10 hover:text-sky-300'
+                                    : 'bg-(--lq-fill-control) text-sky-300/70 border-(--lq-rim-subtle) hover:bg-sky-500/10 hover:text-sky-300'
                             }`}
                         >
                             <span>🪵</span> Pallets ({taxonomyCounts.pallets})
@@ -593,7 +600,7 @@ export const PackWizard: React.FC = () => {
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
                                 selectedTaxonomy === 'boxes'
                                     ? 'bg-cyan-400 text-black border-cyan-300 shadow-md'
-                                    : 'bg-white/5 text-cyan-300/70 border-white/8 hover:bg-cyan-500/10 hover:text-cyan-300'
+                                    : 'bg-(--lq-fill-control) text-cyan-300/70 border-(--lq-rim-subtle) hover:bg-cyan-500/10 hover:text-cyan-300'
                             }`}
                         >
                             <span>📐</span> Boxes & Laser ({taxonomyCounts.boxes})
@@ -604,7 +611,7 @@ export const PackWizard: React.FC = () => {
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
                                 selectedTaxonomy === 'empty'
                                     ? 'bg-white/90 text-black border-white'
-                                    : 'bg-white/5 text-white/50 border-white/8 hover:bg-white/10 hover:text-white'
+                                    : 'bg-(--lq-fill-control) text-(--lq-ink)/60 border-(--lq-rim-subtle) hover:bg-(--lq-fill-control-hover) hover:text-(--lq-ink)'
                             }`}
                         >
                             <span>✨</span> Empty ({taxonomyCounts.empty})
@@ -615,7 +622,7 @@ export const PackWizard: React.FC = () => {
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border shrink-0 flex items-center gap-1.5 ${
                                 selectedTaxonomy === 'best_fit'
                                     ? 'bg-emerald-400 text-black border-emerald-300 shadow-md'
-                                    : 'bg-white/5 text-emerald-300/70 border-white/8 hover:bg-emerald-500/10 hover:text-emerald-300'
+                                    : 'bg-(--lq-fill-control) text-emerald-300/70 border-(--lq-rim-subtle) hover:bg-emerald-500/10 hover:text-emerald-300'
                             }`}
                         >
                             <span>🟢</span> Best Fit ({taxonomyCounts.bestFit})
@@ -633,7 +640,7 @@ export const PackWizard: React.FC = () => {
                         {isLoadingCrates ? (
                             <div className="flex flex-col items-center justify-center h-80 gap-4 opacity-40">
                                 <Loader2 className="animate-spin text-cyan-400" size={44} />
-                                <span className="text-xs font-black uppercase tracking-[0.4em] text-white">
+                                <span className="text-xs font-black uppercase tracking-[0.4em] text-(--lq-ink)">
                                     {tr("Scanning Logistics Registry...")}
                                 </span>
                             </div>
@@ -644,7 +651,7 @@ export const PackWizard: React.FC = () => {
                                 {customBoxesCrate && (
                                     <div
                                         onClick={() => setSelectedCrate(customBoxesCrate.record)}
-                                        className={`relative flex flex-col p-5 rounded-3xl border-2 border-dashed transition-all duration-300 text-left cursor-pointer group ${
+                                        className={`relative flex flex-col p-5 rounded-3xl border-2 border-dashed transition-all duration-300 text-left cursor-pointer group liquid-panel ${
                                             selectedCrate?.id === customBoxesCrate.record.id
                                                 ? 'border-cyan-400 bg-cyan-950/40 shadow-[0_0_40px_rgba(6,182,212,0.3)] scale-[1.02]'
                                                 : 'border-cyan-500/40 bg-cyan-950/15 hover:bg-cyan-950/30 hover:border-cyan-400/80 shadow-[0_0_20px_rgba(6,182,212,0.1)]'
@@ -690,7 +697,7 @@ export const PackWizard: React.FC = () => {
                                         {/* Spec details */}
                                         <div className="flex flex-col gap-1.5 mt-auto pt-3 border-t border-cyan-500/20">
                                             <div className="flex items-baseline justify-between">
-                                                <span className="text-[11px] font-mono font-black text-white">
+                                                <span className="text-[11px] font-mono font-black text-(--lq-ink)">
                                                     {customBoxesCrate.record.width_cm}×{customBoxesCrate.record.length_cm}×{customBoxesCrate.record.height_cm} CM
                                                 </span>
                                                 <span className="text-[9px] font-mono font-bold text-cyan-300">
@@ -698,7 +705,7 @@ export const PackWizard: React.FC = () => {
                                                 </span>
                                             </div>
 
-                                            <p className="text-[8px] font-bold text-white/40 uppercase tracking-tight truncate">
+                                            <p className="text-[8px] font-bold text-(--lq-ink)/40 uppercase tracking-tight truncate">
                                                 Kerf 0.09mm · {customBoxesCrate.cutTelemetry.panelCount} panels · {customBoxesCrate.cutTelemetry.nestingEfficiencyPct}% bed eff
                                             </p>
 
@@ -740,10 +747,10 @@ export const PackWizard: React.FC = () => {
                                         <div
                                             key={crate.id}
                                             onClick={() => setSelectedCrate(crate)}
-                                            className={`group relative flex flex-col p-5 rounded-3xl transition-all duration-300 text-left cursor-pointer border ${
+                                            className={`group relative flex flex-col p-5 rounded-3xl transition-all duration-300 text-left cursor-pointer border liquid-panel ${
                                                 isSelected
-                                                    ? 'border-(--main-color) bg-white/[0.08] shadow-[0_0_40px_rgba(var(--main-color-rgb),0.25)] scale-[1.02]'
-                                                    : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20'
+                                                    ? 'border-(--main-color) bg-(--lq-fill-panel-hover,rgba(255,255,255,0.12)) shadow-[0_0_40px_rgba(var(--main-color-rgb),0.25)] scale-[1.02]'
+                                                    : 'border-(--lq-rim-subtle) hover:bg-(--lq-fill-control-hover) hover:border-(--lq-rim)'
                                             }`}
                                         >
                                             {/* Vendor color accent bar on top */}
@@ -763,7 +770,7 @@ export const PackWizard: React.FC = () => {
 
                                                 {/* Semantic Status Badge: Neutral Slate if empty, Emerald if packed */}
                                                 {metrics.itemCount === 0 || crate.status === 'Empty' ? (
-                                                    <span className="text-[8px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-white/8 text-white/60 border border-white/12">
+                                                    <span className="text-[8px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-(--lq-fill-control) text-(--lq-ink)/60 border border-(--lq-rim-subtle)">
                                                         AVAILABLE · EMPTY
                                                     </span>
                                                 ) : (
@@ -789,10 +796,10 @@ export const PackWizard: React.FC = () => {
                                             {/* Container ID & Vendor Tags */}
                                             <div className="mt-auto">
                                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                                    <h3 className="text-xs font-black text-white uppercase tracking-wider truncate">
+                                                    <h3 className="text-xs font-black text-(--lq-ink) uppercase tracking-wider truncate">
                                                         {crate.id}
                                                     </h3>
-                                                    <span className="text-[10px] font-mono font-bold text-white/50">
+                                                    <span className="text-[10px] font-mono font-bold text-(--lq-ink)/50">
                                                         {crate.width_cm}×{crate.length_cm}×{crate.height_cm} CM
                                                     </span>
                                                 </div>
@@ -810,7 +817,7 @@ export const PackWizard: React.FC = () => {
                                                             </span>
                                                         ))}
                                                         {crateVendors.length > 3 && (
-                                                            <span className="text-[8px] font-black text-white/40">+{crateVendors.length - 3}</span>
+                                                            <span className="text-[8px] font-black text-(--lq-ink)/40">+{crateVendors.length - 3}</span>
                                                         )}
                                                     </div>
                                                 )}
@@ -833,19 +840,19 @@ export const PackWizard: React.FC = () => {
                                                 </div>
 
                                                 {/* Visual Capacity Gauge */}
-                                                <div className="flex flex-col gap-1 pt-2 border-t border-white/5">
-                                                    <div className="flex items-center justify-between text-[8px] font-mono text-white/40">
+                                                <div className="flex flex-col gap-1 pt-2 border-t border-(--lq-rim-subtle)">
+                                                    <div className="flex items-center justify-between text-[8px] font-mono text-(--lq-ink)/40">
                                                         <span>Fill: {metrics.currentFillPct.toFixed(0)}%</span>
                                                         <span className={metrics.projectedFillPct > 100 ? 'text-rose-400 font-bold' : 'text-cyan-300 font-bold'}>
                                                             Projected: {metrics.projectedFillPct.toFixed(0)}%
                                                         </span>
                                                     </div>
 
-                                                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden flex relative">
+                                                    <div className="h-1.5 w-full bg-(--lq-fill-control) rounded-full overflow-hidden flex relative">
                                                         {/* Current Fill */}
                                                         {metrics.currentFillPct > 0 && (
                                                             <div 
-                                                                className="h-full bg-white/30" 
+                                                                className="h-full bg-(--lq-ink)/30" 
                                                                 style={{ width: `${Math.min(100, metrics.currentFillPct)}%` }} 
                                                             />
                                                         )}
@@ -887,21 +894,21 @@ export const PackWizard: React.FC = () => {
                         <div className="flex-1 flex flex-col lg:flex-row min-h-0 px-6 sm:px-10 pt-6 pb-36 gap-8 overflow-hidden">
                             
                             {/* LEFT COLUMN: Target Container Specs + Wireframe Preview + Boxes Telemetry */}
-                            <div className="w-full lg:w-1/2 flex flex-col overflow-y-auto no-scrollbar gap-6 pr-0 lg:pr-6 border-b lg:border-b-0 lg:border-r border-white/10 pb-8 lg:pb-0">
+                            <div className="w-full lg:w-1/2 flex flex-col overflow-y-auto no-scrollbar gap-6 pr-0 lg:pr-6 border-b lg:border-b-0 lg:border-r border-(--lq-rim-subtle) pb-8 lg:pb-0">
                                 
                                 {/* Target Container Header Card */}
-                                <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 flex flex-col gap-4">
+                                <div className="p-6 rounded-3xl liquid-panel flex flex-col gap-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className={`text-[8px] font-black tracking-widest uppercase px-2 py-0.5 rounded border ${tax.badgeStyle}`}>
                                                     {tax.icon} {tax.label}
                                                 </span>
-                                                <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">
+                                                <span className="text-[8px] font-bold text-(--lq-ink)/40 uppercase tracking-widest">
                                                     Target Destination
                                                 </span>
                                             </div>
-                                            <h2 className="text-2xl font-black text-white uppercase tracking-wider">
+                                            <h2 className="text-2xl font-black text-(--lq-ink) uppercase tracking-wider">
                                                 {selectedCrate.id}
                                             </h2>
                                         </div>
@@ -920,23 +927,23 @@ export const PackWizard: React.FC = () => {
                                     </div>
 
                                     {/* Dimensions & Tare Specs */}
-                                    <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/8 text-center">
-                                        <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                                            <span className="block text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Dimensions</span>
-                                            <span className="text-xs font-mono font-bold text-white">
+                                    <div className="grid grid-cols-3 gap-3 pt-4 border-t border-(--lq-rim-subtle) text-center">
+                                        <div className="p-3 rounded-2xl bg-(--lq-fill-control) border border-(--lq-rim-subtle)">
+                                            <span className="block text-[8px] font-black text-(--lq-ink)/40 uppercase tracking-widest mb-1">Dimensions</span>
+                                            <span className="text-xs font-mono font-bold text-(--lq-ink)">
                                                 {selectedCrate.width_cm}×{selectedCrate.length_cm}×{selectedCrate.height_cm} CM
                                             </span>
                                         </div>
 
-                                        <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                                            <span className="block text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Tare Weight</span>
-                                            <span className="text-xs font-mono font-bold text-white">
+                                        <div className="p-3 rounded-2xl bg-(--lq-fill-control) border border-(--lq-rim-subtle)">
+                                            <span className="block text-[8px] font-black text-(--lq-ink)/40 uppercase tracking-widest mb-1">Tare Weight</span>
+                                            <span className="text-xs font-mono font-bold text-(--lq-ink)">
                                                 {(selectedCrate.weight_kg || 1).toFixed(1)} KG
                                             </span>
                                         </div>
 
-                                        <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                                            <span className="block text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Internal Volume</span>
+                                        <div className="p-3 rounded-2xl bg-(--lq-fill-control) border border-(--lq-rim-subtle)">
+                                            <span className="block text-[8px] font-black text-(--lq-ink)/40 uppercase tracking-widest mb-1">Internal Volume</span>
                                             <span className="text-xs font-mono font-bold text-cyan-400">
                                                 {(activeSelectedMetrics.internalVol / 1000).toFixed(1)} L
                                             </span>
@@ -945,7 +952,7 @@ export const PackWizard: React.FC = () => {
 
                                     {/* Warehouse / Pallet Rack Location Input */}
                                     <div className="flex flex-col gap-1.5 pt-2">
-                                        <label className="text-[9px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+                                        <label className="text-[9px] font-black text-(--lq-ink)/40 uppercase tracking-widest flex items-center gap-1.5">
                                             <MapPin size={12} className="text-amber-400" />
                                             {tr("Warehouse / Pallet Location (Optional)")}
                                         </label>
@@ -954,14 +961,14 @@ export const PackWizard: React.FC = () => {
                                             value={crateLocation}
                                             onChange={e => setCrateLocation(e.target.value)}
                                             placeholder={selectedCrate.location || "e.g. Rack A-04, Bay 2, Dock 1"}
-                                            className="w-full bg-black/40 border border-white/10 focus:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none transition-all placeholder:text-white/20 font-medium"
+                                            className="w-full bg-(--lq-fill-control) border border-(--lq-rim-subtle) focus:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-(--lq-ink) focus:outline-none transition-all placeholder:text-(--lq-ink)/30 font-medium"
                                         />
                                     </div>
                                 </div>
 
                                 {/* Boxes.py Laser Cutfile Telemetry Card (if custom box or laser container) */}
                                 {customBoxesCrate && (
-                                    <div className="p-6 rounded-3xl bg-cyan-950/20 border border-cyan-500/30 flex flex-col gap-4">
+                                    <div className="p-6 rounded-3xl liquid-panel border-cyan-500/30 flex flex-col gap-4">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <Scissors size={16} className="text-cyan-400" />
@@ -977,21 +984,21 @@ export const PackWizard: React.FC = () => {
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                                             <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20">
                                                 <span className="block text-[8px] font-bold text-cyan-400/60 uppercase">Perimeter</span>
-                                                <span className="text-xs font-mono font-bold text-white">
+                                                <span className="text-xs font-mono font-bold text-(--lq-ink)">
                                                     {(customBoxesCrate.cutTelemetry.totalPerimeterMm / 10).toFixed(0)} cm
                                                 </span>
                                             </div>
 
                                             <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20">
                                                 <span className="block text-[8px] font-bold text-cyan-400/60 uppercase">Cut Time</span>
-                                                <span className="text-xs font-mono font-bold text-white">
+                                                <span className="text-xs font-mono font-bold text-(--lq-ink)">
                                                     {customBoxesCrate.cutTelemetry.estCutTimeSec}s
                                                 </span>
                                             </div>
 
                                             <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/20">
                                                 <span className="block text-[8px] font-bold text-cyan-400/60 uppercase">Thickness</span>
-                                                <span className="text-xs font-mono font-bold text-white">
+                                                <span className="text-xs font-mono font-bold text-(--lq-ink)">
                                                     6.0 mm
                                                 </span>
                                             </div>
@@ -1009,7 +1016,7 @@ export const PackWizard: React.FC = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => handleLaunch3DStudio(selectedCrate.id)}
-                                                className="text-cyan-300 hover:text-white underline font-bold flex items-center gap-1"
+                                                className="text-cyan-300 hover:text-(--lq-ink) underline font-bold flex items-center gap-1"
                                             >
                                                 Inspect 2D / 3D Layout <ArrowUpRight size={11} />
                                             </button>
@@ -1018,22 +1025,22 @@ export const PackWizard: React.FC = () => {
                                 )}
 
                                 {/* Volumetric & Weight Gauges */}
-                                <div className="grid grid-cols-2 gap-4 p-6 rounded-3xl bg-white/[0.03] border border-white/10">
+                                <div className="grid grid-cols-2 gap-4 p-6 rounded-3xl liquid-panel">
                                     {/* Volume Gauge */}
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2">
                                             <Layers className="text-cyan-400" size={15} />
-                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                            <span className="text-[9px] font-black text-(--lq-ink)/40 uppercase tracking-widest">
                                                 {tr("Volumetric Fill")}
                                             </span>
                                         </div>
                                         <div className="flex items-baseline gap-1">
-                                            <span className={`text-4xl font-black tabular-nums ${activeSelectedMetrics.projectedFillPct > 100 ? 'text-rose-500' : 'text-white'}`}>
+                                            <span className={`text-4xl font-black tabular-nums ${activeSelectedMetrics.projectedFillPct > 100 ? 'text-rose-500' : 'text-(--lq-ink)'}`}>
                                                 {activeSelectedMetrics.projectedFillPct.toFixed(0)}
                                             </span>
-                                            <span className="text-sm font-black text-white/30">%</span>
+                                            <span className="text-sm font-black text-(--lq-ink)/30">%</span>
                                         </div>
-                                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                        <div className="w-full h-1.5 bg-(--lq-fill-control) rounded-full overflow-hidden">
                                             <div 
                                                 className={`h-full transition-all duration-700 ${
                                                     activeSelectedMetrics.projectedFillPct > 100 ? 'bg-rose-500' : 'bg-cyan-400'
@@ -1047,17 +1054,17 @@ export const PackWizard: React.FC = () => {
                                     <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2">
                                             <Weight className="text-emerald-400" size={15} />
-                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                                            <span className="text-[9px] font-black text-(--lq-ink)/40 uppercase tracking-widest">
                                                 {tr("Total Weight")}
                                             </span>
                                         </div>
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-4xl font-black tabular-nums text-white">
+                                            <span className="text-4xl font-black tabular-nums text-(--lq-ink)">
                                                 {activeSelectedMetrics.totalWeight.toFixed(1)}
                                             </span>
-                                            <span className="text-sm font-black text-white/30">KG</span>
+                                            <span className="text-sm font-black text-(--lq-ink)/30">KG</span>
                                         </div>
-                                        <span className="text-[8px] font-mono text-white/40 uppercase">
+                                        <span className="text-[8px] font-mono text-(--lq-ink)/40 uppercase">
                                             Payload + {(selectedCrate.weight_kg || 0).toFixed(1)}kg tare
                                         </span>
                                     </div>
@@ -1078,16 +1085,16 @@ export const PackWizard: React.FC = () => {
 
                             {/* RIGHT COLUMN: Staged Items Manifest with Quantity Steppers */}
                             <div className="w-full lg:w-1/2 flex flex-col min-h-0 overflow-hidden">
-                                <div className="flex items-center justify-between pb-4 shrink-0 border-b border-white/10 mb-4">
+                                <div className="flex items-center justify-between pb-4 shrink-0 border-b border-(--lq-rim-subtle) mb-4">
                                     <div>
-                                        <h3 className="text-lg font-black text-white uppercase tracking-wider">
+                                        <h3 className="text-lg font-black text-(--lq-ink) uppercase tracking-wider">
                                             {tr("Staging List")}
                                         </h3>
-                                        <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">
+                                        <p className="text-[9px] text-(--lq-ink)/40 font-bold uppercase tracking-widest">
                                             {selectedItems.length} {tr("Items")} · {stagedMetrics.totalUnits} {tr("Total Units to Pack")}
                                         </p>
                                     </div>
-                                    <span className="text-3xl font-black tabular-nums text-white/80">
+                                    <span className="text-3xl font-black tabular-nums text-(--lq-ink)/80">
                                         {selectedItems.length}
                                     </span>
                                 </div>
@@ -1103,11 +1110,11 @@ export const PackWizard: React.FC = () => {
                                         return (
                                             <div 
                                                 key={item.row} 
-                                                className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/8 transition-all group"
+                                                className="flex items-center gap-3 p-3 rounded-2xl liquid-panel hover:bg-(--lq-fill-control-hover) border border-(--lq-rim-subtle) transition-all group"
                                             >
                                                 <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: vColor }} />
                                                 
-                                                <div className="w-12 h-12 rounded-xl bg-black/40 overflow-hidden shrink-0 border border-white/5">
+                                                <div className="w-12 h-12 rounded-xl bg-black/40 overflow-hidden shrink-0 border border-(--lq-rim-subtle)">
                                                     <img 
                                                         src={getCleanImageUrl(item.norm.mediaUrls?.split(',')[0])} 
                                                         className="w-full h-full object-cover grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all" 
@@ -1125,52 +1132,52 @@ export const PackWizard: React.FC = () => {
                                                                 {vendorKey}
                                                             </span>
                                                         )}
-                                                        <span className="text-[9px] font-black text-white/50 uppercase tracking-wider font-mono">
+                                                        <span className="text-[9px] font-black text-(--lq-ink)/50 uppercase tracking-wider font-mono">
                                                             {item.norm.itemId}
                                                         </span>
                                                     </div>
 
-                                                    <h5 className="text-xs font-bold text-white uppercase truncate">
+                                                    <h5 className="text-xs font-bold text-(--lq-ink) uppercase truncate">
                                                         {item.norm.shortDescription || tr("Inventory Item")}
                                                     </h5>
 
-                                                    <p className="text-[8px] font-mono text-white/30 uppercase mt-0.5">
+                                                    <p className="text-[8px] font-mono text-(--lq-ink)/30 uppercase mt-0.5">
                                                         {item.norm.widthCm}×{item.norm.lengthCm}×{item.norm.heightCm} CM · {item.norm.weightKg} KG
                                                     </p>
                                                 </div>
                                                 
                                                 {/* Quantity Selector Stepper */}
                                                 <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                                                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-2 py-1">
+                                                    <div className="flex items-center gap-2 bg-(--lq-fill-control) border border-(--lq-rim-subtle) rounded-xl px-2 py-1">
                                                         <button 
-                                                            type="button"
+                                                            type="button" 
                                                             onClick={() => setPackQuantities(prev => ({ 
                                                                 ...prev, 
                                                                 [item.row]: Math.max(1, (prev[item.row] ?? (item.norm.quantity || 1)) - 1) 
                                                             }))}
-                                                            className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all cursor-pointer"
+                                                            className="w-5 h-5 flex items-center justify-center text-(--lq-ink)/40 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) rounded transition-all cursor-pointer"
                                                         >
                                                             -
                                                         </button>
 
-                                                        <span className="text-xs font-black w-5 text-center tabular-nums text-white">
+                                                        <span className="text-xs font-black w-5 text-center tabular-nums text-(--lq-ink)">
                                                             {currentPackQty}
                                                         </span>
 
                                                         <button 
-                                                            type="button"
+                                                            type="button" 
                                                             onClick={() => setPackQuantities(prev => ({ 
                                                                 ...prev, 
                                                                 [item.row]: Math.min(maxAvailableQty, (prev[item.row] ?? (item.norm.quantity || 1)) + 1) 
                                                             }))}
-                                                            className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition-all disabled:opacity-20 cursor-pointer"
+                                                            className="w-5 h-5 flex items-center justify-center text-(--lq-ink)/40 hover:text-(--lq-ink) hover:bg-(--lq-fill-control-hover) rounded transition-all disabled:opacity-20 cursor-pointer"
                                                             disabled={currentPackQty >= maxAvailableQty}
                                                         >
                                                             +
                                                         </button>
                                                     </div>
 
-                                                    <span className="text-[8px] font-mono font-bold text-white/30 uppercase">
+                                                    <span className="text-[8px] font-mono font-bold text-(--lq-ink)/30 uppercase">
                                                         Max: {maxAvailableQty}
                                                     </span>
                                                 </div>
@@ -1185,19 +1192,19 @@ export const PackWizard: React.FC = () => {
             </div>
 
             {/* ━━ 4. DEDICATED BOTTOM GLASS ACTION DOCK (Two-Layer Liquid Glass) ━━ */}
-            <div className="shrink-0 border-t border-white/10 bg-[#111416]/95 backdrop-blur-2xl px-6 sm:px-10 py-4 flex flex-wrap items-center justify-between gap-4 z-20">
+            <div className="shrink-0 border-t border-(--lq-rim-subtle) bg-(--lq-fill-panel) text-(--lq-ink) px-6 sm:px-10 py-4 flex flex-wrap items-center justify-between gap-4 z-20">
                 {/* Left: Telemetry status & Back button */}
                 <div className="flex items-center gap-4">
                     {step === 'REVIEW_PACK' ? (
                         <button 
                             onClick={() => setStep('SELECT_CRATE')} 
-                            className="flex items-center gap-2 text-xs font-black text-white/50 uppercase tracking-wider hover:text-white transition-all group cursor-pointer"
+                            className="flex items-center gap-2 text-xs font-black text-(--lq-ink)/50 uppercase tracking-wider hover:text-(--lq-ink) transition-all group cursor-pointer"
                         >
                             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                             {tr("Back to Containers")}
                         </button>
                     ) : (
-                        <div className="flex items-center gap-2 text-white/30 text-[9px] font-black uppercase tracking-widest">
+                        <div className="flex items-center gap-2 text-(--lq-ink)/30 text-[9px] font-black uppercase tracking-widest">
                             <Info size={13} className="text-cyan-400/60" />
                             <span>{tr("Persisted to Global Logistics Manifest")}</span>
                         </div>
@@ -1208,7 +1215,7 @@ export const PackWizard: React.FC = () => {
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={() => setIsOpen(false)} 
-                        className="px-6 h-12 rounded-xl border border-white/10 text-xs font-black uppercase tracking-wider text-white/40 hover:text-white hover:bg-white/5 transition-all active:scale-95 cursor-pointer"
+                        className="px-6 h-12 rounded-xl border border-(--lq-rim-subtle) text-xs font-black uppercase tracking-wider text-(--lq-ink)/40 hover:text-(--lq-ink) hover:bg-(--lq-fill-control) transition-all active:scale-95 cursor-pointer"
                     >
                         {tr("Cancel / Abort")}
                     </button>
@@ -1256,5 +1263,6 @@ export const PackWizard: React.FC = () => {
             </div>
 
         </div>
+        </>
     );
 };

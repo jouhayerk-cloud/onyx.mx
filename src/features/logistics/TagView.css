@@ -20,34 +20,32 @@
    ========================================================================== */
 
 #tagview {
-    /* Stone */
-    --tv-surface: #E4E1DA;
-    --tv-hi: #FAF8F3;
-    --tv-sh: #B7B1A5;
-    --tv-ink: #1D1B18;
-    --tv-dim: #5A544A;
-    --tv-faint: #7D766B;
-    --tv-edge: rgb(29 27 24 / 0.09);
-    --tv-accent: #0E7C70;
+    /* Liquid Onyx (Liquid Glass) Surface */
+    --tv-surface: var(--lq-fill-surface, rgba(14, 18, 28, 0.28));
+    --tv-panel: var(--lq-fill-panel, rgba(14, 18, 28, 0.40));
+    --tv-hi: rgba(255, 255, 255, 0.22);
+    --tv-sh: rgba(2, 6, 16, 0.38);
+    --tv-ink: var(--lq-ink, #ffffff);
+    --tv-dim: rgba(255, 255, 255, 0.70);
+    --tv-faint: rgba(255, 255, 255, 0.45);
+    --tv-edge: var(--lq-rim-subtle, rgba(255, 255, 255, 0.12));
+    --tv-accent: #00bcd4;
 
-    --tv-raised: -7px -7px 16px var(--tv-hi), 7px 7px 16px var(--tv-sh);
-    --tv-lift: -4px -4px 9px var(--tv-hi), 4px 4px 9px var(--tv-sh);
-    --tv-pressed: inset 4px 4px 10px var(--tv-sh), inset -4px -4px 10px var(--tv-hi);
-    --tv-sheen: linear-gradient(145deg,
-        color-mix(in srgb, var(--tv-hi) 40%, var(--tv-surface)) 0%,
-        var(--tv-surface) 50%,
-        color-mix(in srgb, var(--tv-sh) 18%, var(--tv-surface)) 100%);
+    --tv-raised: var(--lq-shadow);
+    --tv-lift: var(--lq-highlight);
+    --tv-pressed: inset 0 2px 6px rgba(0, 0, 0, 0.3);
+    --tv-sheen: var(--lq-sheen);
 
     --tv-display: "Montserrat", "Atkinson Hyperlegible", system-ui, sans-serif;
     --tv-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
     --tv-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 
-    /* SLAB's tokens, pointed at this palette (see header). */
+    /* SLAB's tokens, pointed at this palette */
     --slab: var(--tv-surface);
     --slab-hi: var(--tv-hi);
     --slab-sh: var(--tv-sh);
     --slab-edge: var(--tv-edge);
-    --slab-tint-hover: color-mix(in srgb, var(--tv-hi) 45%, var(--tv-surface));
+    --slab-tint-hover: var(--lq-fill-control-hover);
     --slab-lift: var(--tv-lift);
     --slab-raised: var(--tv-raised);
     --slab-pressed: var(--tv-pressed);
@@ -58,23 +56,40 @@
     overflow-y: auto;
     overflow-x: hidden;
     background: var(--tv-surface);
+    background-image: var(--lq-sheen);
+    -webkit-backdrop-filter: var(--lq-filter);
+    backdrop-filter: var(--lq-filter);
     color: var(--tv-ink);
     font-family: var(--tv-body);
     font-size: 15px;
     line-height: 1.5;
-    color-scheme: light;
+    color-scheme: dark;
     -webkit-font-smoothing: antialiased;
+}
+
+html.theme-aqua #tagview {
+    --tv-surface: var(--lq-fill-surface, rgba(255, 255, 255, 0.32));
+    --tv-panel: var(--lq-fill-panel, rgba(255, 255, 255, 0.38));
+    --tv-hi: rgba(255, 255, 255, 0.85);
+    --tv-sh: rgba(11, 42, 51, 0.15);
+    --tv-ink: var(--lq-ink, #0b2a33);
+    --tv-dim: rgba(11, 42, 51, 0.70);
+    --tv-faint: rgba(11, 42, 51, 0.50);
+    --tv-edge: var(--lq-rim-subtle, rgba(11, 42, 51, 0.12));
+    --tv-accent: #007a99;
+    color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
     #tagview {
-        --tv-surface: #26231F;
-        --tv-hi: #34302A;
-        --tv-sh: #151311;
+        --tv-surface: var(--lq-fill-surface, rgba(14, 18, 28, 0.28));
+        --tv-panel: var(--lq-fill-panel, rgba(14, 18, 28, 0.40));
+        --tv-hi: rgba(255, 255, 255, 0.22);
+        --tv-sh: rgba(2, 6, 16, 0.38);
         --tv-ink: #F2EEE6;
         --tv-dim: #BDB5A8;
         --tv-faint: #948C80;
-        --tv-edge: rgb(255 255 255 / 0.08);
+        --tv-edge: var(--lq-rim-subtle, rgba(255, 255, 255, 0.12));
         --tv-accent: #4FD1C0;
         color-scheme: dark;
     }
@@ -101,9 +116,11 @@
     align-items: center;
     gap: 12px;
     padding: 12px clamp(14px, 4vw, 32px);
-    background: color-mix(in srgb, var(--tv-surface) 92%, transparent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--tv-edge);
+    background: var(--tv-surface);
+    background-image: var(--lq-sheen);
+    -webkit-backdrop-filter: var(--lq-filter);
+    backdrop-filter: var(--lq-filter);
+    border-bottom: 1px solid var(--lq-rim, var(--tv-edge));
 }
 
 #tagview .tv-bar-l {
@@ -126,7 +143,7 @@
     padding: 0 16px;
     border: 1px solid var(--tv-edge);
     border-radius: 14px;
-    background: var(--tv-sheen);
+    background: var(--lq-fill-control, var(--tv-sheen));
     box-shadow: var(--tv-lift);
     color: var(--tv-ink);
     font-family: var(--tv-display);
@@ -135,10 +152,10 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: box-shadow 0.16s ease, transform 0.16s ease;
+    transition: background-color 0.15s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
-#tagview .tv-btn:hover { box-shadow: var(--tv-raised); }
+#tagview .tv-btn:hover { background-color: var(--lq-fill-control-hover); box-shadow: var(--tv-raised); }
 #tagview .tv-btn:active { box-shadow: var(--tv-pressed); }
 #tagview .tv-btn svg { color: var(--tv-accent); }
 
@@ -217,7 +234,8 @@
 #tagview .tv-well {
     border: 1px solid var(--tv-edge);
     border-radius: 22px;
-    background: var(--tv-surface);
+    background: var(--tv-panel, var(--lq-fill-panel));
+    background-image: var(--lq-sheen);
     box-shadow: var(--tv-pressed);
 }
 
@@ -341,6 +359,7 @@
     padding: 0 12px;
     border-radius: 999px;
     border: 1px solid var(--tv-edge);
+    background: var(--lq-fill-control);
     box-shadow: var(--tv-pressed);
     font-family: var(--tv-mono);
     font-size: 13px;
@@ -397,8 +416,9 @@
     padding: 18px 20px;
     border: 1px solid var(--tv-edge);
     border-radius: 22px;
-    background: var(--tv-sheen);
-    box-shadow: var(--tv-raised);
+    background: var(--tv-panel, var(--lq-fill-panel));
+    background-image: var(--lq-sheen);
+    box-shadow: var(--lq-highlight), var(--tv-raised);
     min-width: 0;
 }
 
@@ -506,6 +526,7 @@
     padding: 8px 12px;
     border-radius: 12px;
     border: 1px solid var(--tv-edge);
+    background: var(--lq-fill-control);
     box-shadow: var(--tv-pressed);
     font-size: 15px;
     font-weight: 700;
@@ -630,8 +651,17 @@
 
 @media (prefers-reduced-motion: reduce) {
     #tagview * {
-        animation: none !important;
-        transition: none !important;
+        animation: none;
+        transition: none;
+    }
+}
+
+@media print {
+    #tagview * {
+        background: #fff !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        color: #000 !important;
     }
 }
 
@@ -645,3 +675,24 @@
     #tagview .tv-tag--lg .tv-tag-c { padding: 9px 11px; }
     #tagview .tv-price-n { font-size: 30px; }
 }
+
+@media (prefers-reduced-transparency: reduce) {
+    #tagview {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        background: var(--lq-solid-surface) !important;
+        background-image: none !important;
+    }
+    #tagview .tv-bar {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        background: var(--lq-solid-surface) !important;
+        background-image: none !important;
+    }
+    #tagview .tv-card,
+    #tagview .tv-well {
+        background: var(--lq-solid-panel) !important;
+        background-image: none !important;
+    }
+}
+
