@@ -216,7 +216,7 @@ export function detectBrowser(customUserAgent?: string): string {
 
 /**
  * Detects device friendly name, resolving known nodes from the G7 Local Network Mesh Map:
- * - 192.0.2.71 -> "G7 Laptop"
+ * - 192.0.2.71 -> "Desktop"
  * - 192.0.2.67 -> "Second Laptop"
  * - 192.0.2.100 -> "Ramses iPhone"
  * - Edge relays / terminals -> "Edge Terminal"
@@ -261,7 +261,7 @@ export function detectDeviceName(options?: {
 
   if (host === '192.0.2.71' || host === 'localhost' || host === '127.0.0.1' || host.includes('g7')) {
     if (platform === 'Windows') {
-      return 'G7 Laptop';
+      return 'Desktop';
     }
     if (platform === 'iOS') {
       return "Ramses iPhone";
@@ -271,7 +271,7 @@ export function detectDeviceName(options?: {
   // Descriptive device fallbacks
   switch (platform) {
     case 'Windows':
-      return 'G7 Laptop';
+      return 'Desktop';
     case 'iOS':
       return deviceType === 'tablet' ? "Ramses iPad" : "Ramses iPhone";
     case 'macOS':
