@@ -513,7 +513,7 @@ export const LabelPrintStudio: React.FC = () => {
     };
 
     const ONYX_MASTER_TEMPLATE_V4 = (width: number, height: number) => ({
-        name: "OnyxLabels_V4",
+        name: "OnyxLabels_V4",   // geometry updated 2026-10-17 from the owner's designer export phomymo-design-1792275901252.json
         version: 4,
         isTemplate: true,
         labelSize: { width, height },
@@ -535,7 +535,7 @@ export const LabelPrintStudio: React.FC = () => {
                 id: "el_retail",
                 type: "text",
                 zone: 0,
-                x: 78.7, y: 0, width: 215, height: 28.6,
+                x: 78.7, y: -5, width: 215, height: 28.6,
                 rotation: 0,
                 align: "center",
                 text: "{{BOOK RETAIL}}",
@@ -549,7 +549,7 @@ export const LabelPrintStudio: React.FC = () => {
                 id: "el_desc",
                 type: "text",
                 zone: 0,
-                x: 78.7, y: 22, width: 220, height: 36,
+                x: 78.7, y: 17, width: 220, height: 36,
                 rotation: 0,
                 align: "center",
                 text: "{{DESCRIPTION}}",
@@ -563,7 +563,7 @@ export const LabelPrintStudio: React.FC = () => {
                 id: "el_mat",
                 type: "text",
                 zone: 0,
-                x: 75.6, y: 49.8, width: 220, height: 35.1,
+                x: 75.6, y: 44.8, width: 220, height: 35.1,
                 rotation: 0,
                 align: "center",
                 text: "{{COLOR MATERIAL}}",
@@ -576,7 +576,7 @@ export const LabelPrintStudio: React.FC = () => {
                 id: "el_sizes",
                 type: "text",
                 zone: 0,
-                x: 77, y: 79.6, width: 218.6, height: 25.3,
+                x: 77, y: 74.6, width: 218.6, height: 25.3,
                 rotation: 0,
                 align: "center",
                 text: "{{SIZES}}",
@@ -590,7 +590,7 @@ export const LabelPrintStudio: React.FC = () => {
                 id: "el_axo",
                 type: "image",
                 zone: 0,
-                x: 24, y: 12, width: 73, height: 73,
+                x: 24, y: 12, width: 58.92, height: 56.36,
                 rotation: 0,
                 imageData: "{{AXO_IMAGE}}"
             },
@@ -598,7 +598,7 @@ export const LabelPrintStudio: React.FC = () => {
                 id: "el_qr",
                 type: "qr",
                 zone: 0,
-                x: 291.2, y: 5, width: 95, height: 95,
+                x: 316.16, y: 5, width: 70.04, height: 70.04,
                 rotation: 0,
                 qrData: "{{QR DATA}}"
             },
@@ -606,12 +606,12 @@ export const LabelPrintStudio: React.FC = () => {
                 id: "el_barcode",
                 type: "barcode",
                 zone: 0,
-                x: 24.4, y: 101.6, width: 361.9, height: 138.4,
+                x: 24.4, y: 92.64, width: 361.9, height: 147.36,
                 rotation: 0,
                 barcodeData: "{{TAG ID}}",
                 barcodeFormat: "CODE128",
                 format: "CODE128",
-                textFontSize: 15,
+                textFontSize: 19,
                 textBold: true,
                 showText: true
             }
