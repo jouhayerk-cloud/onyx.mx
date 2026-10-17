@@ -47,6 +47,9 @@ import type { DonorCandidate } from '../variationMatch';
 import { collectAllImages, getCleanImageUrl, normalizeInventoryData } from '../utils';
 import { supabase } from '../supabase';
 import { hasGeminiKey } from './keys';
+import { hasProviderKey } from './providerKeys';
+import { getRoute } from './routing';
+import type { ProviderId } from './providers/types';
 import { AiCancelledError, AiKeyMissingError, AiTimeoutError, aiErrorMessage, type AiErrorCode } from './errors';
 import { toPipelineItem, type PipelineItem } from './item';
 import {
@@ -367,15 +370,44 @@ export function errorCodeOf(message: string | undefined | null): AiErrorCode | n
     return 'response';
 }
 
-/** Does this selection, in this mode, call Gemini at all? hex_map and local cut-outs do not. */
+/**
+ * Maps a process to its required provider under active routes, or null if no provider key is needed.
+ */
+export function providerForProcess(p: ProcessId, mode: ProcessingMode, donorPath = false): ProviderId | null {
+    if (TEXT_PROCESSES.includes(p) || p === 'variation_donor' || (donorPath && p !== 'hex_map')) {
+        return getRoute('content').provider;
+    }
+    if (p === 'img_clean') {
+        if (mode === 'bgreplace') return 'gemini';
+        if (mode === 'cloud' || mode === 'hybrid') return getRoute('segmentation').provider;
+        return null;
+    }
+    if (p === 'image_segmentation') {
+        if (mode === 'cloud' || mode === 'hybrid') return getRoute('segmentation').provider;
+        return null;
+    }
+    if (p === 'video_proc') return 'gemini';
+    return null;
+}
+
+/** Does this process have its required provider key configured? */
+export function hasKeyForProcess(p: ProcessId, mode: ProcessingMode, donorPath = false): boolean {
+    const provider = providerForProcess(p, mode, donorPath);
+    return provider === null || hasProviderKey(provider);
+}
+
+/** Do all selected processes have their required provider keys configured? */
+export function hasKeyForProcesses(processes: Iterable<ProcessId>, mode: ProcessingMode, donorPath = false): boolean {
+    for (const p of processes) {
+        if (!hasKeyForProcess(p, mode, donorPath)) return false;
+    }
+    return true;
+}
+
+/** Does this selection, in this mode, call Gemini at all under current routing? hex_map and local cut-outs do not. */
 export function needsGeminiKey(processes: Iterable<ProcessId>, mode: ProcessingMode, donorPath = false): boolean {
     for (const p of processes) {
-        if (TEXT_PROCESSES.includes(p) || p === 'variation_donor' || p === 'video_proc') return true;
-        // bgreplace repaints with Gemini; AI mask and hybrid cut the piece out
-        // with Gemini segmentation even when image_segmentation is not ticked.
-        if (p === 'img_clean' && (mode === 'bgreplace' || mode === 'cloud' || mode === 'hybrid')) return true;
-        if (p === 'image_segmentation' && (mode === 'cloud' || mode === 'hybrid')) return true;
-        if (donorPath && p !== 'hex_map') return true;
+        if (providerForProcess(p, mode, donorPath) === 'gemini') return true;
     }
     return false;
 }
@@ -1787,8 +1819,8 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
         }
         if (!specs.length) return { started: 0 };
 
-        const keyNeeded = specs.some(s => needsGeminiKey(s.op.processes || [], processingMode, s.kind === 'donor'));
-        if (keyNeeded && !hasGeminiKey()) {
+        const keyMissing = specs.some(s => !hasKeyForProcesses(s.op.processes || [], processingMode, s.kind === 'donor'));
+        if (keyMissing) {
             const error: RunError = { code: 'key_missing', message: KEY_MISSING_MESSAGE };
             store.dispatch({ type: 'run-error', error });
             return { started: 0, error };

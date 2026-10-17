@@ -14,11 +14,17 @@ import { validateCopy } from '../../lib/copyValidation';
 import { hasGeminiKey, setGeminiKey } from '../../lib/ai/keys';
 import type { RunItem, RunPhoto, ProcessId, UseAiRun } from '../../lib/ai/run';
 import {
-    Field, Input, Key, MediaViewer, StatusPill, StepsStrip, PROCESS_META,
+    Field, Input, Select, Key, MediaViewer, StatusPill, StepsStrip, PROCESS_META,
     type GeneratedValue, type MediaAngle, type MediaView, cx,
 } from '../../components/ui';
+import { ALLOWED_SHOPIFY_COLORS } from '../../lib/ai/vocabulary';
+import { COLOR_PALETTE } from '../../lib/colorExtractor';
 import type { EntryPhoto } from './entryModel';
 import './generatePanel.css';
+
+const SWATCH = new Map<string, string>(COLOR_PALETTE.map(c => [c.name, `rgb(${c.rgb.join(' ')})`]));
+SWATCH.set('Clear', 'transparent');
+SWATCH.set('Rainbow', 'conic-gradient(red, orange, yellow, green, blue, purple, red)');
 
 /** The processes Add Entry offers, in chip order (the donor pass is implied by a photo-less item). */
 export const ENTRY_PROCESSES: readonly ProcessId[] = [
@@ -130,7 +136,7 @@ export function GeneratePanel({
 
     if (!aiEnabled) {
         return (
-            <section className={cx('entry-gen', className)} aria-labelledby={headId}>
+            <section className={cx('entry-gen', 'ui-root', className)} aria-labelledby={headId}>
                 <div className="entry-gen__head">
                     <h3 id={headId} className="entry-h">{tr('Generate')}</h3>
                 </div>
@@ -198,6 +204,7 @@ export function GeneratePanel({
             color: item?.item.vendorColor, material: item?.item.material,
             widthCm: item?.item.widthCm, heightCm: item?.item.heightCm, lengthCm: item?.item.lengthCm,
             quantity: item?.item.quantity || 1,
+            vendorText: item?.item.vendorText,
         })
         : [];
 
@@ -215,7 +222,7 @@ export function GeneratePanel({
     const pillState = item ? (item.dirty && item.status !== 'running' ? (item.status === 'queued' ? 'review' : item.status) : item.status) : 'queued';
 
     return (
-        <section className={cx('entry-gen', className)} aria-labelledby={headId}>
+        <section className={cx('entry-gen', 'ui-root', className)} aria-labelledby={headId}>
             <h3 id={headId} className="sr-only">{tr('Generate')}</h3>
 
             {/* 1. COMPACT TOGGLES: one tight row with GENERATE button at end */}
@@ -389,23 +396,44 @@ export function GeneratePanel({
                             {askColors && (
                                 <Field label={tr('Colours')}>
                                     {colorsReady ? (
-                                        <div className="gen-colors">
-                                            {(text.colors || []).map((c, i) => (
-                                                <span key={i} className="gen-color-pill">
-                                                    <span className="gen-color-swatch" style={{ backgroundColor: c }} />
-                                                    <span className="ui-tnum">{c}</span>
+                                        <div className="ui-colors">
+                                            {(text.colors || []).length === 0 && (
+                                                <span className="ui-desc__empty">{tr('Not generated yet')}</span>
+                                            )}
+                                            {(text.colors || []).map(c => (
+                                                <span key={c} className="ui-color">
+                                                    <i
+                                                        className="ui-color__sw"
+                                                        style={{ background: SWATCH.get(c) ?? c ?? 'transparent' }}
+                                                        aria-hidden="true"
+                                                    />
+                                                    <span>{c}</span>
+                                                    {!busy && (
+                                                        <button
+                                                            type="button"
+                                                            className="ui-color__x"
+                                                            aria-label={trf('Remove {color}', { color: c })}
+                                                            onClick={() => onTextChange({ ...text, colors: (text.colors || []).filter(x => x !== c) })}
+                                                        >
+                                                            <X size={11} strokeWidth={3} />
+                                                        </button>
+                                                    )}
                                                 </span>
                                             ))}
-                                            <Input
-                                                value={(text.colors || []).join(', ')}
-                                                disabled={busy}
-                                                onChange={e => {
-                                                    const cols = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                                                    onTextChange({ ...text, colors: cols });
-                                                }}
-                                                placeholder={tr('#hex, #hex...')}
-                                                aria-label={tr('Generated colours')}
-                                            />
+                                            {!busy && (text.colors || []).length < 3 && (
+                                                <Select
+                                                    className="ui-colors__add"
+                                                    aria-label={tr('Add a colour')}
+                                                    value=""
+                                                    placeholder={`+ ${tr('Colour')}`}
+                                                    options={ALLOWED_SHOPIFY_COLORS.filter(c => !(text.colors || []).includes(c)) as readonly string[]}
+                                                    onChange={e => {
+                                                        if (e.target.value) {
+                                                            onTextChange({ ...text, colors: [...(text.colors || []), e.target.value] });
+                                                        }
+                                                    }}
+                                                />
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="gen-skeleton gen-skeleton--line" aria-hidden="true" />
