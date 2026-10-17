@@ -44,7 +44,7 @@ import {
 import { isShopifyReady } from '../../lib/aiContent';
 import { tr } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
-import { M110Driver } from '../../utils/PhomemoM110';
+import { M110Driver, VirtualM110Driver, VirtualDecodedLabel, isWebBluetoothSupported } from '../../utils/PhomemoM110';
 import { recordExport, trackDocumentJob, getRecentTracked, TrackedJob } from './jobTracking';
 import { PdfPreview, PdfDocumentSource } from '../../components/PdfPreview';
 import { PreviewLabels, PixelLabelView, LABEL_WIDTH_50x30, LABEL_HEIGHT_50x30, LABEL_WIDTH_50x50, LABEL_HEIGHT_50x50 } from '../../components/PreviewLabels';
@@ -61,9 +61,19 @@ import { runDjSelfTest, SelfTestResult } from './selfTest';
 import { ItemTag } from '../../components/ui/ItemTag';
 import './labelPrintStudio.css';
 
+export interface VirtualTrayItem {
+    id: string;
+    tagId: string;
+    dataUrl: string;
+    index: number;
+    timestamp: number;
+    item?: any;
+}
+
 type StudioMode = 'studio' | 'history' | 'queue' | 'verify' | 'templates';
 type MobileTab = 'preview' | 'controls' | 'center';
 type BleStatus = 'unsupported' | 'disconnected' | 'connecting' | 'connected' | 'printing' | 'error';
+type PrinterType = 'bluetooth' | 'virtual';
 
 const fmtDuration = (ms: number): string => {
     const total = Math.max(0, Math.floor(ms / 1000));
@@ -100,11 +110,23 @@ export const LabelPrintStudio: React.FC = () => {
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [isDesignerOpen, setIsDesignerOpen] = useState(false);
 
-    // Bluetooth Driver State Machine
-    const isBluetoothSupported = typeof navigator !== 'undefined' && !!(navigator as any).bluetooth;
+    // Printer Selection & Driver State Machine
+    const isBluetoothSupported = isWebBluetoothSupported();
+    const [printerType, setPrinterType] = useState<PrinterType>(() => isBluetoothSupported ? 'bluetooth' : 'virtual');
     const driverRef = useRef<M110Driver>(new M110Driver());
-    const [bleState, setBleState] = useState<BleStatus>(isBluetoothSupported ? 'disconnected' : 'unsupported');
-    const [deviceName, setDeviceName] = useState<string | null>(null);
+    const virtualDriverRef = useRef<VirtualM110Driver>(new VirtualM110Driver());
+    const [virtualSpeedMultiplier, setVirtualSpeedMultiplier] = useState<number>(1.0);
+    const [virtualSimulatePaperOut, setVirtualSimulatePaperOut] = useState<boolean>(false);
+    const [virtualSimulateDisconnect, setVirtualSimulateDisconnect] = useState<boolean>(false);
+    const [virtualTray, setVirtualTray] = useState<VirtualTrayItem[]>([]);
+    const [trayModalLabel, setTrayModalLabel] = useState<VirtualTrayItem | null>(null);
+
+    const [bleState, setBleState] = useState<BleStatus>(() =>
+        printerType === 'virtual' ? 'connected' : (isBluetoothSupported ? 'disconnected' : 'unsupported')
+    );
+    const [deviceName, setDeviceName] = useState<string | null>(() =>
+        printerType === 'virtual' ? 'Virtual M110' : null
+    );
     const [bleError, setBleError] = useState<string | null>(null);
     const [printProgress, setPrintProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
     const cancelPrintRef = useRef(false);
@@ -161,6 +183,7 @@ export const LabelPrintStudio: React.FC = () => {
         durationMs: number;
         checksum: string;
         completedAt: string;
+        dataUrl?: string;
     }>>([]);
     const [failedList, setFailedList] = useState<Array<{
         tagId: string;
@@ -180,7 +203,7 @@ export const LabelPrintStudio: React.FC = () => {
     // Designer Iframe Refs
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const pendingBatchRef = useRef<any>(null);
-    const pendingPrintJobRef = useRef<{
+    const pendingPrintJobRef = useRef<{ isVirtual?: boolean;
         ids: string[];
         tagById: Record<string, string>;
         checksum: string;
@@ -338,14 +361,63 @@ export const LabelPrintStudio: React.FC = () => {
         setQuantities(next);
     };
 
-    // Check BLE support on mount
-    useEffect(() => {
-        if (!isBluetoothSupported) {
-            setBleState('unsupported');
-        } else if (driverRef.current.isConnected()) {
-            setBleState('connected');
+    // Send printer configuration to designer iframe
+    const sendPrinterConfigToIframe = useCallback(() => {
+        if (iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage({
+                type: 'SET_PRINTER',
+                payload: {
+                    printerType,
+                    isVirtual: printerType === 'virtual',
+                    speedMultiplier: virtualSpeedMultiplier,
+                    simulatePaperOut: virtualSimulatePaperOut,
+                    simulateDisconnect: virtualSimulateDisconnect,
+                }
+            }, window.location.origin);
         }
-    }, [isBluetoothSupported]);
+    }, [printerType, virtualSpeedMultiplier, virtualSimulatePaperOut, virtualSimulateDisconnect]);
+
+    useEffect(() => {
+        sendPrinterConfigToIframe();
+    }, [sendPrinterConfigToIframe]);
+
+    // Sync driver state when printer type or simulation flags change
+    useEffect(() => {
+        if (printerType === 'virtual') {
+            setBleState('connected');
+            setDeviceName('Virtual M110');
+            setBleError(null);
+            virtualDriverRef.current.setSpeedMultiplier(virtualSpeedMultiplier);
+            virtualDriverRef.current.setSimulatePaperOut(virtualSimulatePaperOut);
+            virtualDriverRef.current.setSimulateDisconnect(virtualSimulateDisconnect);
+        } else {
+            if (!isBluetoothSupported) {
+                setBleState('unsupported');
+                setDeviceName(null);
+            } else if (driverRef.current.isConnected()) {
+                setBleState('connected');
+            } else {
+                setBleState('disconnected');
+                setDeviceName(null);
+            }
+        }
+    }, [printerType, isBluetoothSupported, virtualSpeedMultiplier, virtualSimulatePaperOut, virtualSimulateDisconnect]);
+
+    // Listen for disconnects
+    useEffect(() => {
+        virtualDriverRef.current.onDisconnect = () => {
+            if (printerType === 'virtual') {
+                setBleState('disconnected');
+                setDeviceName(null);
+            }
+        };
+        driverRef.current.onDisconnect = () => {
+            if (printerType === 'bluetooth') {
+                setBleState('disconnected');
+                setDeviceName(null);
+            }
+        };
+    }, [printerType]);
 
     // Close handler
     const handleClose = () => {
@@ -354,10 +426,31 @@ export const LabelPrintStudio: React.FC = () => {
         setIsDesignerOpen(false);
     };
 
-    // Bluetooth Connect
-    const handleConnectBluetooth = async (): Promise<boolean> => {
+    // Printer Connect (Virtual or Bluetooth)
+    const handleConnectPrinter = async (): Promise<boolean> => {
+        if (printerType === 'virtual') {
+            setBleState('connecting');
+            setBleError(null);
+            try {
+                virtualDriverRef.current.setSpeedMultiplier(virtualSpeedMultiplier);
+                virtualDriverRef.current.setSimulatePaperOut(virtualSimulatePaperOut);
+                virtualDriverRef.current.setSimulateDisconnect(virtualSimulateDisconnect);
+                const name = await virtualDriverRef.current.connect();
+                setDeviceName(name || 'Virtual M110');
+                setBleState('connected');
+                toast.success('Connected to Virtual M110');
+                sendPrinterConfigToIframe();
+                return true;
+            } catch (e: any) {
+                setBleState('error');
+                setBleError(e?.message || 'Virtual printer error');
+                toast.error(e?.message || 'Virtual connection failed');
+                return false;
+            }
+        }
+
         if (!isBluetoothSupported) {
-            toast.error("Web Bluetooth unsupported on iOS Safari. Use Chrome, Edge, or Bluefy on iOS.");
+            toast.error("Web Bluetooth unsupported on iOS Safari. Use Virtual printer or Chrome/Edge/Bluefy.");
             return false;
         }
         setBleState('connecting');
@@ -563,13 +656,15 @@ export const LabelPrintStudio: React.FC = () => {
 
     // Commit Print Job to Supabase & Local DJ Tracking
     const commitPrintJob = useCallback(async (detail: any, reason: string = 'designer reported PRINT_COMPLETE') => {
-        const fallbackJobId = `PJ-${Date.now().toString(36).toUpperCase()}`;
+        const isVirtual = !!(detail?.isVirtual ?? (pendingPrintJobRef.current as any)?.isVirtual ?? (printerType === 'virtual'));
+        const fallbackJobId = `${isVirtual ? 'VPJ' : 'PJ'}-${Date.now().toString(36).toUpperCase()}`;
         const job = pendingPrintJobRef.current || {
             ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
             tagById: Object.fromEntries(selectedItems.map((it: any) => [String(it.row ?? it.data?.id ?? it.id), String(it.codes?.bookBarcode || '')])),
             checksum: '',
             jobId: fallbackJobId,
             isReprint: false,
+            isVirtual,
         };
         pendingPrintJobRef.current = null;
 
@@ -577,6 +672,33 @@ export const LabelPrintStudio: React.FC = () => {
         const labelCount: number = Number(detail?.totalRecords) || printedTags.length || job.ids.length;
         const stamp = detail?.finishedAt || new Date().toISOString();
         const isReprint = !!job.isReprint;
+
+        // If virtual, ensure decoded labels are captured in virtual tray
+        if (isVirtual && Array.isArray(detail?.decodedLabels) && detail.decodedLabels.length > 0) {
+            setVirtualTray(prev => {
+                const existingIds = new Set(prev.map(p => p.id));
+                const additions: VirtualTrayItem[] = [];
+                detail.decodedLabels.forEach((dl: any, idx: number) => {
+                    if (dl && dl.dataUrl && !existingIds.has(dl.id)) {
+                        additions.push({
+                            id: dl.id || `vt-${Date.now()}-${idx}`,
+                            tagId: printedTags[idx] || `LABEL-${idx + 1}`,
+                            dataUrl: dl.dataUrl,
+                            index: idx + 1,
+                            timestamp: dl.timestamp || Date.now(),
+                        });
+                    }
+                });
+                return [...additions, ...prev];
+            });
+        }
+
+        // Virtual (simulated) prints never reach the database: no print_jobs rows, no tag stamping.
+        if (isVirtual) {
+            setLastPrintJob({ jobId: job.jobId, labelCount, itemCount: job.ids.length, at: stamp, isReprint });
+            toast.success(`[VIRTUAL] Simulated ${labelCount} label${labelCount !== 1 ? 's' : ''} (inventory tags untouched)`);
+            return;
+        }
 
         const perTag = new Map<string, number>();
         printedTags.forEach(t => perTag.set(t, (perTag.get(t) || 0) + 1));
@@ -610,32 +732,39 @@ export const LabelPrintStudio: React.FC = () => {
                 if (itemErr) console.warn('[LabelPrintStudio] print_job_items notice:', itemErr);
             }
 
-            recordExport({
-                templateId: 'lbl-item-template-v4',
-                kind: 'label',
-                season: '826',
-                legacyPrintJobId: job.jobId,
-                getSnapshot: () => rows
-            });
+            if (!isVirtual) {
+                recordExport({
+                    templateId: 'lbl-item-template-v4',
+                    kind: 'label',
+                    season: '826',
+                    legacyPrintJobId: job.jobId,
+                    getSnapshot: () => rows
+                });
 
-            if (!isReprint) {
-                for (let i = 0; i < job.ids.length; i += 50) {
-                    await supabase.from('inventory').update({
-                        print_date: stamp,
-                        print_job_checksum: job.checksum,
-                        print_job_id: job.jobId,
-                        updated_at: stamp,
-                    }).in('id', job.ids.slice(i, i + 50));
+                if (!isReprint) {
+                    for (let i = 0; i < job.ids.length; i += 50) {
+                        await supabase.from('inventory').update({
+                            print_date: stamp,
+                            print_job_checksum: job.checksum,
+                            print_job_id: job.jobId,
+                            updated_at: stamp,
+                        }).in('id', job.ids.slice(i, i + 50));
+                    }
                 }
             }
 
             setLastPrintJob({ jobId: job.jobId, labelCount, itemCount: job.ids.length, at: stamp, isReprint });
-            toast.success(`Logged ${labelCount} label${labelCount !== 1 ? 's' : ''} across ${job.ids.length} item${job.ids.length !== 1 ? 's' : ''}`);
-            console.log(`[LabelPrintStudio] print job ${job.jobId} recorded (${reason})`);
+            if (isVirtual) {
+                toast.success(`[VIRTUAL] Simulated ${labelCount} label${labelCount !== 1 ? 's' : ''} (inventory tags untouched)`);
+                console.log(`[LabelPrintStudio] virtual print job ${job.jobId} recorded (${reason})`);
+            } else {
+                toast.success(`Logged ${labelCount} label${labelCount !== 1 ? 's' : ''} across ${job.ids.length} item${job.ids.length !== 1 ? 's' : ''}`);
+                console.log(`[LabelPrintStudio] print job ${job.jobId} recorded (${reason})`);
+            }
         } catch (e: any) {
             console.error('[LabelPrintStudio] commitPrintJob error:', e);
         }
-    }, [user, selectedItems]);
+    }, [user, selectedItems, printerType]);
 
     // Print All (through designer print engine)
     const handlePrintAll = async (isReprint = false) => {
@@ -659,12 +788,14 @@ export const LabelPrintStudio: React.FC = () => {
                 const id = it.row ?? it.data?.id ?? it.id;
                 if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
             });
+            const isVirtual = printerType === 'virtual';
             pendingPrintJobRef.current = {
                 ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
                 tagById,
                 checksum: await computeJobChecksum(batchProject),
-                jobId: `PJ-${Date.now().toString(36).toUpperCase()}`,
+                jobId: `${isVirtual ? 'VPJ' : 'PJ'}-${Date.now().toString(36).toUpperCase()}`,
                 isReprint,
+                isVirtual,
             };
 
             toast.success(tr("Batch Prepared! Launching Live Print Run"), { id: tid });
@@ -688,6 +819,19 @@ export const LabelPrintStudio: React.FC = () => {
             setIsDesignerOpen(true);
 
             if (iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage(
+                    {
+                        type: 'SET_PRINTER',
+                        payload: {
+                            printerType,
+                            isVirtual,
+                            speedMultiplier: virtualSpeedMultiplier,
+                            simulatePaperOut: virtualSimulatePaperOut,
+                            simulateDisconnect: virtualSimulateDisconnect,
+                        }
+                    },
+                    window.location.origin
+                );
                 iframeRef.current.contentWindow.postMessage(
                     { type: 'LOAD_DESIGN', payload: batchProject },
                     window.location.origin
@@ -926,18 +1070,33 @@ export const LabelPrintStudio: React.FC = () => {
                 const id = it.row ?? it.data?.id ?? it.id;
                 if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
             });
+            const isVirtual = printerType === 'virtual';
             pendingPrintJobRef.current = {
                 ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
                 tagById,
                 checksum: await computeJobChecksum(batchProject),
-                jobId: `PJ-${Date.now().toString(36).toUpperCase()}`,
+                jobId: `${isVirtual ? 'VPJ' : 'PJ'}-${Date.now().toString(36).toUpperCase()}`,
                 isReprint: false,
+                isVirtual,
             };
 
             toast.success(tr("Batch Prepared! Launching Visual Designer"), { id: tid });
             setIsDesignerOpen(true);
 
             if (iframeRef.current?.contentWindow) {
+                iframeRef.current.contentWindow.postMessage(
+                    {
+                        type: 'SET_PRINTER',
+                        payload: {
+                            printerType,
+                            isVirtual,
+                            speedMultiplier: virtualSpeedMultiplier,
+                            simulatePaperOut: virtualSimulatePaperOut,
+                            simulateDisconnect: virtualSimulateDisconnect,
+                        }
+                    },
+                    window.location.origin
+                );
                 iframeRef.current.contentWindow.postMessage(
                     { type: 'LOAD_DESIGN', payload: batchProject },
                     window.location.origin
@@ -957,6 +1116,7 @@ export const LabelPrintStudio: React.FC = () => {
     };
 
     const handleIframeLoad = () => {
+        sendPrinterConfigToIframe();
         if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
             const batch = pendingBatchRef.current;
             iframeRef.current.contentWindow.postMessage(
@@ -980,6 +1140,7 @@ export const LabelPrintStudio: React.FC = () => {
             if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
 
             if (event.data?.type === 'DESIGNER_READY') {
+                sendPrinterConfigToIframe();
                 if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
                     const batch = pendingBatchRef.current;
                     iframeRef.current.contentWindow.postMessage(
@@ -1047,6 +1208,20 @@ export const LabelPrintStudio: React.FC = () => {
                 const tagId = p?.tagId || inst?.item.codes?.bookBarcode || '';
                 const shortChecksum = (pendingPrintJobRef.current?.checksum || 'dj1').slice(0, 6);
 
+                if (p?.labelDataUrl) {
+                    setVirtualTray(prev => [
+                        {
+                            id: `vt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                            tagId,
+                            dataUrl: p.labelDataUrl,
+                            index: p?.current || (prev.length + 1),
+                            timestamp: completedAt,
+                            item: inst?.item,
+                        },
+                        ...prev
+                    ]);
+                }
+
                 setDoneList(prev => [
                     {
                         tagId,
@@ -1054,7 +1229,8 @@ export const LabelPrintStudio: React.FC = () => {
                         index: p?.current || (prev.length + 1),
                         durationMs: dur,
                         checksum: shortChecksum,
-                        completedAt: new Date(completedAt).toLocaleTimeString()
+                        completedAt: new Date(completedAt).toLocaleTimeString(),
+                        dataUrl: p?.labelDataUrl,
                     },
                     ...prev
                 ]);
@@ -1275,26 +1451,30 @@ export const LabelPrintStudio: React.FC = () => {
                         <div className="flex items-center gap-2 md:gap-2.5 shrink-0">
                             {/* Bluetooth status button / pill */}
                             <button
-                                onClick={handleConnectBluetooth}
-                                disabled={bleState === 'connecting' || bleState === 'printing' || !isBluetoothSupported}
+                                onClick={handleConnectPrinter}
+                                disabled={bleState === 'connecting' || bleState === 'printing' || (printerType === 'bluetooth' && !isBluetoothSupported)}
                                 className={`lps-status-pill liquid-control cursor-pointer ${
-                                    bleState === 'connected' ? 'lps-tone-emerald' :
+                                    bleState === 'connected' ? (printerType === 'virtual' ? 'lps-tone-amber' : 'lps-tone-emerald') :
                                     bleState === 'connecting' ? 'lps-tone-blue animate-pulse' :
                                     bleState === 'printing' ? 'lps-tone-blue animate-pulse' :
                                     bleState === 'error' ? 'lps-tone-red' :
-                                    bleState === 'unsupported' ? 'opacity-50 cursor-default' :
+                                    (printerType === 'bluetooth' && !isBluetoothSupported) ? 'opacity-50 cursor-default' :
                                     ''
                                 }`}
-                                title={!isBluetoothSupported ? 'Web Bluetooth unavailable in this browser' : 'Click to pair Phomemo printer'}
+                                title={printerType === 'virtual' ? 'Virtual printer active' : (!isBluetoothSupported ? 'Web Bluetooth unavailable in this browser' : 'Click to pair Phomemo printer')}
                             >
-                                <Bluetooth size={13} />
+                                {printerType === 'virtual' ? <Cpu size={13} /> : <Bluetooth size={13} />}
                                 <span className="hidden sm:inline">
-                                    {bleState === 'connected' ? (deviceName || 'M110 Connected') :
-                                     bleState === 'connecting' ? 'Pairing...' :
-                                     bleState === 'printing' ? `Printing ${printProgress.current}/${printProgress.total}` :
-                                     bleState === 'error' ? 'BLE Error' :
-                                     bleState === 'unsupported' ? 'BLE Unavailable' :
-                                     'Connect Phomemo'}
+                                    {printerType === 'virtual' ? (
+                                        <>Virtual M110 <span className="lps-virtual-badge py-0 px-1 text-[8px] ml-1">VIRTUAL</span></>
+                                    ) : (
+                                        bleState === 'connected' ? (deviceName || 'M110 Connected') :
+                                        bleState === 'connecting' ? 'Pairing...' :
+                                        bleState === 'printing' ? `Printing ${printProgress.current}/${printProgress.total}` :
+                                        bleState === 'error' ? 'BLE Error' :
+                                        bleState === 'unsupported' ? 'BLE Unavailable' :
+                                        'Connect Phomemo'
+                                    )}
                                 </span>
                             </button>
 
@@ -1387,39 +1567,139 @@ export const LabelPrintStudio: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* 3. Printer Hardware — Compact single row with status dot + device name + small pill button */}
-                                    <div className="liquid-panel lps-card lps-hardware-row px-2.5 py-1.5 flex items-center justify-between gap-2 shrink-0">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <div className={`w-2 h-2 rounded-full shrink-0 ${
-                                                bleState === 'connected' ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' :
-                                                bleState === 'connecting' ? 'bg-blue-400 animate-ping' :
-                                                bleState === 'printing' ? 'bg-cyan-400 animate-pulse' :
-                                                bleState === 'error' ? 'bg-rose-400' :
-                                                'bg-[var(--lq-ink-muted)]'
-                                            }`} />
-                                            <span className="text-xs font-bold truncate">
-                                                {deviceName || (bleState === 'connected' ? 'Phomemo M110' : bleState === 'connecting' ? 'Pairing...' : bleState === 'printing' ? 'Printing...' : 'Phomemo M110')}
-                                            </span>
+                                    {/* 3. Printer Hardware — Compact Choice (Bluetooth vs Virtual) + Status + Controls */}
+                                    <div className="liquid-panel lps-card lps-hardware-row p-2.5 flex flex-col gap-2 shrink-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            {/* Segmented choice between Phomemo (Bluetooth) and Virtual printer */}
+                                            <div className="liquid-panel lps-seg-group flex items-center p-0.5 text-[11px] font-bold">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPrinterType('bluetooth')}
+                                                    className={`lps-tab-btn py-1 px-2.5 text-[10.5px] cursor-pointer flex items-center gap-1 ${printerType === 'bluetooth' ? 'active' : ''}`}
+                                                    title={!isBluetoothSupported ? 'Web Bluetooth unavailable on iOS Safari' : 'Print to physical Phomemo M110 over Bluetooth'}
+                                                >
+                                                    <Bluetooth size={11} />
+                                                    <span>Phomemo (Bluetooth)</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPrinterType('virtual')}
+                                                    className={`lps-tab-btn py-1 px-2.5 text-[10.5px] cursor-pointer flex items-center gap-1 ${printerType === 'virtual' ? 'active' : ''}`}
+                                                    title="Simulate print run in-memory without physical printer or paper"
+                                                >
+                                                    <Cpu size={11} />
+                                                    <span>Virtual printer</span>
+                                                </button>
+                                            </div>
+
+                                            {/* Clear VIRTUAL badge if virtual is active */}
+                                            {printerType === 'virtual' && (
+                                                <span className="lps-virtual-badge shrink-0" title="Virtual printer active — zero paper or inventory tags modified">
+                                                    VIRTUAL
+                                                </span>
+                                            )}
                                         </div>
-                                        {!isBluetoothSupported ? (
-                                            <span className="text-[10px] lps-text-muted font-bold uppercase shrink-0">No BLE</span>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                onClick={handleConnectBluetooth}
-                                                disabled={bleState === 'connecting' || bleState === 'printing'}
-                                                className={`lps-micro-btn liquid-control cursor-pointer shrink-0 gap-1 ${bleState === 'connected' ? 'lps-tone-emerald' : ''}`}
-                                                title={bleState === 'connected' ? 'Click to re-pair Phomemo' : 'Click to connect Phomemo via Bluetooth'}
-                                            >
-                                                <Bluetooth size={11} />
-                                                <span>{bleState === 'connected' ? 'Re-pair' : bleState === 'connecting' ? 'Pairing' : 'Connect'}</span>
-                                            </button>
-                                        )}
+
+                                        {/* Device Status & Connect Actions */}
+                                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-[var(--lq-rim-subtle)]">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <div className={`w-2 h-2 rounded-full shrink-0 ${
+                                                    bleState === 'connected' ? (printerType === 'virtual' ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'bg-emerald-400 shadow-[0_0_8px_#34d399]') :
+                                                    bleState === 'connecting' ? 'bg-blue-400 animate-ping' :
+                                                    bleState === 'printing' ? 'bg-cyan-400 animate-pulse' :
+                                                    bleState === 'error' ? 'bg-rose-400' :
+                                                    'bg-[var(--lq-ink-muted)]'
+                                                }`} />
+                                                <span className="text-xs font-bold truncate">
+                                                    {printerType === 'virtual'
+                                                        ? (deviceName || 'Virtual M110')
+                                                        : (deviceName || (bleState === 'connected' ? 'Phomemo M110' : bleState === 'connecting' ? 'Pairing...' : bleState === 'printing' ? 'Printing...' : 'Phomemo M110'))}
+                                                </span>
+                                            </div>
+
+                                            {printerType === 'virtual' ? (
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <select
+                                                        value={virtualSpeedMultiplier}
+                                                        onChange={e => setVirtualSpeedMultiplier(parseFloat(e.target.value) || 1.0)}
+                                                        className="lps-field-input py-0.5 px-1.5 text-[10px] font-bold cursor-pointer"
+                                                        title="Simulation Speed"
+                                                    >
+                                                        <option value="1">1x (Real)</option>
+                                                        <option value="2">2x Speed</option>
+                                                        <option value="5">5x Speed</option>
+                                                        <option value="20">Max Speed</option>
+                                                    </select>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setVirtualSimulatePaperOut(p => !p)}
+                                                        className={`lps-micro-btn liquid-control cursor-pointer text-[10px] ${virtualSimulatePaperOut ? 'lps-tone-red border-rose-400 text-rose-400' : ''}`}
+                                                        title="Simulate paper out / cover open error"
+                                                    >
+                                                        Paper out: {virtualSimulatePaperOut ? 'ON' : 'OFF'}
+                                                    </button>
+                                                </div>
+                                            ) : !isBluetoothSupported ? (
+                                                <span className="text-[10px] lps-text-muted font-bold uppercase shrink-0" title="iOS Safari lacks Web Bluetooth; switch to Virtual printer">
+                                                    No BLE (Use Virtual)
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleConnectPrinter}
+                                                    disabled={bleState === 'connecting' || bleState === 'printing'}
+                                                    className={`lps-micro-btn liquid-control cursor-pointer shrink-0 gap-1 ${bleState === 'connected' ? 'lps-tone-emerald' : ''}`}
+                                                    title={bleState === 'connected' ? 'Click to re-pair Phomemo' : 'Click to connect Phomemo via Bluetooth'}
+                                                >
+                                                    <Bluetooth size={11} />
+                                                    <span>{bleState === 'connected' ? 'Re-pair' : bleState === 'connecting' ? 'Pairing' : 'Connect'}</span>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     {bleError && (
                                         <span className="text-[10px] text-red-400 font-bold truncate px-1 -mt-1">
                                             {bleError}
                                         </span>
+                                    )}
+
+                                    {/* Printed Output Tray (Shows decoded 1-bit monochrome raster labels) */}
+                                    {virtualTray.length > 0 && (
+                                        <div className="lps-output-tray shrink-0">
+                                            <div className="flex items-center justify-between gap-1">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="lps-mini-label mb-0">PRINTED OUTPUT TRAY</span>
+                                                    <span className="lps-virtual-badge">{virtualTray.length}</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setVirtualTray([])}
+                                                    className="lps-micro-btn liquid-control cursor-pointer text-[10px] lps-text-muted hover:text-rose-400"
+                                                    title="Clear all decoded labels from tray"
+                                                >
+                                                    Clear tray
+                                                </button>
+                                            </div>
+                                            <div className="lps-tray-strip">
+                                                {virtualTray.map((label, idx) => (
+                                                    <div
+                                                        key={label.id || idx}
+                                                        className="lps-tray-item group"
+                                                        onClick={() => setTrayModalLabel(label)}
+                                                        title={`Click to inspect #${label.index} (${label.tagId}) large`}
+                                                    >
+                                                        <img
+                                                            src={label.dataUrl}
+                                                            alt={`Label ${label.tagId}`}
+                                                            className="lps-tray-thumb h-12 w-auto"
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                            <Eye size={12} className="text-white" />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     )}
 
                                     {/* 4. Per-Item Quantity Steppers — Dense List */}
@@ -1785,6 +2065,9 @@ export const LabelPrintStudio: React.FC = () => {
                                             <h2 className="text-xs sm:text-sm font-black tracking-wider uppercase truncate">
                                                 LIVE BATCH PRINT RUN
                                             </h2>
+                                            {(printerType === 'virtual' || (pendingPrintJobRef.current as any)?.isVirtual) && (
+                                                <span className="lps-virtual-badge is-live">VIRTUAL</span>
+                                            )}
                                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                                                 runStatus === 'running' ? 'bg-emerald-500/20 text-emerald-400 animate-pulse' :
                                                 runStatus === 'paused_chunk' || runStatus === 'paused_paper' ? 'bg-amber-500/20 text-amber-400' :
@@ -1978,6 +2261,35 @@ export const LabelPrintStudio: React.FC = () => {
                                                 </div>
                                             </div>
 
+                                            {/* Printed Output Tray in Live Completion Card */}
+                                            {virtualTray.length > 0 && (
+                                                <div className="pt-2 border-t border-[var(--lq-rim-subtle)] flex flex-col gap-1.5">
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="font-bold lps-text-secondary uppercase text-[10px]">Printed Output Tray ({virtualTray.length})</span>
+                                                        <span className="text-[10px] lps-text-muted">Click thumbnail to inspect large</span>
+                                                    </div>
+                                                    <div className="lps-tray-strip py-1">
+                                                        {virtualTray.map((label, idx) => (
+                                                            <div
+                                                                key={label.id || idx}
+                                                                className="lps-tray-item group"
+                                                                onClick={() => setTrayModalLabel(label)}
+                                                                title={`Click to inspect #${label.index} (${label.tagId}) large`}
+                                                            >
+                                                                <img
+                                                                    src={label.dataUrl}
+                                                                    alt={`Label ${label.tagId}`}
+                                                                    className="lps-tray-thumb h-12 w-auto"
+                                                                />
+                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                    <Eye size={12} className="text-white" />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <div className="flex items-center gap-2 pt-1">
                                                 {failedList.length > 0 && (
                                                     <button
@@ -2037,6 +2349,23 @@ export const LabelPrintStudio: React.FC = () => {
                                                                 workbook={workbookPrefix}
                                                                 size="md"
                                                             />
+                                                            {entry.dataUrl && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setTrayModalLabel({
+                                                                        id: `done-${entry.index}`,
+                                                                        tagId: entry.tagId,
+                                                                        dataUrl: entry.dataUrl!,
+                                                                        index: entry.index,
+                                                                        timestamp: Date.now(),
+                                                                        item: entry.item,
+                                                                    })}
+                                                                    className="lps-tray-item shrink-0 h-6 w-auto overflow-hidden rounded border border-black/10 cursor-pointer"
+                                                                    title={`Inspect decoded 1-bit label #${entry.index}`}
+                                                                >
+                                                                    <img src={entry.dataUrl} alt="Thumb" className="h-full w-auto object-contain image-rendering-pixelated" />
+                                                                </button>
+                                                            )}
                                                         </div>
 
                                                         <div className="flex items-center gap-2 shrink-0">
@@ -2090,6 +2419,49 @@ export const LabelPrintStudio: React.FC = () => {
                                 allow="bluetooth"
                                 onLoad={handleIframeLoad}
                             />
+                        </div>
+                    </div>
+                )}
+
+                {/* ── VIRTUAL TRAY LABEL INSPECTION MODAL ── */}
+                {trayModalLabel && (
+                    <div className="lps-tray-modal">
+                        <div className="lps-tray-modal-scrim" onClick={() => setTrayModalLabel(null)} />
+                        <div className="lps-tray-modal-card">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="lps-virtual-badge">VIRTUAL OUTPUT</span>
+                                    <span className="text-xs font-bold tabular-figures">{trayModalLabel.tagId}</span>
+                                    <span className="text-[11px] lps-text-muted">#{trayModalLabel.index}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <a
+                                        href={trayModalLabel.dataUrl}
+                                        download={`virtual-label-${trayModalLabel.tagId || 'print'}.png`}
+                                        className="lps-micro-btn liquid-control cursor-pointer flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold"
+                                        title="Download 1-bit monochrome PNG"
+                                    >
+                                        <Download size={13} />
+                                        <span>Download PNG</span>
+                                    </a>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTrayModalLabel(null)}
+                                        className="w-7 h-7 liquid-control rounded-full flex items-center justify-center cursor-pointer"
+                                        aria-label="Close"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-center p-4 bg-white/5 rounded-lg border border-[var(--lq-rim-subtle)] overflow-auto max-h-[70vh]">
+                                <img
+                                    src={trayModalLabel.dataUrl}
+                                    alt={`Decoded Label ${trayModalLabel.tagId}`}
+                                    className="max-h-[60vh] w-auto shadow-lg"
+                                    style={{ imageRendering: 'pixelated' }}
+                                />
+                            </div>
                         </div>
                     </div>
                 )}

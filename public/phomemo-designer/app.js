@@ -146,6 +146,242 @@ if (isMiniMode || isPreviewMode) {
   document.documentElement.classList.add('is-embedded');
 }
 
+/**
+ * Virtual Transport for Phomemo Printers
+ * Simulates M110 BLE communication in-memory without Web Bluetooth hardware.
+ * Decodes exact ESC/POS raster byte stream back to 1-bit monochrome images.
+ */
+export class VirtualTransport {
+  static instance = null;
+
+  static getShared() {
+    if (!VirtualTransport.instance) {
+      VirtualTransport.instance = new VirtualTransport();
+    }
+    return VirtualTransport.instance;
+  }
+
+  static isAvailable() {
+    return true;
+  }
+
+  constructor() {
+    this.connected = false;
+    this.deviceName = 'M110 (Virtual)';
+    this.rxBuffer = new Uint8Array(0);
+    this.decodedLabels = [];
+    this.lastDecodedLabel = null;
+    this.speedMultiplier = 1.0;
+    this.simulatePaperOut = false;
+    this.simulateDisconnect = false;
+    this.onPrinterInfo = null;
+    this.printerInfo = {
+      battery: 98,
+      paper: 'ok',
+      firmware: 'v2.1-virt',
+      serial: 'VIRT-M110-001',
+    };
+  }
+
+  getDeviceName() {
+    return this.deviceName;
+  }
+
+  isConnected() {
+    return this.connected;
+  }
+
+  async connect(options = {}) {
+    if (this.simulateDisconnect) {
+      throw new Error('Simulated Bluetooth pairing failed (Device unavailable)');
+    }
+    this.connected = true;
+    this.rxBuffer = new Uint8Array(0);
+    return { success: true, name: this.deviceName };
+  }
+
+  async disconnect() {
+    this.connected = false;
+    this.rxBuffer = new Uint8Array(0);
+    return Promise.resolve();
+  }
+
+  async delay(ms) {
+    const adjustedMs = Math.max(1, Math.round(ms / (this.speedMultiplier || 1.0)));
+    return new Promise(resolve => setTimeout(resolve, adjustedMs));
+  }
+
+  async queryAll() {
+    if (this.onPrinterInfo) {
+      this.onPrinterInfo('battery', this.printerInfo.battery, this.printerInfo);
+      this.onPrinterInfo('paper', this.simulatePaperOut ? 'out' : this.printerInfo.paper, this.printerInfo);
+      this.onPrinterInfo('firmware', this.printerInfo.firmware, this.printerInfo);
+      this.onPrinterInfo('serial', this.printerInfo.serial, this.printerInfo);
+    }
+    return this.printerInfo;
+  }
+
+  async send(data) {
+    if (!this.connected) throw new Error('Virtual printer not connected');
+    if (this.simulateDisconnect) {
+      this.connected = false;
+      throw new Error('Simulated printer connection lost');
+    }
+    if (this.simulatePaperOut) {
+      throw new Error('Simulated paper out (Cover open or gap error)');
+    }
+
+    const chunk = data instanceof Uint8Array ? data : new Uint8Array(data);
+    const next = new Uint8Array(this.rxBuffer.length + chunk.length);
+    next.set(this.rxBuffer, 0);
+    next.set(chunk, this.rxBuffer.length);
+    this.rxBuffer = next;
+
+    await this.delay(18);
+    this.processBuffer();
+  }
+
+  processBuffer() {
+    while (this.rxBuffer.length >= 8) {
+      let headerIdx = -1;
+      for (let i = 0; i <= this.rxBuffer.length - 8; i++) {
+        if (
+          this.rxBuffer[i] === 0x1d &&
+          this.rxBuffer[i + 1] === 0x76 &&
+          this.rxBuffer[i + 2] === 0x30 &&
+          this.rxBuffer[i + 3] === 0x00
+        ) {
+          headerIdx = i;
+          break;
+        }
+      }
+
+      if (headerIdx === -1) {
+        if (this.rxBuffer.length > 7) {
+          this.rxBuffer = this.rxBuffer.slice(this.rxBuffer.length - 7);
+        }
+        break;
+      }
+
+      const wL = this.rxBuffer[headerIdx + 4];
+      const wH = this.rxBuffer[headerIdx + 5];
+      const hL = this.rxBuffer[headerIdx + 6];
+      const hH = this.rxBuffer[headerIdx + 7];
+
+      const widthBytes = wL | (wH << 8);
+      const heightLines = hL | (hH << 8);
+      const rasterBytesTotal = widthBytes * heightLines;
+      const rasterDataStart = headerIdx + 8;
+      const rasterDataEnd = rasterDataStart + rasterBytesTotal;
+
+      if (this.rxBuffer.length < rasterDataEnd) {
+        break;
+      }
+
+      const rasterSlice = this.rxBuffer.slice(rasterDataStart, rasterDataEnd);
+      const dataUrl = this.decodeRasterToDataUrl(rasterSlice, widthBytes, heightLines);
+
+      const label = {
+        id: `vlbl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        dataUrl,
+        width: widthBytes * 8,
+        height: heightLines,
+        timestamp: Date.now(),
+      };
+
+      this.lastDecodedLabel = label;
+      this.decodedLabels.push(label);
+
+      let advanceTo = rasterDataEnd;
+      if (this.rxBuffer.length >= advanceTo + 8) {
+        if (
+          this.rxBuffer[advanceTo] === 0x1f &&
+          this.rxBuffer[advanceTo + 1] === 0xf0 &&
+          this.rxBuffer[advanceTo + 2] === 0x05 &&
+          this.rxBuffer[advanceTo + 3] === 0x00 &&
+          this.rxBuffer[advanceTo + 4] === 0x1f &&
+          this.rxBuffer[advanceTo + 5] === 0xf0 &&
+          this.rxBuffer[advanceTo + 6] === 0x03 &&
+          this.rxBuffer[advanceTo + 7] === 0x00
+        ) {
+          advanceTo += 8;
+        }
+      }
+
+      this.rxBuffer = this.rxBuffer.slice(advanceTo);
+    }
+  }
+
+  decodeRasterToDataUrl(rasterBytes, widthBytes, heightLines) {
+    const widthPx = widthBytes * 8;
+    const heightPx = heightLines;
+    const canvas = document.createElement('canvas');
+    canvas.width = widthPx;
+    canvas.height = heightPx;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    const imgData = ctx.createImageData(widthPx, heightPx);
+    const data = imgData.data;
+
+    for (let y = 0; y < heightPx; y++) {
+      for (let bx = 0; bx < widthBytes; bx++) {
+        const byte = rasterBytes[y * widthBytes + bx] || 0;
+        for (let bit = 0; bit < 8; bit++) {
+          const isBlack = (byte & (1 << (7 - bit))) !== 0;
+          const pxIdx = (y * widthPx + (bx * 8 + bit)) * 4;
+          if (isBlack) {
+            data[pxIdx] = 18;
+            data[pxIdx + 1] = 18;
+            data[pxIdx + 2] = 18;
+            data[pxIdx + 3] = 255;
+          } else {
+            data[pxIdx] = 255;
+            data[pxIdx + 1] = 255;
+            data[pxIdx + 2] = 255;
+            data[pxIdx + 3] = 255;
+          }
+        }
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    return canvas.toDataURL('image/png');
+  }
+
+  getLastDecodedLabel() {
+    return this.lastDecodedLabel;
+  }
+
+  getAllDecodedLabels() {
+    return [...this.decodedLabels];
+  }
+
+  getDecodedLabels() {
+    return [...this.decodedLabels];
+  }
+
+  setSpeedMultiplier(mult) {
+    this.speedMultiplier = mult > 0 ? mult : 1.0;
+  }
+
+  setSimulatePaperOut(enabled) {
+    this.simulatePaperOut = !!enabled;
+  }
+
+  setSimulateDisconnect(enabled) {
+    this.simulateDisconnect = !!enabled;
+  }
+
+  clearDecodedLabels() {
+    this.decodedLabels = [];
+    this.lastDecodedLabel = null;
+    this.rxBuffer = new Uint8Array(0);
+  }
+}
+
+window.VirtualTransport = VirtualTransport;
+
 // App state
 window.activePrintResolve = null;
 const state = {
@@ -1985,7 +2221,7 @@ async function handleBatchPrint() {
 
       // Print
       await print(state.transport, rasterData, {
-        isBLE: state.connectionType === 'ble',
+        isBLE: state.connectionType === 'ble' || state.connectionType === 'virtual',
         deviceName,
         printerModel,
         density,
@@ -2002,11 +2238,12 @@ async function handleBatchPrint() {
                 driverProgress: progress,
                 tagId: currentTagId
               }
-            }, '*');
+            }, window.location.origin);
           } catch (e) {}
         },
       });
 
+      const decodedLabel = state.transport?.getLastDecodedLabel?.();
       try {
         window.parent.postMessage({
           type: 'PRINT_RUN_LABEL_COMPLETE',
@@ -2017,9 +2254,11 @@ async function handleBatchPrint() {
             chunkIndex,
             totalChunks,
             tagId: currentTagId,
-            completedAt: Date.now()
+            completedAt: Date.now(),
+            labelDataUrl: decodedLabel?.dataUrl || null,
+            isVirtual: state.connectionType === 'virtual',
           }
-        }, '*');
+        }, window.location.origin);
       } catch (e) {}
 
       // Delay between prints
@@ -2111,6 +2350,8 @@ async function handleBatchPrint() {
         const printedTags = (state.templateData || []).map(r =>
           r && (r['TAG ID'] || r['TAGID'] || r['tag_id'] || '')
         ).filter(Boolean);
+        const isVirtual = state.connectionType === 'virtual';
+        const decodedLabels = isVirtual && window.VirtualTransport ? window.VirtualTransport.getShared().getDecodedLabels() : [];
         window.parent.postMessage({
           type: 'PRINT_COMPLETE',
           payload: {
@@ -2121,6 +2362,8 @@ async function handleBatchPrint() {
             cloneMode: !!cloneMode,
             printedTags,
             finishedAt: new Date().toISOString(),
+            isVirtual,
+            decodedLabels: isVirtual ? decodedLabels : undefined,
           },
         }, '*');
       } catch (relayErr) {
@@ -4782,7 +5025,7 @@ function initPrinterModelPrompt() {
  */
 async function handleConnect(event) {
   // Check if printing is supported in this browser
-  if (!state.canPrint) {
+  if (!state.canPrint && state.connectionType !== 'virtual') {
     alert('Printing is not available in this browser.\n\nPlease use Chrome, Edge, or Opera on desktop for Bluetooth printing.');
     return;
   }
@@ -4802,8 +5045,11 @@ async function handleConnect(event) {
     setStatus(showAllDevices ? 'Select your printer (showing all devices)' : 'Select printer with signal indicator (📶)');
 
     const isBLE = state.connectionType === 'ble';
+    const isVirtual = state.connectionType === 'virtual';
 
-    if (isBLE) {
+    if (isVirtual) {
+      state.transport = VirtualTransport.getShared();
+    } else if (isBLE) {
       if (!BLETransport.isAvailable()) {
         throw new Error('Bluetooth is not supported');
       }
@@ -4944,7 +5190,7 @@ async function handlePrint() {
       setStatus(`Printing${copyText}...`);
 
       await print(state.transport, rasterData, {
-        isBLE: state.connectionType === 'ble',
+        isBLE: state.connectionType === 'ble' || state.connectionType === 'virtual',
         deviceName,
         printerModel,
         density,
@@ -4973,6 +5219,9 @@ async function handlePrint() {
     // double label gets recorded as two rather than one.
     try {
       const rec = (state.templateData || [])[state.currentRecordIndex || 0];
+      const isVirtual = state.connectionType === 'virtual';
+      const decodedLabels = isVirtual && window.VirtualTransport ? window.VirtualTransport.getShared().getDecodedLabels() : [];
+      const latestDecoded = decodedLabels[decodedLabels.length - 1];
       window.parent.postMessage({
         type: 'PRINT_COMPLETE',
         payload: {
@@ -4982,6 +5231,9 @@ async function handlePrint() {
           copies,
           printedTags: rec ? [rec['TAG ID'] || ''].filter(Boolean) : [],
           finishedAt: new Date().toISOString(),
+          isVirtual,
+          labelDataUrl: latestDecoded?.dataUrl,
+          decodedLabels: isVirtual ? decodedLabels : undefined,
         },
       }, '*');
     } catch (relayErr) {
@@ -5805,6 +6057,12 @@ function hideShortcutsModal() {
  * Check browser compatibility
  */
 function checkCompatibility() {
+  const isEmbedded = isMiniMode || isPreviewMode || window.self !== window.top;
+  if (isEmbedded || state.connectionType === 'virtual') {
+    state.canPrint = true;
+    return true;
+  }
+
   const warnings = [];
   let canPrint = true;
 
@@ -8082,7 +8340,42 @@ function init() {
 
 // External Messaging Interface
 window.addEventListener('message', (event) => {
-  const { type, payload } = event.data;
+  if (window.location.origin && event.origin && event.origin !== 'null' && window.location.origin !== 'null') {
+    if (event.origin !== window.location.origin) return;
+  }
+  const { type, payload } = event.data || {};
+
+  if (type === 'SET_PRINTER') {
+    const printerType = payload?.printerType || (payload?.isVirtual ? 'virtual' : 'ble');
+    const isVirtual = printerType === 'virtual';
+    state.connectionType = isVirtual ? 'virtual' : 'ble';
+    if ($('#conn-type')) $('#conn-type').value = state.connectionType;
+    if ($('#mobile-conn-type')) $('#mobile-conn-type').value = state.connectionType;
+
+    if (isVirtual) {
+      state.canPrint = true;
+      const vTransport = window.VirtualTransport ? window.VirtualTransport.getShared() : null;
+      if (vTransport) {
+        if (payload.speedMultiplier) vTransport.setSpeedMultiplier(payload.speedMultiplier);
+        if (payload.simulatePaperOut !== undefined) vTransport.setSimulatePaperOut(payload.simulatePaperOut);
+        if (payload.simulateDisconnect !== undefined) vTransport.setSimulateDisconnect(payload.simulateDisconnect);
+        state.transport = vTransport;
+        vTransport.connect().then(() => {
+          updateConnectionStatus(true);
+          setStatus('Connected: M110 (Virtual printer)');
+        }).catch(err => {
+          console.warn('Virtual connect failed:', err);
+        });
+      }
+    } else {
+      if (state.transport && state.transport instanceof (window.VirtualTransport || Object)) {
+        state.transport.disconnect();
+        state.transport = null;
+        updateConnectionStatus(false);
+        setStatus('Ready');
+      }
+    }
+  }
 
   if (type === 'LOAD_DESIGN') {
     if (payload.elements) state.elements = payload.elements;

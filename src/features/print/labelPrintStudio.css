@@ -1172,3 +1172,124 @@ html.theme-aqua .lps-final-summary-card {
   border-color: var(--lq-rim, rgba(11, 42, 51, 0.15));
 }
 
+/* ── Virtual Printer Badges & Controls ── */
+.lps-virtual-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fbbf24;
+}
+
+html.theme-aqua .lps-virtual-badge {
+  background: rgba(217, 119, 6, 0.12);
+  border-color: rgba(217, 119, 6, 0.35);
+  color: #b45309;
+}
+
+.lps-virtual-badge.is-live {
+  animation: lps-virtual-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes lps-virtual-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ── Printed Output Tray ── */
+.lps-output-tray {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: var(--lq-radius-panel, 14px);
+  background: var(--lq-fill-card, rgba(10, 14, 22, 0.28));
+  border: 1px solid var(--lq-rim-subtle, rgba(255, 255, 255, 0.12));
+}
+
+html.theme-aqua .lps-output-tray {
+  background: var(--lq-fill-card, rgba(255, 255, 255, 0.52));
+  border-color: var(--lq-rim-subtle, rgba(11, 42, 51, 0.10));
+}
+
+.lps-tray-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.25rem 0;
+  scrollbar-width: thin;
+}
+
+.lps-tray-item {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--lq-rim, rgba(255, 255, 255, 0.18));
+  background: #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lps-tray-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.lps-tray-thumb {
+  display: block;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Inspection Modal for Virtual Printed Label */
+.lps-tray-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100020;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.lps-tray-modal-scrim {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(2, 6, 16, 0.45);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+html.theme-aqua .lps-tray-modal-scrim {
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+.lps-tray-modal-card {
+  position: relative;
+  z-index: 10;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--lq-radius-panel, 14px);
+  background: var(--lq-solid-panel, #141924);
+  border: 1px solid var(--lq-rim, rgba(255, 255, 255, 0.24));
+  box-shadow: var(--lq-shadow, 0 24px 56px -12px rgba(2, 6, 16, 0.45));
+}
+
+html.theme-aqua .lps-tray-modal-card {
+  background: #ffffff;
+  border-color: var(--lq-rim, rgba(11, 42, 51, 0.18));
+}
+
