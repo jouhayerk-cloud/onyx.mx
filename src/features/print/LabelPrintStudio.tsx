@@ -547,107 +547,134 @@ export const LabelPrintStudio: React.FC = () => {
     };
 
     const ONYX_MASTER_TEMPLATE_V4 = (width: number, height: number) => ({
-        name: "OnyxLabels_V4",   // geometry updated 2026-10-17 from the owner's designer export phomymo-design-1792275901252.json
-        version: 4,
+        name: "OnyxLabels_V5",   // owner design phomymo-design-1792280510780.json (2026-10-17): TAG CODE text line, full-width barcode without text, QR = TAG ID
+        version: 5,
         isTemplate: true,
         labelSize: { width, height },
-        templateFields: ["TAG ID", "DESCRIPTION", "SIZES", "BOOK RETAIL", "COLOR MATERIAL", "QR DATA", "AXO_IMAGE"],
+        templateFields: ["TAG ID", "TAG CODE", "DESCRIPTION", "SIZES", "BOOK RETAIL", "COLOR MATERIAL", "QR DATA", "AXO_IMAGE"],
         elements: [
             {
-                id: "el_side",
-                type: "text",
-                zone: 0,
-                x: -95, y: 107.2, width: 220, height: 23.6,
-                rotation: 90,
-                text: "MADE IN MEXICO",
-                fontSize: 15,
-                fontFamily: "Inter, sans-serif",
-                align: "justify",
-                fontWeight: "bold"
+                "id": "el_axo",
+                "type": "image",
+                "zone": 0,
+                "x": 329.6,
+                "y": 58.5,
+                "width": 71.4,
+                "height": 71.4,
+                "rotation": 0,
+                "imageData": "{{AXO_IMAGE}}",
+                "dither": "floyd-steinberg",
+                "lockAspectRatio": true
             },
             {
-                id: "el_retail",
-                type: "text",
-                zone: 0,
-                x: 78.7, y: -5, width: 215, height: 28.6,
-                rotation: 0,
-                align: "center",
-                text: "{{BOOK RETAIL}}",
-                fontSize: 15,
-                fontFamily: "Inter, sans-serif",
-                fontWeight: "bold",
-                autoScale: true,
-                noWrap: true
+                "id": "el_barcode",
+                "type": "barcode",
+                "zone": 0,
+                "x": 0,
+                "y": 113.7,
+                "width": 401.1,
+                "height": 133.6,
+                "rotation": 0,
+                "barcodeData": "{{TAG ID}}",
+                "barcodeFormat": "CODE128",
+                "format": "CODE128",
+                "textFontSize": 15,
+                "textBold": true,
+                "showText": false
             },
             {
-                id: "el_desc",
-                type: "text",
-                zone: 0,
-                x: 78.7, y: 17, width: 220, height: 36,
-                rotation: 0,
-                align: "center",
-                text: "{{DESCRIPTION}}",
-                fontSize: 23,
-                fontFamily: "Inter, sans-serif",
-                fontWeight: "bold",
-                autoScale: true,
-                noWrap: true
+                "id": "el_retail",
+                "type": "text",
+                "zone": 0,
+                "x": 0,
+                "y": 88.3,
+                "width": 399.0,
+                "height": 33.4,
+                "rotation": 0,
+                "align": "center",
+                "text": "{{TAG CODE}}",
+                "fontSize": 15,
+                "fontFamily": "Inter, sans-serif",
+                "fontWeight": "bold",
+                "autoScale": true,
+                "noWrap": true
             },
             {
-                id: "el_mat",
-                type: "text",
-                zone: 0,
-                x: 75.6, y: 44.8, width: 220, height: 35.1,
-                rotation: 0,
-                align: "center",
-                text: "{{COLOR MATERIAL}}",
-                fontSize: 23,
-                fontFamily: "Inter, sans-serif",
-                autoScale: true,
-                noWrap: true
+                "id": "el_desc",
+                "type": "text",
+                "zone": 0,
+                "x": 28.05,
+                "y": 25.4,
+                "width": 296.8,
+                "height": 43.2,
+                "rotation": 0,
+                "align": "left",
+                "text": "{{DESCRIPTION}}",
+                "fontSize": 23,
+                "fontFamily": "Inter, sans-serif",
+                "fontWeight": "bold",
+                "autoScale": true,
+                "noWrap": true
             },
             {
-                id: "el_sizes",
-                type: "text",
-                zone: 0,
-                x: 77, y: 74.6, width: 218.6, height: 25.3,
-                rotation: 0,
-                align: "center",
-                text: "{{SIZES}}",
-                fontSize: 15,
-                fontFamily: "Inter, sans-serif",
-                fontWeight: "bold",
-                autoScale: true,
-                noWrap: true
+                "id": "el_mat",
+                "type": "text",
+                "zone": 0,
+                "x": 28.85,
+                "y": 0,
+                "width": 296.0,
+                "height": 33.5,
+                "rotation": 0,
+                "align": "left",
+                "text": "{{COLOR MATERIAL}}",
+                "fontSize": 23,
+                "fontFamily": "Inter, sans-serif",
+                "autoScale": true,
+                "noWrap": true
             },
             {
-                id: "el_axo",
-                type: "image",
-                zone: 0,
-                x: 24, y: 12, width: 58.92, height: 56.36,
-                rotation: 0,
-                imageData: "{{AXO_IMAGE}}"
+                "id": "el_sizes",
+                "type": "text",
+                "zone": 0,
+                "x": 31.05,
+                "y": 60.6,
+                "width": 293.8,
+                "height": 27.7,
+                "rotation": 0,
+                "align": "left",
+                "text": "{{SIZES}}",
+                "fontSize": 15,
+                "fontFamily": "Inter, sans-serif",
+                "fontWeight": "normal",
+                "autoScale": true,
+                "noWrap": true
             },
             {
-                id: "el_qr",
-                type: "qr",
-                zone: 0,
-                x: 316.16, y: 5, width: 70.04, height: 70.04,
-                rotation: 0,
-                qrData: "{{QR DATA}}"
+                "id": "el_qr",
+                "type": "qr",
+                "zone": 0,
+                "x": 331.4,
+                "y": 0,
+                "width": 68.6,
+                "height": 68.6,
+                "rotation": 0,
+                "qrData": "{{TAG ID}}"
             },
             {
-                id: "el_barcode",
-                type: "barcode",
-                zone: 0,
-                x: 24.4, y: 92.64, width: 361.9, height: 147.36,
-                rotation: 0,
-                barcodeData: "{{TAG ID}}",
-                barcodeFormat: "CODE128",
-                format: "CODE128",
-                textFontSize: 19,
-                textBold: true,
-                showText: true
+                "id": "el_side",
+                "type": "text",
+                "zone": 0,
+                "x": -96.2,
+                "y": 108.4,
+                "width": 220,
+                "height": 21.2,
+                "rotation": 90,
+                "text": "MADE IN MEXICO",
+                "fontSize": 24,
+                "fontFamily": "Inter, sans-serif",
+                "align": "justify",
+                "fontWeight": "bold",
+                "autoScale": false
             }
         ]
     });
@@ -698,6 +725,8 @@ export const LabelPrintStudio: React.FC = () => {
                 "COLOR MATERIAL": toTitleCase(`${d.color || ''} ${d.material || 'Onyx'}`.trim()),
                 "SIZES": `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM${d.weightKg ? '  WT ' + d.weightKg + ' KG' : ''}`,
                 "BOOK RETAIL": `${c.bookAqCode}-${bookv}${retailStr}`,
+                // Label text tag (2026-10-17): TAG ID + USD retail + AQ code, e.g. EM8261MLX-1957MFF. The barcode and QR keep the plain TAG ID.
+                "TAG CODE": `${c.bookBarcode || ''}-${c.bookRetail ?? ''}${c.bookAqCode || ''}`,
                 "QUANTITY": quantities[String(item.row)] ?? (d.quantity || 1),
                 "LANDED CODE": c.bookLandCode,
                 "ACQ CODE": c.bookAqCode,
@@ -1000,12 +1029,12 @@ export const LabelPrintStudio: React.FC = () => {
                 const bookRetailTag = `${c.bookAqCode}-${bookv}${retailStr}`;
                 const qrUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${c.bookBarcode}`;
                 const count = quantities[String(item.row)] ?? (d.quantity || 1);
-                return [c.bookBarcode, desc, matColor, sizes, count, c.bookLandCode, c.bookAqCode, bookRetailTag, qrUrl];
+                return [c.bookBarcode, `${c.bookBarcode || ''}-${c.bookRetail ?? ''}${c.bookAqCode || ''}`, desc, matColor, sizes, count, c.bookLandCode, c.bookAqCode, bookRetailTag, qrUrl];
             });
 
             const blob = await exportToXLSX(`Labels_${name}`, [{
                 name: 'Packing List',
-                data: [['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL', 'QR URL'], ...rows]
+                data: [['TAGID', 'TAG CODE', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL', 'QR URL'], ...rows]
             }], {}, 'blob');
 
             if (blob instanceof Blob) {
