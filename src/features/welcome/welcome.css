@@ -1,41 +1,53 @@
-/* Welcome Page: Organic Liquid Glass Bubbles & Apple HIG Info Panel for Onyx */
+/* Welcome Page: Organic Liquid Glass Bubbles & Apple HIG Info Panel for Onyx
+   Built on shared --lq-* tokens (src/styles/tokens.css) and .liquid-* primitives (src/styles/liquid.css). */
 
 .wl-root {
-  --wl-ink: #ffffff;
-  --wl-ink-2: rgba(255, 255, 255, 0.72);
-  --wl-ink-muted: rgba(255, 255, 255, 0.48);
-  --wl-btn-ink: #ffffff;
-  --wl-line: rgba(255, 255, 255, 0.14);
-  --wl-glass-bg: rgba(255, 255, 255, 0.05);
-  --wl-glass-border: rgba(255, 255, 255, 0.16);
-  --wl-glass-rim: rgba(255, 255, 255, 0.45);
-  --wl-dot-idle: rgba(255, 255, 255, 0.25);
-  --wl-toggle-bg: rgba(255, 255, 255, 0.07);
-  --wl-toggle-border: rgba(255, 255, 255, 0.14);
-  --wl-toggle-ink: rgba(255, 255, 255, 0.85);
-  --wl-read-bg: rgba(255, 255, 255, 0.08);
-  --wl-read-ink: #ffffff;
-  --wl-read-border: rgba(255, 255, 255, 0.18);
+  --wl-ink: var(--lq-ink, #ffffff);
+  --wl-ink-2: color-mix(in srgb, var(--lq-ink, #ffffff) 74%, transparent);
+  --wl-ink-muted: color-mix(in srgb, var(--lq-ink, #ffffff) 50%, transparent);
+  --wl-btn-ink: var(--lq-ink, #ffffff);
+  --wl-line: var(--lq-rim-subtle, rgba(255, 255, 255, 0.12));
+  --wl-glass-bg: var(--lq-fill-surface, rgba(14, 18, 28, 0.28));
+  --wl-glass-border: var(--lq-rim, rgba(255, 255, 255, 0.22));
+  --wl-glass-rim: rgba(255, 255, 255, 0.55);
+  --wl-dot-idle: color-mix(in srgb, var(--lq-ink, #ffffff) 25%, transparent);
+  --wl-toggle-bg: var(--lq-fill-control, rgba(255, 255, 255, 0.06));
+  --wl-toggle-border: var(--lq-rim-subtle, rgba(255, 255, 255, 0.12));
+  --wl-toggle-ink: color-mix(in srgb, var(--lq-ink, #ffffff) 86%, transparent);
+  --wl-read-bg: var(--lq-fill-control, rgba(255, 255, 255, 0.06));
+  --wl-read-ink: var(--lq-ink, #ffffff);
+  --wl-read-border: var(--lq-rim-subtle, rgba(255, 255, 255, 0.12));
+  --wl-spring: cubic-bezier(0.22, 1, 0.36, 1);
   background: transparent;
 }
 
+@supports (transition-timing-function: linear(0, 1)) {
+  .wl-root {
+    --wl-spring: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
+  }
+}
+
 html.theme-aqua .wl-root {
-  --wl-ink: #071d24;
-  --wl-ink-2: rgba(7, 29, 36, 0.78);
-  --wl-ink-muted: rgba(7, 29, 36, 0.52);
-  --wl-btn-ink: #071d24;
-  --wl-line: rgba(7, 29, 36, 0.14);
-  --wl-glass-bg: rgba(255, 255, 255, 0.65);
-  --wl-glass-border: rgba(255, 255, 255, 0.9);
-  --wl-glass-rim: rgba(255, 255, 255, 0.95);
-  --wl-dot-idle: rgba(7, 29, 36, 0.25);
-  --wl-toggle-bg: rgba(255, 255, 255, 0.82);
-  --wl-toggle-border: rgba(7, 29, 36, 0.16);
-  --wl-toggle-ink: #071d24;
-  --wl-read-bg: rgba(7, 29, 36, 0.08);
-  --wl-read-ink: #071d24;
-  --wl-read-border: rgba(7, 29, 36, 0.18);
+  --wl-ink: var(--lq-ink, #0b2a33);
+  --wl-ink-2: rgba(11, 42, 51, 0.78);
+  --wl-ink-muted: rgba(11, 42, 51, 0.54);
+  --wl-btn-ink: var(--lq-ink, #0b2a33);
+  --wl-line: var(--lq-rim-subtle, rgba(11, 42, 51, 0.08));
+  --wl-glass-bg: var(--lq-fill-surface, rgba(255, 255, 255, 0.32));
+  --wl-glass-border: var(--lq-rim, rgba(11, 42, 51, 0.15));
+  --wl-glass-rim: rgba(255, 255, 255, 0.85);
+  --wl-dot-idle: rgba(11, 42, 51, 0.25);
+  --wl-toggle-bg: var(--lq-fill-control, rgba(11, 42, 51, 0.06));
+  --wl-toggle-border: var(--lq-rim-subtle, rgba(11, 42, 51, 0.08));
+  --wl-toggle-ink: var(--lq-ink, #0b2a33);
+  --wl-read-bg: var(--lq-fill-control, rgba(11, 42, 51, 0.06));
+  --wl-read-ink: var(--lq-ink, #0b2a33);
+  --wl-read-border: var(--lq-rim-subtle, rgba(11, 42, 51, 0.08));
   background: transparent;
+}
+
+.wl-scroll-host {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── 1. Organic Spatial Layout (No squared card containers) ─────────────── */
@@ -107,24 +119,25 @@ html.theme-aqua .wl-root {
 
 .wl-halo {
   position: relative;
+  isolation: isolate;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: clamp(164px, 17.5vw, 204px);
   aspect-ratio: 1;
-  border-radius: 50%;
+  border-radius: 50% !important;
   padding: 0;
   box-sizing: border-box;
-  background: radial-gradient(135% 135% at 28% 22%, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.035) 45%, rgba(255, 255, 255, 0.01) 100%);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
-  backdrop-filter: blur(24px) saturate(1.8);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: var(--lq-filter) !important;
+  backdrop-filter: var(--lq-filter) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -3px 8px 0 rgba(0, 0, 0, 0.35),
-    0 16px 36px -8px rgba(0, 0, 0, 0.45),
-    0 0 28px 0 color-mix(in srgb, var(--main-color, #00aeef) 22%, transparent);
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease, border-color 0.3s ease;
+    var(--lq-highlight),
+    var(--lq-shadow),
+    0 0 28px 0 color-mix(in srgb, var(--main-color, #00aeef) 20%, transparent) !important;
+  transition: transform 0.42s var(--wl-spring), opacity 0.3s ease;
   overflow: hidden;
 }
 
@@ -136,8 +149,8 @@ html.theme-aqua .wl-root {
 
 @media (max-width: 768px) {
   .wl-halo {
-    width: clamp(124px, 32vw, 148px) !important;
-    height: clamp(124px, 32vw, 148px) !important;
+    width: clamp(120px, 31vw, 144px) !important;
+    height: clamp(120px, 31vw, 144px) !important;
   }
 }
 
@@ -147,7 +160,7 @@ html.theme-aqua .wl-root {
   position: absolute;
   inset: 1px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.08) 26%, transparent 60%);
+  background: radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.44) 0%, rgba(255, 255, 255, 0.08) 28%, transparent 60%);
   pointer-events: none;
 }
 
@@ -165,12 +178,6 @@ html.theme-aqua .wl-root {
 
 .wl-halo:hover {
   transform: translateY(-2px) scale(1.02);
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow:
-    inset 0 2px 3px 0 rgba(255, 255, 255, 0.6),
-    inset 0 -3px 8px 0 rgba(0, 0, 0, 0.4),
-    0 20px 40px -6px rgba(0, 0, 0, 0.55),
-    0 0 36px 0 color-mix(in srgb, var(--main-color, #00aeef) 35%, transparent);
 }
 .wl-halo:hover::after {
   opacity: 0.9;
@@ -208,44 +215,46 @@ html.theme-aqua .wl-root {
 .wl-info-panel {
   --panel-accent: var(--main-color, #00aeef);
   position: relative;
+  isolation: isolate;
   width: 100%;
-  max-width: 290px; /* Default Compact Mode */
+  max-width: 296px;
   min-height: auto;
-  border-radius: 18px;
+  border-radius: var(--lq-radius-surface, 18px) !important;
   padding: 9px 14px 11px;
-  background: radial-gradient(125% 125% at 50% 0%, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.025) 100%);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
-  backdrop-filter: blur(24px) saturate(1.8);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background-color: var(--lq-fill-panel) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: var(--lq-filter-panel) !important;
+  backdrop-filter: var(--lq-filter-panel) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -2px 6px 0 rgba(0, 0, 0, 0.3),
-    0 14px 32px -8px rgba(0, 0, 0, 0.4),
-    0 0 20px -4px color-mix(in srgb, var(--panel-accent) 25%, transparent);
+    var(--lq-highlight),
+    var(--lq-shadow),
+    0 0 22px -4px color-mix(in srgb, var(--panel-accent) 24%, transparent) !important;
+  color: var(--lq-ink) !important;
   display: flex;
   flex-direction: column;
   justify-content: center;
   text-align: center;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.32s var(--wl-spring), opacity 0.25s ease;
   user-select: none;
 }
 
 .wl-info-panel--expanded {
   max-width: 350px;
   padding: 12px 18px 14px;
-  border-radius: 20px;
+  border-radius: 20px !important;
 }
 
 @media (max-width: 768px) {
   .wl-info-panel {
-    max-width: 254px;
+    max-width: 268px;
     padding: 8px 12px 10px;
-    border-radius: 16px;
+    border-radius: 16px !important;
   }
   .wl-info-panel--expanded {
-    max-width: 290px;
+    max-width: 300px;
     padding: 10px 14px 12px;
-    border-radius: 18px;
+    border-radius: 18px !important;
   }
 }
 
@@ -254,9 +263,9 @@ html.theme-aqua .wl-root {
   content: "";
   position: absolute;
   inset: 1px 1px auto 1px;
-  height: 40%;
-  border-radius: 17px 17px 0 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, transparent 100%);
+  height: 42%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, transparent 100%);
   pointer-events: none;
 }
 
@@ -269,32 +278,25 @@ html.theme-aqua .wl-root {
   transform: translateX(-50%) rotate(45deg);
   width: 10px;
   height: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border-left: 1px solid rgba(255, 255, 255, 0.22);
-  border-top: 1px solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(24px);
+  background-color: var(--lq-fill-panel);
+  border-left: 1px solid var(--lq-rim);
+  border-top: 1px solid var(--lq-rim);
   pointer-events: none;
-  transition: border-color 0.35s ease, background 0.35s ease;
 }
 
 .wl-info-panel--active {
-  border-color: color-mix(in srgb, var(--panel-accent) 65%, rgba(255, 255, 255, 0.3));
-  box-shadow:
-    inset 0 2px 3px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -2px 6px 0 rgba(0, 0, 0, 0.35),
-    0 16px 36px -8px rgba(0, 0, 0, 0.45),
-    0 0 28px 0 color-mix(in srgb, var(--panel-accent) 35%, transparent);
+  border-color: color-mix(in srgb, var(--panel-accent) 58%, var(--lq-rim)) !important;
   transform: translateY(-2px);
 }
 .wl-info-panel--active::after {
-  border-left-color: color-mix(in srgb, var(--panel-accent) 65%, rgba(255, 255, 255, 0.3));
-  border-top-color: color-mix(in srgb, var(--panel-accent) 65%, rgba(255, 255, 255, 0.3));
+  border-left-color: color-mix(in srgb, var(--panel-accent) 58%, var(--lq-rim));
+  border-top-color: color-mix(in srgb, var(--panel-accent) 58%, var(--lq-rim));
 }
 
 @keyframes wl-chat-pop {
   0% {
     opacity: 0;
-    transform: translateY(4px) scale(0.94);
+    transform: translateY(4px) scale(0.95);
   }
   100% {
     opacity: 1;
@@ -307,7 +309,7 @@ html.theme-aqua .wl-root {
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  animation: wl-chat-pop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: wl-chat-pop 0.28s var(--wl-spring) both;
 }
 
 .wl-info-header {
@@ -316,6 +318,13 @@ html.theme-aqua .wl-root {
   justify-content: space-between;
   width: 100%;
   gap: 6px;
+}
+
+.wl-info-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .wl-info-tag {
@@ -328,9 +337,10 @@ html.theme-aqua .wl-root {
   text-transform: uppercase;
   color: var(--wl-ink-2);
   padding: 2px 7px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px !important;
+  background-color: var(--lq-fill-control) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.28);
 }
 
 .wl-info-tag-dot {
@@ -343,39 +353,46 @@ html.theme-aqua .wl-root {
 .wl-info-live-read {
   display: inline-flex;
   align-items: center;
-  font-size: 0.60rem;
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--wl-read-ink);
-  background: var(--wl-read-bg);
+  background-color: var(--lq-fill-control) !important;
   padding: 1.5px 8px;
-  border-radius: 9999px;
-  border: 1px solid var(--wl-read-border);
-  max-width: 18ch;
+  border-radius: 9999px !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.28);
+  max-width: 16ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Micro Compact Toggle Button */
+/* Micro Compact & Float Toggle Buttons (Liquid Control Chips) */
 .wl-info-toggle-btn {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   font-weight: 700;
-  color: var(--wl-ink-2);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1px 6px;
-  border-radius: 9999px;
+  color: var(--wl-ink-2) !important;
+  background-color: var(--lq-fill-control) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.28);
+  padding: 2px 7px;
+  border-radius: 9999px !important;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.2s var(--wl-spring), background-color 0.15s ease, border-color 0.15s ease;
 }
 .wl-info-toggle-btn:hover {
-  color: var(--wl-ink);
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--wl-ink) !important;
+  background-color: var(--lq-fill-control-hover) !important;
+  border-color: var(--lq-rim) !important;
+}
+.wl-info-toggle-btn.is-active {
+  color: var(--wl-ink) !important;
+  border-color: color-mix(in srgb, var(--panel-accent) 60%, var(--lq-rim)) !important;
+  background-color: color-mix(in srgb, var(--panel-accent) 20%, var(--lq-fill-control)) !important;
 }
 
 .wl-info-title {
@@ -413,22 +430,28 @@ html.theme-aqua .wl-root {
 }
 
 .wl-info-action-btn {
+  --btn-accent: var(--panel-accent, var(--main-color, #00aeef));
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 11px;
-  border-radius: 9999px;
+  padding: 4px 12px;
+  border-radius: 9999px !important;
   font-size: 0.68rem;
   font-weight: 700;
-  color: var(--wl-btn-ink);
-  border: 1px solid var(--wl-glass-border);
+  color: var(--wl-btn-ink) !important;
+  background-color: color-mix(in srgb, var(--btn-accent) 18%, var(--lq-fill-control)) !important;
+  background-image: var(--lq-sheen) !important;
+  border: 1px solid color-mix(in srgb, var(--btn-accent) 55%, var(--lq-rim)) !important;
+  box-shadow: var(--lq-highlight) !important;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition: transform 0.22s var(--wl-spring), background-color 0.15s ease;
 }
 .wl-info-action-btn:hover {
   transform: translateY(-1px) scale(1.03);
-  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
-  filter: brightness(1.15);
+  background-color: color-mix(in srgb, var(--btn-accent) 28%, var(--lq-fill-control-hover)) !important;
+}
+.wl-info-action-btn:active {
+  transform: scale(0.97);
 }
 
 .wl-info-hint {
@@ -450,9 +473,11 @@ html.theme-aqua .wl-root {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--main-color, #00aeef);
-  padding: 2px 7px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 9999px !important;
+  background-color: var(--lq-fill-control) !important;
+  border: 1px solid var(--lq-rim-subtle) !important;
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.28);
 }
 
 .wl-info-hello {
@@ -502,8 +527,8 @@ html.theme-aqua .wl-root {
 
 .wl-bubble-unit {
   --bubble-accent: #00aeef;
-  --bubble-glow: rgba(0, 174, 239, 0.35);
-  --bubble-rim: rgba(0, 174, 239, 0.55);
+  --bubble-glow: rgba(0, 174, 239, 0.32);
+  --bubble-rim: rgba(0, 174, 239, 0.52);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -521,56 +546,60 @@ html.theme-aqua .wl-root {
 
 .wl-bubble-unit:hover,
 .wl-bubble-unit--focused,
-.wl-bubble-unit:focus-within {
+.wl-bubble-unit:focus-within,
+.wl-bubble-unit.is-collapsed {
   animation-play-state: paused;
 }
 
 .wl-bubble-unit[data-area="inv"] {
   --bubble-accent: #00aeef;
-  --bubble-glow: rgba(0, 174, 239, 0.4);
-  --bubble-rim: rgba(0, 174, 239, 0.6);
+  --bubble-glow: rgba(0, 174, 239, 0.36);
+  --bubble-rim: rgba(0, 174, 239, 0.56);
 }
 .wl-bubble-unit[data-area="fin"] {
   --bubble-accent: #f2b53c;
-  --bubble-glow: rgba(242, 181, 60, 0.4);
-  --bubble-rim: rgba(242, 181, 60, 0.6);
+  --bubble-glow: rgba(242, 181, 60, 0.36);
+  --bubble-rim: rgba(242, 181, 60, 0.56);
 }
 .wl-bubble-unit[data-area="add"] {
   --bubble-accent: #b85bf8;
-  --bubble-glow: rgba(184, 91, 248, 0.45);
-  --bubble-rim: rgba(184, 91, 248, 0.65);
+  --bubble-glow: rgba(184, 91, 248, 0.40);
+  --bubble-rim: rgba(184, 91, 248, 0.60);
 }
 .wl-bubble-unit[data-area="log"] {
   --bubble-accent: #35d0a2;
-  --bubble-glow: rgba(53, 208, 162, 0.4);
-  --bubble-rim: rgba(53, 208, 162, 0.6);
+  --bubble-glow: rgba(53, 208, 162, 0.36);
+  --bubble-rim: rgba(53, 208, 162, 0.56);
 }
 .wl-bubble-unit[data-area="shp"] {
   --bubble-accent: #ff7a45;
-  --bubble-glow: rgba(255, 122, 69, 0.4);
-  --bubble-rim: rgba(255, 122, 69, 0.6);
+  --bubble-glow: rgba(255, 122, 69, 0.36);
+  --bubble-rim: rgba(255, 122, 69, 0.56);
 }
 
 .wl-bubble {
   position: relative;
+  isolation: isolate;
   width: clamp(160px, 16.5vw, 196px);
   aspect-ratio: 1 !important;
   border-radius: 50% !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(130% 130% at 30% 20%, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.028) 48%, rgba(255, 255, 255, 0.008) 100%) !important;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: var(--lq-filter) !important;
+  backdrop-filter: var(--lq-filter) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -2px 6px 0 rgba(0, 0, 0, 0.35),
-    0 12px 28px -4px rgba(0, 0, 0, 0.4),
+    var(--lq-highlight),
+    var(--lq-shadow),
     0 0 24px -2px var(--bubble-glow) !important;
   overflow: hidden !important;
   cursor: pointer;
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+  transform: scale(1);
+  transition: transform 0.48s var(--wl-spring), opacity 0.3s ease;
+  will-change: transform, opacity;
   outline: none;
   box-sizing: border-box;
 }
@@ -583,8 +612,8 @@ html.theme-aqua .wl-root {
 
 @media (max-width: 768px) {
   .wl-bubble {
-    width: clamp(160px, 46vw, 196px) !important;
-    height: clamp(160px, 46vw, 196px) !important;
+    width: clamp(164px, 46vw, 196px) !important;
+    height: clamp(164px, 46vw, 196px) !important;
   }
 }
 
@@ -594,7 +623,7 @@ html.theme-aqua .wl-root {
   position: absolute;
   inset: 1px;
   border-radius: 50% !important;
-  background: radial-gradient(circle at 50% 6%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.08) 28%, transparent 62%);
+  background: radial-gradient(circle at 50% 6%, rgba(255, 255, 255, 0.44) 0%, rgba(255, 255, 255, 0.08) 28%, transparent 62%);
   pointer-events: none;
   z-index: 3;
 }
@@ -603,33 +632,87 @@ html.theme-aqua .wl-root {
 .wl-bubble::after {
   content: "";
   position: absolute;
-  inset: -1px;
+  inset: 0;
   border-radius: 50% !important;
   border: 1px solid var(--bubble-rim) !important;
   opacity: 0.55;
   pointer-events: none;
-  transition: opacity 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
   z-index: 2;
 }
 
-/* Hover & Focus Interactions for Bubbles */
-.wl-bubble-unit:hover .wl-bubble,
-.wl-bubble-unit--focused .wl-bubble,
-.wl-bubble:focus-visible {
-  transform: translateY(-4px) scale(1.05);
-  border-color: rgba(255, 255, 255, 0.45) !important;
-  box-shadow:
-    inset 0 2px 3px 0 rgba(255, 255, 255, 0.65),
-    inset 0 -3px 8px 0 rgba(0, 0, 0, 0.45),
-    0 18px 36px -6px rgba(0, 0, 0, 0.5),
-    0 0 32px 0 var(--bubble-glow) !important;
+/* Hover & Focus Interactions for Expanded Bubbles */
+.wl-bubble-unit:not(.is-collapsed):hover .wl-bubble,
+.wl-bubble-unit--focused:not(.is-collapsed) .wl-bubble,
+.wl-bubble:not(.is-collapsed):focus-visible {
+  transform: translateY(-3px) scale(1.05);
 }
 
 .wl-bubble-unit:hover .wl-bubble::after,
 .wl-bubble-unit--focused .wl-bubble::after {
-  opacity: 0.95;
-  transform: scale(1.03);
+  opacity: 0.92;
   border-color: var(--bubble-accent) !important;
+}
+
+/* Scroll-Collapse State: compact glass circle using transform & opacity ONLY (zero layout jank) */
+.wl-bubble.is-collapsed,
+.wl-bubble-unit.is-collapsed .wl-bubble {
+  transform: scale(0.42) !important;
+}
+
+.wl-bubble-figure {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  opacity: 1;
+  transform: scale(1);
+  transition: transform 0.46s var(--wl-spring), opacity 0.24s ease;
+  will-change: transform, opacity;
+  z-index: 1;
+}
+
+.wl-bubble.is-collapsed .wl-bubble-figure,
+.wl-bubble-unit.is-collapsed .wl-bubble-figure {
+  opacity: 0;
+  transform: scale(0.64);
+  pointer-events: none;
+}
+
+.wl-bubble-collapsed-icon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--bubble-accent, var(--main-color, #00aeef));
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+  transition: transform 0.48s var(--wl-spring), opacity 0.26s ease;
+  will-change: transform, opacity;
+  z-index: 4;
+}
+
+.wl-bubble.is-collapsed .wl-bubble-collapsed-icon,
+.wl-bubble-unit.is-collapsed .wl-bubble-collapsed-icon {
+  opacity: 1;
+  transform: scale(2.25);
+}
+
+.wl-collapsed-lucide {
+  width: 28px !important;
+  height: 28px !important;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--bubble-accent, #00aeef) 55%, transparent));
 }
 
 /* Add Entry Bubble Special Size / Presence */
@@ -645,16 +728,16 @@ html.theme-aqua .wl-root {
 }
 @media (max-width: 768px) {
   .wl-bubble--add {
-    width: clamp(160px, 46vw, 196px) !important;
-    height: clamp(160px, 46vw, 196px) !important;
+    width: clamp(164px, 46vw, 196px) !important;
+    height: clamp(164px, 46vw, 196px) !important;
   }
 }
 
 /* Hairline vector container inside the bubble - strictly circular and transparent */
-.wl-bubble > svg,
-.wl-bubble > div,
-.wl-bubble div,
-.wl-bubble button,
+.wl-bubble-figure > svg,
+.wl-bubble-figure > div,
+.wl-bubble-figure div,
+.wl-bubble-figure button,
 .atm-machine-container,
 .logistics-band-container,
 .plus-tower-container,
@@ -708,10 +791,10 @@ html.theme-aqua .wl-root {
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--wl-ink-2);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  transition: all 0.25s ease;
+  background-color: var(--lq-fill-control);
+  border: 1px solid var(--lq-rim-subtle);
+  backdrop-filter: var(--lq-filter-control);
+  transition: transform 0.25s ease, opacity 0.25s ease;
   user-select: none;
 }
 
@@ -722,62 +805,49 @@ html.theme-aqua .wl-root {
   box-shadow: 0 0 6px currentColor;
 }
 
-.wl-bubble-unit:hover .wl-bubble-label,
-.wl-bubble-unit--focused .wl-bubble-label {
-  color: var(--wl-ink);
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.3);
-  transform: translateY(-1px);
-}
-
-.wl-bubble-label--add {
-  background: radial-gradient(120% 120% at 50% 0%, rgba(184, 91, 248, 0.16) 0%, rgba(184, 91, 248, 0.04) 100%);
-  border-color: rgba(184, 91, 248, 0.35);
-}
-
-/* ── 6. AQUA Theme Adaptation ───────────────────────────────────────────── */
-html.theme-aqua .wl-halo {
-  background: radial-gradient(135% 135% at 28% 22%, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.45) 45%, rgba(255, 255, 255, 0.22) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.88);
+/* ── 6. AQUA Theme Adaptation & Chromium SVG Refraction Guard ───────────── */
+html.theme-aqua .wl-halo,
+html.theme-aqua .wl-bubble {
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow:
-    inset 0 1.5px 3px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -2px 6px 0 rgba(11, 42, 51, 0.08),
-    0 12px 32px -4px rgba(11, 42, 51, 0.12),
-    0 0 24px 0 color-mix(in srgb, var(--main-color, #00aeef) 25%, transparent);
+    var(--lq-highlight),
+    var(--lq-shadow),
+    0 0 22px -2px var(--bubble-glow, rgba(0, 188, 212, 0.22)) !important;
 }
-html.theme-aqua .wl-halo::before {
-  background: radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.3) 30%, transparent 65%);
+
+html.theme-aqua .wl-halo::before,
+html.theme-aqua .wl-bubble::before {
+  background: radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.28) 30%, transparent 65%);
 }
 
 html.theme-aqua .wl-info-panel {
-  background: radial-gradient(125% 125% at 50% 0%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.6) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background-color: var(--lq-fill-panel) !important;
+  background-image: var(--lq-sheen) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
-    0 14px 32px -6px rgba(11, 42, 51, 0.12),
-    0 0 24px -2px color-mix(in srgb, var(--panel-accent) 25%, transparent);
+    var(--lq-highlight),
+    var(--lq-shadow),
+    0 0 24px -2px color-mix(in srgb, var(--panel-accent) 22%, transparent) !important;
+  color: var(--lq-ink) !important;
 }
+
 html.theme-aqua .wl-info-panel::after {
-  background: rgba(255, 255, 255, 0.75);
-  border-left-color: rgba(255, 255, 255, 0.9);
-  border-top-color: rgba(255, 255, 255, 0.9);
+  background-color: var(--lq-fill-panel);
+  border-left-color: var(--lq-rim);
+  border-top-color: var(--lq-rim);
 }
 
-html.theme-aqua .wl-bubble {
-  background: radial-gradient(130% 130% at 30% 20%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.5) 48%, rgba(255, 255, 255, 0.25) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -2px 6px 0 rgba(11, 42, 51, 0.08),
-    0 12px 28px -4px rgba(11, 42, 51, 0.14),
-    0 0 20px -2px var(--bubble-glow);
-}
-
-html.theme-aqua .wl-bubble-label {
-  background: rgba(255, 255, 255, 0.75);
-  border-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 12px -2px rgba(11, 42, 51, 0.08);
+/* Chromium-only SVG refraction guard: WebKit drops the whole backdrop-filter on url() */
+@supports (backdrop-filter: url(#lq-refract)) and (-webkit-app-region: inherit) and (not (-webkit-touch-callout: none)) {
+  .wl-halo.liquid-surface,
+  .wl-bubble.liquid-surface {
+    backdrop-filter: url(#lq-refract) var(--lq-filter) !important;
+  }
+  .wl-info-panel.liquid-panel {
+    backdrop-filter: url(#lq-refract) var(--lq-filter-panel) !important;
+  }
 }
 
 /* ── 7. Hairline Vector & Interactive Theme Architecture ────────────────── */
@@ -970,27 +1040,28 @@ html.theme-aqua .wl-bubble-unit[data-area="shp"] {
   stroke-width: var(--hl-stroke, 1.1px);
 }
 
-/* ── 8. Mobile Vertical Auto-Scrolling Floating Bubbles Carousel ────────── */
+/* ── 8. Mobile Vertical Swipe/Scroll Floating Bubbles Carousel ──────────── */
 .wl-mobile-carousel {
   display: none;
   flex-direction: column;
   align-items: center;
   width: 100%;
   height: 100%;
-  max-height: calc(100dvh - 80px);
+  max-height: 100%;
   overflow: hidden;
   gap: 6px;
-  padding: 4px 12px 12px;
+  padding: 4px 12px 4px;
   box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
   .wl-root {
-    height: 100dvh !important;
+    height: 100% !important;
+    max-height: 100% !important;
     overflow: hidden !important;
   }
-  .wl-root > div.flex-1 {
-    padding: 6px 10px 10px !important;
+  .wl-scroll-host {
+    padding: 6px 10px 4px !important;
     overflow: hidden !important;
     height: 100% !important;
   }
@@ -1031,35 +1102,35 @@ html.theme-aqua .wl-bubble-unit[data-area="shp"] {
   align-items: flex-start;
 }
 
-/* 42px Liquid Onyx Mini Glass Bubble */
+/* 42px Liquid Onyx Mini Glass Bubble (Side Action Bubbles) */
 .wl-mini-lucide-bubble {
   --mini-accent: #00aeef;
   position: relative;
+  isolation: isolate;
   width: 42px;
   height: 42px;
   min-width: 42px;
   min-height: 42px;
-  border-radius: 50%;
+  border-radius: 50% !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(135% 135% at 30% 20%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.01) 100%);
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  -webkit-backdrop-filter: var(--lq-filter-control) !important;
+  backdrop-filter: var(--lq-filter-control) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -2px 4px 0 rgba(0, 0, 0, 0.35),
-    0 8px 20px -4px rgba(0, 0, 0, 0.45),
-    0 0 14px -1px color-mix(in srgb, var(--mini-accent) 45%, transparent);
-  color: var(--mini-accent);
+    var(--lq-highlight),
+    var(--lq-shadow),
+    0 0 14px -1px color-mix(in srgb, var(--mini-accent) 42%, transparent) !important;
+  color: var(--mini-accent) !important;
   cursor: pointer;
   padding: 0;
   outline: none;
-  transition: opacity 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-              transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.3s ease,
-              border-color 0.3s ease;
+  transition: opacity 0.35s var(--wl-spring),
+              transform 0.35s var(--wl-spring);
+  will-change: transform, opacity;
   touch-action: manipulation;
 }
 
@@ -1069,7 +1140,7 @@ html.theme-aqua .wl-bubble-unit[data-area="shp"] {
   position: absolute;
   inset: 1px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.08) 32%, transparent 65%);
+  background: radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0.08) 32%, transparent 65%);
   pointer-events: none;
 }
 
@@ -1077,7 +1148,7 @@ html.theme-aqua .wl-bubble-unit[data-area="shp"] {
 .wl-mini-lucide-bubble::after {
   content: "";
   position: absolute;
-  inset: -1px;
+  inset: 0;
   border-radius: 50%;
   border: 1px solid var(--mini-accent);
   opacity: 0.5;
@@ -1100,24 +1171,20 @@ html.theme-aqua .wl-bubble-unit[data-area="shp"] {
 .wl-mini-lucide-bubble:hover,
 .wl-mini-lucide-bubble:focus-visible {
   transform: scale(1.12);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow:
-    inset 0 2px 3px 0 rgba(255, 255, 255, 0.75),
-    0 12px 24px -4px rgba(0, 0, 0, 0.55),
-    0 0 22px 0 var(--mini-accent);
+  background-color: var(--lq-fill-control-hover) !important;
 }
 
 .wl-mini-lucide-bubble:hover::after,
 .wl-mini-lucide-bubble:focus-visible::after {
   opacity: 0.95;
-  transform: scale(1.06);
+  transform: scale(1.05);
 }
 
 .wl-mini-icon {
   width: 18px;
   height: 18px;
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--mini-accent) 60%, transparent));
-  transition: transform 0.25s ease;
+  transition: transform 0.25s var(--wl-spring);
 }
 
 .wl-mini-lucide-bubble:hover .wl-mini-icon {
@@ -1126,16 +1193,22 @@ html.theme-aqua .wl-bubble-unit[data-area="shp"] {
 
 /* Aqua Theme Mini Bubble */
 html.theme-aqua .wl-mini-lucide-bubble {
-  background: radial-gradient(135% 135% at 30% 20%, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.35) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.95);
+  background-color: var(--lq-fill-surface) !important;
+  background-image: var(--lq-sheen) !important;
+  border: 1px solid var(--lq-rim) !important;
   box-shadow:
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.98),
-    inset 0 -2px 4px 0 rgba(7, 29, 36, 0.08),
-    0 8px 20px -4px rgba(7, 29, 36, 0.15),
-    0 0 16px -2px color-mix(in srgb, var(--mini-accent) 35%, transparent);
+    var(--lq-highlight),
+    var(--lq-shadow),
+    0 0 16px -2px color-mix(in srgb, var(--mini-accent) 32%, transparent) !important;
 }
 html.theme-aqua .wl-mini-lucide-bubble::before {
-  background: radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.25) 35%, transparent 68%);
+  background: radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.25) 35%, transparent 68%);
+}
+
+@supports (backdrop-filter: url(#lq-refract)) and (-webkit-app-region: inherit) and (not (-webkit-touch-callout: none)) {
+  .wl-mini-lucide-bubble.liquid-control {
+    backdrop-filter: url(#lq-refract) var(--lq-filter-control) !important;
+  }
 }
 
 .wl-carousel-track-container {
@@ -1148,8 +1221,8 @@ html.theme-aqua .wl-mini-lucide-bubble::before {
   background: transparent !important;
   box-shadow: none !important;
   border: none !important;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 8%, #000 88%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 8%, #000 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 8%, #000 90%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 8%, #000 90%, transparent 100%);
 }
 
 .wl-carousel-track-container::before,
@@ -1162,126 +1235,98 @@ html.theme-aqua .wl-mini-lucide-bubble::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 48px;
+  gap: 28px;
   width: 100%;
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y mandatory;
   scrollbar-width: none;
-  padding-top: calc(26vh - 84px);
-  padding-bottom: 120px;
+  padding-top: calc(18vh - 56px);
+  padding-bottom: calc(22vh + env(safe-area-inset-bottom, 0px));
   padding-inline: 0;
   touch-action: pan-y;
   background: transparent !important;
   box-shadow: none !important;
   border: none !important;
 }
+
+.wl-carousel-track.wl-carousel-track--floating {
+  scroll-snap-type: none;
+}
+
 .wl-carousel-track::-webkit-scrollbar {
   display: none;
 }
 
-/* 3D Vertical Depth in Mobile Carousel */
+/* Vertical Depth & Snap Alignment in Mobile Carousel */
 .wl-carousel-track .wl-bubble-unit {
-  opacity: 0.62;
-  transform: scale(0.85);
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+  scroll-snap-align: center;
+  opacity: 0.78;
+  transition: opacity 0.3s ease;
   cursor: pointer;
   flex-shrink: 0;
 }
+
 .wl-carousel-track .wl-bubble-unit.is-centered {
   opacity: 1;
-  transform: scale(1.14);
   z-index: 5;
 }
-.wl-carousel-track .wl-bubble-unit.is-centered .wl-bubble {
-  border-color: rgba(255, 255, 255, 0.65) !important;
-  box-shadow:
-    inset 0 2px 3px 0 rgba(255, 255, 255, 0.75),
-    inset 0 -3px 8px 0 rgba(0, 0, 0, 0.45),
-    0 20px 44px -6px rgba(0, 0, 0, 0.55),
-    0 0 36px 0 var(--bubble-glow) !important;
+
+.wl-carousel-track .wl-bubble-unit.is-centered:not(.is-collapsed) .wl-bubble {
+  transform: scale(1.08);
 }
 
-/* Carousel Micro Navigation Controls - Positioned at z-index 5 behind Onyx Island (10050) */
-.wl-carousel-nav {
-  position: relative;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  max-width: 320px;
-  padding: 6px 14px;
-  margin-top: 2px;
-  margin-inline: auto;
-  flex-shrink: 0;
-  border-radius: 9999px;
-  background: var(--wl-glass-bg);
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  backdrop-filter: blur(28px) saturate(1.8);
-  border: 1px solid var(--wl-glass-border);
-  box-shadow:
-    inset 0 1px 1px 0 var(--wl-glass-rim),
-    0 8px 24px -4px rgba(0, 0, 0, 0.25);
+/* ── 9. Reduced Transparency & Reduced Motion Accessibility ─────────────── */
+@media (prefers-reduced-transparency: reduce) {
+  .wl-halo,
+  .wl-bubble,
+  .wl-mini-lucide-bubble {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-surface) !important;
+    background-image: none !important;
+  }
+
+  .wl-info-panel {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-panel) !important;
+    background-image: none !important;
+  }
+
+  .wl-info-tag,
+  .wl-info-live-read,
+  .wl-info-toggle-btn,
+  .wl-info-action-btn,
+  .wl-info-greeting-badge,
+  .wl-bubble-label {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-control) !important;
+    background-image: none !important;
+  }
 }
 
-.wl-carousel-dots {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.wl-carousel-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--wl-dot-idle);
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-.wl-carousel-dot.is-active {
-  width: 16px;
-  border-radius: 9999px;
-  background: var(--main-color, #00aeef);
-  box-shadow: 0 0 8px var(--main-color, #00aeef);
-}
-
-.wl-carousel-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--wl-toggle-ink);
-  background: var(--wl-toggle-bg);
-  border: 1px solid var(--wl-toggle-border);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.wl-carousel-toggle:hover {
-  color: var(--wl-ink);
-  background: var(--wl-glass-bg);
-}
-.wl-carousel-toggle.is-active {
-  color: var(--wl-btn-ink);
-  border-color: color-mix(in srgb, var(--main-color, #00aeef) 50%, var(--wl-line));
-}
-
-/* ── 9. Reduced Motion Support ───────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .wl-halo,
+  .wl-halo::after,
   .wl-info-panel,
+  .wl-info-content,
   .wl-bubble,
+  .wl-bubble::after,
+  .wl-bubble-figure,
+  .wl-bubble-collapsed-icon,
+  .wl-mini-lucide-bubble,
+  .wl-mini-lucide-bubble::after,
+  .wl-mini-icon,
   .wl-bubble-label,
+  .wl-info-toggle-btn,
   .wl-info-action-btn,
   .wl-bubble-unit {
     transition: none !important;
     animation: none !important;
-    transform: none !important;
   }
 }
+

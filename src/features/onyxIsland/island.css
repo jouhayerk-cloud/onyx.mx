@@ -381,24 +381,49 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 
 @media (max-width: 768px) {
   .onyx-island {
-  /* MOBILE BOTTOM: overridden in media query */
-    top: auto;
-    bottom: max(8px, env(safe-area-inset-bottom, 8px));
+    /* MOBILE BOTTOM: rests on the bottom edge above env(safe-area-inset-bottom), centred */
+    top: auto !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    left: 0;
+    right: 0;
+    margin-inline: auto;
   }
-}
 
+  .onyx-island.isl-is-sheet {
+    bottom: 0 !important;
+  }
 
-
-/* Phone: the dock rests on the bottom edge (a small gap above the home indicator), not floating above the list */
-/* 10 px above the home indicator's strip (the bar itself sits in the lower part of the inset); 8 px where there is no inset */
-@media (max-width: 768px) { .onyx-island { top: auto !important; bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 10px)); } }
-
-
-@media (max-width: 768px) {
   .onyx-island-band {
     height: 0 !important;
   }
 }
+
+/* Home view (WelcomeView): Onyx Island always rests on the bottom edge above env(safe-area-inset-bottom), centred */
+body[data-active-view="welcome"] .onyx-island-band,
+body:has(.wl-root) .onyx-island-band {
+  height: 0 !important;
+  --island-reserve: 0px !important;
+}
+
+body[data-active-view="welcome"] .onyx-island-layer,
+body:has(.wl-root) .onyx-island-layer {
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+body[data-active-view="welcome"] .onyx-island:not(.isl-is-sheet),
+body:has(.wl-root) .onyx-island:not(.isl-is-sheet) {
+  top: auto !important;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-inline: auto !important;
+}
+
 
 /* AQUA PASS: Light theme text contrast and states */
 html.theme-aqua .onyx-island {

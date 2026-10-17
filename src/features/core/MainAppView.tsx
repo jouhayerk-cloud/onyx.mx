@@ -219,6 +219,12 @@ export function MainAppView() {
     }, [user?.role, activeView, setActiveView]);
 
     useEffect(() => {
+        if (typeof document !== 'undefined') {
+            document.body.dataset.activeView = String(activeView || '');
+        }
+    }, [activeView]);
+
+    useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p' || e.key === 'O' || e.key === 'o')) {
                 e.preventDefault();
