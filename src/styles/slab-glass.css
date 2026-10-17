@@ -83,7 +83,7 @@ html.style-slab {
     --slab-glass-well:      color-mix(in srgb, var(--slab) 38%, transparent);  /* inputs, readouts */
     /* Owner 2026-10-17: translucent glass rows again (the dim look was the body::after wash over the app, fixed in index.css). */
     --slab-glass-row:       color-mix(in srgb, var(--slab-hi) 10%, color-mix(in srgb, var(--slab) 22%, transparent));
-    --slab-glass-row-hover: color-mix(in srgb, var(--slab-hi) 36%, transparent);
+    --slab-glass-row-hover: color-mix(in srgb, var(--slab-hi) 30%, color-mix(in srgb, var(--slab) 60%, transparent));
     --slab-glass-hover:     color-mix(in srgb, var(--slab-tint-hover) 52%, transparent);
     --slab-glass-on:        color-mix(in srgb, var(--slab-tint-on) 64%, transparent);
     --slab-glass-wash:      color-mix(in srgb, var(--slab) 40%, transparent);  /* over the mesh ground */
