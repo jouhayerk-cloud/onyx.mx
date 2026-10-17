@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { tr } from '../../lib/i18n';
 import { Dialog, Key, cx } from '../../components/ui';
@@ -177,7 +177,7 @@ export function MasterExportPicker() {
                                     </span>
                                 </div>
                                 <span className="text-[12px] text-[var(--ui-dim)] leading-snug">
-                                    {tr('All items, full finance ledger (Rare Earth Format)')}
+                                    {tr('Workbooks 825 and 326 items, full finance ledger (Rare Earth Format)')}
                                 </span>
                             </div>
                         </button>

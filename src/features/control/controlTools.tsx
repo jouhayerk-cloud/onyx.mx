@@ -109,7 +109,7 @@ export function useControlTools(handlers: ControlHandlers): ToolDescriptor[] {
     id: 'control-export-workbook-v2',
     moduleId: 'control',
     label: 'Download Workbook V2',
-    title: 'Download Workbook V2 (Rare Earth Format)',
+    title: 'Download Workbook V2 (workbooks 825 and 326, Rare Earth Format)',
     icon: Download,
     kind: 'action',
     group: tr('Export'),

@@ -2944,7 +2944,8 @@ export function MainHeader() {
             const exportItems = inventory.filter(item => {
                 const status = (item.data.status || '').toLowerCase().trim();
                 if (EXCLUDED_STATUSES.has(status)) return false;
-                if (variant === 'v3' && !isWorkbookV3Item(item)) return false;
+                // V3 = workbook 826 only; V2 = workbooks 825 and 326 (no 826)
+                if (variant === 'v3' ? !isWorkbookV3Item(item) : isWorkbookV3Item(item)) return false;
                 return true;
             });
 
@@ -3460,7 +3461,7 @@ export function MainHeader() {
                             let atomItem = rowMap.get(String(pItem.row));
                             if (!atomItem) atomItem = rowMap.get(String(pItem.itemId || '').toUpperCase());
                             
-                            if (atomItem && (variant !== 'v3' || isWorkbookV3Item(atomItem))) {
+                            if (atomItem && (variant === 'v3') === isWorkbookV3Item(atomItem)) {
                                 truckItems.push({ ...atomItem, _pItem: pItem });
                             }
                         });
@@ -4504,7 +4505,7 @@ export function MainHeader() {
             { id: 'onyx.language', moduleId: 'onyx', label: appLanguage.toUpperCase(), title: tr('Toggle Neural Language'), icon: Languages, kind: 'action' as const, group: tr('Onyx'), order: 10, run: () => setAppLanguage(prev => prev === 'en' ? 'es' : 'en') },
             { id: 'onyx.reset', moduleId: 'onyx', label: tr('Reset credentials'), title: tr('Reset Neural Credentials'), icon: RefreshCw, kind: 'action' as const, group: tr('Onyx'), order: 20, run: () => { if (confirm(tr('Reset Neural Link credentials to system default?'))) { localStorage.removeItem('onyxApiKey'); setOnyxApiKey(''); } } },
         ] : []),        
-        { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
+        { id: 'global.export.workbook', moduleId: 'global', label: tr('Workbook'), title: tr('Download Workbook V2 (workbooks 825 and 326, Rare Earth Format)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 10, disabled: isExporting, run: handleMasterExportXLSX_V2 },
         { id: 'global.export.workbookV3', moduleId: 'global', label: tr('Workbook V3'), title: tr('Download Workbook V3 (workbook 826, ledger from September 2026)'), icon: FileSpreadsheet, kind: 'action', group: tr('Export'), order: 11, disabled: isExporting, run: handleMasterExportXLSX_V3 },
     ], islandOn);
 
@@ -4694,7 +4695,7 @@ export function MainHeader() {
                                             isExporting ? 'opacity-50 cursor-not-allowed' : ''
                                         }`}
                                         style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
-                                        title={tr("Download Workbook V2 (Rare Earth Format)")}
+                                        title={tr("Download Workbook V2 (workbooks 825 and 326, Rare Earth Format)")}
                                     >
                                         <FileSpreadsheet size={30} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : 'group-hover/xlsx:scale-110 transition-transform'} />
                                     </button>
