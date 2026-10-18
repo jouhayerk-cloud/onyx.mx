@@ -135,6 +135,8 @@ export default defineConfig(({ mode }) => {
                 // 2026-05-02 to 2026-09-30 offline mode never ran.
                 navigateFallback: 'index.html',
                 navigateFallbackAllowlist: [/^(?!\/__).*/],
+                // The Phomemo designer is its own page (opened in an iframe): never answer it with the app shell.
+                navigateFallbackDenylist: [/\/phomemo-designer\//],
             },
             // Every path here is RELATIVE, and that is the whole point. The site
             // is served from /onyx.mx/, not from the domain root, so a leading
