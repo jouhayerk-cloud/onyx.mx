@@ -10,12 +10,12 @@ import {
 import './axoIconPreview.css';
 
 // Reference axo icons from section 7 of HAIRLINE_SPEC.md
-import jm024Ref from '../../../../docs/_inputs/refs/JM-024_axo.jpg';
-import jm033Ref from '../../../../docs/_inputs/refs/JM-033_axo.jpg';
-import jm036Ref from '../../../../docs/_inputs/refs/JM-036_axo.jpg';
-import jm049Ref from '../../../../docs/_inputs/refs/JM-049_axo.jpg';
-import rf038Ref from '../../../../docs/_inputs/refs/RF-038_axo.jpg';
-import rf049Ref from '../../../../docs/_inputs/refs/RF-049_axo.jpg';
+import jm024Ref from './refs/JM-024_axo.jpg';
+import jm033Ref from './refs/JM-033_axo.jpg';
+import jm036Ref from './refs/JM-036_axo.jpg';
+import jm049Ref from './refs/JM-049_axo.jpg';
+import rf038Ref from './refs/RF-038_axo.jpg';
+import rf049Ref from './refs/RF-049_axo.jpg';
 
 interface ReferenceItem {
     id: string;
