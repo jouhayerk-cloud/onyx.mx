@@ -1,5 +1,8 @@
 import type { AgentToolPack } from '../useOnyxAgent';
 
+/** Clashes already reported, so the warning logs once per tool instead of on every render. */
+const warnedClashes = new Set<string>();
+
 export interface MergedTools {
     definitions: unknown[];
     handlers: AgentToolPack['handlers'];
@@ -33,7 +36,8 @@ export function mergeToolPacks(packs: readonly AgentToolPack[]): MergedTools {
                     kept: seenNames.get(name)!,
                     dropped: packSource
                 });
-                if (import.meta.env.DEV) {
+                if (import.meta.env.DEV && !warnedClashes.has(name)) {
+                    warnedClashes.add(name);
                     console.warn(`Tool clash detected: ${name} (kept: ${seenNames.get(name)}, dropped: ${packSource})`);
                 }
                 continue;
