@@ -135,6 +135,7 @@ export interface InventoryItemData extends Partial<Omit<InventoryRow, 'quantity'
   payment_ids?: string;
   usdzUrl?: string;
   glbUrl?: string;
+  top?: 'open' | 'closed' | string;
 }
 
 /**

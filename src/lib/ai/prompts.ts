@@ -31,8 +31,11 @@ import {
 } from './vocabulary';
 import { sizeLabel, type PipelineItem } from './item';
 import type { DonorCandidate } from '../variationMatch';
-import { typeGuidanceFor, promptSpecFor, itemTypeId } from './typePrompts';
+import { typeGuidanceFor, promptSpecFor, itemTypeId, isBook826, buildContentPrompt826 } from './typePrompts';
 import type { TypePromptSpec } from './typePromptSpec';
+import { generateJson } from './client';
+
+export { isBook826, buildContentPrompt826 };
 
 export interface BuiltPrompt {
     system?: string;
@@ -171,6 +174,10 @@ function fieldRules(fields: readonly ContentField[], boxSet: ContentPromptOption
  * (variationMatch.findDonor), and must not invent what a photo would show.
  */
 export function buildContentPrompt(item: PipelineItem, opts: ContentPromptOptions): BuiltPrompt {
+    if (isBook826(item.workbook)) {
+        return buildContentPrompt826(item, opts);
+    }
+
     const fields = opts.fields && opts.fields.length ? opts.fields : ALL_CONTENT_FIELDS;
     const schema = contentSchema(fields, opts.variant);
     const spec = promptSpecFor(itemTypeId(item));
@@ -458,3 +465,62 @@ export function buildEdgeMaskPrompt(): BuiltPrompt {
         schema: EDGE_MASK_SCHEMA,
     };
 }
+
+// ── Top Detection (826 Intake) ─────────────────────────────────────────────
+
+export interface TopDetectionResult {
+    top: 'open' | 'closed' | 'unknown';
+}
+
+export const TOP_DETECTION_SCHEMA = {
+    type: 'object',
+    properties: {
+        top: {
+            type: 'string',
+            enum: ['open', 'closed', 'unknown'],
+            description: 'Whether the upper top of the vessel or lamp is open, closed, or unknown/unclear.',
+        },
+    },
+    required: ['top'],
+} as const;
+
+/**
+ * Prompt helper that asks the vision model whether an item in a photo has an open, closed, or unknown top.
+ */
+export function buildTopDetectionPrompt(): BuiltPrompt {
+    const prompt = `Inspect the stone item in this photograph.
+Focus specifically on its upper top end / aperture:
+- Answer "open" if the top of the lamp or vessel is open, hollow, concave, or an open aperture.
+- Answer "closed" if the top is capped, flat, solid stone, covered, or closed.
+- Answer "unknown" if the top cannot be clearly seen or is ambiguous from this angle.
+
+Return strictly JSON with {"top": "open" | "closed" | "unknown"}.`;
+
+    return {
+        prompt,
+        schema: TOP_DETECTION_SCHEMA,
+    };
+}
+
+/**
+ * Asks the vision model to detect whether the top is open, closed, or unknown from an image.
+ */
+export async function detectTopFromPhoto(
+    photoBase64OrUrl: string,
+    signal?: AbortSignal
+): Promise<'open' | 'closed' | 'unknown'> {
+    const { prompt, schema } = buildTopDetectionPrompt();
+    try {
+        const res = await generateJson<TopDetectionResult>({
+            job: 'content',
+            prompt,
+            schema,
+            images: [photoBase64OrUrl],
+            signal,
+        });
+        return res?.top ?? 'unknown';
+    } catch {
+        return 'unknown';
+    }
+}
+

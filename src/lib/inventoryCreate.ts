@@ -82,6 +82,7 @@ export interface InventoryForm {
     /** The vendor's note, stored in `description`. */
     description?: string | null;
     mediaUrls?: readonly string[];
+    top?: string | null;
 }
 
 export interface BuildRowOptions {
@@ -391,6 +392,9 @@ export function buildInventoryRow(form: InventoryForm, opts: BuildRowOptions): I
     } else if (opts.mode === 'create') {
         columns.media_urls = null;
     }
+
+    // form.top (open | closed) is not persisted yet: it needs its own column (owner to run the add-column SQL);
+    // storing it inside processed_media_urls would corrupt the photo map.
 
     // ── book codes, at the book rate ──
     const printed = opts.mode === 'edit' ? storedBarcodeOf(existing) : null;

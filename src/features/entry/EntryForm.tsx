@@ -21,6 +21,8 @@ import { Field, Input, Key, Segmented, Select, VendorPicker, cx } from '../../co
 import { VENDOR_CODES, photoKey, type EntryPhoto, type EntryState } from './entryModel';
 import { readPickedFiles } from './entryMedia';
 import { canonicalType } from '../../lib/canonicalType';
+import { isLampOrVesselFamily } from '../../lib/taxonomy/onyx826';
+import { detectTopFromPhoto } from '../../lib/ai/prompts';
 import { ShapeLibraryField } from './ShapeLibraryField';
 import { ShapeFigure } from './hairline/ShapeFigure';
 import { SizeRow, TagRow } from './TagRow';
@@ -97,6 +99,11 @@ function useSuggestions(manual: any[], value: EntryState, hidden?: ReadonlySet<s
 }
 
 const BOOK_OPTIONS = ENTRY_BOOKS.map(b => ({ value: b, label: b.slice(1) }));
+
+const TOP_OPTIONS = [
+    { value: 'open' as const, label: tr('Open') },
+    { value: 'closed' as const, label: tr('Closed') },
+];
 
 function dimsFor(value: EntryState): { w: number; h: number; d: number } | null {
     const w = parseFloat(value.widthCm);
@@ -185,6 +192,33 @@ export function EntryForm({
     const [activeField, setActiveField] = useState<SuggestField | 'dims' | null>(null);
     const set = <K extends keyof EntryState>(k: K) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
         onChange({ [k]: e.target.value } as Partial<EntryState>);
+
+    const is826 = String(value.workbook || '').replace(/\D/g, '') === '826';
+    const showTopField = is826 && isLampOrVesselFamily(value.type, value.shape);
+
+    const attemptedPhotoKeyRef = useRef<string | null>(null);
+
+    React.useEffect(() => {
+        if (!showTopField) return;
+        if (value.top) return;
+        const heroPhoto = photos.find(p => !p.isVideo && (p.preview || p.url));
+        if (!heroPhoto) return;
+        const pKey = heroPhoto.key || heroPhoto.url || heroPhoto.preview;
+        if (!pKey || attemptedPhotoKeyRef.current === pKey) return;
+        attemptedPhotoKeyRef.current = pKey;
+
+        let cancelled = false;
+        detectTopFromPhoto(heroPhoto.preview || heroPhoto.url!).then(res => {
+            if (cancelled) return;
+            if (res === 'open' || res === 'closed') {
+                onChange({ top: res, topSuggested: true });
+            }
+        }).catch(err => {
+            console.warn('detectTopFromPhoto failed', err);
+        });
+
+        return () => { cancelled = true; };
+    }, [showTopField, value.top, photos, onChange]);
 
     /** Focus left a field (or the dimensions): its tags go, unless focus went into the same field's tags or list. */
     const leaveField = (e: React.FocusEvent<HTMLDivElement>) => {
@@ -309,7 +343,7 @@ export function EntryForm({
     const numField = (f: keyof EntryState, label: string, span = '', opts: { step?: string; min?: string; onFocus?: () => void } = {}) => (
         <Field label={label} className={span}>
             <Input type="number" inputMode="decimal" min={opts.min ?? '0'} step={opts.step ?? 'any'} className="ui-tnum"
-                value={value[f]} onChange={set(f)} onFocus={opts.onFocus} disabled={disabled} data-field={String(f)} />
+                value={value[f] as string | number} onChange={set(f)} onFocus={opts.onFocus} disabled={disabled} data-field={String(f)} />
         </Field>
     );
 
@@ -326,6 +360,7 @@ export function EntryForm({
         const list: string[] = [];
         if (value.shape) list.push(value.shape);
         if (value.type && value.type !== value.shape) list.push(value.type);
+        if (value.top) list.push(`${value.top} top`);
         if (value.material) list.push(value.material);
         if (value.color) list.push(value.color);
         if (value.status && value.status !== DEFAULT_ENTRY_STATUS) list.push(String(el(value.status)));
@@ -334,7 +369,7 @@ export function EntryForm({
         if (value.weightKg) list.push(`${value.weightKg} kg`);
         if (value.price) list.push(`$${value.price} MXN`);
         return list;
-    }, [value.shape, value.type, value.material, value.color, value.status, value.widthCm, value.heightCm, value.lengthCm, value.weightKg, value.price]);
+    }, [value.shape, value.type, value.top, value.material, value.color, value.status, value.widthCm, value.heightCm, value.lengthCm, value.weightKg, value.price]);
 
     const notesSummary = useMemo(() => {
         const list: string[] = [];
@@ -436,6 +471,24 @@ export function EntryForm({
                             {suggestField('type', tr('Type'), tr('Type tags'))}
                         </CollapsingField>
 
+                        {showTopField && (
+                            <CollapsingField label={tr('Top')} value={value.top || ''} display={value.top ? String(value.top) : ''}>
+                                <Field
+                                    label={tr('Top')}
+                                    aside={value.topSuggested ? <span className="entry-suggested-badge" style={{ fontSize: 11, color: 'var(--amber-11, #d97706)' }}>{tr('suggested - confirm')}</span> : undefined}
+                                >
+                                    <Segmented
+                                        size="sm"
+                                        label={tr('Top')}
+                                        value={value.top || ''}
+                                        options={TOP_OPTIONS}
+                                        disabled={disabled}
+                                        onChange={(top) => onChange({ top: top as 'open' | 'closed', topSuggested: false })}
+                                    />
+                                </Field>
+                            </CollapsingField>
+                        )}
+
                         <CollapsingField label={tr('Material')} value={value.material}>
                             {suggestField('material', tr('Material'), tr('Material tags'))}
                         </CollapsingField>
@@ -482,6 +535,22 @@ export function EntryForm({
                     <div className="entry-grid">
                         {suggestField('shape', tr('Shape'), tr('Shape tags'), 's2')}
                         {suggestField('type', tr('Type'), tr('Type tags'), 's2')}
+                        {showTopField && (
+                            <Field
+                                label={tr('Top')}
+                                className="s2"
+                                aside={value.topSuggested ? <span className="entry-suggested-badge" style={{ fontSize: 11, color: 'var(--amber-11, #d97706)' }}>{tr('suggested - confirm')}</span> : undefined}
+                            >
+                                <Segmented
+                                    size="sm"
+                                    label={tr('Top')}
+                                    value={value.top || ''}
+                                    options={TOP_OPTIONS}
+                                    disabled={disabled}
+                                    onChange={(top) => onChange({ top: top as 'open' | 'closed', topSuggested: false })}
+                                />
+                            </Field>
+                        )}
                         {suggestField('material', tr('Material'), tr('Material tags'), 's2')}
                         {suggestField('color', tr('Vendor colour'), tr('Colour tags'), 's3')}
 

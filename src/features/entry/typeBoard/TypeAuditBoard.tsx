@@ -11,6 +11,7 @@ import type { Dims, Motif } from '../hairline/types';
 import { MIRROR_VARIANTS, mirrorVariantOf, type MirrorVariant } from '../hairline/typeFigures/mirrors';
 import { lampVariantOf, type LampVariant } from '../hairline/typeFigures/lamps';
 import { AxoIconPreview } from './AxoIconPreview';
+import { Prompt826Preview } from './Prompt826Preview';
 import './typeBoard.css';
 
 /**
@@ -486,7 +487,7 @@ export const TypeAuditBoard: React.FC = () => {
     const rows = useAtomValue(inventoryAtom);
     const { groups, totals } = useMemo(() => buildBoard(rows), [rows]);
     const [dark, setDark] = useState(true);
-    const [tab, setTab] = useState<'types' | 'axo826'>('types');
+    const [tab, setTab] = useState<'types' | 'axo826' | 'prompt826'>('types');
 
     return (
         <div className="tb-board">
@@ -509,10 +510,20 @@ export const TypeAuditBoard: React.FC = () => {
                     >
                         {tr('Axo icons 826')}
                     </button>
+                    <button
+                        type="button"
+                        className="tb-toggle"
+                        aria-pressed={tab === 'prompt826'}
+                        onClick={() => setTab('prompt826')}
+                    >
+                        {tr('826 prompt preview')}
+                    </button>
                 </div>
             </div>
 
-            {tab === 'axo826' ? (
+            {tab === 'prompt826' ? (
+                <Prompt826Preview onClose={() => setTab('types')} />
+            ) : tab === 'axo826' ? (
                 <AxoIconPreview onClose={() => setTab('types')} />
             ) : (
                 <>

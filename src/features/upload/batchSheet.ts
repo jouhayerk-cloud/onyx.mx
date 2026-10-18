@@ -42,6 +42,7 @@ export const COLUMN_MAP: Record<string, string> = {
     'total': '_total', 'total pesos': '_total',
     'description': 'description', 'description color - object type': 'description', 'descripcion': 'description',
     '#': 'itemNumber',
+    'top': 'top', 'tapa': 'top', 'cubierta': 'top',
     'date': '_date', 'fecha': '_date',
     'tag-id': '_tagId', 'tag id': '_tagId',
     'kg': 'weightKg', 'peso': 'weightKg',
@@ -214,6 +215,11 @@ export function parseSheet(data: ArrayBuffer, vendor: string): SheetParse {
         const no = parseItemNumberCell(raw.itemNumber, want);
         if (!no.ok) invalidCells.push({ sheetRow, field: 'itemNumber', value: no.value });
 
+        const rawTop = textOf('top').toLowerCase();
+        let topVal: 'open' | 'closed' | undefined = undefined;
+        if (rawTop === 'open' || rawTop === 'abierto') topVal = 'open';
+        else if (rawTop === 'closed' || rawTop === 'cerrado') topVal = 'closed';
+
         items.push({
             id: crypto.randomUUID(),
             itemNumber: no.value,
@@ -225,6 +231,7 @@ export function parseSheet(data: ArrayBuffer, vendor: string): SheetParse {
             color: textOf('color'),
             material: textOf('material'),
             description: textOf('description'),
+            top: topVal,
             widthCm: num.widthCm,
             heightCm: num.heightCm,
             lengthCm: num.lengthCm,

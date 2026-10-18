@@ -122,6 +122,7 @@ export function toInventoryForm(item: BatchCreateItem, vendor: string, mediaUrls
         weightKg: num(item.weightKg),
         price: num(item.price),
         description: item.description,
+        top: item.top,
         mediaUrls,
     };
 }

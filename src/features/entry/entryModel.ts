@@ -47,6 +47,8 @@ export interface EntryState {
     weightKg: string;
     price: string;
     description: string;
+    top?: 'open' | 'closed' | '';
+    topSuggested?: boolean;
 }
 
 /** The typed fields; photos are kept beside them (they hold File objects). */
@@ -66,6 +68,8 @@ export const EMPTY_ENTRY: EntryState = {
     weightKg: '',
     price: '',
     description: '',
+    top: '',
+    topSuggested: false,
 };
 
 /**
@@ -147,6 +151,20 @@ export function entryFromRow(row: Record<string, any>): EntryState {
         weightKg: n(row.weight_kg, row.weightKg),
         price: n(row.price_mxn, row.priceMxn),
         description: str(row.description),
+        top: (() => {
+            const rawTop = str(row.top ?? row.data?.top).toLowerCase();
+            if (rawTop === 'open' || rawTop === 'closed') return rawTop as 'open' | 'closed';
+            const rawMedia = row.processed_media_urls ?? row.data?.processed_media_urls;
+            if (rawMedia) {
+                try {
+                    const m = typeof rawMedia === 'string' ? JSON.parse(rawMedia) : rawMedia;
+                    const t = str(m?.top ?? m?._top).toLowerCase();
+                    if (t === 'open' || t === 'closed') return t as 'open' | 'closed';
+                } catch {}
+            }
+            return '';
+        })(),
+        topSuggested: false,
     };
 }
 
@@ -168,6 +186,7 @@ export function toInventoryForm(state: EntryState, mediaUrls?: readonly string[]
         weightKg: state.weightKg,
         price: state.price,
         description: state.description,
+        top: state.top || undefined,
         mediaUrls,
     };
 }
@@ -175,10 +194,10 @@ export function toInventoryForm(state: EntryState, mediaUrls?: readonly string[]
 /** The fields a person typed (vendor, book, number and status are set for them). */
 export const hasTypedContent = (s: Partial<EntryState> | null | undefined): boolean =>
     !!s && !!(s.shape || s.type || s.color || s.material || s.price || s.description
-        || s.widthCm || s.heightCm || s.lengthCm || s.weightKg);
+        || s.widthCm || s.heightCm || s.lengthCm || s.weightKg || s.top);
 
 const TYPED_KEYS: readonly (keyof EntryState)[] = [
-    'shape', 'type', 'color', 'material', 'price', 'description', 'widthCm', 'heightCm', 'lengthCm', 'weightKg', 'quantity', 'status',
+    'shape', 'type', 'color', 'material', 'price', 'description', 'widthCm', 'heightCm', 'lengthCm', 'weightKg', 'quantity', 'status', 'top',
 ];
 
 /** Did a person change any of the typed fields (not the vendor, book or number the screen sets)? */

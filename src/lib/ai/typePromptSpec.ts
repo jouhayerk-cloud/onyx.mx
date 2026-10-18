@@ -82,3 +82,66 @@ export const COPY_LIMITS = {
     /** Sentence openers that must not repeat inside one description. */
     maxBullets: 4,
 } as const;
+
+// ── Book 826 Catalog Specifications ──────────────────────────────────────────
+
+/**
+ * Forbidden carving and making words for Book 826 unless the record's process field states them (Q9).
+ */
+export const COPY_BANNED_PROCESS_WORDS_826: readonly string[] = [
+    'carved', 'carving', 'hand-carved', 'hand carved', 'crafted', 'hand-crafted', 'hand crafted',
+    'hand-made', 'handmade', 'sculpted', 'hewn', 'chiseled', 'cut', 'slabbed',
+    'polished by hand', 'artisan', 'artisanal',
+];
+
+/**
+ * Flowery or sales hype words for Book 826 that are NEVER allowed.
+ */
+export const COPY_BANNED_HYPE_WORDS_826: readonly string[] = [
+    'magnificent', 'exquisite', 'striking', 'refined', 'breathtaking', 'meticulously',
+    'precisely', 'masterpiece', 'heirloom', 'rare', 'stunning', 'unparalleled',
+    'flawless', 'one-of-a-kind', 'investment', 'testament', 'inner glow',
+];
+
+/**
+ * Combined banned claims for 826 when no process is stated.
+ */
+export const COPY_BANNED_WORDS_826: readonly string[] = [
+    ...COPY_BANNED_PROCESS_WORDS_826,
+    ...COPY_BANNED_HYPE_WORDS_826,
+    'hand-selected', 'hand selected', 'generations', 'centuries-old', 'centuries old',
+];
+
+/** Strict copy limits for Book 826 (Q7: 600-750 characters plain text). */
+export const COPY_LIMITS_826 = {
+    shopifyTitleMinChars: 60,
+    shopifyTitleMaxChars: 70,
+    bodyMinChars: 600,
+    bodyMaxChars: 750,
+} as const;
+
+/** Output contract for Book 826 generation. */
+export interface Prompt826Output {
+    invoiceTitle: string;
+    shopifyTitle: string;
+    body: string;
+    shopifyCategory: string;
+    shopifyProductType: string;
+    colourPattern: readonly string[];
+    tags: readonly string[];
+    copyStatus: 'draft' | 'reviewed' | 'approved';
+}
+
+/** Validation issues flagged by 826 output validators. */
+export interface Validation826Issue {
+    field: 'invoiceTitle' | 'shopifyTitle' | 'body' | 'colours' | 'category' | 'productType';
+    rule: string;
+    message: string;
+    severity: 'error' | 'warning';
+}
+
+export interface Validation826Result {
+    valid: boolean;
+    issues: readonly Validation826Issue[];
+}
+

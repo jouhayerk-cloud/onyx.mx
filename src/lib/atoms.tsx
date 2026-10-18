@@ -377,6 +377,7 @@ export interface BatchCreateItem {
   price: string;
   quantity: string;
   description: string;
+  top?: 'open' | 'closed' | string;
   mediaFiles: UploadedFile[];
   /** The spreadsheet row it came from (header = row 1), for naming it in issue lists. */
   sheetRow?: number;

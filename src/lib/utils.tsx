@@ -1733,6 +1733,7 @@ export const normalizeInventoryData = (data: any): any => {
     lengthCm: d.length_cm || d.lengthCm || d.length || d.l,
     weightKg: d.weight_kg || d.weightKg || d.weight || d.wt,
     quantity: d.quantity ?? d.qty ?? 1,
+    top: d.top || processedMap['top'] || processedMap['_top'] || '',
   };
 };
 

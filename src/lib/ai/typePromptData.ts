@@ -1033,3 +1033,132 @@ export const TYPE_PROMPT_SPECS: readonly TypePromptSpec[] = [
         notes: 'OWNER decision: Shopify product type mapped to Home Decor > Tables for freestanding stone bar counters.',
     },
 ];
+
+// ── Catalog 826 Per-Family Specifications ─────────────────────────────────────
+
+export interface Family826Spec {
+    readonly family: 'lamps' | 'vessels' | 'panels' | 'rocks' | 'furniture' | 'wine' | 'small';
+    readonly name: string;
+    readonly typeIds: readonly string[];
+    readonly lit: boolean;
+    readonly descriptionNoun: string | null;
+    readonly angle: string;
+    readonly structure: readonly string[];
+    readonly vocabulary: readonly string[];
+    readonly forbidden: readonly string[];
+}
+
+export const FAMILY_826_SPECS: readonly Family826Spec[] = [
+    {
+        family: 'lamps',
+        name: 'Lamps',
+        typeIds: ['pendant', 'table-lamp', 'floor-lamp'],
+        lit: true,
+        descriptionNoun: 'Luminary',
+        angle: 'Standing or suspended stone luminary with material, variety, colour, shape, top, dimensions, and how light passes through translucent stone.',
+        structure: [
+            'Sentence 1: Identify as a stone luminary with material variety, colour tone, shape, top (open or closed), size, and weight if recorded.',
+            'Sentence 2-3: Light transmission: translucent stone emits a soft, even glow when lit.',
+            'Sentence 4-5: Room placement: corner, kitchen island, dining table, or reading area.',
+            'Sentence 6: Mention top is confirmed by the team before publication, and cord/wiring checked with sales team.',
+        ],
+        vocabulary: ['Luminary', 'Open Top', 'Closed Top', 'Cylinder', 'Square', 'Rectangular', 'Translucent', 'Stone', 'Onyx'],
+        forbidden: ['lamp', 'lamps', 'Tower Lamp', 'glowing'],
+    },
+    {
+        family: 'vessels',
+        name: 'Vessels',
+        typeIds: ['bowl', 'canoe', 'tray', 'plate', 'basin', 'sink', 'vase', 'shot-glass', 'candleholder'],
+        lit: false,
+        descriptionNoun: null,
+        angle: 'Vessel identification, size, weight, colour tone, surface banding, and placement as a table centerpiece or decorative display.',
+        structure: [
+            'Sentence 1: Identify vessel with material variety, vendor colour, shape, size tier, and weight.',
+            'Sentence 2: Surface character: pale, iridescent, or banded tones across the polished stone.',
+            'Sentence 3: Placement: table centerpiece, console, shelf, or entry accent.',
+            'Sentence 4: Top confirmation note and order guidance.',
+        ],
+        vocabulary: ['Bowl', 'Tray', 'Canoe Tray', 'Plate', 'Basin', 'Vase', 'Open Top', 'Closed Top', 'Centerpiece', 'Display'],
+        forbidden: ['food', 'kitchen', 'microwave', 'dishwasher', 'water holding', 'hollow', 'lamp', 'luminary', 'lit'],
+    },
+    {
+        family: 'panels',
+        name: 'Panels and Mirrors',
+        typeIds: ['wall-panel', 'panel-pair', 'painted-wall-panel', 'mirror'],
+        lit: false, // wall-panel is lit; painted-wall-panel and mirror are NOT lit
+        descriptionNoun: null,
+        angle: 'Wall fixture, dimensions, thickness depth, weight, stone variety, painted subject if recorded, and wall mounting requirements.',
+        structure: [
+            'Sentence 1: State panel/mirror type, material, color/subject, dimensions, and weight.',
+            'Sentence 2: Stone edge thickness, banding, or painted scene details from record.',
+            'Sentence 3: Wall hanging placement and mounting load guidance.',
+            'Sentence 4: Confirm mounting hardware with sales team before quoting.',
+        ],
+        vocabulary: ['Wall Panel', 'Pair', 'Backlit', 'Painted', 'Round', 'Squared', 'Rectangular', 'Wall Mirror'],
+        forbidden: ['lamp', 'translucent on painted panels'],
+    },
+    {
+        family: 'rocks',
+        name: 'Rocks, Fountains and Sculpture',
+        typeIds: ['rock', 'boulder', 'pebble-stone', 'fountain', 'fountain-set', 'sculpture', 'sculpture-set', 'pillar', 'ball', 'bag'],
+        lit: false,
+        descriptionNoun: null,
+        angle: 'Natural stone formation, substantial weight, color tone, and outdoor garden, entry, or focal placement.',
+        structure: [
+            'Sentence 1: Identify natural rock, fountain, sculpture, or sphere with stone variety, dimensions, and weight.',
+            'Sentence 2: Stone texture, natural uncarved surface, or recorded sculpture subject.',
+            'Sentence 3: Setting: garden, patio, foyer, or architectural landscape placement.',
+            'Sentence 4: Note substantial weight anchoring position and checking installation details with sales team.',
+        ],
+        vocabulary: ['Natural', 'Uncarved', 'Fountain', 'Sculpture', 'Sphere', 'Pillar', 'Pebble Stones'],
+        forbidden: ['carved', 'sculpted for rocks', 'monumental', 'pump', 'motor', 'flow rate', 'lamp', 'luminary', 'lit'],
+    },
+    {
+        family: 'furniture',
+        name: 'Furniture',
+        typeIds: ['table', 'coffee-table', 'table-set', 'couch', 'chair', 'bar'],
+        lit: false,
+        descriptionNoun: null,
+        angle: 'Substantial stone furniture, table height and surface dimensions, weight, stone facing, and residential or commercial seating/dining.',
+        structure: [
+            'Sentence 1: Identify table, couch, chair, or bar with stone variety, shape, dimensions, and weight.',
+            'Sentence 2: Surface finish, top slab presence, and stable stone base.',
+            'Sentence 3: Living room, dining, lounge, or hospitality placement.',
+            'Sentence 4: Delivery and handling guidance for heavy stone furniture.',
+        ],
+        vocabulary: ['Table', 'Coffee Table', 'Couch', 'Chair', 'Bar', 'Stone', 'Set', 'Surface'],
+        forbidden: ['live edge', 'lamp', 'luminary', 'lit'],
+    },
+    {
+        family: 'wine',
+        name: 'Wine Racks',
+        typeIds: ['wine-rack'],
+        lit: false,
+        descriptionNoun: null,
+        angle: 'Rustic stone wine rack, exact hole count from record, dimensions, weight, and freestanding bottle display.',
+        structure: [
+            'Sentence 1: State stone variety, recorded hole count, overall dimensions, and weight.',
+            'Sentence 2: Natural rustic stone exterior and carved circular apertures.',
+            'Sentence 3: Freestanding bar, cellar, or dining room display.',
+            'Sentence 4: Note bottle capacity matches hole count.',
+        ],
+        vocabulary: ['Wine Rack', 'Holes', 'Rustic', 'Freestanding', 'Cellar'],
+        forbidden: ['perfect for collectors', 'lamp', 'luminary', 'lit'],
+    },
+    {
+        family: 'small',
+        name: 'Small Items',
+        typeIds: ['coaster', 'wine-stopper', 'chess-set'],
+        lit: false,
+        descriptionNoun: null,
+        angle: 'Small stone accessory, set count, material variety, dimensions, and tabletop accent use.',
+        structure: [
+            'Sentence 1: Identify coaster set, wine stopper, or chess set with material, colour, and dimensions.',
+            'Sentence 2: Polished finish, set pieces count, and surface protection.',
+            'Sentence 3: Tabletop, bar cart, or display setting.',
+        ],
+        vocabulary: ['Coaster', 'Wine Stopper', 'Chess Set', 'Candleholder', 'Tabletop'],
+        forbidden: ['gift', 'perfect for', 'lamp', 'luminary', 'lit'],
+    },
+];
+
