@@ -3,6 +3,16 @@ import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
 import { vendors } from '../../lib/consts';
 
+/** Columns of the production table; it has no shape, colour, material, item_id or book_barcode. */
+const PRODUCTION_COLUMNS = new Set(['description', 'tag_id', 'vendor_id', 'status', 'quantity']);
+
+/** Text search on production: description and tag id only. */
+const prodTextFilter = (word: string, stem: string) => [
+    `description.ilike.%${word}%`,
+    `tag_id.ilike.%${word}%`,
+    ...(stem !== word ? [`description.ilike.%${stem}%`] : []),
+].join(',');
+
 type InventoryRow = Database['public']['Tables']['inventory']['Row'];
 type ProductionRow = Database['public']['Tables']['production']['Row'];
 
@@ -169,44 +179,6 @@ export const onyxQueries = {
         }
 
         if (params.status) prodQ = prodQ.eq('status', params.status);
-        if (params.shape) prodQ = prodQ.ilike('shape', `%${params.shape}%`);
-        if (params.color) prodQ = prodQ.ilike('color', `%${params.color}%`);
-        if (params.material) prodQ = prodQ.ilike('material', `%${params.material}%`);
-
-        if (params.query) {
-            const clean = params.query.trim();
-            const words = clean.split(/[\s,]+/)
-                .map(w => w.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim())
-                .filter(w => w.length >= 2);
-            words.forEach(word => {
-                const stem = (word.toLowerCase().endsWith('s') && word.length > 3) ? word.slice(0, -1) : word;
-                const wordFilter = [
-                    `description.ilike.%${word}%`,
-                    `short_description.ilike.%${word}%`,
-                    `material.ilike.%${word}%`,
-                    `shape.ilike.%${word}%`,
-                    `color.ilike.%${word}%`,
-                    `book_barcode.ilike.%${word}%`,
-                    `item_id.ilike.%${word}%`,
-                    ...(stem !== word ? [
-                        `description.ilike.%${stem}%`,
-                        `short_description.ilike.%${stem}%`,
-                        `shape.ilike.%${stem}%`
-                    ] : [])
-                ].join(',');
-                prodQ = prodQ.or(wordFilter);
-            });
-        }
-        
-        if (params.vendor) {
-            if (params.vendor.length <= 3) {
-                const prefix = `${params.vendor}%`;
-                prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
-            } else {
-                prodQ = prodQ.or(`description.ilike.%${params.vendor}%,color.ilike.%${params.vendor}%,material.ilike.%${params.vendor}%`);
-            }
-        }
-
         const [invRes, prodRes] = await Promise.all([
             invQ.limit(params.limit || 50),
             prodQ.limit(params.limit || 50)
@@ -244,13 +216,13 @@ export const onyxQueries = {
                     ...(stem !== word ? [`description.ilike.%${stem}%`, `shape.ilike.%${stem}%`] : [])
                 ].join(',');
                 invSumQ = invSumQ.or(f);
-                prodSumQ = prodSumQ.or(f);
+                prodSumQ = prodSumQ.or(prodTextFilter(word, stem));
             });
         }
 
         if (params.vendor) {
             invSumQ = invSumQ.or(`item_id.ilike.${params.vendor}%,book_barcode.ilike.${params.vendor}%`);
-            prodSumQ = prodSumQ.or(`item_id.ilike.${params.vendor}%,book_barcode.ilike.${params.vendor}%`);
+            prodSumQ = prodSumQ.ilike('tag_id', `${params.vendor}%`);
         }
 
         const [invSum, prodSum] = await Promise.all([invSumQ, prodSumQ]);
@@ -270,13 +242,16 @@ export const onyxQueries = {
             const columns = `quantity, ${dbField}, status`;
             
             let invQ = supabase.from('inventory').select(columns);
-            let prodQ = supabase.from('production').select(columns);
+            // production has only description, tag_id, vendor_id, status and quantity
+            const prodField = group_by === 'vendor_id' ? 'tag_id' : group_by;
+            const prodHasField = PRODUCTION_COLUMNS.has(prodField);
+            let prodQ = supabase.from('production').select(prodHasField ? `quantity, ${prodField}, status` : 'quantity, status');
 
             const resolvedVendor = resolveVendorId(vendor || '');
             if (resolvedVendor) {
                 const prefix = `${resolvedVendor}%`;
                 invQ = invQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
-                prodQ = prodQ.or(`item_id.ilike.${prefix},book_barcode.ilike.${prefix}`);
+                prodQ = prodQ.ilike('tag_id', prefix);
             }
             
             if (query) {
@@ -297,18 +272,18 @@ export const onyxQueries = {
                         ...(stem !== word ? [`description.ilike.%${stem}%`, `short_description.ilike.%${stem}%`, `shape.ilike.%${stem}%`] : [])
                     ].join(',');
                     invQ = invQ.or(f);
-                    prodQ = prodQ.or(f);
+                    prodQ = prodQ.or(prodTextFilter(word, stem));
                 });
             }
 
-            const [invRes, prodRes] = await Promise.all([invQ, prodQ]);
+            const [invRes, prodRes] = await Promise.all([invQ, prodHasField ? prodQ : Promise.resolve({ data: [] as any[] })]);
             const data = [...(invRes.data || []), ...(prodRes.data || [])];
 
             const summary: Record<string, number> = {};
             data.forEach((item: any) => {
                 let key = 'Unknown';
                 if (group_by === 'vendor_id') {
-                    const idString = (item.item_id || item.book_barcode || '').toString().toUpperCase().trim();
+                    const idString = (item.item_id || item.book_barcode || item.tag_id || '').toString().toUpperCase().trim();
                     const match = VENDOR_KEYS.find(k => idString.startsWith(k.toUpperCase()));
                     key = match || idString.substring(0, 2) || 'Unknown';
                 } else {
