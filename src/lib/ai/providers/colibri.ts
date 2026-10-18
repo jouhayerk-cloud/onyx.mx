@@ -276,6 +276,28 @@ async function httpError(res: Response, what: string): Promise<AiProviderError> 
     return new AiProviderError(`Colibrì ${what}: HTTP ${res.status}${detail ? ` ${detail}` : ''}`, res.status, 'server');
 }
 
+/** Answer cap for chat on this PC (about 0.5 tokens per second). */
+const COLIBRI_CHAT_MAX_TOKENS = 384;
+
+/** First sentence, at most `max` characters. */
+function compactText(text: string | undefined, max: number): string {
+    const t = String(text ?? '').trim();
+    const first = t.split(/(?<=[.!?])\s/)[0] || t;
+    return first.length > max ? first.slice(0, max - 1) + '…' : first;
+}
+
+/** JSON schema without description/examples text, so tool calls cost far fewer prompt tokens. */
+function compactSchema(schema: any): any {
+    if (Array.isArray(schema)) return schema.map(compactSchema);
+    if (!schema || typeof schema !== 'object') return schema;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(schema)) {
+        if (k === 'description' || k === 'examples' || k === 'title') continue;
+        out[k] = compactSchema(v);
+    }
+    return out;
+}
+
 /** Wraps fetch with the long timeout, the caller's signal, and the typed error mapping. */
 async function callServer<T>(
     cfg: ProviderConfig,
@@ -413,17 +435,19 @@ export async function streamChat(
 
     const body: Record<string, unknown> = { model, messages, stream: true };
     if (req.tools && req.tools.length > 0) {
+        // Colibri reads the prompt at local-CPU speed: send each tool compactly (first sentence, no parameter prose)
         body.tools = req.tools.map(t => ({
             type: 'function',
             function: {
                 name: t.name,
-                description: t.description,
-                parameters: t.parameters ?? { type: 'object', properties: {} },
+                description: compactText(t.description, 90),
+                parameters: compactSchema(t.parameters ?? { type: 'object', properties: {} }),
             },
         }));
     }
     if (req.temperature !== undefined) body.temperature = req.temperature;
-    if (req.maxTokens !== undefined) body.max_tokens = req.maxTokens;
+    // ~0.5 tokens/s here: a 4096-token cap kept the engine busy for minutes and queued the next message
+    body.max_tokens = Math.min(req.maxTokens ?? COLIBRI_CHAT_MAX_TOKENS, COLIBRI_CHAT_MAX_TOKENS);
 
     return callServer(cfg, req, async (signal) => {
         const res = await fetch(`${baseUrl}/v1/chat/completions`, {
