@@ -515,11 +515,13 @@ export async function streamChat(
                     const idx = typeof tc.index === 'number' ? tc.index : 0;
                     let acc = toolCallsMap.get(idx);
                     if (!acc) {
-                        acc = { id: tc.id || `call_${idx}_${Date.now()}`, name: tc.function?.name || '', arguments: '' };
+                        acc = { id: tc.id || `call_${idx}_${Date.now()}`, name: '', arguments: '' };
                         toolCallsMap.set(idx, acc);
                     }
                     if (tc.id) acc.id = tc.id;
-                    if (tc.function?.name) acc.name += tc.function.name;
+                    // Colibri repeats the whole name in later chunks; only a true fragment is appended
+                    const name = tc.function?.name;
+                    if (name) acc.name = !acc.name || name.startsWith(acc.name) ? name : acc.name + name;
                     if (tc.function?.arguments) acc.arguments += tc.function.arguments;
                 }
             }
@@ -551,8 +553,30 @@ export async function streamChat(
             }
             toolCalls.push({ id: acc.id, name: acc.name, args: parsedArgs });
         }
+        // The model sometimes writes its call as Qwen XML text instead of a tool_calls delta
+        if (toolCalls.length === 0 && accumulatedText.includes('<tool_call>')) {
+            const xml = parseXmlToolCalls(accumulatedText);
+            if (xml.calls.length) return { text: xml.text, toolCalls: xml.calls, model: resolvedModel };
+        }
         return { text: accumulatedText, toolCalls, model: resolvedModel };
     });
+}
+
+/** `<tool_call><function=NAME><parameter=KEY>VALUE</parameter></function></tool_call>` blocks out of the text. */
+export function parseXmlToolCalls(text: string): { text: string; calls: ChatToolCall[] } {
+    const calls: ChatToolCall[] = [];
+    const rest = text.replace(/<tool_call>([\s\S]*?)(?:<\/tool_call>|$)/g, (_m, body: string) => {
+        const fn = /<function=([\w.-]+)>/.exec(body);
+        if (!fn) return '';
+        const args: Record<string, unknown> = {};
+        for (const p of body.matchAll(/<parameter=([\w.-]+)>([\s\S]*?)<\/parameter>/g)) {
+            const raw = p[2].trim();
+            try { args[p[1]] = JSON.parse(raw); } catch { args[p[1]] = raw; }
+        }
+        calls.push({ id: `call_xml_${calls.length}_${Date.now()}`, name: fn[1], args });
+        return '';
+    });
+    return { text: rest.trim(), calls };
 }
 
 export interface ColibriProviderImpl extends AiProviderImpl {
