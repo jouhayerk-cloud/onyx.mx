@@ -57,3 +57,11 @@ export function setGeminiKey(key: string | null | undefined): void {
 export function hasGeminiKey(): boolean {
     return getGeminiKey().length > 0;
 }
+
+/** Where the active key comes from, for a status line. Never returns the key. */
+export function getGeminiKeySource(): 'device' | 'legacy' | 'build' | 'none' {
+    if (readStorage(STORAGE_KEY)) return 'device';
+    if (readStorage(LEGACY_STORAGE_KEY)) return 'legacy';
+    if (clean((import.meta as any).env?.VITE_GEMINI_API_KEY)) return 'build';
+    return 'none';
+}

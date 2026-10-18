@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { userAtom, languageAtom, inventoryArtifactConfigAtom } from '../../lib/atoms';
 import { getGeminiKey } from '../../lib/ai/keys';
+import { requestGeminiKey } from '../../lib/ai/keyPrompt';
 import { supabase } from '../../lib/supabase';
 import { onyxToolDefinitions, onyxToolHandlers } from '../onyx/onyxTools';
 import { mergeToolPacks } from './tools/mergeToolPacks';
@@ -359,7 +360,8 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
             }
         }
 
-        const apiKey = getGeminiKey();
+        let apiKey = getGeminiKey();
+        if (effectiveViaGemini && !apiKey && await requestGeminiKey()) apiKey = getGeminiKey();
         if (effectiveViaGemini && !apiKey) {
             setError(tr("Neural link credentials missing."));
             setPhase('error');

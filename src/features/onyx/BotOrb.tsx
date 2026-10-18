@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, RefreshCw, Database, ChevronRight } from 'lucide-react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { getGeminiKey } from '../../lib/ai/keys';
+import { requestGeminiKey } from '../../lib/ai/keyPrompt';
 import { 
     isBotOrbOpenAtom,
     inventoryArtifactConfigAtom, 
@@ -75,7 +76,8 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
     const initClient = async () => {
         // lib/ai/keys: the user's saved key first, the bundled one last. This
         // read the bundled key only, so a saved key never reached the orb.
-        const apiKey = getGeminiKey();
+        let apiKey = getGeminiKey();
+        if (!apiKey && await requestGeminiKey()) apiKey = getGeminiKey();
         if (!apiKey) {
             setError('Neural API Key missing');
             return;

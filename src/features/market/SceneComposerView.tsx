@@ -10,6 +10,7 @@ import { InventoryItem } from '../../lib/Types';
 import { SCRIPT_URL } from '../../lib/consts';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { tr } from '../../lib/i18n';
+import { requestGeminiKey } from '../../lib/ai/keyPrompt';
 
 
 
@@ -169,6 +170,8 @@ export const SceneComposerView = () => {
         const xPercent = (imageX / renderedWidth) * 100;
         const yPercent = (imageY / renderedHeight) * 100;
         
+        if (!await requestGeminiKey(tr("A Gemini key is needed to place the product in the scene."))) return;
+
         setIsLoading(true);
         setError(null);
 

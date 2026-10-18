@@ -68,6 +68,7 @@ import {
 import toast from '../onyxIsland/notify/toast';
 import { tr } from '../../lib/i18n';
 import { getGeminiKey, setGeminiKey } from '../../lib/ai/keys';
+import { requestGeminiKey, geminiKeyStatus } from '../../lib/ai/keyPrompt';
 import { generateJson } from '../../lib/ai/client';
 import { aiErrorMessage } from '../../lib/ai/errors';
 import { buildMaskPrompt, buildEdgeMaskPrompt, type MaskLayer } from '../../lib/ai/prompts';
@@ -466,7 +467,7 @@ export const ProcessView: React.FC = () => {
 
         try {
             updateOp({ status: 'processing', progress: 5, stepLabel: 'Initalizing AI...' });
-            if (!getApiKey()) {
+            if (!getApiKey() && !await requestGeminiKey()) {
                 addLog("Gemini API Key missing! Use the key button in the Engine Console to set it.", "error");
                 throw new Error("API Key missing");
             }
@@ -662,7 +663,7 @@ export const ProcessView: React.FC = () => {
     useEffect(() => {
         const key = getApiKey();
         addLog(`Inventory Processing Engine v1.27.1 Initialized`, 'success');
-        addLog(`API Key Detect: ${key ? 'ACTIVE' : 'MISSING'}`, key ? 'info' : 'error');
+        addLog(`API Key Detect: ${key ? 'ACTIVE' : 'MISSING'} (${geminiKeyStatus()})`, key ? 'info' : 'error');
         
 
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -1170,7 +1171,7 @@ export const ProcessView: React.FC = () => {
                                     <SectionTitle title={tr("Engine Console")} icon={Terminal} />
                                     <button
                                         onClick={() => {
-                                            const val = window.prompt("Enter Gemini API Key (Case-Sensitive):", getApiKey());
+                                            const val = window.prompt("Enter Gemini API Key (Case-Sensitive):", "");
                                             if (val !== null) {
                                                 setGeminiKey(val);
                                                 window.location.reload();

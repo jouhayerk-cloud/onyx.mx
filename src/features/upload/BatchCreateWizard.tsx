@@ -45,6 +45,7 @@ import { el } from '../../lib/i18nEnums';
 import { generateJson } from '../../lib/ai/client';
 import { aiErrorMessage } from '../../lib/ai/errors';
 import { hasGeminiKey } from '../../lib/ai/keys';
+import { requestGeminiKey } from '../../lib/ai/keyPrompt';
 import { buildTranslatePrompt, type TranslationPair } from '../../lib/ai/prompts';
 import { CATALOG_PROCESSES } from '../../lib/catalogHubProcesses';
 import { buildAttributeSuggestions } from '../../lib/attributeSuggestions';
@@ -467,9 +468,10 @@ function FileStep({ vendor, vendorPicker, pending, onBack, onLoaded }: {
             </button>
 
             <div className="bc-file__opts">
-                <Chip pressed={translate && keySet} disabled={!keySet || !!stage} onPressedChange={setTranslate}
+                <Chip pressed={translate && keySet} disabled={!!stage}
+                    onPressedChange={async (on) => { if (!on) { setTranslate(false); return; } if (keySet || await requestGeminiKey(tr('A Gemini key is needed to translate the sheet.'))) setTranslate(true); }}
                     icon={<Languages size={12} />}
-                    title={keySet ? tr('Translate shape and material from Spanish. Type, colour and the note are kept as the vendor wrote them.') : tr('No Gemini key on this device: the sheet is loaded as written')}>
+                    title={keySet ? tr('Translate shape and material from Spanish. Type, colour and the note are kept as the vendor wrote them.') : tr('No Gemini key on this device: click to add one, or the sheet is loaded as written')}>
                     {tr('Translate ES → EN')}
                 </Chip>
                 {onBack && (

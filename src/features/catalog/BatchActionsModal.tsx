@@ -19,6 +19,7 @@ import { processSingleItem, letterboxToUnit, type BatchOp, type PipelineContext,
 import { generateJson } from '../../lib/ai/client';
 import { aiErrorMessage } from '../../lib/ai/errors';
 import { hasGeminiKey } from '../../lib/ai/keys';
+import { requestGeminiKey } from '../../lib/ai/keyPrompt';
 import { toPipelineItem } from '../../lib/ai/item';
 import { buildDetectionPrompt, type DetectionBox } from '../../lib/ai/prompts';
 import { aiResultFromOps, buildAiPatch, saveAiPatch, isEmptyPatch } from '../../lib/ai/persist';
@@ -168,7 +169,7 @@ export function BatchActionsModal() {
             await handleDelete();
             return;
         }
-        if (!hasGeminiKey()) {
+        if (!hasGeminiKey() && !await requestGeminiKey(tr("A Gemini key is needed to run these actions."))) {
             notify.error(tr("No Gemini API key is set"));
             return;
         }

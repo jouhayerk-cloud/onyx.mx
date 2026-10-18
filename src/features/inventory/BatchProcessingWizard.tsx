@@ -60,6 +60,7 @@ import { validateCopy } from '../../lib/copyValidation';
 import { CATALOG_PROCESSES } from '../../lib/catalogHubProcesses';
 import { tr, trf } from '../../lib/i18n';
 import { hasGeminiKey, setGeminiKey } from '../../lib/ai/keys';
+import { geminiKeyStatus } from '../../lib/ai/keyPrompt';
 import { aiErrorMessage } from '../../lib/ai/errors';
 import { saveAiPatch, type AiPatch, type InventoryUpdate } from '../../lib/ai/persist';
 import type { ProcessingMode } from '../../lib/catalogHubPipeline';
@@ -1483,7 +1484,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                                 {pendingRef.current ? tr('Save & Start') : tr('Save')}
                             </Key>
                         </>}>
-                        <p>{hasGeminiKey()
+                        <p>{geminiKeyStatus()}. {hasGeminiKey()
                             ? tr('A key is stored on this device. Enter a new one to replace it.')
                             : tr('Please enter your Gemini API Key. It will be stored securely in your local device storage.')}</p>
                         <Field label={tr('API key')}>

@@ -12,6 +12,7 @@ import { tr, trf } from '../../lib/i18n';
 import { getCleanImageUrl } from '../../lib/utils';
 import { validateCopy } from '../../lib/copyValidation';
 import { hasGeminiKey, setGeminiKey } from '../../lib/ai/keys';
+import { geminiKeyStatus } from '../../lib/ai/keyPrompt';
 import type { RunItem, RunPhoto, ProcessId, UseAiRun } from '../../lib/ai/run';
 import {
     Field, Input, Select, Key, MediaViewer, StatusPill, StepsStrip, PROCESS_META,
@@ -281,7 +282,7 @@ export function GeneratePanel({
             {/* Key box if device lacks a key */}
             {keyMissing && (
                 <div className="entry-keybox">
-                    <Field label={tr('Gemini API key')} hint={hasGeminiKey()
+                    <Field label={`${tr('Gemini API key')} - ${geminiKeyStatus()}`} hint={hasGeminiKey()
                         ? tr('A key is stored on this device. Enter a new one to replace it.')
                         : tr('Stored on this device only. Needed for the text and the cleaned image.')}>
                         <Input type="password" mono autoComplete="off" value={keyDraft} placeholder={tr('AIzaSy...')}

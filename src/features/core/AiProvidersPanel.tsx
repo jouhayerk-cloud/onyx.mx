@@ -12,6 +12,7 @@ import {
     Trash2,
     X,
 } from 'lucide-react';
+import { geminiKeyStatus } from '../../lib/ai/keyPrompt';
 import { PROVIDER_INFOS, getProvider } from '../../lib/ai/providers';
 import { COLIBRI_DEFAULT_BASE_URL } from '../../lib/ai/providers/colibri';
 import { COLIBRI_MODELS } from '../../lib/ai/models';
@@ -510,7 +511,7 @@ export const AiProvidersPanel: React.FC = () => {
                                                         gap: 4,
                                                     }}
                                                 >
-                                                    <Check size={12} /> ••••••••
+                                                    <Check size={12} /> {p.id === 'gemini' ? geminiKeyStatus() : '••••••••'}
                                                 </span>
                                                 <button
                                                     type="button"
@@ -532,7 +533,7 @@ export const AiProvidersPanel: React.FC = () => {
                                                 <input
                                                     type="password"
                                                     autoComplete="off"
-                                                    placeholder={p.keyHint || tr("API key")}
+                                                    placeholder={p.id === 'gemini' ? `${geminiKeyStatus()} - ${p.keyHint || tr("API key")}` : (p.keyHint || tr("API key"))}
                                                     value={keyDraft}
                                                     onChange={(e) =>
                                                         setDraftKeys((prev) => ({

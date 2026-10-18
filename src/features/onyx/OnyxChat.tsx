@@ -19,6 +19,7 @@ import ReactMarkdown from 'react-markdown';
 import { BotOrb } from './BotOrb';
 import { tr } from '../../lib/i18n';
 import { getGeminiKey } from '../../lib/ai/keys';
+import { requestGeminiKey } from '../../lib/ai/keyPrompt';
 
 const VENDOR_COLORS: Record<string, string> = {
     // Codes (from consts.tsx)
@@ -223,7 +224,8 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             setAppLanguage(detected);
         }
         
-        const { key: apiKey, isDefault } = getApiKeyInfo();
+        let { key: apiKey, isDefault } = getApiKeyInfo();
+        if (!apiKey && await requestGeminiKey()) ({ key: apiKey, isDefault } = getApiKeyInfo());
         if (!apiKey) {
             setLastError("Neural link credentials missing.");
             setIsTyping(false);

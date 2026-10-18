@@ -13,6 +13,7 @@ import { sentTruckIdAtom } from '../../lib/atoms';
 import { useSyncEngine } from '../../lib/syncEngine';
 import { setI18nLang, tr } from '../../lib/i18n';
 import { SyncProgressBar } from '../../components/SyncProgressBar';
+import { GeminiKeyDialog } from '../../components/GeminiKeyDialog';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
 
@@ -341,6 +342,7 @@ export default function App() {
               </div>
             </div>
           ) : user ? <MainAppView /> : <Login />}
+          <GeminiKeyDialog />
         </>
       )}
     </React.Fragment>
