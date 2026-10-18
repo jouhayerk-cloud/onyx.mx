@@ -578,6 +578,8 @@ export const LabelPrintStudio: React.FC = () => {
                 "barcodeData": "{{TAG ID}}",
                 "barcodeFormat": "CODE128",
                 "format": "CODE128",
+                "quietZoneModules": 5,
+                "barGain": 1,
                 "textFontSize": 15,
                 "textBold": true,
                 "showText": false
@@ -694,7 +696,7 @@ export const LabelPrintStudio: React.FC = () => {
             { id: "el_retail", type: "text", zone: 0, x: 20, y: 132.8, width: 250, height: 35, rotation: 0, align: "left", text: "{{BOOK RETAIL}}", fontSize: 22, fontFamily: "Inter, sans-serif", fontWeight: "bold", autoScale: true, noWrap: true },
             { id: "el_madein", type: "text", zone: 0, x: 20, y: 175.8, width: 161.44, height: 26.4, rotation: 0, align: "left", text: "Made in Mexico For", fontSize: 18, fontFamily: "Inter, sans-serif", fontWeight: "normal", autoScale: false, noWrap: true },
             { id: "el_logo", type: "image", zone: 0, x: 20, y: logoChoice === 'RareEarth' ? 193 : 202, width: logoChoice === 'RareEarth' ? 198 : 174, height: logoChoice === 'RareEarth' ? 47 : 30, rotation: 0, imageData: logoChoice === 'RareEarth' ? RareEarthLogoBase64 : ART_OF_DECOR_LOGO },
-            { id: "el_barcode", type: "barcode", zone: 0, x: 18.48, y: 240.1, width: 368.16, height: 146.48, rotation: 0, barcodeData: "{{TAG ID}}", barcodeFormat: "CODE128", format: "CODE128", textFontSize: 22, textBold: true, showText: true }
+            { id: "el_barcode", type: "barcode", zone: 0, x: 18.48, y: 240.1, width: 368.16, height: 146.48, rotation: 0, barcodeData: "{{TAG ID}}", barcodeFormat: "CODE128", format: "CODE128", quietZoneModules: 5, barGain: 1, textFontSize: 22, textBold: true, showText: true }
         ]
     });
 
@@ -808,6 +810,22 @@ export const LabelPrintStudio: React.FC = () => {
                     if (dl && dl.dataUrl && !existingIds.has(dl.id)) {
                         const tag = printedTags[idx] || `LABEL-${idx + 1}`;
                         const matchingItem = selectedItems.find(it => (it.codes?.bookBarcode || '') === tag) || selectedItems[idx];
+                        let barcodeCheck = dl.barcodeCheck;
+                        if (barcodeCheck) {
+                            const expectedText = tag;
+                            const matchesExpected = !expectedText || (barcodeCheck.decodedText === expectedText);
+                            const passed = !!(barcodeCheck.passed && barcodeCheck.checksumValid && matchesExpected);
+                            barcodeCheck = {
+                                ...barcodeCheck,
+                                expectedText,
+                                passed,
+                                error: passed
+                                    ? undefined
+                                    : (barcodeCheck.decodedText !== expectedText
+                                        ? `Decoded "${barcodeCheck.decodedText}" did not match expected "${expectedText}"`
+                                        : (barcodeCheck.error || 'Barcode decode failed'))
+                            };
+                        }
                         additions.push({
                             id: dl.id || `vt-${Date.now()}-${idx}`,
                             tagId: tag,
@@ -815,7 +833,7 @@ export const LabelPrintStudio: React.FC = () => {
                             index: idx + 1,
                             timestamp: dl.timestamp || Date.now(),
                             item: matchingItem,
-                            barcodeCheck: dl.barcodeCheck,
+                            barcodeCheck,
                         });
                     }
                 });
@@ -1913,6 +1931,13 @@ export const LabelPrintStudio: React.FC = () => {
                                                                     alt={`Label ${label.tagId}`}
                                                                     className="lps-tray-thumb h-12 w-auto"
                                                                 />
+                                                                {label.barcodeCheck && (
+                                                                    <span className={`absolute top-0.5 left-0.5 px-1 py-0.2 rounded text-[7.5px] font-black uppercase font-mono tracking-wider shadow ${
+                                                                        label.barcodeCheck.passed ? 'bg-sky-500 text-black' : 'bg-rose-500 text-white'
+                                                                    }`}>
+                                                                        {label.barcodeCheck.passed ? 'PASS' : 'FAIL'}
+                                                                    </span>
+                                                                )}
                                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                                     <Eye size={12} className="text-white" />
                                                                 </div>
@@ -2552,7 +2577,7 @@ export const LabelPrintStudio: React.FC = () => {
                                                                     <span className={`absolute top-0.5 left-0.5 px-1 py-0.2 rounded text-[7.5px] font-black uppercase font-mono tracking-wider shadow ${
                                                                         label.barcodeCheck.passed ? 'bg-sky-500 text-black' : 'bg-rose-500 text-white'
                                                                     }`}>
-                                                                        {label.barcodeCheck.passed ? `${label.barcodeCheck.moduleWidth}DOT` : 'ERR'}
+                                                                        {label.barcodeCheck.passed ? 'PASS' : 'FAIL'}
                                                                     </span>
                                                                 )}
                                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
@@ -2755,7 +2780,7 @@ export const LabelPrintStudio: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Thermal Scanline Integer Module Diagnostics Panel */}
+                            {/* Thermal Scanline Code 128 Decode Diagnostics Panel */}
                             {trayModalLabel.barcodeCheck && (
                                 <div className={`p-2.5 rounded-lg border text-xs flex flex-col gap-1.5 ${
                                     trayModalLabel.barcodeCheck.passed 
@@ -2765,18 +2790,23 @@ export const LabelPrintStudio: React.FC = () => {
                                     <div className="flex items-center justify-between font-bold">
                                         <span className="flex items-center gap-1.5 font-mono text-[11px]">
                                             <span className={`w-2 h-2 rounded-full ${trayModalLabel.barcodeCheck.passed ? 'bg-sky-400' : 'bg-rose-400'}`} />
-                                            THERMAL SCANLINE INTEGER MODULE CHECK: {trayModalLabel.barcodeCheck.passed ? 'PASS (100% Integer Dots)' : 'FAIL'}
+                                            CODE 128 SCANLINE DECODE CHECK: {trayModalLabel.barcodeCheck.passed ? 'PASS' : 'FAIL'}
                                         </span>
                                         <span className="font-mono text-[10px] opacity-80">
                                             {trayModalLabel.barcodeCheck.barCount} bars on raster line {trayModalLabel.barcodeCheck.scanline}
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono pt-1 border-t border-current/20">
-                                        <div><span className="opacity-70">MODULE:</span> {trayModalLabel.barcodeCheck.moduleWidth} dots ({trayModalLabel.barcodeCheck.moduleWidth * 0.125} mm)</div>
-                                        <div><span className="opacity-70">CHECKED BARS:</span> {trayModalLabel.barcodeCheck.barCount}</div>
-                                        <div><span className="opacity-70">NON-INTEGER BARS:</span> {trayModalLabel.barcodeCheck.nonMultipleBars.length}</div>
-                                        <div><span className="opacity-70">HEAD RASTER:</span> 384 dots (48 bytes)</div>
+                                        <div><span className="opacity-70">DECODED:</span> {trayModalLabel.barcodeCheck.decodedText || 'None'}</div>
+                                        <div><span className="opacity-70">EXPECTED:</span> {trayModalLabel.barcodeCheck.expectedText || trayModalLabel.tagId}</div>
+                                        <div><span className="opacity-70">MODULE:</span> ~{trayModalLabel.barcodeCheck.moduleWidth} dots</div>
+                                        <div><span className="opacity-70">CHECKSUM:</span> {trayModalLabel.barcodeCheck.checksumValid ? 'VALID (mod 103)' : 'INVALID'}</div>
                                     </div>
+                                    {trayModalLabel.barcodeCheck.error && (
+                                        <div className="text-[10px] font-mono text-rose-400 pt-1 border-t border-current/20">
+                                            {trayModalLabel.barcodeCheck.error}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

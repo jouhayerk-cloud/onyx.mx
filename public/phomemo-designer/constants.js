@@ -239,6 +239,8 @@ export const DEFAULTS = {
   },
   barcode: {
     format: 'CODE128',
+    quietZoneModules: 5,
+    barGain: 1,
   },
   qr: {
     errorCorrection: 'M',

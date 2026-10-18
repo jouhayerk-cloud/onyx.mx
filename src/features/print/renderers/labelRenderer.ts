@@ -24,7 +24,7 @@ export function loadLabelImage(src: string): Promise<HTMLImageElement> {
 export type LabelElement =
     | { type: 'text'; x: number; y: number; text: string; fontSize: number; fontWeight?: string; fontFamily?: string; align?: 'left' | 'center' | 'right' | 'justify'; maxWidth?: number; rotation?: number }
     | { type: 'qr'; x: number; y: number; size: number; data: string; }
-    | { type: 'barcode'; x: number; y: number; width: number; height: number; data: string; rotation?: number }
+    | { type: 'barcode'; x: number; y: number; width: number; height: number; data: string; rotation?: number; barGain?: number; quietZoneModules?: number; showText?: boolean; textFontSize?: number; textBold?: boolean }
     | { type: 'line'; x1: number; y1: number; x2: number; y2: number; thickness: number }
     | { type: 'rect'; x: number; y: number; width: number; height: number; thickness: number; fill?: boolean }
     | { type: 'image'; x: number; y: number; width: number; height: number; image: ImageBitmap | HTMLCanvasElement | HTMLImageElement; rotation?: number };
@@ -170,6 +170,7 @@ export async function renderLabelToCanvas(spec: LabelSpec): Promise<HTMLCanvasEl
             const boxHeight = Math.round(el.height);
 
             let symbolModules = 0;
+            let mData: Uint8ClampedArray | null = null;
             try {
                 const measureCanvas = document.createElement('canvas');
                 JsBarcode(measureCanvas, data, {
@@ -177,32 +178,56 @@ export async function renderLabelToCanvas(spec: LabelSpec): Promise<HTMLCanvasEl
                     displayValue: false,
                     margin: 0,
                     width: 1,
-                    height: 10
+                    height: 10,
+                    background: '#ffffff',
+                    lineColor: '#000000',
                 });
                 symbolModules = measureCanvas.width;
+                const mCtx = measureCanvas.getContext('2d', { willReadFrequently: true });
+                if (mCtx && symbolModules > 0) {
+                    mData = mCtx.getImageData(0, 0, symbolModules, 1).data;
+                }
             } catch (e) {
                 console.warn("Barcode measure failed", e);
                 symbolModules = 0;
             }
 
-            if (symbolModules > 0) {
-                const quietZoneModules = 10;
+            if (symbolModules > 0 && mData) {
+                // Extract alternating runs of bars and spaces from 1-dot raster
+                const runs: Array<{ isBar: boolean; startModule: number; lengthModules: number }> = [];
+                let currentIsBar = (mData[0] < 128);
+                let runStart = 0;
+                for (let m = 1; m < symbolModules; m++) {
+                    const isBar = (mData[m * 4] < 128);
+                    if (isBar !== currentIsBar) {
+                        runs.push({ isBar: currentIsBar, startModule: runStart, lengthModules: m - runStart });
+                        currentIsBar = isBar;
+                        runStart = m;
+                    }
+                }
+                runs.push({ isBar: currentIsBar, startModule: runStart, lengthModules: symbolModules - runStart });
+
+                // Configurable quiet zones: default 5 modules each side (clamped 3-10)
+                const quietZoneModules = Math.min(10, Math.max(3, Number.isFinite((el as any).quietZoneModules) ? Number((el as any).quietZoneModules) : 5));
+                // Per-barcode bar thickness setting (+0, +1, +2 dots, default +1)
+                const barGain = Math.min(2, Math.max(0, Number.isFinite((el as any).barGain) ? Number((el as any).barGain) : 1));
+
                 const totalModules = symbolModules + (quietZoneModules * 2);
 
-                // Choose integer module width: 3 dots if it fits, else 2 dots
-                let moduleWidth = 2;
-                if (totalModules * 3 <= boxWidth) {
-                    moduleWidth = 3;
-                } else if (totalModules * 2 <= boxWidth) {
+                // Fine sizing: compute module width as a real number so symbol fills box width (clamped to >= 2 dots)
+                const rawModuleWidth = boxWidth / totalModules;
+                let moduleWidth = rawModuleWidth;
+                if (moduleWidth < 2) {
                     moduleWidth = 2;
-                } else {
-                    moduleWidth = 2;
-                    console.warn(`[labelRenderer] Barcode "${data}" (${totalModules * 2} dots at 2 dots/mod) exceeds box width (${boxWidth} dots). Squeezing disabled.`);
+                    console.warn(`[labelRenderer] Barcode "${data}" (${totalModules * 2} dots at 2 dots/mod) exceeds box width (${boxWidth} dots). Clamped to 2 dots.`);
                 }
 
-                const quietZoneDots = quietZoneModules * moduleWidth;
-                const totalBarcodeWidth = totalModules * moduleWidth;
-                const barHeight = boxHeight;
+                const totalBarcodeWidth = Math.round(totalModules * moduleWidth);
+                const showText = !!(el as any).showText;
+                const textFontSize = Math.round((el as any).textFontSize || 14);
+                const textBold = !!(el as any).textBold;
+                const textHeight = showText ? textFontSize + 4 : 0;
+                const barHeight = Math.max(10, boxHeight - textHeight - 2);
 
                 const barcodeCanvas = document.createElement('canvas');
                 barcodeCanvas.width = totalBarcodeWidth;
@@ -212,22 +237,41 @@ export async function renderLabelToCanvas(spec: LabelSpec): Promise<HTMLCanvasEl
                     bCtx.imageSmoothingEnabled = false;
                     bCtx.fillStyle = '#ffffff';
                     bCtx.fillRect(0, 0, totalBarcodeWidth, barHeight);
-                }
 
-                try {
-                    JsBarcode(barcodeCanvas, data, {
-                        format: "CODE128",
-                        width: moduleWidth,
-                        height: barHeight,
-                        displayValue: false,
-                        margin: 0,
-                        marginLeft: quietZoneDots,
-                        marginRight: quietZoneDots,
-                        marginTop: 0,
-                        marginBottom: 0,
-                        background: '#ffffff',
-                        lineColor: '#000000',
-                    });
+                    // Rasterize by rounding each bar EDGE position to nearest dot (cumulative)
+                    bCtx.fillStyle = '#000000';
+                    const startX = 0;
+
+                    for (let i = 0; i < runs.length; i++) {
+                        if (!runs[i].isBar) continue;
+
+                        const mStart = quietZoneModules + runs[i].startModule;
+                        const mEnd = mStart + runs[i].lengthModules;
+
+                        // Find start module of next black bar (or totalModules if this is the final bar)
+                        let mNextBarStart = totalModules;
+                        for (let j = i + 1; j < runs.length; j++) {
+                            if (runs[j].isBar) {
+                                mNextBarStart = quietZoneModules + runs[j].startModule;
+                                break;
+                            }
+                        }
+
+                        // Cumulative edge rounding: x_edge = round(startX + moduleIndex * moduleWidth)
+                        const xEdgeStart = Math.round(startX + mStart * moduleWidth);
+                        const xEdgeEnd = Math.round(startX + mEnd * moduleWidth);
+                        const nextBarXEdgeStart = Math.round(startX + mNextBarStart * moduleWidth);
+
+                        // Bar thickness gain: widen black bar by N dots taken from following space (never < 1 dot space)
+                        const followingSpaceDots = nextBarXEdgeStart - xEdgeEnd;
+                        const maxGain = Math.max(0, followingSpaceDots - 1);
+                        const effectiveGain = Math.min(barGain, maxGain);
+
+                        const barLeft = xEdgeStart;
+                        const barWidth = (xEdgeEnd + effectiveGain) - barLeft;
+
+                        bCtx.fillRect(barLeft, 0, barWidth, barHeight);
+                    }
 
                     // Center barcode horizontally by whole dots within the element box
                     const offsetX = Math.floor((boxWidth - totalBarcodeWidth) / 2);
@@ -237,11 +281,23 @@ export async function renderLabelToCanvas(spec: LabelSpec): Promise<HTMLCanvasEl
                         ctx.translate(el.x, el.y);
                         ctx.rotate(el.rotation * Math.PI / 180);
                         ctx.drawImage(barcodeCanvas, offsetX, 0);
+                        if (showText) {
+                            ctx.fillStyle = '#000000';
+                            ctx.font = `${textBold ? 'bold ' : ''}${textFontSize}px monospace`;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'top';
+                            ctx.fillText(data, offsetX + totalBarcodeWidth / 2, barHeight + 2);
+                        }
                     } else {
                         ctx.drawImage(barcodeCanvas, el.x + offsetX, el.y);
+                        if (showText) {
+                            ctx.fillStyle = '#000000';
+                            ctx.font = `${textBold ? 'bold ' : ''}${textFontSize}px monospace`;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'top';
+                            ctx.fillText(data, el.x + offsetX + totalBarcodeWidth / 2, el.y + barHeight + 2);
+                        }
                     }
-                } catch (e) {
-                    console.warn("Barcode generation failed", e);
                 }
             }
         } else if (el.type === 'line') {

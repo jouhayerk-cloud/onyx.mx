@@ -175,94 +175,283 @@ export interface BarcodeScanlineCheckResult {
     barCount: number;
     bars: number[];
     nonMultipleBars: Array<{ index: number; x: number; width: number; remainder: number }>;
+    decodedText?: string;
+    expectedText?: string;
+    checksumValid?: boolean;
     error?: string;
 }
 
+// ISO/IEC 15417 Code 128 patterns (0-106). 0-105: 6 elements, sum=11; 106 (Stop): 7 elements, sum=13.
+const CODE128_PATTERNS: string[] = [
+    "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213",
+    "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132",
+    "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211",
+    "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313",
+    "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331",
+    "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111",
+    "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214",
+    "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111",
+    "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141",
+    "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141",
+    "114131", "311141", "411131", "211412", "211214", "211232", "2331112"
+];
+
+const CODE128_MODULES = CODE128_PATTERNS.map(p => p.split('').map(Number));
+
+function matchCode128Char(runs: number[], startIdx: number): { charIndex: number; error: number } {
+    if (startIdx + 6 > runs.length) return { charIndex: -1, error: Infinity };
+    const r1 = runs[startIdx], r2 = runs[startIdx + 1], r3 = runs[startIdx + 2], r4 = runs[startIdx + 3], r5 = runs[startIdx + 4], r6 = runs[startIdx + 5];
+    const totalDots = r1 + r2 + r3 + r4 + r5 + r6;
+    if (totalDots <= 0) return { charIndex: -1, error: Infinity };
+    const Z = totalDots / 11;
+    if (Z < 1.0) return { charIndex: -1, error: Infinity };
+
+    // T-dimensions normalized to module units (inherently invariant to bar gain)
+    const T1 = (r1 + r2) / Z;
+    const T2 = (r2 + r3) / Z;
+    const T3 = (r3 + r4) / Z;
+    const T4 = (r4 + r5) / Z;
+
+    let bestIdx = -1;
+    let bestErr = Infinity;
+
+    for (let c = 0; c < 106; c++) {
+        const m = CODE128_MODULES[c];
+        const t1 = m[0] + m[1];
+        const t2 = m[1] + m[2];
+        const t3 = m[2] + m[3];
+        const t4 = m[3] + m[4];
+        const err = Math.abs(T1 - t1) + Math.abs(T2 - t2) + Math.abs(T3 - t3) + Math.abs(T4 - t4) + Math.abs(r1 / Z - m[0]) * 0.4;
+        if (err < bestErr) {
+            bestErr = err;
+            bestIdx = c;
+        }
+    }
+
+    return { charIndex: bestIdx, error: bestErr };
+}
+
+function matchStopPattern(runs: number[], startIdx: number): { matched: boolean; error: number } {
+    if (startIdx + 7 > runs.length) return { matched: false, error: Infinity };
+    const r = runs.slice(startIdx, startIdx + 7);
+    const totalDots = r.reduce((a, b) => a + b, 0);
+    if (totalDots <= 0) return { matched: false, error: Infinity };
+    const Z = totalDots / 13;
+    if (Z < 1.0) return { matched: false, error: Infinity };
+
+    const stopModules = [2, 3, 3, 1, 1, 1, 2];
+    const T1 = (r[0] + r[1]) / Z;
+    const T2 = (r[1] + r[2]) / Z;
+    const T3 = (r[2] + r[3]) / Z;
+    const T4 = (r[3] + r[4]) / Z;
+    const T5 = (r[4] + r[5]) / Z;
+    const T6 = (r[5] + r[6]) / Z;
+
+    const t1 = stopModules[0] + stopModules[1];
+    const t2 = stopModules[1] + stopModules[2];
+    const t3 = stopModules[2] + stopModules[3];
+    const t4 = stopModules[3] + stopModules[4];
+    const t5 = stopModules[4] + stopModules[5];
+    const t6 = stopModules[5] + stopModules[6];
+
+    const err = Math.abs(T1 - t1) + Math.abs(T2 - t2) + Math.abs(T3 - t3) + Math.abs(T4 - t4) + Math.abs(T5 - t5) + Math.abs(T6 - t6) + Math.abs(r[0] / Z - stopModules[0]) * 0.4;
+    return { matched: err < 1.8, error: err };
+}
+
+function decodeSymbolsToText(symbols: number[]): { text: string; checksumValid: boolean } {
+    if (symbols.length < 3) return { text: '', checksumValid: false };
+    const startVal = symbols[0];
+    const stopVal = symbols[symbols.length - 1];
+    if (stopVal !== 106) return { text: '', checksumValid: false };
+    const checkVal = symbols[symbols.length - 2];
+    const dataSymbols = symbols.slice(1, symbols.length - 2);
+
+    let sum = startVal;
+    for (let i = 0; i < dataSymbols.length; i++) {
+        sum += (i + 1) * dataSymbols[i];
+    }
+    const checksumValid = (sum % 103 === checkVal);
+
+    let currentSet: 'A' | 'B' | 'C' = startVal === 103 ? 'A' : startVal === 105 ? 'C' : 'B';
+    let text = '';
+    let shift = false;
+
+    for (let i = 0; i < dataSymbols.length; i++) {
+        const val = dataSymbols[i];
+        const activeSet = shift ? (currentSet === 'A' ? 'B' : 'A') : currentSet;
+        shift = false;
+
+        if (activeSet === 'C') {
+            if (val === 100) {
+                currentSet = 'B';
+            } else if (val === 101) {
+                currentSet = 'A';
+            } else if (val <= 99) {
+                text += String(val).padStart(2, '0');
+            }
+        } else if (activeSet === 'B') {
+            if (val === 98) {
+                shift = true;
+            } else if (val === 99) {
+                currentSet = 'C';
+            } else if (val === 101) {
+                currentSet = 'A';
+            } else if (val <= 95) {
+                text += String.fromCharCode(val + 32);
+            }
+        } else { // activeSet === 'A'
+            if (val === 98) {
+                shift = true;
+            } else if (val === 99) {
+                currentSet = 'C';
+            } else if (val === 100) {
+                currentSet = 'B';
+            } else if (val <= 63) {
+                text += String.fromCharCode(val + 32);
+            } else if (val <= 95) {
+                text += String.fromCharCode(val - 64);
+            }
+        }
+    }
+
+    return { text, checksumValid };
+}
+
 /**
- * Verify that every bar in the decoded scan line has a width that is an exact multiple of the module (2 or 3 dots).
+ * Decode printed scan line run lengths to Code 128 text and verify checksum.
  */
-export function checkBarcodeScanlineIntegerModules(
+export function decodeBarcodeScanline(
     rasterBytes: Uint8Array,
     widthBytes: number,
     heightLines: number,
-    targetModuleWidth?: number
+    expectedData?: string
 ): BarcodeScanlineCheckResult {
     const widthPx = widthBytes * 8;
     let bestLine = -1;
     let bestBars: Array<{ x: number; width: number }> = [];
+    let fallbackCandidate: BarcodeScanlineCheckResult | null = null;
 
-    // Scan through all lines to locate the barcode band (Code 128 has at least 15 black bars)
+    // Scan lines to locate and decode Code 128 barcode
     for (let y = 0; y < heightLines; y++) {
         const lineOffset = y * widthBytes;
-        const bars: Array<{ x: number; width: number }> = [];
-        let inBar = false;
+        const runs: Array<{ isBlack: boolean; width: number; x: number }> = [];
+        let inBlack = false;
         let startX = 0;
 
         for (let x = 0; x < widthPx; x++) {
             const byte = rasterBytes[lineOffset + (x >> 3)];
             const isBlack = (byte & (1 << (7 - (x & 7)))) !== 0;
-
-            if (isBlack && !inBar) {
-                inBar = true;
+            if (x === 0) {
+                inBlack = isBlack;
+                startX = 0;
+            } else if (isBlack !== inBlack) {
+                runs.push({ isBlack: inBlack, width: x - startX, x: startX });
+                inBlack = isBlack;
                 startX = x;
-            } else if (!isBlack && inBar) {
-                inBar = false;
-                bars.push({ x: startX, width: x - startX });
             }
         }
-        if (inBar) {
-            bars.push({ x: startX, width: widthPx - startX });
-        }
+        runs.push({ isBlack: inBlack, width: widthPx - startX, x: startX });
 
-        if (bars.length >= 15 && bars.length > bestBars.length) {
-            bestBars = bars;
+        const blackBars = runs.filter(r => r.isBlack);
+        if (blackBars.length > bestBars.length) {
+            bestBars = blackBars;
             bestLine = y;
         }
-    }
 
-    if (bestLine === -1 || bestBars.length === 0) {
-        return {
-            passed: true,
-            moduleWidth: 0,
-            scanline: -1,
-            barCount: 0,
-            bars: [],
-            nonMultipleBars: [],
-            error: 'No barcode scanline detected on label'
-        };
-    }
+        // Code 128 has at least 13 bars (Start 3, at least 1 data char 3, Check 3, Stop 4)
+        if (blackBars.length < 13) continue;
 
-    // Narrowest bar in Code 128 is 1 module wide
-    const minBarWidth = Math.min(...bestBars.map(b => b.width));
-    let moduleWidth = targetModuleWidth || minBarWidth;
+        // Try decoding starting at any black bar that follows a white space (quiet zone)
+        for (let rIdx = 0; rIdx < runs.length - 12; rIdx++) {
+            if (!runs[rIdx].isBlack) continue;
+            // Quiet zone preceding start must be at least 3 dots
+            if (rIdx > 0 && runs[rIdx - 1].width < 3) continue;
 
-    if (!targetModuleWidth) {
-        if (bestBars.every(b => b.width % 3 === 0)) {
-            moduleWidth = 3;
-        } else if (bestBars.every(b => b.width % 2 === 0)) {
-            moduleWidth = 2;
-        } else if (minBarWidth >= 2) {
-            moduleWidth = minBarWidth;
-        } else {
-            moduleWidth = 2;
+            const runWidths = runs.slice(rIdx).map(r => r.width);
+            const startMatch = matchCode128Char(runWidths, 0);
+            if (startMatch.charIndex < 103 || startMatch.charIndex > 105 || startMatch.error > 1.4) {
+                continue;
+            }
+
+            let curr = 6;
+            const symbols = [startMatch.charIndex];
+            let foundStop = false;
+
+            while (curr + 6 <= runWidths.length) {
+                const stopMatch = matchStopPattern(runWidths, curr);
+                if (stopMatch.matched) {
+                    symbols.push(106);
+                    curr += 7;
+                    foundStop = true;
+                    break;
+                }
+                const charMatch = matchCode128Char(runWidths, curr);
+                if (charMatch.charIndex < 0 || charMatch.error > 1.6) {
+                    break;
+                }
+                symbols.push(charMatch.charIndex);
+                curr += 6;
+            }
+
+            if (foundStop && symbols.length >= 4) {
+                const { text, checksumValid } = decodeSymbolsToText(symbols);
+                if (checksumValid) {
+                    const totalDots = runWidths.slice(0, curr).reduce((a, b) => a + b, 0);
+                    const totalModules = (symbols.length - 1) * 11 + 2;
+                    const moduleWidth = totalDots / totalModules;
+                    const barcodeBars = runs.slice(rIdx, rIdx + curr).filter(r => r.isBlack).map(r => r.width);
+
+                    const matchesExpected = !expectedData || (text === expectedData);
+                    const result: BarcodeScanlineCheckResult = {
+                        passed: matchesExpected,
+                        moduleWidth: Number(moduleWidth.toFixed(2)),
+                        scanline: y,
+                        barCount: barcodeBars.length,
+                        bars: barcodeBars,
+                        nonMultipleBars: [],
+                        decodedText: text,
+                        expectedText: expectedData,
+                        checksumValid: true,
+                        error: matchesExpected ? undefined : `Decoded "${text}" did not match expected "${expectedData}"`
+                    };
+
+                    if (matchesExpected) {
+                        return result;
+                    } else if (!fallbackCandidate) {
+                        fallbackCandidate = result;
+                    }
+                }
+            }
         }
     }
 
-    const nonMultipleBars = bestBars
-        .map((b, idx) => ({ index: idx, x: b.x, width: b.width, remainder: b.width % moduleWidth }))
-        .filter(b => b.remainder !== 0);
-
-    const passed = (moduleWidth >= 2) && (nonMultipleBars.length === 0);
+    if (fallbackCandidate) {
+        return fallbackCandidate;
+    }
 
     return {
-        passed,
-        moduleWidth,
+        passed: false,
+        moduleWidth: 0,
         scanline: bestLine,
         barCount: bestBars.length,
         bars: bestBars.map(b => b.width),
-        nonMultipleBars,
-        error: passed ? undefined : `Found ${nonMultipleBars.length} bars whose width is not an exact multiple of module width ${moduleWidth}`
+        nonMultipleBars: [],
+        expectedText: expectedData,
+        checksumValid: false,
+        error: bestLine === -1 ? 'No barcode scanline detected on label' : 'Barcode scanline could not be decoded to valid Code 128'
     };
+}
+
+/**
+ * Backward compatibility alias for integer module check.
+ */
+export function checkBarcodeScanlineIntegerModules(
+    rasterBytes: Uint8Array,
+    widthBytes: number,
+    heightLines: number,
+    _targetModuleWidth?: number
+): BarcodeScanlineCheckResult {
+    return decodeBarcodeScanline(rasterBytes, widthBytes, heightLines);
 }
 
 export interface VirtualDecodedLabel {
@@ -433,14 +622,14 @@ export class VirtualM110Driver {
             // Extract raster payload
             const rasterSlice = this.rxBuffer.slice(rasterDataStart, rasterDataEnd);
             const dataUrl = decodeRasterToDataUrl(rasterSlice, widthBytes, heightLines);
-            const barcodeCheck = checkBarcodeScanlineIntegerModules(rasterSlice, widthBytes, heightLines);
+            const barcodeCheck = decodeBarcodeScanline(rasterSlice, widthBytes, heightLines);
             this.lastBarcodeCheck = barcodeCheck;
 
             if (barcodeCheck.barCount > 0) {
                 if (barcodeCheck.passed) {
-                    console.log(`[VirtualM110] Scanline ${barcodeCheck.scanline} verified: every bar width is an exact multiple of module ${barcodeCheck.moduleWidth} dots (${barcodeCheck.barCount} bars checked)`);
+                    console.log(`[VirtualM110] Scanline ${barcodeCheck.scanline} verified: decoded Code 128 "${barcodeCheck.decodedText}" (module ~${barcodeCheck.moduleWidth} dots, ${barcodeCheck.barCount} bars)`);
                 } else {
-                    console.warn(`[VirtualM110] Scanline ${barcodeCheck.scanline} failed integer module check:`, barcodeCheck.nonMultipleBars);
+                    console.warn(`[VirtualM110] Scanline ${barcodeCheck.scanline} failed barcode check: ${barcodeCheck.error}`);
                 }
             }
 

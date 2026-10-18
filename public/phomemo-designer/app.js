@@ -280,6 +280,7 @@ export class VirtualTransport {
 
       const rasterSlice = this.rxBuffer.slice(rasterDataStart, rasterDataEnd);
       const dataUrl = this.decodeRasterToDataUrl(rasterSlice, widthBytes, heightLines);
+      const barcodeCheck = this.decodeBarcodeScanline(rasterSlice, widthBytes, heightLines);
 
       const label = {
         id: `vlbl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
@@ -287,6 +288,7 @@ export class VirtualTransport {
         width: widthBytes * 8,
         height: heightLines,
         timestamp: Date.now(),
+        barcodeCheck,
       };
 
       this.lastDecodedLabel = label;
@@ -347,6 +349,204 @@ export class VirtualTransport {
 
     ctx.putImageData(imgData, 0, 0);
     return canvas.toDataURL('image/png');
+  }
+
+  decodeBarcodeScanline(rasterBytes, widthBytes, heightLines, expectedData) {
+    const CODE128_PATTERNS = [
+      "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213",
+      "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132",
+      "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211",
+      "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313",
+      "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331",
+      "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111",
+      "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214",
+      "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111",
+      "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141",
+      "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141",
+      "114131", "311141", "411131", "211412", "211214", "211232", "2331112"
+    ];
+    const CODE128_MODULES = CODE128_PATTERNS.map(p => p.split('').map(Number));
+
+    const matchChar = (runs, startIdx) => {
+      if (startIdx + 6 > runs.length) return { charIndex: -1, error: Infinity };
+      const r1 = runs[startIdx], r2 = runs[startIdx + 1], r3 = runs[startIdx + 2], r4 = runs[startIdx + 3], r5 = runs[startIdx + 4], r6 = runs[startIdx + 5];
+      const totalDots = r1 + r2 + r3 + r4 + r5 + r6;
+      if (totalDots <= 0) return { charIndex: -1, error: Infinity };
+      const Z = totalDots / 11;
+      if (Z < 1.0) return { charIndex: -1, error: Infinity };
+
+      const T1 = (r1 + r2) / Z, T2 = (r2 + r3) / Z, T3 = (r3 + r4) / Z, T4 = (r4 + r5) / Z;
+      let bestIdx = -1, bestErr = Infinity;
+      for (let c = 0; c < 106; c++) {
+        const m = CODE128_MODULES[c];
+        const t1 = m[0] + m[1], t2 = m[1] + m[2], t3 = m[2] + m[3], t4 = m[3] + m[4];
+        const err = Math.abs(T1 - t1) + Math.abs(T2 - t2) + Math.abs(T3 - t3) + Math.abs(T4 - t4) + Math.abs(r1 / Z - m[0]) * 0.4;
+        if (err < bestErr) {
+          bestErr = err;
+          bestIdx = c;
+        }
+      }
+      return { charIndex: bestIdx, error: bestErr };
+    };
+
+    const matchStop = (runs, startIdx) => {
+      if (startIdx + 7 > runs.length) return { matched: false, error: Infinity };
+      const r = runs.slice(startIdx, startIdx + 7);
+      const totalDots = r.reduce((a, b) => a + b, 0);
+      if (totalDots <= 0) return { matched: false, error: Infinity };
+      const Z = totalDots / 13;
+      if (Z < 1.0) return { matched: false, error: Infinity };
+
+      const stopModules = [2, 3, 3, 1, 1, 1, 2];
+      const T1 = (r[0] + r[1]) / Z, T2 = (r[1] + r[2]) / Z, T3 = (r[2] + r[3]) / Z, T4 = (r[3] + r[4]) / Z, T5 = (r[4] + r[5]) / Z, T6 = (r[5] + r[6]) / Z;
+      const t1 = 5, t2 = 6, t3 = 4, t4 = 2, t5 = 2, t6 = 3;
+      const err = Math.abs(T1 - t1) + Math.abs(T2 - t2) + Math.abs(T3 - t3) + Math.abs(T4 - t4) + Math.abs(T5 - t5) + Math.abs(T6 - t6) + Math.abs(r[0] / Z - 2) * 0.4;
+      return { matched: err < 1.8, error: err };
+    };
+
+    const decodeText = (symbols) => {
+      if (symbols.length < 3) return { text: '', checksumValid: false };
+      const startVal = symbols[0];
+      const stopVal = symbols[symbols.length - 1];
+      if (stopVal !== 106) return { text: '', checksumValid: false };
+      const checkVal = symbols[symbols.length - 2];
+      const dataSymbols = symbols.slice(1, symbols.length - 2);
+
+      let sum = startVal;
+      for (let i = 0; i < dataSymbols.length; i++) {
+        sum += (i + 1) * dataSymbols[i];
+      }
+      const checksumValid = (sum % 103 === checkVal);
+
+      let currentSet = startVal === 103 ? 'A' : startVal === 105 ? 'C' : 'B';
+      let text = '';
+      let shift = false;
+
+      for (let i = 0; i < dataSymbols.length; i++) {
+        const val = dataSymbols[i];
+        const activeSet = shift ? (currentSet === 'A' ? 'B' : 'A') : currentSet;
+        shift = false;
+
+        if (activeSet === 'C') {
+          if (val === 100) currentSet = 'B';
+          else if (val === 101) currentSet = 'A';
+          else if (val <= 99) text += String(val).padStart(2, '0');
+        } else if (activeSet === 'B') {
+          if (val === 98) shift = true;
+          else if (val === 99) currentSet = 'C';
+          else if (val === 101) currentSet = 'A';
+          else if (val <= 95) text += String.fromCharCode(val + 32);
+        } else {
+          if (val === 98) shift = true;
+          else if (val === 99) currentSet = 'C';
+          else if (val === 100) currentSet = 'B';
+          else if (val <= 63) text += String.fromCharCode(val + 32);
+          else if (val <= 95) text += String.fromCharCode(val - 64);
+        }
+      }
+      return { text, checksumValid };
+    };
+
+    const widthPx = widthBytes * 8;
+    let bestLine = -1;
+    let bestBars = [];
+    let fallbackCandidate = null;
+
+    for (let y = 0; y < heightLines; y++) {
+      const lineOffset = y * widthBytes;
+      const runs = [];
+      let inBlack = false;
+      let startX = 0;
+
+      for (let x = 0; x < widthPx; x++) {
+        const byte = rasterBytes[lineOffset + (x >> 3)];
+        const isBlack = (byte & (1 << (7 - (x & 7)))) !== 0;
+        if (x === 0) {
+          inBlack = isBlack;
+          startX = 0;
+        } else if (isBlack !== inBlack) {
+          runs.push({ isBlack, width: x - startX, x: startX });
+          inBlack = isBlack;
+          startX = x;
+        }
+      }
+      runs.push({ isBlack: inBlack, width: widthPx - startX, x: startX });
+
+      const blackBars = runs.filter(r => r.isBlack);
+      if (blackBars.length > bestBars.length) {
+        bestBars = blackBars;
+        bestLine = y;
+      }
+      if (blackBars.length < 13) continue;
+
+      for (let rIdx = 0; rIdx < runs.length - 12; rIdx++) {
+        if (!runs[rIdx].isBlack) continue;
+        if (rIdx > 0 && runs[rIdx - 1].width < 3) continue;
+
+        const runWidths = runs.slice(rIdx).map(r => r.width);
+        const startMatch = matchChar(runWidths, 0);
+        if (startMatch.charIndex < 103 || startMatch.charIndex > 105 || startMatch.error > 1.4) continue;
+
+        let curr = 6;
+        const symbols = [startMatch.charIndex];
+        let foundStop = false;
+
+        while (curr + 6 <= runWidths.length) {
+          const stopMatch = matchStop(runWidths, curr);
+          if (stopMatch.matched) {
+            symbols.push(106);
+            curr += 7;
+            foundStop = true;
+            break;
+          }
+          const charMatch = matchChar(runWidths, curr);
+          if (charMatch.charIndex < 0 || charMatch.error > 1.6) break;
+          symbols.push(charMatch.charIndex);
+          curr += 6;
+        }
+
+        if (foundStop && symbols.length >= 4) {
+          const { text, checksumValid } = decodeText(symbols);
+          if (checksumValid) {
+            const totalDots = runWidths.slice(0, curr).reduce((a, b) => a + b, 0);
+            const totalModules = (symbols.length - 1) * 11 + 2;
+            const moduleWidth = totalDots / totalModules;
+            const barcodeBars = runs.slice(rIdx, rIdx + curr).filter(r => r.isBlack).map(r => r.width);
+
+            const matchesExpected = !expectedData || (text === expectedData);
+            const result = {
+              passed: matchesExpected,
+              moduleWidth: Number(moduleWidth.toFixed(2)),
+              scanline: y,
+              barCount: barcodeBars.length,
+              bars: barcodeBars,
+              nonMultipleBars: [],
+              decodedText: text,
+              expectedText: expectedData,
+              checksumValid: true,
+              error: matchesExpected ? undefined : `Decoded "${text}" did not match expected "${expectedData}"`
+            };
+
+            if (matchesExpected) return result;
+            else if (!fallbackCandidate) fallbackCandidate = result;
+          }
+        }
+      }
+    }
+
+    if (fallbackCandidate) return fallbackCandidate;
+
+    return {
+      passed: false,
+      moduleWidth: 0,
+      scanline: bestLine,
+      barCount: bestBars.length,
+      bars: bestBars.map(b => b.width),
+      nonMultipleBars: [],
+      expectedText: expectedData,
+      checksumValid: false,
+      error: bestLine === -1 ? 'No barcode scanline detected on label' : 'Barcode scanline could not be decoded to valid Code 128'
+    };
   }
 
   getLastDecodedLabel() {
@@ -2562,7 +2762,7 @@ function modifyElement(id, changes) {
   state.elements = updateElement(state.elements, id, changes);
 
   // Only clear cache if content or size changed (not just position/rotation)
-  const contentKeys = ['width', 'height', 'text', 'fontSize', 'fontFamily', 'fontWeight', 'fontStyle', 'textDecoration', 'background', 'noWrap', 'clipOverflow', 'autoScale', 'verticalAlign', 'imageData', 'barcodeData', 'barcodeFormat', 'qrData', 'brightness', 'contrast', 'dither', 'showText', 'textFontSize', 'textBold'];
+  const contentKeys = ['width', 'height', 'text', 'fontSize', 'fontFamily', 'fontWeight', 'fontStyle', 'textDecoration', 'background', 'noWrap', 'clipOverflow', 'autoScale', 'verticalAlign', 'imageData', 'barcodeData', 'barcodeFormat', 'qrData', 'brightness', 'contrast', 'dither', 'showText', 'textFontSize', 'textBold', 'barGain', 'quietZoneModules'];
   const needsCacheClear = Object.keys(changes).some(key => contentKeys.includes(key));
   if (needsCacheClear) {
     state.renderer.clearCache(id);
@@ -2788,6 +2988,8 @@ function updatePropertiesPanel() {
       $('#props-barcode').classList.remove('hidden');
       $('#prop-barcode-data').value = element.barcodeData || '';
       $('#prop-barcode-format').value = element.barcodeFormat || 'CODE128';
+      if ($('#prop-barcode-quietzone')) $('#prop-barcode-quietzone').value = String(element.quietZoneModules ?? 5);
+      if ($('#prop-barcode-bargain')) $('#prop-barcode-bargain').value = String(element.barGain ?? 1);
       $('#prop-barcode-showtext').checked = element.showText !== false;
       $('#prop-barcode-fontsize').value = element.textFontSize || 12;
       $('#prop-barcode-bold').checked = element.textBold || false;
@@ -6727,6 +6929,27 @@ function populateMobileProps() {
         </select>
       </div>
       <div class="prop-group">
+        <div class="prop-label">Quiet Zone</div>
+        <select id="mobile-prop-quietZoneModules" class="prop-input">
+          <option value="3" ${(selected.quietZoneModules ?? 5) === 3 ? 'selected' : ''}>3 modules</option>
+          <option value="4" ${(selected.quietZoneModules ?? 5) === 4 ? 'selected' : ''}>4 modules</option>
+          <option value="5" ${(selected.quietZoneModules ?? 5) === 5 ? 'selected' : ''}>5 modules (default)</option>
+          <option value="6" ${(selected.quietZoneModules ?? 5) === 6 ? 'selected' : ''}>6 modules</option>
+          <option value="7" ${(selected.quietZoneModules ?? 5) === 7 ? 'selected' : ''}>7 modules</option>
+          <option value="8" ${(selected.quietZoneModules ?? 5) === 8 ? 'selected' : ''}>8 modules</option>
+          <option value="9" ${(selected.quietZoneModules ?? 5) === 9 ? 'selected' : ''}>9 modules</option>
+          <option value="10" ${(selected.quietZoneModules ?? 5) === 10 ? 'selected' : ''}>10 modules</option>
+        </select>
+      </div>
+      <div class="prop-group">
+        <div class="prop-label">Bar Thickness</div>
+        <select id="mobile-prop-barGain" class="prop-input">
+          <option value="0" ${(selected.barGain ?? 1) === 0 ? 'selected' : ''}>+0 dots (exact)</option>
+          <option value="1" ${(selected.barGain ?? 1) === 1 ? 'selected' : ''}>+1 dot (default)</option>
+          <option value="2" ${(selected.barGain ?? 1) === 2 ? 'selected' : ''}>+2 dots (thick)</option>
+        </select>
+      </div>
+      <div class="prop-group">
         <label class="flex items-center gap-2 py-1">
           <input type="checkbox" id="mobile-prop-showText" class="w-5 h-5" ${selected.showText !== false ? 'checked' : ''}>
           <span class="text-sm">Show text below barcode</span>
@@ -7012,6 +7235,8 @@ function wireUpMobilePropHandlers(element) {
     updateProp('format', e.target.value);
     element.barcodeFormat = e.target.value; // Also update legacy property
   });
+  $('#mobile-prop-quietZoneModules')?.addEventListener('change', (e) => updateProp('quietZoneModules', parseInt(e.target.value) || 5));
+  $('#mobile-prop-barGain')?.addEventListener('change', (e) => updateProp('barGain', parseInt(e.target.value) || 0));
   $('#mobile-prop-showText')?.addEventListener('change', (e) => {
     updateProp('showText', e.target.checked);
     // Show/hide text options
@@ -8047,6 +8272,24 @@ function init() {
       setStatus(result.error);
     } else {
       dataInput.classList.remove('border-red-300');
+    }
+  });
+
+  // Barcode quiet zone
+  $('#prop-barcode-quietzone')?.addEventListener('change', (e) => {
+    const element = getSelected();
+    if (element && element.type === 'barcode') {
+      saveHistory();
+      modifyElement(element.id, { quietZoneModules: parseInt(e.target.value) || 5 });
+    }
+  });
+
+  // Barcode bar thickness (bar gain)
+  $('#prop-barcode-bargain')?.addEventListener('change', (e) => {
+    const element = getSelected();
+    if (element && element.type === 'barcode') {
+      saveHistory();
+      modifyElement(element.id, { barGain: parseInt(e.target.value) || 0 });
     }
   });
 

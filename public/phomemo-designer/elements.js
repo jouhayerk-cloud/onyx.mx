@@ -77,6 +77,8 @@ export function createBarcodeElement(data = '123456789012', options = {}) {
     // Barcode-specific
     barcodeData: data,
     barcodeFormat: options.barcodeFormat ?? 'CODE128',
+    quietZoneModules: options.quietZoneModules ?? 5,
+    barGain: options.barGain ?? 1,
   };
 }
 

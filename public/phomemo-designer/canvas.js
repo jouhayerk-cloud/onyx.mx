@@ -1197,81 +1197,117 @@ export class CanvasRenderer {
 
     // Measure barcode symbol module count using offscreen canvas at 1 dot/module with zero margin
     let symbolModules = 0;
+    let mData = null;
     try {
       const measureCanvas = document.createElement('canvas');
       JsBarcode(measureCanvas, data, {
-        format: 'CODE128',
+        format: format,
         displayValue: false,
         margin: 0,
         width: 1,
         height: 10,
+        background: '#ffffff',
+        lineColor: '#000000',
       });
       symbolModules = measureCanvas.width;
+      const mCtx = measureCanvas.getContext('2d', { willReadFrequently: true });
+      if (mCtx && symbolModules > 0) {
+        mData = mCtx.getImageData(0, 0, symbolModules, 1).data;
+      }
     } catch (e) {
       logError(e, 'measureBarcode');
       return;
     }
 
-    if (symbolModules <= 0) return;
+    if (symbolModules <= 0 || !mData) return;
 
-    // 10 modules quiet zone on each side per Code 128 spec
-    const quietZoneModules = 10;
+    // Extract alternating runs of bars and spaces from 1-dot raster
+    const runs = [];
+    let currentIsBar = (mData[0] < 128);
+    let runStart = 0;
+    for (let m = 1; m < symbolModules; m++) {
+      const isBar = (mData[m * 4] < 128);
+      if (isBar !== currentIsBar) {
+        runs.push({ isBar: currentIsBar, startModule: runStart, lengthModules: m - runStart });
+        currentIsBar = isBar;
+        runStart = m;
+      }
+    }
+    runs.push({ isBar: currentIsBar, startModule: runStart, lengthModules: symbolModules - runStart });
+
+    // Configurable quiet zones: default 5 modules each side (clamped 3-10)
+    const quietZoneModules = Math.min(10, Math.max(3, Number.isFinite(element.quietZoneModules) ? Number(element.quietZoneModules) : 5));
+    // Per-barcode bar thickness setting (+0, +1, +2 dots, default +1)
+    const barGain = Math.min(2, Math.max(0, Number.isFinite(element.barGain) ? Number(element.barGain) : 1));
+
     const totalModules = symbolModules + (quietZoneModules * 2);
 
-    // Choose integer module width: 3 dots if it fits, else 2 dots
-    let moduleWidth = 2;
+    // Fine sizing: compute module width as a real number so symbol fills box width (clamped to >= 2 dots)
+    const rawModuleWidth = boxWidth / totalModules;
+    let moduleWidth = rawModuleWidth;
     element._overflowWarning = false;
-    if (totalModules * 3 <= boxWidth) {
-      moduleWidth = 3;
-    } else if (totalModules * 2 <= boxWidth) {
+
+    if (moduleWidth < 2) {
       moduleWidth = 2;
-    } else {
-      moduleWidth = 2;
-      // Cannot fit at 2 dots: warn in designer instead of squeezing
+      element._overflowWarning = true;
       logError(
-        `Barcode "${data}" (${totalModules * 2} dots at 2 dots/mod) exceeds box width (${boxWidth} dots). Squeezing disabled.`,
+        `Barcode "${data}" (${totalModules * 2} dots at 2 dots/mod) exceeds box width (${boxWidth} dots). Clamped to 2 dots.`,
         'renderBarcode',
         ErrorLevel.WARNING
       );
-      element._overflowWarning = true;
     }
 
-    const quietZoneDots = quietZoneModules * moduleWidth;
-    const totalBarcodeWidth = totalModules * moduleWidth;
+    const totalBarcodeWidth = Math.round(totalModules * moduleWidth);
 
     // Calculate space for text and bars
     const textHeight = showText ? textFontSize + 4 : 0;
     const barHeight = Math.max(10, boxHeight - textHeight - 2);
 
-    // Render barcode at exact print resolution with integer module widths
+    // Render barcode at exact print resolution
     const barcodeCanvas = document.createElement('canvas');
     barcodeCanvas.width = totalBarcodeWidth;
     barcodeCanvas.height = barHeight;
     const bCtx = barcodeCanvas.getContext('2d');
+    if (!bCtx) return;
     bCtx.imageSmoothingEnabled = false;
 
-    // Pure white background
+    // Pure white background (including quiet zones)
     bCtx.fillStyle = '#ffffff';
     bCtx.fillRect(0, 0, totalBarcodeWidth, barHeight);
 
-    // Render JsBarcode with exact integer module width and 10-module quiet zones
-    try {
-      JsBarcode(barcodeCanvas, data, {
-        format: 'CODE128',
-        width: moduleWidth,
-        height: barHeight,
-        displayValue: false,
-        margin: 0,
-        marginLeft: quietZoneDots,
-        marginRight: quietZoneDots,
-        marginTop: 0,
-        marginBottom: 0,
-        background: '#ffffff',
-        lineColor: '#000000',
-      });
-    } catch (e) {
-      logError(e, 'renderBarcodeDirect');
-      return;
+    // Rasterize by rounding each bar EDGE position to nearest dot (cumulative)
+    bCtx.fillStyle = '#000000';
+    const startX = 0;
+
+    for (let i = 0; i < runs.length; i++) {
+      if (!runs[i].isBar) continue;
+
+      const mStart = quietZoneModules + runs[i].startModule;
+      const mEnd = mStart + runs[i].lengthModules;
+
+      // Find start module of next black bar (or totalModules if this is the final bar)
+      let mNextBarStart = totalModules;
+      for (let j = i + 1; j < runs.length; j++) {
+        if (runs[j].isBar) {
+          mNextBarStart = quietZoneModules + runs[j].startModule;
+          break;
+        }
+      }
+
+      // Cumulative edge rounding: x_edge = round(startX + moduleIndex * moduleWidth)
+      const xEdgeStart = Math.round(startX + mStart * moduleWidth);
+      const xEdgeEnd = Math.round(startX + mEnd * moduleWidth);
+      const nextBarXEdgeStart = Math.round(startX + mNextBarStart * moduleWidth);
+
+      // Bar thickness gain: widen black bar by N dots taken from following space (never < 1 dot space)
+      const followingSpaceDots = nextBarXEdgeStart - xEdgeEnd;
+      const maxGain = Math.max(0, followingSpaceDots - 1);
+      const effectiveGain = Math.min(barGain, maxGain);
+
+      const barLeft = xEdgeStart;
+      const barWidth = (xEdgeEnd + effectiveGain) - barLeft;
+
+      bCtx.fillRect(barLeft, 0, barWidth, barHeight);
     }
 
     // Center barcode horizontally by whole dots within the element box
