@@ -280,6 +280,18 @@ async function httpError(res: Response, what: string): Promise<AiProviderError> 
 /** Answer cap for chat (Qwen3.5-4B on the RTX 2060 GPU: a 793-token tool turn in about 5 s). */
 const COLIBRI_CHAT_MAX_TOKENS = 1024;
 
+/** Turns of history Colibri reads (a tool round is two turns). */
+const COLIBRI_MAX_TURNS = 8;
+
+/** Characters of one tool result Colibri reads. */
+const COLIBRI_TOOL_RESULT_MAX_CHARS = 1500;
+
+function trimToolResult(text: string): string {
+    return text.length > COLIBRI_TOOL_RESULT_MAX_CHARS
+        ? `${text.slice(0, COLIBRI_TOOL_RESULT_MAX_CHARS)}... [${text.length - COLIBRI_TOOL_RESULT_MAX_CHARS} more characters cut]`
+        : text;
+}
+
 /** System prompt budget for Colibri, in characters. */
 const COLIBRI_SYSTEM_MAX_CHARS = 2500;
 
@@ -423,7 +435,11 @@ export async function streamChat(
 
     const messages: Array<Record<string, unknown>> = [];
     if (req.system) messages.push({ role: 'system', content: req.system.length > COLIBRI_SYSTEM_MAX_CHARS ? req.system.slice(0, COLIBRI_SYSTEM_MAX_CHARS) : req.system });
-    for (const turn of req.turns) {
+    // Only the latest turns, and tool results trimmed: full history with 50-row search results reached 13,000 tokens,
+    // past the GPU's KV budget, and a turn took minutes
+    const turns = req.turns.slice(-COLIBRI_MAX_TURNS);
+    while (turns.length > 1 && turns[0].role !== 'user') turns.shift();
+    for (const turn of turns) {
         if (turn.role === 'user') {
             messages.push({ role: 'user', content: turn.text });
         } else if (turn.role === 'assistant') {
@@ -444,7 +460,7 @@ export async function streamChat(
             messages.push({
                 role: 'tool',
                 tool_call_id: turn.callId,
-                content: typeof turn.result === 'string' ? turn.result : JSON.stringify(turn.result) ?? 'null',
+                content: trimToolResult(typeof turn.result === 'string' ? turn.result : JSON.stringify(turn.result) ?? 'null'),
             });
         }
     }
