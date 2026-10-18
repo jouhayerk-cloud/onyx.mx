@@ -429,10 +429,10 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   } else if (mode === 'card') {
     rootStyle = { width: 'min(500px, calc(100vw - 24px))', maxHeight: 320 };
   } else if (isSheet) {
-    rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxWidth: '100vw', height: '88vh', '--chan-fs': '15px' } as React.CSSProperties;
+    rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxWidth: '100vw', height: '88vh', '--chan-fs': '18px' } as React.CSSProperties;
   } else {
     // S / M / L / Full: width, height (vh capped) and the Chan text size grow together
-    const sz = { S: ['460px', 'min(640px, 70vh)', '15px'], M: ['640px', 'min(760px, 78vh)', '16px'], L: ['880px', 'min(900px, 86vh)', '17px'], F: ['min(1200px, calc(100vw - 24px))', '92vh', '17px'] }[islandSize] || ['640px', 'min(760px, 78vh)', '16px'];
+    const sz = { S: ['460px', 'min(640px, 70vh)', '18px'], M: ['640px', 'min(760px, 78vh)', '19px'], L: ['880px', 'min(900px, 86vh)', '20px'], F: ['min(1200px, calc(100vw - 24px))', '92vh', '21px'] }[islandSize] || ['640px', 'min(760px, 78vh)', '16px'];
     rootStyle = { width: `min(${sz[0]}, calc(100vw - 24px))`, height: sz[1], '--chan-fs': sz[2] } as React.CSSProperties;
   }
 
