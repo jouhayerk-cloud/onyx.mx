@@ -13,7 +13,7 @@ import {
 import {
     Shield, CreditCard, Truck, Package, MapPin,
     ChevronRight, Zap, BarChart3, LayoutDashboard, Pipette, Layers,
-    Box, Cuboid, BadgeDollarSign, Rotate3d, Cpu, Album, Shell, Printer,
+    Box, Cuboid, BadgeDollarSign, Rotate3d, Cpu, Shapes, Album, Shell, Printer,
     ChevronsLeft, ChevronsRight, House, FilePlus2
 } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
@@ -710,6 +710,18 @@ export const IslandSidebar: React.FC = () => {
                             label={tr("Devices")}
                             isActive={activeView === 'devices'}
                             action={() => { setActiveView('devices'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {/* Type Audit Board (826 prompts, axo icons, hairline figures): dev server only, Developer section */}
+                    {import.meta.env.DEV && see('devices') && (
+                        <NavItem
+                            icon={Shapes}
+                            label={tr("Type Board")}
+                            isActive={activeView === 'typeboard'}
+                            action={() => { setActiveView('typeboard'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
