@@ -74,6 +74,13 @@
 .isl-head-figures { flex: none; display: none; align-items: center; gap: 12px; color: var(--isl-ink-2); font-size: 12px; }
 @media (min-width: 640px) { .isl-head-figures { display: flex; } }
 
+.isl-size { flex: none; display: inline-flex; padding: 2px; gap: 2px; border-radius: 999px; border: 1px solid var(--lq-rim-subtle, var(--isl-line)); background: var(--lq-fill-control, var(--isl-fill-1)); }
+.isl-size-btn { min-width: 32px; height: 28px; padding: 0 8px; border-radius: 999px; border: 0; background: transparent; color: var(--isl-ink-2); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.isl-size-btn:hover { color: var(--lq-ink, var(--isl-ink)); }
+.isl-size-btn.is-selected { background: var(--isl-accent-fill); color: var(--lq-ink, var(--isl-ink)); }
+.isl-size-btn:focus-visible { outline: none; box-shadow: var(--isl-focus); }
+@media (max-width: 768px) { .isl-size { display: none; } }
+
 .isl-icon-btn {
   --isl-bg: transparent; --isl-bd: transparent;
   flex: none; display: inline-flex; align-items: center; justify-content: center;

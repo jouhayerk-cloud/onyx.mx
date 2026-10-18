@@ -539,7 +539,7 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
                             ? colibriNote
                             : !hasColibri
                                 ? tr('Colibrì is not running on this PC. Start it, or pick another model.')
-                                : `${tr('Local model: replies can take a minute')}${colibriModel ? ` (${colibriModel})` : ''}`}
+                                : `${tr('Local model on this PC')}${colibriModel ? ` (${colibriModel})` : ''}`}
                     </span>
                 </div>
             )}
@@ -644,7 +644,7 @@ export const ChanPane: React.FC<ChanPaneProps> = ({ view, onClose }) => {
                                                     borderRadius: 'var(--isl-radius-chip)',
                                                     border: '1px solid var(--lq-rim-subtle, var(--isl-line))',
                                                     background: 'var(--lq-fill-panel, var(--isl-fill-1))',
-                                                    fontSize: '11px',
+                                                    fontSize: 'calc(var(--chan-fs, 15px) - 2px)',
                                                     color: 'var(--isl-ink-2)'
                                                 }}
                                             >

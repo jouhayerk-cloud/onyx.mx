@@ -11,6 +11,10 @@ export type IslandLevel = 0 | 1 | 2 | 3;
 export type IslandDeploy = "auto" | IslandLevel;
 export const islandDeployAtom = atomWithStorage<IslandDeploy>("onyxIslandDeploy", "auto");
 
+/** Size of the open island on desktop: Small, Medium, Large or Full. Remembered per device (jotai storage guards localStorage errors). */
+export type IslandSize = 'S' | 'M' | 'L' | 'F';
+export const islandSizeAtom = atomWithStorage<IslandSize>('onyxIslandSize', 'M');
+
 /** Page-specific figures docked into the island pill, one half on each side of the face. */
 export interface IslandReadout { left: React.ReactNode; right: React.ReactNode }
 

@@ -8,7 +8,7 @@ import { onyxAgentPhaseAtom } from '../onyxAgent/agentState';
 import { useIslandNotifications, dismissNotification, pauseToastTimer, resumeToastTimer, pushNotification } from './notify/store';
 import { IslandToastContent } from './IslandToastContent';
 import { tr } from '../../lib/i18n';
-import { islandModeAtom, islandPaneAtom, islandStackOpenAtom, islandItemAtom, islandChanDraftAtom, expressionForKind, islandDeployAtom, type IslandReadout, type IslandPane, type IslandDeploy } from './islandState';
+import { islandModeAtom, islandPaneAtom, islandStackOpenAtom, islandItemAtom, islandChanDraftAtom, expressionForKind, islandDeployAtom, islandSizeAtom, type IslandReadout, type IslandPane, type IslandDeploy } from './islandState';
 import { SPRING, SPRING_BOUNCY, SPRING_SLOW, FACE_DEPLOY_DELAY_MS, ENTER_REVEAL_DELAY_MS, EXIT_COLLAPSE_DELAY_MS, SWIPE_DISTANCE, SWIPE_VELOCITY } from './motion/tokens';
 import { allToolsAtom, pinnedToolsAtom, isToolPinned, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import type { ToolDescriptor } from '../../lib/toolRegistry';
@@ -132,6 +132,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   const [mode, setMode] = useAtom(islandModeAtom);
   const [pane, setPane] = useAtom(islandPaneAtom);
   const [stackOpen, setStackOpen] = useAtom(islandStackOpenAtom);
+  const [islandSize, setIslandSize] = useAtom(islandSizeAtom);
   const { current, unread } = useIslandNotifications();
   const phase = useAtomValue(onyxAgentPhaseAtom);
   const allTools = useAtomValue(allToolsAtom);
@@ -419,8 +420,7 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
     ? { role: 'dialog', 'aria-modal': false, 'aria-labelledby': 'isl-title' }
     : { role: 'group', 'aria-label': tr('Onyx assistant and notifications') };
 
-  // Size ladder (design doc 3): rest 56, peek 384 x 56, card 440, panel 520/640/760, phone sheet at the bottom
-  const panelHeight = 'min(640px, calc(100vh - 96px))';
+  // Size ladder (design doc 3): rest 56, peek 384 x 56, card 440, panel S 460 / M 640 / L 880 / Full 1200, phone sheet at the bottom
   let rootStyle: React.CSSProperties = {};
   if (mode === 'rest') {
     rootStyle = docked ? { width: 'fit-content', maxWidth: 'calc(100vw - 24px)', minWidth: isShelfVisible ? 'min(380px, calc(100vw - 24px))' : undefined, minHeight: 68, height: 'auto' } : { width: 68, height: 68 };
@@ -429,10 +429,11 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   } else if (mode === 'card') {
     rootStyle = { width: 'min(500px, calc(100vw - 24px))', maxHeight: 320 };
   } else if (isSheet) {
-    rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxWidth: '100vw', height: '88vh' };
+    rootStyle = { position: 'fixed', width: '100vw', top: 'auto', bottom: 0, left: 0, right: 0, maxWidth: '100vw', height: '88vh', '--chan-fs': '15px' } as React.CSSProperties;
   } else {
-    const w = xl ? 860 : lg ? 720 : 580;
-    rootStyle = { width: `min(${w}px, calc(100vw - 24px))`, height: panelHeight };
+    // S / M / L / Full: width, height (vh capped) and the Chan text size grow together
+    const sz = { S: ['460px', 'min(640px, 70vh)', '15px'], M: ['640px', 'min(760px, 78vh)', '16px'], L: ['880px', 'min(900px, 86vh)', '17px'], F: ['min(1200px, calc(100vw - 24px))', '92vh', '17px'] }[islandSize] || ['640px', 'min(760px, 78vh)', '16px'];
+    rootStyle = { width: `min(${sz[0]}, calc(100vw - 24px))`, height: sz[1], '--chan-fs': sz[2] } as React.CSSProperties;
   }
 
   // Accessibility announcement for the panel
@@ -640,6 +641,8 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
                 meta={meta}
                 figures={figures}
                 onClose={() => setMode('rest')}
+                size={isSheet ? undefined : islandSize}
+                onSize={setIslandSize}
               />
               {/* the deployed island is a stack of panels: Chan and Inbox always, All tools and Item on top only when asked for */}
               <div className="isl-body isl-stack" id="isl-panel" role="region" aria-label={tr('Island panels')}>
