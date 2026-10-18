@@ -911,7 +911,8 @@ export class PresenceService {
   public async getActiveSessions(): Promise<UserActiveSession[]> {
     this.initRealtimeChannel();
     try {
-      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      // Online = pinged within ~3 ping intervals (45 s each); 10 min kept closed apps 'online' long after they left.
+      const tenMinutesAgo = new Date(Date.now() - 3 * DEFAULT_PING_INTERVAL_MS).toISOString();
       const { data, error } = await (supabase as any)
         .from('user_active_sessions')
         .select('*')
