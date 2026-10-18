@@ -279,6 +279,12 @@ async function httpError(res: Response, what: string): Promise<AiProviderError> 
 /** Answer cap for chat on this PC (about 0.5 tokens per second). */
 const COLIBRI_CHAT_MAX_TOKENS = 384;
 
+/** The tools Colibri chat gets (navigation, search, filters, open item); the MCP and device packs stay on Gemini. */
+const COLIBRI_CORE_TOOLS = new Set(['navigate_to_view', 'get_current_view', 'open_item', 'search_in_app', 'set_inventory_filter', 'clear_filters']);
+
+/** System prompt budget for Colibri, in characters. */
+const COLIBRI_SYSTEM_MAX_CHARS = 1200;
+
 /** First sentence, at most `max` characters. */
 function compactText(text: string | undefined, max: number): string {
     const t = String(text ?? '').trim();
@@ -406,7 +412,7 @@ export async function streamChat(
     const { baseUrl, model } = await prepare(cfg);
 
     const messages: Array<Record<string, unknown>> = [];
-    if (req.system) messages.push({ role: 'system', content: req.system });
+    if (req.system) messages.push({ role: 'system', content: req.system.length > COLIBRI_SYSTEM_MAX_CHARS ? req.system.slice(0, COLIBRI_SYSTEM_MAX_CHARS) : req.system });
     for (const turn of req.turns) {
         if (turn.role === 'user') {
             messages.push({ role: 'user', content: turn.text });
@@ -436,7 +442,9 @@ export async function streamChat(
     const body: Record<string, unknown> = { model, messages, stream: true };
     if (req.tools && req.tools.length > 0) {
         // Colibri reads the prompt at local-CPU speed: send each tool compactly (first sentence, no parameter prose)
-        body.tools = req.tools.map(t => ({
+        // Only the core in-app tools: every tool schema costs ~0.8 s per prompt token on this PC
+        const core = req.tools.filter(t => COLIBRI_CORE_TOOLS.has(t.name));
+        if (core.length) body.tools = core.map(t => ({
             type: 'function',
             function: {
                 name: t.name,
