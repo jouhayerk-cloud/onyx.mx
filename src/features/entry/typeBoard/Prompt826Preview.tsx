@@ -175,7 +175,7 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
                     material: String(d.material || r.material || 'Onyx'),
                     color: String(d.color || r.color || ''),
                     vendorColor: String(d.color || r.color || ''),
-                    top: d.top ?? r.top,
+                    top: r.top_type ?? d.top_type ?? d.top ?? r.top,
                     widthCm: Number(d.width_cm ?? d.widthCm ?? 0),
                     lengthCm: Number(d.length_cm ?? d.lengthCm ?? 0),
                     heightCm: Number(d.height_cm ?? d.heightCm ?? 0),

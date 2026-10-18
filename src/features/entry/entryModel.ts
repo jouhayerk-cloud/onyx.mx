@@ -152,7 +152,7 @@ export function entryFromRow(row: Record<string, any>): EntryState {
         price: n(row.price_mxn, row.priceMxn),
         description: str(row.description),
         top: (() => {
-            const rawTop = str(row.top ?? row.data?.top).toLowerCase();
+            const rawTop = str(row.top_type ?? row.top ?? row.data?.top).toLowerCase();
             if (rawTop === 'open' || rawTop === 'closed') return rawTop as 'open' | 'closed';
             const rawMedia = row.processed_media_urls ?? row.data?.processed_media_urls;
             if (rawMedia) {

@@ -277,6 +277,7 @@ export type Database = {
           acquired_at: string | null
           acquired_by: string | null
           axo_icon_url: string | null
+          top_type: string | null
           book_acquisition: number | null
           book_aq_code: string | null
           book_barcode: string | null
@@ -351,6 +352,7 @@ export type Database = {
           acquired_at?: string | null
           acquired_by?: string | null
           axo_icon_url?: string | null
+          top_type?: string | null
           book_acquisition?: number | null
           book_aq_code?: string | null
           book_barcode?: string | null
@@ -425,6 +427,7 @@ export type Database = {
           acquired_at?: string | null
           acquired_by?: string | null
           axo_icon_url?: string | null
+          top_type?: string | null
           book_acquisition?: number | null
           book_aq_code?: string | null
           book_barcode?: string | null

@@ -164,7 +164,7 @@ const itemSegmentationSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 18,
+    version: 19,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -193,6 +193,7 @@ const inventorySchema = {
         media_urls: { type: ['string', 'null'] },
         short_description: { type: ['string', 'null'] },
         processed_media_urls: { type: ['string', 'null'] },
+        top_type: { type: ['string', 'null'] },   // 826 open | closed top (lamps, vessels)
         generated_color: { type: ['string', 'null'] },
         generated_description: { type: ['string', 'null'] },
         detailed_description: { type: ['string', 'null'] },
@@ -364,6 +365,8 @@ const createDatabase = async () => {
                     // so existing docs pass through and the next sync fills
                     // them in.
                     18: (oldDoc) => oldDoc,
+                    // 19: top_type (open | closed) for 826 lamps and vessels; nullable, the next sync fills it in
+                    19: (oldDoc) => oldDoc,
                 }
             },
             // New collection, so it starts at version 0 with no migration

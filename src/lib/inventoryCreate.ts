@@ -393,8 +393,9 @@ export function buildInventoryRow(form: InventoryForm, opts: BuildRowOptions): I
         columns.media_urls = null;
     }
 
-    // form.top (open | closed) is not persisted yet: it needs its own column (owner to run the add-column SQL);
-    // storing it inside processed_media_urls would corrupt the photo map.
+    // 826 open | closed top (column top_type, added 2026-10-17); only written when the form carries it
+    if (form.top === 'open' || form.top === 'closed') columns.top_type = form.top;
+    else if (form.top === '' || form.top === null) columns.top_type = null;
 
     // ── book codes, at the book rate ──
     const printed = opts.mode === 'edit' ? storedBarcodeOf(existing) : null;
