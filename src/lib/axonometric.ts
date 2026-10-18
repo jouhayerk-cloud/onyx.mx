@@ -35,7 +35,7 @@ export function resolveItemColor(item: any): string {
     return '#71717A'; // default neutral
 }
 
-export type AxoGeom = Geometry;
+export type AxoGeom = Geometry | 'diamond-table';
 
 export interface ResolvedAxoGeometry {
     W: number;
@@ -78,25 +78,40 @@ export function resolveAxoGeometry(
     const s = (shapeStr || '').toLowerCase();
     const t = (descStr || '').toLowerCase();
 
-    if (!W) W = D || H || 10;
-    // Plates are forced shallow and round regardless of what was measured, so this
-    // test cannot be folded into classifyGeometry — it rewrites dimensions, and it
-    // runs before classification because the mirror pass below reads the result.
-    if (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) {
-        if (!H) H = 5;
-        // Force shallow round shape
-        H = 5;
-        W = Math.max(W, D);
-        D = W;
-    } else {
-        if (!H) H = W;
-    }
-    if (!D) D = W;
+    const isDiamondTable =
+        t.includes('diamond table') ||
+        s.includes('diamond table') ||
+        t === 'diamond-table' ||
+        s === 'diamond-table' ||
+        ((t.includes('table') || t.includes('mesa')) && (s.includes('diamond') || s.includes('diamante') || t.includes('diamond') || t.includes('diamante')));
 
-    const { geom, isMirror } = classifyGeometry(shapeStr, descStr);
+    if (isDiamondTable) {
+        if (!W) W = 96;
+        if (!H) H = 50;
+        if (!D) D = 96;
+    } else {
+        if (!W) W = D || H || 10;
+        // Plates are forced shallow and round regardless of what was measured, so this
+        // test cannot be folded into classifyGeometry — it rewrites dimensions, and it
+        // runs before classification because the mirror pass below reads the result.
+        if (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) {
+            if (!H) H = 5;
+            // Force shallow round shape
+            H = 5;
+            W = Math.max(W, D);
+            D = W;
+        } else {
+            if (!H) H = W;
+        }
+        if (!D) D = W;
+    }
+
+    const { geom: baseGeom, isMirror: baseIsMirror } = classifyGeometry(shapeStr, descStr);
+    const geom: AxoGeom = isDiamondTable ? 'diamond-table' : baseGeom;
+    const isMirror = isDiamondTable ? false : baseIsMirror;
 
     // Mirrors are thick stone slabs: round and squared ones need a square face, a rectangular one keeps its sides.
-    const mirrorClass = classifyMirror(shapeStr, descStr);
+    const mirrorClass = isDiamondTable ? null : classifyMirror(shapeStr, descStr);
     if (mirrorClass === 'mirror-round' || mirrorClass === 'mirror-square') {
         const maxVal = Math.max(W, H);
         W = maxVal;
@@ -111,7 +126,7 @@ export function resolveAxoGeometry(
         D = minVal;
     }
 
-    const extra = classifyExtra(shapeStr, descStr);
+    const extra = isDiamondTable ? null : classifyExtra(shapeStr, descStr);
     if (extra === 'tube') {
         D = W;
     } else if (extra === 'panel') {
@@ -702,6 +717,187 @@ export async function generateAxonometricDataUrl(
             drawLabel(D, 'D', boxPts[0], boxPts[3], Math.PI / 6, 25);
             drawLabel(W, 'W', boxPts[0], boxPts[1], -Math.PI / 6, 25);
             drawLabel(H, 'H', boxPts[1], boxPts[5], Math.atan2(boxPts[5].v - boxPts[1].v, boxPts[5].u - boxPts[1].u), 25);
+
+        } else if (geom === 'diamond-table') {
+            const strokeWidth = 10;
+            ctx!.lineWidth = strokeWidth;
+
+            const resolvedColor = resolveItemColor({
+                description: descStr,
+                shortDescription: descStr,
+                name: shapeStr,
+                shape: shapeStr,
+                type: descStr,
+            });
+            const tableOutlineColor = wireframeColor || (resolvedColor !== '#71717A' ? resolvedColor : COLOR_OUTLINE);
+            ctx!.strokeStyle = tableOutlineColor;
+
+            const N = 10;
+            const wob = [1, 0.97, 1.02, 0.98, 1, 0.97, 1.03, 0.98, 1.01, 0.97];
+            const cx3d = W / 2;
+            const cz3d = D / 2;
+            const rx = W / 2;
+            const rz = D / 2;
+            const topY = H;
+            const girdleY = H * 0.8;
+            const baseY = 0;
+
+            interface Point3D { x: number; y: number; z: number; }
+            interface Point2D { x: number; y: number; }
+
+            const top3d: Point3D[] = [];
+            const girdle3d: Point3D[] = [];
+            const base3d: Point3D[] = [];
+
+            for (let k = 0; k < N; k++) {
+                const angTop = (k / N) * 2 * Math.PI + Math.PI / N;
+                const angBase = ((k + 0.5) / N) * 2 * Math.PI + Math.PI / N;
+                const rTop = wob[k];
+                const rBase = 0.4 * wob[k];
+
+                top3d.push({
+                    x: cx3d + rx * rTop * Math.cos(angTop),
+                    y: topY,
+                    z: cz3d + rz * rTop * Math.sin(angTop),
+                });
+                girdle3d.push({
+                    x: cx3d + rx * rTop * Math.cos(angTop),
+                    y: girdleY,
+                    z: cz3d + rz * rTop * Math.sin(angTop),
+                });
+                base3d.push({
+                    x: cx3d + rx * rBase * Math.cos(angBase),
+                    y: baseY,
+                    z: cz3d + rz * rBase * Math.sin(angBase),
+                });
+            }
+
+            function toCanvasPt(p: Point3D): Point2D {
+                const pr = project(p.x, p.y, p.z);
+                return {
+                    x: cx + pr.u * scale,
+                    y: cy + pr.v * scale,
+                };
+            }
+
+            const topPts = top3d.map(toCanvasPt);
+            const girdlePts = girdle3d.map(toCanvasPt);
+            const basePts = base3d.map(toCanvasPt);
+
+            function isFrontFacing(A: Point3D, B: Point3D, C: Point3D): boolean {
+                const v1x = B.x - A.x, v1y = B.y - A.y, v1z = B.z - A.z;
+                const v2x = C.x - A.x, v2y = C.y - A.y, v2z = C.z - A.z;
+                const nx = v1y * v2z - v1z * v2y;
+                const ny = v1z * v2x - v1x * v2z;
+                const nz = v1x * v2y - v1y * v2x;
+                return (-nx + ny - nz) > 0.0001;
+            }
+
+            function drawPolyFace(pts: Point2D[], fillColor: string, shadeOverlay?: string) {
+                if (pts.length < 3) return;
+                ctx!.beginPath();
+                ctx!.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < pts.length; i++) ctx!.lineTo(pts[i].x, pts[i].y);
+                ctx!.closePath();
+
+                if (isWireframe) {
+                    ctx!.fillStyle = 'rgba(0,0,0,0)';
+                    ctx!.fill();
+                } else if (hexPattern) {
+                    ctx!.fillStyle = hexPattern;
+                    ctx!.fill();
+                    if (shadeOverlay) {
+                        ctx!.fillStyle = shadeOverlay;
+                        ctx!.fill();
+                    }
+                } else {
+                    ctx!.fillStyle = fillColor;
+                    ctx!.fill();
+                }
+                ctx!.stroke();
+            }
+
+            // 1. Triangular facets tapering from girdle down to base ring (alternating mid / dark by facing)
+            for (let k = 0; k < N; k++) {
+                const k1 = (k + 1) % N;
+
+                // Downward triangle from girdle[k]..girdle[k1] to base[k] (mid shade)
+                if (isFrontFacing(girdle3d[k], girdle3d[k1], base3d[k])) {
+                    drawPolyFace(
+                        [girdlePts[k], girdlePts[k1], basePts[k]],
+                        COLOR_RIGHT,
+                        'rgba(0, 0, 0, 0.15)'
+                    );
+                }
+
+                // Upward triangle from base[k]..base[k1] to girdle[k1] (dark shade)
+                if (isFrontFacing(base3d[k], base3d[k1], girdle3d[k1])) {
+                    drawPolyFace(
+                        [basePts[k], basePts[k1], girdlePts[k1]],
+                        COLOR_LEFT,
+                        'rgba(0, 0, 0, 0.35)'
+                    );
+                }
+            }
+
+            // 2. Girdle band quads (mid shade)
+            for (let k = 0; k < N; k++) {
+                const k1 = (k + 1) % N;
+                if (isFrontFacing(top3d[k], top3d[k1], girdle3d[k1])) {
+                    drawPolyFace(
+                        [topPts[k], topPts[k1], girdlePts[k1], girdlePts[k]],
+                        COLOR_RIGHT,
+                        'rgba(0, 0, 0, 0.15)'
+                    );
+                }
+            }
+
+            // 3. Top decagon face (lightest shade)
+            drawPolyFace(topPts, COLOR_TOP, 'rgba(255, 255, 255, 0.15)');
+
+            // 4. Banded grain lines across top face (clipped to top decagon)
+            ctx!.save();
+            ctx!.beginPath();
+            ctx!.moveTo(topPts[0].x, topPts[0].y);
+            for (let i = 1; i < N; i++) ctx!.lineTo(topPts[i].x, topPts[i].y);
+            ctx!.closePath();
+            ctx!.clip();
+
+            const grainParams = [
+                { dx: -0.14, sway: 0.03 },
+                { dx: 0.02, sway: 0.04 },
+                { dx: 0.18, sway: 0.03 },
+            ];
+
+            ctx!.lineWidth = strokeWidth;
+            ctx!.strokeStyle = tableOutlineColor;
+            ctx!.lineCap = 'round';
+            ctx!.lineJoin = 'round';
+
+            for (const gp of grainParams) {
+                const p1 = toCanvasPt({ x: cx3d + W * (gp.dx - gp.sway), y: topY, z: cz3d - D * 0.42 });
+                const p2 = toCanvasPt({ x: cx3d + W * (gp.dx + gp.sway * 0.4), y: topY, z: cz3d - D * 0.14 });
+                const p3 = toCanvasPt({ x: cx3d + W * (gp.dx - gp.sway * 0.6), y: topY, z: cz3d + D * 0.16 });
+                const p4 = toCanvasPt({ x: cx3d + W * (gp.dx + gp.sway), y: topY, z: cz3d + D * 0.42 });
+
+                ctx!.beginPath();
+                ctx!.moveTo(p1.x, p1.y);
+                ctx!.bezierCurveTo(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
+                ctx!.stroke();
+            }
+            ctx!.restore();
+
+            // Re-stroke top decagon outline cleanly over grain line ends
+            ctx!.beginPath();
+            ctx!.moveTo(topPts[0].x, topPts[0].y);
+            for (let i = 1; i < N; i++) ctx!.lineTo(topPts[i].x, topPts[i].y);
+            ctx!.closePath();
+            ctx!.stroke();
+
+            const pts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
+            drawLabel(D, 'D', pts[0], pts[3], Math.PI / 6, 25);
+            drawLabel(W, 'W', pts[0], pts[1], -Math.PI / 6, 25);
+            drawLabel(H, 'H', pts[1], pts[5], Math.atan2(pts[5].v - pts[1].v, pts[5].u - pts[1].u), 25);
 
         } else {
             const inset = geom === 'polyhedron' ? 0.3 : 0;

@@ -97,6 +97,18 @@ export function buildAxoCacheKey(params: AxoRenderParams): string {
     return `${typeId}|${shape}|${top}|${holes}|${w}x${h}x${l}|${color}|${bg}`;
 }
 
+function isDiamondTable(typeStr: string | null | undefined, shapeStr: string | null | undefined): boolean {
+    const s = String(shapeStr ?? '').toLowerCase();
+    const t = String(typeStr ?? '').toLowerCase();
+    return (
+        t.includes('diamond table') ||
+        s.includes('diamond table') ||
+        t === 'diamond-table' ||
+        s === 'diamond-table' ||
+        ((t.includes('table') || t.includes('mesa')) && (s.includes('diamond') || s.includes('diamante') || t.includes('diamond') || t.includes('diamante')))
+    );
+}
+
 /**
  * Pure, deterministic renderer that draws an item's axo icon onto a 400x400 canvas.
  * Returns a PNG data URL or null if the figure geometry does not exist.
@@ -110,8 +122,9 @@ export function renderAxoIconDataUrl(params: AxoRenderParams): string | null {
 
     // Resolve canonical id if not provided or raw
     const shapeStr = params.shape ?? '';
+    const diamondTable = isDiamondTable(params.typeId, shapeStr);
     const canon = canonicalType(params.typeId, shapeStr);
-    const id = canon.id ?? (params.typeId ? params.typeId.toLowerCase().trim() : null);
+    const id = diamondTable ? 'table' : (canon.id ?? (params.typeId ? params.typeId.toLowerCase().trim() : null));
     if (!id) return null;
 
     // Dimensions: w = Width, h = Height, d = Length (order from spec)
@@ -124,11 +137,12 @@ export function renderAxoIconDataUrl(params: AxoRenderParams): string | null {
         : null;
 
     // Top: read from explicit param or parse from shape
-    const parsedShape = parseShapeText(id, shapeStr);
+    const effectiveShape = diamondTable ? 'diamond' : shapeStr;
+    const parsedShape = parseShapeText(id, effectiveShape);
     const top = params.top ?? parsedShape.extra.top ?? null;
     const holes = params.holes ?? canon.holes ?? undefined;
 
-    const parts = buildTypeFigure(id, rawDims, holes, shapeStr, top);
+    const parts = buildTypeFigure(id, rawDims, holes, effectiveShape, top);
     if (!parts || !parts.length) return null;
 
     const canvasSize = 400;
@@ -267,8 +281,9 @@ export function describeItemForAxo(item: any): AxoRenderParams {
     ).trim();
     const rawShape = String(raw.shape || item?.shape || '').trim();
 
+    const diamondTable = isDiamondTable(rawType, rawShape);
     const canon = canonicalType(rawType, rawShape);
-    const typeId = canon.id ?? (rawType ? rawType.toLowerCase() : null);
+    const typeId = diamondTable ? 'table' : (canon.id ?? (rawType ? rawType.toLowerCase() : null));
 
     const w = parseFloat(raw.width_cm || raw.widthCm || item?.width_cm || item?.widthCm) || null;
     const h = parseFloat(raw.height_cm || raw.heightCm || item?.height_cm || item?.heightCm) || null;
@@ -283,7 +298,7 @@ export function describeItemForAxo(item: any): AxoRenderParams {
 
     return {
         typeId,
-        shape: rawShape || null,
+        shape: diamondTable ? (rawShape || 'diamond') : (rawShape || null),
         w,
         h,
         l,
