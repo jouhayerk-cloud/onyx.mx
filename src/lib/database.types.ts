@@ -278,6 +278,14 @@ export type Database = {
           acquired_by: string | null
           axo_icon_url: string | null
           top_type: string | null
+          character_ai: string | null
+          invoice_title: string | null
+          shopify_title: string | null
+          canonical_type: string | null
+          process_type: string | null
+          copy_status: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
           book_acquisition: number | null
           book_aq_code: string | null
           book_barcode: string | null
@@ -353,6 +361,14 @@ export type Database = {
           acquired_by?: string | null
           axo_icon_url?: string | null
           top_type?: string | null
+          character_ai?: string | null
+          invoice_title?: string | null
+          shopify_title?: string | null
+          canonical_type?: string | null
+          process_type?: string | null
+          copy_status?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
           book_acquisition?: number | null
           book_aq_code?: string | null
           book_barcode?: string | null
@@ -428,6 +444,14 @@ export type Database = {
           acquired_by?: string | null
           axo_icon_url?: string | null
           top_type?: string | null
+          character_ai?: string | null
+          invoice_title?: string | null
+          shopify_title?: string | null
+          canonical_type?: string | null
+          process_type?: string | null
+          copy_status?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
           book_acquisition?: number | null
           book_aq_code?: string | null
           book_barcode?: string | null

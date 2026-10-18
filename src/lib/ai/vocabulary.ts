@@ -74,3 +74,31 @@ export const STONE_VARIETY_NAMES = [
     'Talan', 'Zebra', 'Emperor', 'Ice', 'Pearlescent', 'Nacar', 'Cristaline',
     'Galaxy', 'Cloud', 'Cosmic', 'Queretaro', 'Tehuacan', 'Guatemala', 'Serpentine',
 ] as const;
+
+/**
+ * Book 826 character_ai: the short visual fingerprint that tells sibling pieces apart
+ * (AI_PROCESS_826_PLAN section B). A descriptor is built only from these words.
+ */
+export const CHARACTER_PATTERN_TOKENS: readonly string[] = [
+    'bands', 'veins', 'swirls', 'clouds', 'speckles', 'rings', 'fault line', 'layered stripes', 'marbling', 'crystal pockets',
+];
+
+export const CHARACTER_TONE_TOKENS: readonly string[] = [
+    'honey', 'smoky', 'milky', 'amber', 'white', 'ivory', 'cream', 'yellow', 'gold', 'orange', 'red', 'pink', 'coral',
+    'burgundy', 'green', 'emerald', 'mint', 'teal', 'blue', 'purple', 'violet', 'lavender', 'grey', 'charcoal', 'black',
+    'brown', 'caramel', 'tan', 'beige', 'rust', 'terracotta', 'multicolor', 'translucent', 'banded', 'veined', 'rainbow',
+    'tri-color',
+];
+
+export const CHARACTER_POSITION_TOKENS: readonly string[] = ['top', 'base', 'diagonal', 'centre', 'edge'];
+
+/**
+ * Stone, object and variety words a character_ai must not contain. "crystal pockets" is a pattern
+ * token, so the validator removes that phrase before it looks for these words.
+ */
+export const CHARACTER_FORBIDDEN_NOUNS: readonly string[] = [
+    'onyx', 'marble', 'fluorite', 'calcite', 'travertine', 'stone', 'rock', 'crystal', 'quartz', 'agate',
+    'lamp', 'pendant', 'sconce', 'bowl', 'sink', 'vessel', 'table', 'pedestal', 'sculpture', 'tray', 'holder', 'mirror',
+    'talan', 'zebra', 'emperor', 'nacar', 'cristaline', 'galaxy', 'cosmic', 'queretaro', 'tehuacan', 'guatemala',
+    'serpentine', 'pearlescent',
+];

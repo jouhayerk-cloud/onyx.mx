@@ -134,7 +134,7 @@ export interface Prompt826Output {
 
 /** Validation issues flagged by 826 output validators. */
 export interface Validation826Issue {
-    field: 'invoiceTitle' | 'shopifyTitle' | 'body' | 'colours' | 'category' | 'productType';
+    field: 'invoiceTitle' | 'shopifyTitle' | 'body' | 'colours' | 'category' | 'productType' | 'character';
     rule: string;
     message: string;
     severity: 'error' | 'warning';

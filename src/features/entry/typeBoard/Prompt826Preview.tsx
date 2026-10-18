@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { inventoryAtom } from '../../../lib/atoms';
 import { tr, trf } from '../../../lib/i18n';
@@ -12,12 +12,26 @@ import {
     getOnyx826Entry,
     getApprovedShopifyColors826,
     needsTopFlag,
+    resolve826TypeId,
 } from '../../../lib/taxonomy/onyx826';
 import type {
     Prompt826Output,
     Validation826Result,
 } from '../../../lib/ai/typePromptSpec';
 import { generateJson } from '../../../lib/ai/client';
+import { detectTopFromPhoto, generateCharacterAi826, type CharacterAi826Result } from '../../../lib/ai/prompts';
+import {
+    layaCheck826,
+    layaMaterialFlag,
+    layaColourFlag,
+    layaDimsFlag,
+    type LayaFlag826,
+} from '../../../lib/ai/providers/laya';
+import {
+    checkLocalModelsHealth,
+    localTargetFor826,
+    type LocalHealth826,
+} from '../../../lib/ai/routing';
 import './prompt826Preview.css';
 
 export interface Prompt826PreviewProps {
@@ -42,6 +56,8 @@ interface PreviewItem {
     oldBody: string;
     process?: string;
     photoUrl?: string;
+    /** The stored character_ai, used as a sibling descriptor. */
+    characterAi?: string;
 }
 
 /** Worked reference examples from Section 11 of PROMPTS_826_DRAFT.md */
@@ -150,10 +166,51 @@ const REFERENCE_826_ITEMS: readonly PreviewItem[] = [
     },
 ];
 
+interface ClassifyResult {
+    canonicalTypeId: string;
+    family: string;
+    /** 'open' | 'closed' | 'unknown' from the photo, or the record's value, or 'unset' / 'not needed'. */
+    top: string;
+    /** Whether Laya checked the copy: 'ran' when it was up, 'offline' when not. */
+    laya: 'ran' | 'offline';
+}
+
 interface GeneratedEntry {
     output: Prompt826Output;
     validation: Validation826Result;
+    classify?: ClassifyResult;
+    character?: CharacterAi826Result;
+    flags: LayaFlag826[];
     error?: string;
+}
+
+const normaliseKey = (s: unknown) => String(s ?? '').trim().toLowerCase();
+
+/** Items that may share a character_ai sibling descriptor: same canonical type, material and colour. */
+const siblingGroupKey = (it: { type: string; shape: string; material: string; color: string }) =>
+    [resolve826TypeId(it.type, it.shape), normaliseKey(it.material), normaliseKey(it.color)].join('|');
+
+/**
+ * A photo as a data: URL for the model call. Null when there is no photo or the browser cannot
+ * fetch it (the call then runs on the record alone and the card says so).
+ */
+async function photoDataUrl(url?: string): Promise<string | undefined> {
+    if (!url) return undefined;
+    if (url.startsWith('data:')) return url;
+    if (!/^https?:\/\//.test(url)) return undefined;
+    try {
+        const res = await fetch(url);
+        if (!res.ok) return undefined;
+        const blob = await res.blob();
+        return await new Promise<string | undefined>(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : undefined);
+            reader.onerror = () => resolve(undefined);
+            reader.readAsDataURL(blob);
+        });
+    } catch {
+        return undefined;
+    }
 }
 
 export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) => {
@@ -184,6 +241,7 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
                     oldBody: String(d.bodyHtml || d.body || r.body || 'No description recorded.'),
                     process: d.process,
                     photoUrl: r.photoUrl || (r.media_urls && r.media_urls[0]),
+                    characterAi: d.character_ai ?? r.character_ai ?? undefined,
                 };
             });
 
@@ -196,6 +254,13 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
     const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(['ref-EM-017', 'ref-JM-033']));
     const [generating, setGenerating] = useState(false);
     const [results, setResults] = useState<Record<string, GeneratedEntry>>({});
+    const [localHealth, setLocalHealth] = useState<LocalHealth826 | null>(null);
+
+    useEffect(() => {
+        let alive = true;
+        checkLocalModelsHealth().then(h => { if (alive) setLocalHealth(h); });
+        return () => { alive = false; };
+    }, []);
 
     const toggleSelect = (id: string) => {
         setSelectedIds(prev => {
@@ -219,9 +284,36 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
         setGenerating(true);
 
         const toProcess = items.filter(i => selectedIds.has(i.id));
+        const health = await checkLocalModelsHealth();
+        setLocalHealth(health);
+        const useLaya = localTargetFor826('classify_check', health) === 'laya';
+        // Characters made earlier in this run are siblings for the items after them.
+        const runCharacters: { group: string; character: string }[] = [];
 
         for (const item of toProcess) {
             try {
+                const photo = await photoDataUrl(item.photoUrl);
+                const group = siblingGroupKey(item);
+                const siblingDescriptors = [
+                    ...items
+                        .filter(i => i.id !== item.id && i.characterAi && siblingGroupKey(i) === group)
+                        .map(i => i.characterAi as string),
+                    ...runCharacters.filter(r => r.group === group).map(r => r.character),
+                ];
+
+                // classify: taxonomy type, and the open/closed top from the photo when the type needs one
+                const entry = getOnyx826Entry(item.type, item.shape);
+                const topNeeded = needsTopFlag(item.type, item.shape);
+                let top = item.top ? String(item.top) : (topNeeded ? 'unset' : 'not needed');
+                if (topNeeded && !item.top && photo) top = await detectTopFromPhoto(photo);
+                const classify: ClassifyResult = {
+                    canonicalTypeId: resolve826TypeId(item.type, item.shape),
+                    family: entry?.family ?? '',
+                    top,
+                    laya: useLaya ? 'ran' : 'offline',
+                };
+
+                // copy_826
                 const built = buildContentPrompt826(item as any);
                 const aiRes = await generateJson<{
                     shopifyTitle: string;
@@ -234,7 +326,6 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
                 });
 
                 const invoiceTitle = buildInvoiceTitle826(item as any);
-                const entry = getOnyx826Entry(item.type, item.shape);
                 const approvedColors = getApprovedShopifyColors826(item.vendorColor || item.color);
                 const finalColors = aiRes?.dominantColors?.length ? aiRes.dominantColors : approvedColors;
 
@@ -251,11 +342,35 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
 
                 const validation = validate826Output(item as any, output);
 
+                // Laya reads the copy and checks it against the record. It never sets the canonical type.
+                const laya = useLaya
+                    ? await layaCheck826({
+                        title: item.type,
+                        shape: item.shape,
+                        description: output.body,
+                        width_cm: item.widthCm || null,
+                        height_cm: item.heightCm || null,
+                        length_cm: item.lengthCm || null,
+                    })
+                    : null;
+                const flags = [
+                    layaMaterialFlag(item.material, laya),
+                    layaColourFlag(output.colourPattern, laya),
+                    layaDimsFlag(laya),
+                ].filter((f): f is LayaFlag826 => f !== null);
+
+                // character_ai, with one retry on a sibling collision
+                const character = await generateCharacterAi826(item as any, { photo, siblingDescriptors });
+                if (character.character) runCharacters.push({ group, character: character.character });
+
                 setResults(prev => ({
                     ...prev,
                     [item.id]: {
                         output,
                         validation,
+                        classify,
+                        character,
+                        flags,
                     },
                 }));
             } catch (err: any) {
@@ -283,6 +398,7 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
                             }],
                         },
                         error: err?.message || 'Generation failed',
+                        flags: [],
                     },
                 }));
             }
@@ -297,8 +413,16 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
                 <div className="p826-title-group">
                     <h2>{tr('826 Prompt & Output Preview')}</h2>
                     <p className="p826-subtitle">
-                        {tr('Developer preview: evaluates Book 826 copy rules and validators. NEVER saves to database.')}
+                        {tr('Preview only. Runs classify, copy and character_ai for the selected items and shows validator flags. Nothing is saved.')}
                     </p>
+                    <div className="p826-chips-row">
+                        <span className={localHealth?.laya ? 'p826-badge p826-badge--ok' : 'p826-badge'}>
+                            {trf('Laya: {s}', { s: localHealth ? (localHealth.laya ? tr('online') : tr('offline')) : tr('checking') })}
+                        </span>
+                        <span className={localHealth?.colibri ? 'p826-badge p826-badge--ok' : 'p826-badge'}>
+                            {trf('Colibri: {s}', { s: localHealth ? (localHealth.colibri ? tr('online') : tr('offline')) : tr('checking') })}
+                        </span>
+                    </div>
                 </div>
                 <div className="p826-actions">
                     <button
@@ -350,6 +474,7 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
                         <th>{tr('Top')}</th>
                         <th>{tr('Dimensions')}</th>
                         <th>{tr('Vendor Colour')}</th>
+                        <th>{tr('character_ai')}</th>
                         <th>{tr('Status')}</th>
                     </tr>
                 </thead>
@@ -374,6 +499,7 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
                                 <td>{item.top || (needsTopFlag(item.type, item.shape) ? '[confirm]' : '—')}</td>
                                 <td>{dims}</td>
                                 <td>{item.vendorColor}</td>
+                                <td>{res?.character?.character || '—'}</td>
                                 <td>
                                     {res ? (
                                         res.validation.valid ? (
@@ -483,6 +609,58 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
                                             </div>
                                         </div>
 
+                                        {res && (
+                                            <>
+                                                <div className="p826-field">
+                                                    <div className="p826-field-label">
+                                                        <span>{tr('Classify & Local Checks')}</span>
+                                                    </div>
+                                                    <div className="p826-field-value">
+                                                        <div><strong>Canonical type:</strong> {res.classify?.canonicalTypeId || '—'}</div>
+                                                        <div><strong>Top:</strong> {res.classify?.top || '—'}</div>
+                                                        <div><strong>Laya:</strong> {res.classify?.laya === 'ran' ? tr('checked the copy') : tr('not running (optional)')}</div>
+                                                        {res.flags.length > 0 && (
+                                                            <ul className="p826-issues-list">
+                                                                {res.flags.map((f, idx) => (
+                                                                    <li key={`flag-${idx}`} className="p826-issue-item p826-issue-item--warning">
+                                                                        <strong>[{f.rule}]</strong>: {f.message}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="p826-field">
+                                                    <div className="p826-field-label">
+                                                        <span>{tr('4. character_ai (2 to 5 words, unique among siblings)')}</span>
+                                                        {res.character && (
+                                                            <span className={res.character.issues.length === 0 ? 'p826-badge p826-badge--ok' : 'p826-badge p826-badge--err'}>
+                                                                {trf('{n} words', { n: res.character.character.split(/\s+/).filter(Boolean).length })}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="p826-field-value" style={{ fontWeight: 600 }}>
+                                                        {res.character?.character || <em>{tr('No descriptor')}</em>}
+                                                    </div>
+                                                    {res.character && (
+                                                        res.character.issues.length === 0 ? (
+                                                            <div className="p826-badge p826-badge--ok" style={{ display: 'block', padding: 6 }}>
+                                                                {trf('Passed. Model calls: {n}', { n: res.character.attempts })}
+                                                            </div>
+                                                        ) : (
+                                                            <ul className="p826-issues-list">
+                                                                {res.character.issues.map((iss, idx) => (
+                                                                    <li key={`char-iss-${idx}`} className="p826-issue-item">
+                                                                        <strong>[{iss.field} &bull; {iss.rule}]</strong>: {iss.message}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                         {res && (
                                             <>
                                                 <div className="p826-field">

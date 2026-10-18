@@ -9,7 +9,13 @@
  */
 import { currentTypeId, parseShapeText } from '../../features/entry/hairline/variantOptions';
 import { canonicalType } from '../canonicalType';
-import { ALLOWED_SHOPIFY_COLORS } from './vocabulary';
+import {
+    ALLOWED_SHOPIFY_COLORS,
+    CHARACTER_PATTERN_TOKENS,
+    CHARACTER_TONE_TOKENS,
+    CHARACTER_POSITION_TOKENS,
+    CHARACTER_FORBIDDEN_NOUNS,
+} from './vocabulary';
 import type { PipelineItem } from './item';
 import type { ContentField, BuiltPrompt } from './prompts';
 import {
@@ -17,6 +23,7 @@ import {
     COPY_LIMITS,
     COPY_BANNED_PROCESS_WORDS_826,
     COPY_BANNED_HYPE_WORDS_826,
+    COPY_BANNED_WORDS_826,
     COPY_LIMITS_826,
     type TypePromptSpec,
     type Prompt826Output,
@@ -630,3 +637,164 @@ Return JSON with "shopifyTitle", "body", and "dominantColors".`;
     };
 }
 
+
+// ── Book 826 character_ai (AI_PROCESS_826_PLAN section B) ────────────────────
+
+/** Schema for the character_ai call. */
+export const CHARACTER_SCHEMA_826 = {
+    type: 'object',
+    properties: {
+        character: {
+            type: 'string',
+            description: 'A 2 to 5 word visual descriptor of this exact piece: lowercase, no period, no stone or object name.',
+        },
+        confidence: {
+            type: 'number',
+            description: 'Confidence from 0 to 1.',
+        },
+    },
+    required: ['character', 'confidence'],
+} as const;
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const CHARACTER_HYPE_RE = new RegExp(
+    `\\b(${[...COPY_BANNED_WORDS_826, 'natural', 'polished', 'honed', 'carved', 'unique', 'beautiful', 'gorgeous', 'piece', 'item']
+        .map(escapeRe).join('|')})\\b`,
+    'i',
+);
+const CHARACTER_NOUN_RE = new RegExp(`\\b(${CHARACTER_FORBIDDEN_NOUNS.map(escapeRe).join('|')})\\b`, 'i');
+
+/** Lowercase words with a plural 's' dropped, so "veins" and "vein" compare equal. */
+const characterTokens = (s: string): string[] => s
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(w => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
+
+/** True when the words hold the phrase as a run of consecutive words. */
+const hasCharacterPhrase = (words: readonly string[], phrase: string): boolean => {
+    const p = characterTokens(phrase);
+    for (let i = 0; i + p.length <= words.length; i++) {
+        if (p.every((t, j) => words[i + j] === t)) return true;
+    }
+    return false;
+};
+
+/**
+ * Prompt for one character_ai descriptor. The photo, when there is one, goes with the call
+ * as an image (see generateCharacterAi826 in prompts.ts).
+ */
+export function buildCharacterAiPrompt826(
+    item: any,
+    opts: { siblingDescriptors?: readonly string[] } = {},
+): BuiltPrompt {
+    const entry = getOnyx826Entry(item.type, item.shape);
+    const label = entry?.labelEN ?? (String(item.type || '').trim() || 'piece');
+    const material = String(item.material || 'Onyx').trim();
+    const colour = String(item.vendorColor || item.color || 'colour not recorded').trim();
+    const shape = String(item.shape || 'shape not recorded').trim();
+    const siblings = opts.siblingDescriptors?.length
+        ? opts.siblingDescriptors.map(s => `"${s}"`).join(', ')
+        : 'none';
+
+    const prompt = `You are cataloguing natural Mexican stone pieces for Onyx.mx.
+Look at the attached photo of this ${label} (${shape}, stone/colour: ${material} / ${colour}).
+Write a 2 to 5 word visual descriptor ("character") that identifies THIS exact piece's stone pattern, veining, or colour zone so a warehouse picker can tell it apart from identical ${label} siblings.
+
+STRICT RULES:
+1. Maximum 5 words (2 to 5 words total). Lowercase only, no period, no quotes.
+2. Use ONLY concrete pattern, tone, and position words:
+   - Pattern words: ${CHARACTER_PATTERN_TOKENS.join(', ')}
+   - Tone words: ${CHARACTER_TONE_TOKENS.join(', ')}
+   - Position words: ${CHARACTER_POSITION_TOKENS.join(', ')}
+3. NEVER include the stone name (onyx, fluorite, calcite, travertine, marble, stone, rock, quartz) or the object type (lamp, bowl, sink, table, pedestal). The only allowed use of "crystal" is the pattern phrase "crystal pockets".
+4. NEVER use hype or process words (stunning, unique, handcrafted, artisan, luxury, beautiful, natural, polished, carved).
+5. SIBLING COLLISION RULE: Your phrase MUST clearly differ from existing sibling descriptors in the same group:
+   EXISTING_SIBLINGS: ${siblings}
+
+Return strict JSON: {"character": "<2-5 words>", "confidence": <0.0-1.0>}`;
+
+    return { prompt, schema: CHARACTER_SCHEMA_826 };
+}
+
+/**
+ * Checks one character_ai descriptor: 2 to 5 words, controlled vocabulary, no stone or object
+ * name, no hype or process words, and not a near copy of a sibling (rule
+ * "character_sibling_collision", which triggers the one retry).
+ */
+export function validateCharacterAi826(
+    character: string,
+    opts: { siblingDescriptors?: readonly string[] } = {},
+): Validation826Result {
+    const issues: Validation826Issue[] = [];
+    const add = (rule: string, message: string) => {
+        issues.push({ field: 'character', rule, message, severity: 'error' });
+    };
+    const text = String(character ?? '').trim();
+    const words = text.split(/\s+/).filter(Boolean);
+
+    if (words.length < 2 || words.length > 5) {
+        add('length', `Character must be 2 to 5 words (currently ${words.length}).`);
+    }
+    if (text.length > 42) {
+        add('length', `Character must be 42 characters or fewer (currently ${text.length}).`);
+    }
+    if (/[A-Z.!?"“”]/.test(text)) {
+        add('format', 'Character must be lowercase, with no period or quotes.');
+    }
+
+    const noun = text.toLowerCase().replace(/crystal pockets/g, ' ').match(CHARACTER_NOUN_RE);
+    if (noun) add('forbidden-noun', `Character must not name the stone or the object ("${noun[0]}").`);
+
+    const hype = text.match(CHARACTER_HYPE_RE);
+    if (hype) add('banned-hype-word', `Character must not use hype or process words ("${hype[0]}").`);
+
+    const tokens = characterTokens(text);
+    const hasPattern = CHARACTER_PATTERN_TOKENS.some(t => hasCharacterPhrase(tokens, t));
+    const hasToneOrPosition = [...CHARACTER_TONE_TOKENS, ...CHARACTER_POSITION_TOKENS].some(t => hasCharacterPhrase(tokens, t));
+    if (!hasPattern || !hasToneOrPosition) {
+        add('vocabulary', 'Character needs one pattern word (bands, veins, ...) and one tone or position word (honey, top, ...).');
+    }
+
+    const mine = new Set(tokens);
+    for (const sibling of opts.siblingDescriptors ?? []) {
+        const theirs = new Set(characterTokens(sibling));
+        if (!mine.size || !theirs.size) continue;
+        const shared = [...mine].filter(t => theirs.has(t)).length;
+        const union = new Set([...mine, ...theirs]).size;
+        const same = tokens.join(' ') === characterTokens(sibling).join(' ');
+        if (same || shared / union >= 0.75) {
+            add('character_sibling_collision', `Too close to sibling descriptor "${sibling}".`);
+            break;
+        }
+    }
+
+    return { valid: issues.length === 0, issues };
+}
+
+/**
+ * Deterministic fit of a Shopify title to the 60 to 70 character window: drops articles and a
+ * trailing period, trims whole words over the limit, and appends the given qualifiers while the
+ * title is short. No model call.
+ */
+export function fitShopifyTitle826(raw: string, qualifiers: readonly string[] = []): { title: string; valid: boolean } {
+    const { shopifyTitleMinChars: min, shopifyTitleMaxChars: max } = COPY_LIMITS_826;
+    const cap = (s: string): string[] => s
+        .split(/\s+/)
+        .filter(w => w && !/^(a|an|the|and|of)$/i.test(w))
+        .map(w => (/\d/.test(w) ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()));
+    const joined = (ws: string[]) => ws.join(' ');
+
+    let words = cap(String(raw ?? '').replace(/\.+\s*$/, ''));
+    while (words.length && joined(words).length > max) words = words.slice(0, -1);
+    for (const q of qualifiers) {
+        if (joined(words).length >= min) break;
+        const next = [...words, ...cap(q)];
+        if (joined(next).length <= max) words = next;
+    }
+
+    const title = joined(words);
+    return { title, valid: title.length >= min && title.length <= max };
+}

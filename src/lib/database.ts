@@ -164,7 +164,7 @@ const itemSegmentationSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 19,
+    version: 20,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -194,6 +194,15 @@ const inventorySchema = {
         short_description: { type: ['string', 'null'] },
         processed_media_urls: { type: ['string', 'null'] },
         top_type: { type: ['string', 'null'] },   // 826 open | closed top (lamps, vessels)
+        // 826 AI copy and character columns (owner SQL, AI_PROCESS_826_PLAN). Nullable; the next sync fills them in.
+        character_ai: { type: ['string', 'null'] },
+        invoice_title: { type: ['string', 'null'] },
+        shopify_title: { type: ['string', 'null'] },
+        canonical_type: { type: ['string', 'null'] },
+        process_type: { type: ['string', 'null'] },
+        copy_status: { type: ['string', 'null'] },
+        reviewed_by: { type: ['string', 'null'] },
+        reviewed_at: { type: ['string', 'null'] },
         generated_color: { type: ['string', 'null'] },
         generated_description: { type: ['string', 'null'] },
         detailed_description: { type: ['string', 'null'] },
@@ -367,6 +376,9 @@ const createDatabase = async () => {
                     18: (oldDoc) => oldDoc,
                     // 19: top_type (open | closed) for 826 lamps and vessels; nullable, the next sync fills it in
                     19: (oldDoc) => oldDoc,
+                    // 20: 826 AI columns (character_ai, invoice_title, shopify_title, canonical_type, process_type,
+                    // copy_status, reviewed_by, reviewed_at). All nullable, so existing docs pass through.
+                    20: (oldDoc) => oldDoc,
                 }
             },
             // New collection, so it starts at version 0 with no migration

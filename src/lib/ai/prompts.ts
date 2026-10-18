@@ -31,8 +31,16 @@ import {
 } from './vocabulary';
 import { sizeLabel, type PipelineItem } from './item';
 import type { DonorCandidate } from '../variationMatch';
-import { typeGuidanceFor, promptSpecFor, itemTypeId, isBook826, buildContentPrompt826 } from './typePrompts';
-import type { TypePromptSpec } from './typePromptSpec';
+import {
+    typeGuidanceFor,
+    promptSpecFor,
+    itemTypeId,
+    isBook826,
+    buildContentPrompt826,
+    buildCharacterAiPrompt826,
+    validateCharacterAi826,
+} from './typePrompts';
+import type { TypePromptSpec, Validation826Issue } from './typePromptSpec';
 import { generateJson } from './client';
 
 export { isBook826, buildContentPrompt826 };
@@ -522,5 +530,51 @@ export async function detectTopFromPhoto(
     } catch {
         return 'unknown';
     }
+}
+
+export interface CharacterAi826Result {
+    character: string;
+    confidence: number;
+    issues: Validation826Issue[];
+    attempts: number;
+}
+
+/**
+ * Book 826 character_ai for one item. One retry, and only when the descriptor collides with a
+ * sibling: the collided phrase joins the sibling list and the temperature rises from 0.3 to 0.55.
+ * `photo` is a data: URL or base64 image; without it the call runs on the record alone.
+ */
+export async function generateCharacterAi826(
+    item: any,
+    opts: { photo?: string; siblingDescriptors?: readonly string[]; signal?: AbortSignal } = {},
+): Promise<CharacterAi826Result> {
+    const siblings = [...(opts.siblingDescriptors ?? [])];
+    let temperature = 0.3;
+    let character = '';
+    let confidence = 0;
+    let issues: Validation826Issue[] = [];
+    let attempts = 0;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+        attempts++;
+        const { prompt, schema } = buildCharacterAiPrompt826(item, { siblingDescriptors: siblings });
+        const res = await generateJson<{ character?: string; confidence?: number }>({
+            job: 'content',
+            prompt,
+            schema,
+            images: opts.photo ? [opts.photo] : undefined,
+            temperature,
+            signal: opts.signal,
+        });
+        character = String(res?.character ?? '').trim();
+        confidence = Math.min(1, Math.max(0, Number(res?.confidence) || 0));
+        const validation = validateCharacterAi826(character, { siblingDescriptors: siblings });
+        issues = [...validation.issues];
+        if (!validation.issues.some(i => i.rule === 'character_sibling_collision') || attempt === 1) break;
+        siblings.push(character);
+        temperature = 0.55;
+    }
+
+    return { character, confidence, issues, attempts };
 }
 
