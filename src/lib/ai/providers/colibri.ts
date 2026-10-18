@@ -12,6 +12,7 @@ import {
 } from './types';
 import { tr, trf } from '../../i18n';
 import { COLIBRI_AUTO_MODEL, COLIBRI_DEFAULT_MODEL_ID } from '../models';
+import { routeChatTools } from '../chatToolRouter';
 
 /**
  * Colibrì (https://github.com/JustVugg/colibri) as an AI provider.
@@ -276,14 +277,23 @@ async function httpError(res: Response, what: string): Promise<AiProviderError> 
     return new AiProviderError(`Colibrì ${what}: HTTP ${res.status}${detail ? ` ${detail}` : ''}`, res.status, 'server');
 }
 
-/** Answer cap for chat on this PC (about 0.5 tokens per second). */
-const COLIBRI_CHAT_MAX_TOKENS = 384;
-
-/** The tools Colibri chat gets (navigation, search, filters, open item); the MCP and device packs stay on Gemini. */
-const COLIBRI_CORE_TOOLS = new Set(['navigate_to_view', 'get_current_view', 'open_item', 'search_in_app', 'set_inventory_filter', 'clear_filters']);
+/** Answer cap for chat (Qwen3.5-4B on the RTX 2060 GPU: a 793-token tool turn in about 5 s). */
+const COLIBRI_CHAT_MAX_TOKENS = 1024;
 
 /** System prompt budget for Colibri, in characters. */
-const COLIBRI_SYSTEM_MAX_CHARS = 1200;
+const COLIBRI_SYSTEM_MAX_CHARS = 2500;
+
+/**
+ * The tools Colibri chat gets: the app and island packs. The robot and MCP packs stay on Gemini: with every tool
+ * the prompt is ~5,800 tokens and a turn takes 40-60 s; with these it stays near 10 s.
+ */
+const COLIBRI_CHAT_TOOLS = new Set([
+    'navigate_to_view', 'navigate_view', 'get_current_view', 'get_app_context', 'get_ui_snapshot', 'open_item',
+    'search_in_app', 'search_inventory', 'set_inventory_filter', 'clear_filters', 'highlight_items',
+    'get_item_details', 'get_item_samples', 'get_inventory_summary', 'get_database_context', 'search_finance',
+    'search_logistics', 'deploy_inventory_artifact', 'generate_crate_cutfile', 'show_toast', 'set_pinned_tool',
+    'list_island_tools', 'run_island_tool', 'open_island_surface',
+]);
 
 /** First sentence, at most `max` characters. */
 function compactText(text: string | undefined, max: number): string {
@@ -441,10 +451,13 @@ export async function streamChat(
 
     const body: Record<string, unknown> = { model, messages, stream: true };
     if (req.tools && req.tools.length > 0) {
-        // Colibri reads the prompt at local-CPU speed: send each tool compactly (first sentence, no parameter prose)
-        // Only the core in-app tools: every tool schema costs ~0.8 s per prompt token on this PC
-        const core = req.tools.filter(t => COLIBRI_CORE_TOOLS.has(t.name));
-        if (core.length) body.tools = core.map(t => ({
+        // Laya picks the tool groups this message needs (core tools always); without Laya, the app and island tools.
+        // Each is sent compactly (first sentence, no parameter prose) so the prompt stays short
+        const lastUser = [...req.turns].reverse().find(t => t.role === 'user');
+        const routed = lastUser?.role === 'user' ? await routeChatTools(lastUser.text) : null;
+        const allowed = routed ?? COLIBRI_CHAT_TOOLS;
+        const tools = req.tools.filter(t => COLIBRI_CHAT_TOOLS.has(t.name) && allowed.has(t.name));
+        if (tools.length) body.tools = tools.map(t => ({
             type: 'function',
             function: {
                 name: t.name,
@@ -454,7 +467,7 @@ export async function streamChat(
         }));
     }
     if (req.temperature !== undefined) body.temperature = req.temperature;
-    // ~0.5 tokens/s here: a 4096-token cap kept the engine busy for minutes and queued the next message
+    // A capped answer keeps one long reply from queueing the next message behind it
     body.max_tokens = Math.min(req.maxTokens ?? COLIBRI_CHAT_MAX_TOKENS, COLIBRI_CHAT_MAX_TOKENS);
 
     return callServer(cfg, req, async (signal) => {
