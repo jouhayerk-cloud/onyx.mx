@@ -284,7 +284,7 @@ const COLIBRI_CHAT_MAX_TOKENS = 1024;
 const COLIBRI_MAX_TURNS = 8;
 
 /** Characters of one tool result Colibri reads. */
-const COLIBRI_TOOL_RESULT_MAX_CHARS = 1500;
+const COLIBRI_TOOL_RESULT_MAX_CHARS = 3500;
 
 function trimToolResult(text: string): string {
     return text.length > COLIBRI_TOOL_RESULT_MAX_CHARS

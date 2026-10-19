@@ -5,11 +5,12 @@ import { supabase } from '../../lib/supabase';
 export const onyxToolDefinitions = [
     {
         name: "search_inventory",
-        description: "Search for items in the warehouse. Returns dimensions (H, W, L, Weight) and identifiers. Optimized for Tag IDs, shapes, and vendors.",
+        description: "Search items in the warehouse (all books incl. 825, 326, 826). Returns tag id, book, type, size/shape, colour, dimensions, price. Use book=826 for the 826 catalog.",
         parameters: {
             type: "object",
             properties: {
                 query: { type: "string", description: "Search keyword, Tag ID, or Barcode" },
+                book: { type: "string", description: "Workbook / catalog book: 825, 326 or 826" },
                 vendor: { type: "string", description: "Vendor ID (e.g. EM, GE, JM)" },
                 status: { type: "string", description: "Specific status to filter by" },
                 shape: { type: "string", description: "Filter by shape (e.g. Squared, Heart)" },
@@ -136,6 +137,8 @@ export const onyxToolHandlers = {
                     return { 
                         id: item.id,
                         tag_id: barcode, 
+                        book: item.workbook,
+                        type: item.short_description,
                         shape: item.shape, 
                         material: item.material,
                         dimensions: {
@@ -145,7 +148,9 @@ export const onyxToolHandlers = {
                             weight: item.weight_kg
                         },
                         color: item.color,
-                        description: item.generated_description || item.description, 
+                        // first 120 characters, tags stripped: full HTML bodies crowded the results out of a small model's context
+                        description: String(item.detailed_description || item.generated_description || item.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) || undefined,
+                        price_mxn: item.price_mxn,
                         quantity: item.quantity,
                         status: item.status
                     };

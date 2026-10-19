@@ -59,7 +59,8 @@ export const onyxQueries = {
      * Search inventory & production with flexible status and identifier logic.
      */
     searchInventory: async (params: { 
-        query?: string, 
+        query?: string,
+        book?: string, 
         vendor?: string, 
         status?: string, 
         shape?: string,
@@ -81,6 +82,10 @@ export const onyxQueries = {
         // Fetch from Inventory & Production
         let invQ = supabase.from('inventory').select(invCols, { count: 'exact' }).not('is_hidden', 'is', true);
         let prodQ = supabase.from('production').select(prodCols, { count: 'exact' });
+
+        // book: "826", "v826" -> workbook v826 (production rows have no workbook and are left out when a book is asked for)
+        const book = params.book ? `v${String(params.book).replace(/\D/g, '')}` : '';
+        if (book.length > 1) invQ = invQ.eq('workbook', book);
 
         if (params.status) {
             if (Array.isArray(params.status)) {
@@ -181,7 +186,7 @@ export const onyxQueries = {
         if (params.status) prodQ = prodQ.eq('status', params.status);
         const [invRes, prodRes] = await Promise.all([
             invQ.limit(params.limit || 50),
-            prodQ.limit(params.limit || 50)
+            book.length > 1 ? Promise.resolve({ data: [] as any[], count: 0 }) : prodQ.limit(params.limit || 50)
         ]);
 
         const combinedData: OnyxSearchRow[] = [
