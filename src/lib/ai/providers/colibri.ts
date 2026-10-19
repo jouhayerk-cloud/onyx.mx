@@ -32,6 +32,8 @@ import { routeChatTools } from '../chatToolRouter';
  */
 
 export const COLIBRI_DEFAULT_BASE_URL = 'http://127.0.0.1:8000';
+/** Colibri on the host PC through Tailscale Serve (tailnet only): for phones and other devices signed into the tailnet. */
+export const COLIBRI_TAILSCALE_URL = 'https://g7.tail2a809e.ts.net';
 
 export const COLIBRI_INFO: ProviderInfo = {
     id: 'colibri',

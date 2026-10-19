@@ -4,16 +4,13 @@ import { themeAtom, userAtom } from '../../lib/atoms';
 import { tr } from '../../lib/i18n';
 import {
     RefreshCw,
-    Cloud,
     Laptop,
     Network,
-    Settings2,
     ChevronRight,
     X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { colibriProvider, isColibriAvailable, COLIBRI_DEFAULT_BASE_URL } from '../../lib/ai/providers/colibri';
-import { COLIBRI_RELAY_DISABLED_REASON } from '../../lib/ai/colibriRealtimeBridge';
+import { colibriProvider, isColibriAvailable, COLIBRI_DEFAULT_BASE_URL, COLIBRI_TAILSCALE_URL } from '../../lib/ai/providers/colibri';
 import { COLIBRI_MODELS, COLIBRI_MODEL_SPECS } from '../../lib/ai/models';
 import {
     getProviderConfig,
@@ -23,9 +20,7 @@ import {
 import { getRoute, setRoute } from '../../lib/ai/routing';
 import type { ProviderConfig } from '../../lib/ai/providers/types';
 import {
-    ONYX_MESH_TOPOLOGY,
     MESH_NODES,
-    isMeshNodeConfigured,
     pingMeshNode,
 } from '../../lib/network/localMeshMap';
 
@@ -34,7 +29,7 @@ interface TestStatus {
     message: string;
 }
 
-type ConnectionMode = 'cloud' | 'localhost' | 'mesh' | 'custom';
+type ConnectionMode = 'localhost' | 'tailscale';
 
 interface TransportModeItem {
     id: ConnectionMode;
@@ -43,25 +38,12 @@ interface TransportModeItem {
     icon: LucideIcon;
 }
 
-/** Read at click time: the mesh list can change after this module loads. Null until the host node has an address. */
-function meshPresetUrl(): string | null {
-    const g7 = ONYX_MESH_TOPOLOGY.g7;
-    return isMeshNodeConfigured(g7) ? `http://${g7.ip}:${g7.colibriPort || 8000}` : null;
-}
-
 function detectDefaultUrl(): string {
     return COLIBRI_DEFAULT_BASE_URL;
 }
 
 function resolveMode(url: string): ConnectionMode {
-    if (
-        url === COLIBRI_DEFAULT_BASE_URL ||
-        url === 'http://localhost:8000' ||
-        url.startsWith('supabase://')
-    )
-        return 'localhost';
-    if (url === meshPresetUrl()) return 'mesh';
-    return 'custom';
+    return url.replace(/\/+$/, '') === COLIBRI_TAILSCALE_URL ? 'tailscale' : 'localhost';
 }
 
 export const ColibriSettingsCard: React.FC = () => {
@@ -175,14 +157,10 @@ export const ColibriSettingsCard: React.FC = () => {
     };
 
     const handleSelectMode = (mode: ConnectionMode) => {
-        if (mode === 'cloud') return;
-        const newUrl = mode === 'localhost' ? COLIBRI_DEFAULT_BASE_URL : mode === 'mesh' ? meshPresetUrl() : null;
-        if (mode !== 'custom' && !newUrl) return;
+        const newUrl = mode === 'tailscale' ? COLIBRI_TAILSCALE_URL : COLIBRI_DEFAULT_BASE_URL;
         setActiveMode(mode);
-        if (newUrl) {
-            setEndpoint(newUrl);
-            handleSave(newUrl, undefined);
-        }
+        setEndpoint(newUrl);
+        handleSave(newUrl, undefined);
     };
 
     const handleToggleChanChat = (active: boolean) => {
@@ -221,34 +199,8 @@ export const ColibriSettingsCard: React.FC = () => {
     };
 
     const transportModes: TransportModeItem[] = [
-        {
-            id: 'cloud',
-            label: tr("Relay"),
-            fullName: tr("Relay"),
-            icon: Cloud,
-        },
-        {
-            id: 'localhost',
-            label: tr("Local"),
-            fullName: tr("Local Host :8000"),
-            icon: Laptop,
-        },
-        ...(isMeshNodeConfigured(ONYX_MESH_TOPOLOGY.g7)
-            ? [
-                  {
-                      id: 'mesh' as const,
-                      label: tr("LAN"),
-                      fullName: tr("LAN Mesh"),
-                      icon: Network,
-                  },
-              ]
-            : []),
-        {
-            id: 'custom',
-            label: tr("Custom"),
-            fullName: tr("Custom Endpoint"),
-            icon: Settings2,
-        },
+        { id: 'localhost', label: tr("Local"), fullName: tr("This PC (127.0.0.1:8000)"), icon: Laptop },
+        { id: 'tailscale', label: tr("Tailscale"), fullName: tr("Tailscale (g7.tail2a809e.ts.net)"), icon: Network },
     ];
 
     return (
@@ -344,7 +296,7 @@ export const ColibriSettingsCard: React.FC = () => {
                             {transportModes.map((item) => {
                                 const Icon = item.icon;
                                 const isChecked = activeMode === item.id;
-                                const isDisabled = item.id === 'cloud';
+                                const isDisabled = false;
                                 return (
                                     <button
                                         key={item.id}
@@ -353,16 +305,8 @@ export const ColibriSettingsCard: React.FC = () => {
                                         aria-checked={isChecked}
                                         aria-disabled={isDisabled ? 'true' : undefined}
                                         disabled={isDisabled}
-                                        aria-label={
-                                            isDisabled
-                                                ? `${item.fullName} (${tr(COLIBRI_RELAY_DISABLED_REASON)})`
-                                                : item.fullName
-                                        }
-                                        title={
-                                            isDisabled
-                                                ? `${item.fullName} (${tr(COLIBRI_RELAY_DISABLED_REASON)})`
-                                                : item.fullName
-                                        }
+                                        aria-label={item.fullName}
+                                        title={item.fullName}
                                         onClick={() => {
                                             if (!isDisabled) {
                                                 handleSelectMode(item.id);
@@ -379,35 +323,6 @@ export const ColibriSettingsCard: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
-                {/* Custom Endpoint URL row rendered in main group when activeMode === 'custom' */}
-                {activeMode === 'custom' && (
-                    <div className="sk-row">
-                        <div className="sk-row-label">
-                            <span className="sk-row-title">{tr("Endpoint URL")}</span>
-                        </div>
-                        <div className="sk-row-value">
-                            <div className="sk-field">
-                                <input
-                                    type="url"
-                                    value={endpoint}
-                                    onChange={(e) => setEndpoint(e.target.value)}
-                                    onBlur={() => handleSave()}
-                                    placeholder="https://g7.tail2a809e.ts.net"
-                                    aria-label={tr("Endpoint URL")}
-                                    className="sk-mono"
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => handleSave()}
-                                className="sk-btn"
-                            >
-                                {tr("Save")}
-                            </button>
-                        </div>
-                    </div>
-                )}
 
                 {/* (c) Model row: model selector in mono */}
                 <div className="sk-row">
