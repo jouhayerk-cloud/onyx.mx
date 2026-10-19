@@ -147,15 +147,21 @@ export const ColibriSettingsCard: React.FC = () => {
         setPingingNodes(false);
     }, []);
 
+    // Load the saved config on open and when another screen changes it. This used to depend on `endpoint`,
+    // so every keystroke in the Custom field reloaded the saved URL over the typed one and flipped the mode back.
     useEffect(() => {
         refreshConfig();
-        pingDaemon(endpoint);
-
         window.addEventListener(AI_CONFIG_EVENT, refreshConfig);
         return () => {
             window.removeEventListener(AI_CONFIG_EVENT, refreshConfig);
         };
-    }, [refreshConfig, pingDaemon, endpoint]);
+    }, [refreshConfig]);
+
+    // Ping the address being edited, after typing pauses
+    useEffect(() => {
+        const t = setTimeout(() => pingDaemon(endpoint), 600);
+        return () => clearTimeout(t);
+    }, [pingDaemon, endpoint]);
 
     const handleSave = (newEndpoint?: string, newModel?: string) => {
         const ep = (newEndpoint ?? endpoint).trim() || detectDefaultUrl();
@@ -387,7 +393,7 @@ export const ColibriSettingsCard: React.FC = () => {
                                     value={endpoint}
                                     onChange={(e) => setEndpoint(e.target.value)}
                                     onBlur={() => handleSave()}
-                                    placeholder="http://127.0.0.1:8000"
+                                    placeholder="https://g7.tail2a809e.ts.net"
                                     aria-label={tr("Endpoint URL")}
                                     className="sk-mono"
                                 />
