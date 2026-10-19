@@ -794,8 +794,9 @@ export function resolve826TypeId(rawType: unknown, rawShape?: unknown): string {
     }
   }
 
-  // Exact ID match
-  const exact = ONYX826_TAXONOMY.find(e => e.id === normType);
+  // Exact ID match ("Floor Lamp" and "floor-lamp" both name floor-lamp)
+  const asId = normType.replace(/[\s_]+/g, '-');
+  const exact = ONYX826_TAXONOMY.find(e => e.id === normType || e.id === asId);
   if (exact) return exact.id;
 
   // Alias lookup
