@@ -79,7 +79,7 @@ export const onyxQueries = {
         const prodCols = '*, tag_id, quantity, status';
         
         // Fetch from Inventory & Production
-        let invQ = supabase.from('inventory').select(invCols, { count: 'exact' });
+        let invQ = supabase.from('inventory').select(invCols, { count: 'exact' }).not('is_hidden', 'is', true);
         let prodQ = supabase.from('production').select(prodCols, { count: 'exact' });
 
         if (params.status) {
@@ -191,7 +191,7 @@ export const onyxQueries = {
 
         // Fetch sum separately (Inventory only for now as per business rules, or both?)
         // User asked to fetch production info too, so we sum both.
-        let invSumQ = supabase.from('inventory').select('quantity');
+        let invSumQ = supabase.from('inventory').select('quantity').not('is_hidden', 'is', true);
         let prodSumQ = supabase.from('production').select('quantity');
 
         if (params.status) {
@@ -241,7 +241,7 @@ export const onyxQueries = {
             const dbField = group_by === 'vendor_id' ? 'item_id' : group_by;
             const columns = `quantity, ${dbField}, status, price_mxn`;
             
-            let invQ = supabase.from('inventory').select(columns);
+            let invQ = supabase.from('inventory').select(columns).not('is_hidden', 'is', true);
             // production has only description, tag_id, vendor_id, status and quantity
             const prodField = group_by === 'vendor_id' ? 'tag_id' : group_by;
             const prodHasField = PRODUCTION_COLUMNS.has(prodField);
@@ -312,7 +312,7 @@ export const onyxQueries = {
 
     getDatabaseContext: async () => {
         const [invRes, prodRes] = await Promise.all([
-            supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color'),
+            supabase.from('inventory').select('shape, material, item_id, book_barcode, status, color').not('is_hidden', 'is', true),
             supabase.from('production').select('tag_id, vendor_id, status')
         ]);
 
