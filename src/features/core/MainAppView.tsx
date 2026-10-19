@@ -50,7 +50,6 @@ import { LiquidOnyxBackground } from '../../components/LiquidOnyxBackground';
 import { useLogout, useTranslation } from '../../lib/hooks';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import userIcons from '../../components/userIcons';
-import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { UniversalToolsBar } from './UniversalToolsBar';
 import { ArchivedToolsBar } from '../archived/ArchivedChrome';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
@@ -306,7 +305,6 @@ export function MainAppView() {
     return (
         <>
             <LiquidOnyxFilters />
-            <DataSyncProvider />
             <LiquidOnyxBackground />
 
             {sidebarState === 'hidden' && !islandOn && (
