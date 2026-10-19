@@ -239,13 +239,13 @@ export const onyxQueries = {
     getAggregatedSummary: async (group_by: string, vendor?: string, query?: string) => {
         try {
             const dbField = group_by === 'vendor_id' ? 'item_id' : group_by;
-            const columns = `quantity, ${dbField}, status`;
+            const columns = `quantity, ${dbField}, status, price_mxn`;
             
             let invQ = supabase.from('inventory').select(columns);
             // production has only description, tag_id, vendor_id, status and quantity
             const prodField = group_by === 'vendor_id' ? 'tag_id' : group_by;
             const prodHasField = PRODUCTION_COLUMNS.has(prodField);
-            let prodQ = supabase.from('production').select(prodHasField ? `quantity, ${prodField}, status` : 'quantity, status');
+            let prodQ = supabase.from('production').select(prodHasField ? `quantity, ${prodField}, status, total` : 'quantity, status, total');
 
             const resolvedVendor = resolveVendorId(vendor || '');
             if (resolvedVendor) {
@@ -280,6 +280,7 @@ export const onyxQueries = {
             const data = [...(invRes.data || []), ...(prodRes.data || [])];
 
             const summary: Record<string, number> = {};
+            const summaryMxn: Record<string, number> = {};
             data.forEach((item: any) => {
                 let key = 'Unknown';
                 if (group_by === 'vendor_id') {
@@ -291,12 +292,17 @@ export const onyxQueries = {
                 }
                 const normalizedKey = key.toString().toUpperCase().trim();
                 summary[normalizedKey] = (summary[normalizedKey] || 0) + (item.quantity || 0);
+                // Value in MXN: inventory price_mxn x quantity, production rows carry their own total
+                const mxn = item.total != null ? Number(item.total) || 0 : (Number(item.price_mxn) || 0) * (Number(item.quantity) || 1);
+                summaryMxn[normalizedKey] = Math.round((summaryMxn[normalizedKey] || 0) + mxn);
             });
 
             return {
                 group_by,
                 summary,
                 total_quantity: Object.values(summary).reduce((a, b) => a + b, 0),
+                summary_mxn: summaryMxn,
+                total_mxn: Object.values(summaryMxn).reduce((a, b) => a + b, 0),
                 total_records: data.length
             };
         } catch (err: any) {

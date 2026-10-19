@@ -57,7 +57,7 @@ export const onyxToolDefinitions = [
     },
     {
         name: "get_inventory_summary",
-        description: "Get aggregated counts of items grouped by a specific field (e.g. 'how many per vendor'). Only includes 'Inventory' items.",
+        description: "Totals of items grouped by a field: quantity and value in MXN per group (e.g. 'how many per vendor', 'total MXN in Acquisition' -> group_by status). Use this for inventory money totals, not search_finance.",
         parameters: {
             type: "object",
             properties: {

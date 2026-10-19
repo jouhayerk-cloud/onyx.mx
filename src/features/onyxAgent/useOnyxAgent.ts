@@ -433,6 +433,8 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
             let iter = 0;
             let hasReprompted = false;
             const executedTools = new Set<string>();
+            // name + arguments of every call this turn: a small local model can repeat the same call in a loop
+            const seenCalls = new Set<string>();
 
             while (iter < 6 && !signal.aborted) {
                 const parts = resp.candidates?.[0]?.content?.parts || [];
@@ -514,6 +516,19 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
                 for (const c of calls) {
                     if (signal.aborted) break;   // Stop pressed: do not run the remaining queued tool calls
                     setPhase('thinking');
+                    const callKey = `${c.functionCall.name}:${JSON.stringify(c.functionCall.args ?? {})}`;
+                    if (seenCalls.has(callKey)) {
+                        // Same tool with the same arguments again: answer it without running it
+                        resps.push({
+                            functionResponse: {
+                                name: c.functionCall.name,
+                                ...(c.functionCall.id ? { id: c.functionCall.id } : {}),
+                                response: { content: { ok: false, error: 'Already called with these arguments. Answer from the earlier result, or say this data is not available.' } }
+                            }
+                        });
+                        continue;
+                    }
+                    seenCalls.add(callKey);
                     executedTools.add(c.functionCall.name);
                     const risk = allRisks[c.functionCall.name] || 'read';
                     const needsConfirm = risk === 'write' || allConfirms[c.functionCall.name] === true;
