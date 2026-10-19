@@ -30,7 +30,7 @@ html.theme-aqua {
     var(--lq-highlight),
     var(--lq-shadow),
     inset 0 0 20px rgba(255, 255, 255, 0.05);
-  transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
 }
 
 html.lq-refraction { /* SVG refraction: opt-in test effect (add class lq-refraction on <html>; localStorage lqRefraction=1) */
@@ -347,7 +347,7 @@ html.lq-refraction { /* SVG refraction: opt-in test effect (add class lq-refract
 @media (min-width: 769px) {
   .app-container > .app-content {
     margin-left: var(--sidebar-width, 0px);
-    transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 @media (prefers-reduced-motion: reduce) {

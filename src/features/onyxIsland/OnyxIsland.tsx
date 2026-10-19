@@ -51,9 +51,9 @@ function useIdleTimer(timeoutMs: number): boolean {
       timeout = setTimeout(() => setIdle(true), timeoutMs);
     };
     onActive();
-    window.addEventListener('mousemove', onActive);
-    window.addEventListener('keydown', onActive);
-    window.addEventListener('touchstart', onActive);
+    window.addEventListener('mousemove', onActive, { passive: true });
+    window.addEventListener('keydown', onActive, { passive: true });
+    window.addEventListener('touchstart', onActive, { passive: true });
     return () => {
       clearTimeout(timeout);
       window.removeEventListener('mousemove', onActive);
@@ -202,11 +202,14 @@ export const OnyxIsland: React.FC<{ readout?: IslandReadout | null }> = ({ reado
   useLayoutEffect(() => {
     const el = islandRef.current?.closest('.onyx-island-layer') as HTMLElement;
     if (!el) return;
-    const update = () => {
-      setIslandWidth(el.getBoundingClientRect().width);
-      const style = window.getComputedStyle(el);
-      setIslandFont(`600 11px ${style.fontFamily || 'sans-serif'}`);      // the launcher titles are 11 px, under the icon
-      setIslandIconWidth(parseInt(style.getPropertyValue('--isl-target')) || 44);
+    const style = window.getComputedStyle(el);
+    setIslandFont(`600 11px ${style.fontFamily || 'sans-serif'}`);      // the launcher titles are 11 px, under the icon
+    setIslandIconWidth(parseInt(style.getPropertyValue('--isl-target')) || 44);
+    const update = (entries?: ResizeObserverEntry[]) => {
+      const entry = entries?.[0];
+      // border box, like getBoundingClientRect: the tool-fit math counts padding
+      const w = entry?.borderBoxSize?.[0]?.inlineSize ?? el.getBoundingClientRect().width;
+      setIslandWidth(w);
     };
     const observer = new ResizeObserver(update);
     observer.observe(el);

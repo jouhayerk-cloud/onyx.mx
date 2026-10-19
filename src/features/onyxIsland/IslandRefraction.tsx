@@ -146,6 +146,9 @@ export function useIslandRefraction(targetRef: React.RefObject<HTMLElement | nul
         
         if (!isChromium) return;
         if (window.matchMedia('(prefers-reduced-transparency: reduce)').matches) return;
+        const isRefractionOptedIn = document.documentElement.classList.contains('lq-refraction') || (typeof localStorage !== 'undefined' && localStorage.getItem('lqRefraction') === '1');
+        // desktop keeps the refraction as before; touch screens skip it unless the owner opted in (lqRefraction)
+        if (!isRefractionOptedIn && window.matchMedia('(pointer: coarse)').matches) return;
 
         let timeoutId: number;
         let w = 0;

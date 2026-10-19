@@ -91,7 +91,7 @@ html.style-slab .onyx-island-surface {
   border-radius: var(--island-r, var(--lq-radius-surface, 18px));
   overflow: hidden;
   max-width: calc(100vw - 24px);
-  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), height 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.25s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.25s ease;
 }
 
 @keyframes onyx-sweep {

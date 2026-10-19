@@ -31,8 +31,17 @@ import {
     UserRole,
     isPackagingStudioOpenAtom,
     packagingStudioStagedItemsAtom,
-    packagingStudioInitialSpecAtom
+    packagingStudioInitialSpecAtom,
+    isBatchActionsModalOpenAtom,
+    isUploadWizardOpenAtom,
+    isBatchWizardOpenAtom,
+    isPackingPrintWizardOpenAtom,
+    isPackingNFCWizardOpenAtom,
+    isPackingCrateWizardOpenAtom,
+    isCratePackingManagerOpenAtom,
+    isPaymentWizardOpenAtom
 } from '../../lib/atoms';
+import { isPrintCenterOpenAtom } from '../print/printState';
 import { viewAllowed, homeViewFor } from '../../lib/navAccess';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
@@ -114,7 +123,18 @@ export function MainAppView() {
     const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
     const [isDummyMode, setIsDummyMode] = useAtom(isDummyModeAtom);
     const [isSettingsOpen, setIsSettingsOpen] = useAtom(isStudioSettingsOpenAtom);
+    const isBatchActionsModalOpen = useAtomValue(isBatchActionsModalOpenAtom);
+    const isUploadWizardOpen = useAtomValue(isUploadWizardOpenAtom);
+    const isBatchWizardOpen = useAtomValue(isBatchWizardOpenAtom);
+    const isPackingPrintWizardOpen = useAtomValue(isPackingPrintWizardOpenAtom);
+    const isPrintCenterOpen = useAtomValue(isPrintCenterOpenAtom);
+    const isPackingNFCWizardOpen = useAtomValue(isPackingNFCWizardOpenAtom);
+    const isPackingCrateWizardOpen = useAtomValue(isPackingCrateWizardOpenAtom);
+    const isCratePackingManagerOpen = useAtomValue(isCratePackingManagerOpenAtom);
+    const isPaymentWizardOpen = useAtomValue(isPaymentWizardOpenAtom);
     
+    const inventoryArtifactConfig = useAtomValue(inventoryArtifactConfigAtom);
+    const paymentsArtifactConfig = useAtomValue(paymentsArtifactConfigAtom);
     const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const setIsFinanceScrolled = useSetAtom(isFinanceScrolledAtom);
@@ -364,17 +384,20 @@ export function MainAppView() {
                         </Suspense>
                     </main>
 
-                    {/* Modals/wizards — also lazy-loaded, only mounted when open */}
+                    {/* Modals/wizards — mounted only while open. Unmounting drops
+                        idle timers, background driver loops and RxDB subscriptions;
+                        all internal state is either atom/storage-persisted or reset
+                        cleanly on each opening. */}
                     <Suspense fallback={null}>
-                        <BatchActionsModal />
-                        <UploadWizard />
-                        <BatchProcessingWizard />
+                        {isBatchActionsModalOpen && <BatchActionsModal />}
+                        {isUploadWizardOpen && <UploadWizard />}
+                        {isBatchWizardOpen && <BatchProcessingWizard />}
                         
-                        <LabelWizard />
-                        <NFCWizard />
-                        <PackWizard />
-                        <CratePackingManager />
-                        <ItemsPayWizard />
+                        {(isPackingPrintWizardOpen || isPrintCenterOpen) && <LabelWizard />}
+                        {isPackingNFCWizardOpen && <NFCWizard />}
+                        {isPackingCrateWizardOpen && <PackWizard />}
+                        {isCratePackingManagerOpen && <CratePackingManager />}
+                        {isPaymentWizardOpen && <ItemsPayWizard />}
                         {isPackagingStudioOpen && (
                             <PackagingStudio
                                 initialSpec={initialPackagingSpec}
@@ -387,9 +410,9 @@ export function MainAppView() {
             </div>
 
             <Suspense fallback={null}>
-                <StudioSettingsPortal />
-                <InventoryArtifact />
-                <PaymentsArtifact />
+                {isSettingsOpen && <StudioSettingsPortal />}
+                {inventoryArtifactConfig.isOpen && <InventoryArtifact />}
+                {paymentsArtifactConfig.isOpen && <PaymentsArtifact />}
             </Suspense>
             {/* <BotOrb /> Disabled for performance */}
         </>

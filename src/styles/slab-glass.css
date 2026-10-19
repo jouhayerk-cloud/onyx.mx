@@ -1011,3 +1011,93 @@ html.style-slab .inv-row + .inv-drawer .inv-drawer-body {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
 }
+
+/* ── Touch and small screens: lighter glass tier ────────────────────────── */
+@media (pointer: coarse), (max-width: 768px) {
+    /* (3) Drop background-attachment: fixed (slab-glass.css:144) */
+    html.style-slab,
+    html.style-slab body {
+        background-attachment: scroll !important;
+    }
+
+    /* (1) Replace backdrop-filter on repeated elements with fallback solid tokens */
+    html.style-slab {
+        --slab-glass-blur: 12px;
+        --slab-glass:    var(--slab);
+        --slab-glass-hi: var(--slab);
+        --slab-glass-lo: var(--slab);
+        --slab-glass-well: var(--slab);
+        --slab-glass-row: var(--slab);
+        --slab-glass-row-hover: var(--slab-tint-hover);
+        --slab-glass-hover: var(--slab-tint-hover);
+        --slab-glass-on: var(--slab-tint-on);
+        --slab-glass-modal: var(--slab);
+        --slab-glass-sheet: var(--slab);
+        --slab-glass-pop: var(--slab);
+    }
+
+    /* (1) Remove backdrop-filter from list rows, cards, buttons, chips and repeated elements */
+    html.style-slab *,
+    html.style-slab *::before,
+    html.style-slab *::after {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    /* Repeated elements fallback backgrounds */
+    html.style-slab .inv-sheet {
+        background-color: var(--slab) !important;
+    }
+    html.style-slab .inv-row + .inv-drawer {
+        background-color: var(--slab) !important;
+        background-image: none !important;
+    }
+
+    /* (2) Keep backdrop-filter only on top bar, Onyx island surface, and sidebar (blur radius at most 12px) */
+    html.style-slab .app-topbar:not(.app-topbar--island):not(:has(> .ql-lens)),
+    html.style-slab .sidebar,
+    html.style-slab .isb-panel,
+    html.style-slab .onyx-island-surface,
+    html.style-slab .liquid-surface,
+    .app-topbar:not(.app-topbar--island):not(:has(> .ql-lens)),
+    .sidebar,
+    .isb-panel,
+    .onyx-island-surface,
+    .liquid-surface {
+        -webkit-backdrop-filter: blur(12px) saturate(1.9) brightness(1.08) !important;
+        backdrop-filter: blur(12px) saturate(1.9) brightness(1.08) !important;
+    }
+
+    html.style-slab .app-topbar > .ql-lens {
+        -webkit-backdrop-filter: blur(12px) saturate(1.8) !important;
+        backdrop-filter: blur(12px) saturate(1.8) !important;
+    }
+
+    /* Top bar and sidebar keep their translucent materials */
+    html.style-slab .app-topbar:not(.app-topbar--island) {
+        background-color: var(--slab-glass-band) !important;
+    }
+    html.style-slab .app-topbar:has(> .ql-lens) {
+        background-color: var(--slab-glass-lens) !important;
+    }
+    html.style-slab .sidebar {
+        background-color: color-mix(in srgb, var(--slab) var(--slab-glass-strength-hi), transparent) !important;
+    }
+
+    /* (3) Drop mix-blend-mode overlays on this tier */
+    .liquid-surface::before {
+        display: none !important;
+        mix-blend-mode: normal !important;
+    }
+}
+
+/* ── Accessibility: respect prefers-reduced-motion ──────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    html.style-slab *,
+    html.style-slab *::before,
+    html.style-slab *::after {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+

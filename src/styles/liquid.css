@@ -136,3 +136,46 @@ html.lq-refraction { /* SVG refraction: opt-in test effect (add class lq-refract
     animation: none !important;
   }
 }
+
+/* Touch and small screens: lighter tier, drop mix-blend-mode overlay and panel blur */
+@media (pointer: coarse), (max-width: 768px) {
+  .liquid-surface {
+    -webkit-backdrop-filter: blur(12px) saturate(var(--lq-saturate)) brightness(var(--lq-brightness));
+    backdrop-filter: blur(12px) saturate(var(--lq-saturate)) brightness(var(--lq-brightness));
+  }
+
+  /* (3) Drop mix-blend-mode overlays on this tier */
+  .liquid-surface::before {
+    display: none !important;
+    mix-blend-mode: normal !important;
+  }
+
+  /* Repeated elements: remove backdrop-filter and use solid fallbacks */
+  .liquid-panel {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-panel) !important;
+    background-image: none !important;
+  }
+
+  .liquid-control {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--lq-solid-control) !important;
+  }
+
+  .liquid-control:hover {
+    background-color: var(--lq-solid-control) !important;
+  }
+
+  html.lq-refraction {
+    .liquid-surface {
+      backdrop-filter: url(#lq-refract) blur(12px) saturate(var(--lq-saturate)) brightness(var(--lq-brightness)) !important;
+    }
+
+    .liquid-panel {
+      backdrop-filter: none !important;
+    }
+  }
+}
+

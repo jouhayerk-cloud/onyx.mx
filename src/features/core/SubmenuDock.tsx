@@ -33,13 +33,13 @@ function useBandRect(): AnchorRect | null {
     const el = document.querySelector(".onyx-island-band");
     if (el) ro.observe(el);
     ro.observe(document.documentElement);
-    window.addEventListener('resize', schedule);
-    window.addEventListener('scroll', schedule, true);
+    window.addEventListener('resize', schedule, { passive: true });
+    window.addEventListener('scroll', schedule, { passive: true, capture: true });
     return () => {
       if (raf) cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener('resize', schedule);
-      window.removeEventListener('scroll', schedule, true);
+      window.removeEventListener('scroll', schedule, { capture: true });
     };
   }, []);
   return rect;
@@ -111,6 +111,9 @@ export const SubmenuCard: React.FC<{
     }
     if (!isChromium) return;
     if (window.matchMedia('(prefers-reduced-transparency: reduce)').matches) return;
+    const isRefractionOptedIn = document.documentElement.classList.contains('lq-refraction') || (typeof localStorage !== 'undefined' && localStorage.getItem('lqRefraction') === '1');
+    // desktop keeps the refraction as before; touch screens skip it unless the owner opted in (lqRefraction)
+    if (!isRefractionOptedIn && window.matchMedia('(pointer: coarse)').matches) return;
 
     const target = cardRef.current;
     if (!target) return;

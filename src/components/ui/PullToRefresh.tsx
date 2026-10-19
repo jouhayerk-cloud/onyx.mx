@@ -5,7 +5,6 @@ import { tr } from '../../lib/i18n';
 import { hasUnsavedWork } from '../../lib/workGuard';
 
 export function PullToRefresh() {
-    const [pullDistance, setPullDistance] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
     
     // threshold in px to trigger refresh - increased for more deliberate action
@@ -14,13 +13,54 @@ export function PullToRefresh() {
     
     const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const activeRef = useRef(false);
+    const pullDistanceRef = useRef(0);
     // true from the moment a second finger touches until every finger is lifted: a pinch (or the finger left after one) never refreshes
     const multiTouchRef = useRef(false);
+
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const bubbleRef = useRef<HTMLDivElement>(null);
+    const arrowRef = useRef<SVGSVGElement>(null);
 
     // pinch-zoomed pages: the visual viewport scale is not 1, and a one-finger pan of the zoomed page is not a pull
     const isZoomed = () => {
         const vv = window.visualViewport;
         return !!vv && Math.abs(vv.scale - 1) > 0.02;
+    };
+
+    const updatePullStyles = (dist: number) => {
+        if (!wrapperRef.current) return;
+        if (dist < MIN_PULL_FOR_INDICATOR) {
+            wrapperRef.current.style.opacity = '0';
+            wrapperRef.current.style.transform = 'translateY(-100px)';
+            return;
+        }
+
+        const capped = Math.min(dist, PULL_THRESHOLD + 60);
+        wrapperRef.current.style.opacity = '1';
+        wrapperRef.current.style.transform = `translateY(${Math.max(0, capped - 60)}px)`;
+        wrapperRef.current.style.transition = 'none';
+
+        const pullPct = Math.min(capped / PULL_THRESHOLD, 1);
+        const opacity = Math.min(1, Math.max(0, (capped - MIN_PULL_FOR_INDICATOR) / 40));
+        const rotation = pullPct * 180;
+
+        if (bubbleRef.current) {
+            bubbleRef.current.style.opacity = `${opacity}`;
+            bubbleRef.current.style.scale = `${0.8 + (pullPct * 0.2)}`;   // the bubble's own `scale` style, not a second transform
+        }
+        if (arrowRef.current) {
+            arrowRef.current.style.transform = `rotate(${rotation}deg)`;
+            arrowRef.current.style.color = pullPct >= 1 ? '#b8860b' : 'rgba(255,255,255,0.4)';
+            arrowRef.current.style.opacity = pullPct > 0.2 ? '1' : '0';
+        }
+    };
+
+    const resetPullStyles = () => {
+        if (wrapperRef.current) {
+            wrapperRef.current.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease';
+            wrapperRef.current.style.transform = 'translateY(-100px)';
+            wrapperRef.current.style.opacity = '0';
+        }
     };
 
     useEffect(() => {
@@ -30,7 +70,8 @@ export function PullToRefresh() {
         const cancelPull = () => {
             activeRef.current = false;
             touchStartRef.current = null;
-            setPullDistance(0);
+            pullDistanceRef.current = 0;
+            resetPullStyles();
         };
 
         const handleTouchStart = (e: TouchEvent) => {
@@ -44,7 +85,7 @@ export function PullToRefresh() {
 
             // Only activate if we are at the absolute top of the scrollable container
             const scrollContainer = document.querySelector('.app-content');
-            const isAtTop = !scrollContainer || scrollContainer.scrollTop === 0;
+            const isAtTop = !scrollContainer || scrollContainer.scrollTop <= 0;
 
             if (isAtTop) {
                 touchStartRef.current = { 
@@ -52,6 +93,7 @@ export function PullToRefresh() {
                     y: e.touches[0].clientY 
                 };
                 activeRef.current = true;
+                pullDistanceRef.current = 0;
             }
         };
 
@@ -68,26 +110,14 @@ export function PullToRefresh() {
 
             // Ensure the pull is primarily vertical and downward
             if (pullY > 0 && Math.abs(pullY) > Math.abs(pullX) * 1.5) {
-                // Check if we are still at the top
-                const scrollContainer = document.querySelector('.app-content');
-                const isAtTop = !scrollContainer || scrollContainer.scrollTop <= 0;
-
-                if (isAtTop) {
-                    // Apply exponential friction for a more "elastic" feel
-                    // The further we pull, the harder it gets
-                    const frictionPull = Math.pow(pullY, 0.85) * 1.5;
-                    
-                    // Cap the pull distance to avoid excessive stretching
-                    const cappedPull = Math.min(frictionPull, PULL_THRESHOLD + 60);
-                    setPullDistance(cappedPull);
-                } else {
-                    activeRef.current = false;
-                    setPullDistance(0);
-                }
+                // Apply exponential friction for a more "elastic" feel
+                // The further we pull, the harder it gets
+                const frictionPull = Math.pow(pullY, 0.85) * 1.5;
+                pullDistanceRef.current = frictionPull;
+                updatePullStyles(frictionPull);
             } else if (pullY < -10) {
                 // If they are scrolling UP, deactivate immediately
-                activeRef.current = false;
-                setPullDistance(0);
+                cancelPull();
             }
         };
 
@@ -98,27 +128,33 @@ export function PullToRefresh() {
             activeRef.current = false;
             touchStartRef.current = null;
 
+            const dist = pullDistanceRef.current;
+            pullDistanceRef.current = 0;
+
             // never refresh after a pinch, on a zoomed page, or with unsaved work (a reload would throw it away)
             if (wasMulti || isZoomed()) {
-                setPullDistance(0);
+                resetPullStyles();
                 return;
             }
             if (hasUnsavedWork()) {
-                setPullDistance(0);
+                resetPullStyles();
                 toast(tr('You have unsaved work. Save it first, then pull down to refresh.'), { id: 'ptr-unsaved-work', duration: 4000 });
                 return;
             }
 
-            setPullDistance(current => {
-                if (current >= PULL_THRESHOLD) {
-                    setIsRefreshing(true);
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 800); // Slightly longer for a more premium transition
-                    return PULL_THRESHOLD;
+            if (dist >= PULL_THRESHOLD) {
+                setIsRefreshing(true);
+                if (wrapperRef.current) {
+                    wrapperRef.current.style.transform = `translateY(${PULL_THRESHOLD - 60}px)`;
+                    wrapperRef.current.style.opacity = '1';
+                    wrapperRef.current.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                 }
-                return 0;
-            });
+                setTimeout(() => {
+                    window.location.reload();
+                }, 800); // Slightly longer for a more premium transition
+            } else {
+                resetPullStyles();
+            }
         };
 
         document.addEventListener('touchstart', handleTouchStart, { passive: true });
@@ -141,26 +177,22 @@ export function PullToRefresh() {
         };
     }, [isRefreshing]);
 
-    // Don't show indicator for very small pulls to avoid flickering during fast taps
-    if (pullDistance < MIN_PULL_FOR_INDICATOR && !isRefreshing) return null;
-
-    const pullPct = Math.min(pullDistance / PULL_THRESHOLD, 1);
-    const opacity = Math.min(1, Math.max(0, (pullDistance - MIN_PULL_FOR_INDICATOR) / 40));
-    const rotation = pullPct * 180;
-
     return (
         <div 
+            ref={wrapperRef}
             className="fixed top-0 left-0 w-full flex justify-center z-[10000] pointer-events-none"
             style={{ 
-                transform: `translateY(${Math.max(0, pullDistance - 60)}px)`,
-                transition: activeRef.current ? 'none' : 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                transform: isRefreshing ? `translateY(${PULL_THRESHOLD - 60}px)` : 'translateY(-100px)',
+                opacity: isRefreshing ? 1 : 0,
+                transition: activeRef.current ? 'none' : 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease'
             }}
         >
             <div 
+                ref={bubbleRef}
                 className="bg-black/90 backdrop-blur-2xl border border-white/20 rounded-full h-12 w-12 flex items-center justify-center shadow-2xl shadow-black/50 transition-all duration-300"
                 style={{ 
-                    opacity: isRefreshing ? 1 : opacity,
-                    scale: isRefreshing ? 1 : 0.8 + (pullPct * 0.2)
+                    opacity: isRefreshing ? 1 : 0,
+                    scale: isRefreshing ? 1 : 0.8
                 }}
             >
                 <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent pointer-events-none" />
@@ -169,13 +201,14 @@ export function PullToRefresh() {
                     <Loader2 className="text-[#b8860b] h-6 w-6 animate-spin" />
                 ) : (
                     <ArrowDown 
+                        ref={arrowRef}
                         className="transition-all duration-200" 
                         style={{ 
                             height: '20px',
                             width: '20px',
-                            transform: `rotate(${rotation}deg)`,
-                            color: pullPct >= 1 ? '#b8860b' : 'rgba(255,255,255,0.4)',
-                            opacity: pullPct > 0.2 ? 1 : 0
+                            transform: 'rotate(0deg)',
+                            color: 'rgba(255,255,255,0.4)',
+                            opacity: 0
                         }}
                     />
                 )}

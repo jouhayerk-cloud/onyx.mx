@@ -6,6 +6,8 @@ type GazeTarget = {
   gy: number;
   tx: number;
   ty: number;
+  cx: number;
+  cy: number;
 };
 
 const registry = new Set<GazeTarget>();
@@ -16,35 +18,96 @@ let frameId: number | null = null;
 let driftInterval: number | null = null;
 let isRafScheduled = false;
 
+function measureTarget(target: GazeTarget) {
+  const rect = target.el.getBoundingClientRect();
+  target.cx = rect.left + rect.width / 2;
+  target.cy = rect.top + rect.height / 2;
+}
+
+function measureAllTargets() {
+  for (const target of registry) {
+    measureTarget(target);
+  }
+}
+
+let scrollEndTimer: number | null = null;
+function onScrollEnd() {
+  if (scrollEndTimer !== null) {
+    window.clearTimeout(scrollEndTimer);
+    scrollEndTimer = null;
+  }
+  measureAllTargets();
+  scheduleFrame();
+}
+
+function onScroll() {
+  if (scrollEndTimer !== null) {
+    window.clearTimeout(scrollEndTimer);
+  }
+  scrollEndTimer = window.setTimeout(onScrollEnd, 120);
+}
+
+let resizeTimer: number | null = null;
+function onResize() {
+  if (resizeTimer !== null) {
+    window.clearTimeout(resizeTimer);
+  }
+  resizeTimer = window.setTimeout(() => {
+    resizeTimer = null;
+    measureAllTargets();
+    scheduleFrame();
+  }, 100);
+}
+
+function stopLoop() {
+  if (frameId !== null) {
+    cancelAnimationFrame(frameId);
+    frameId = null;
+  }
+  isRafScheduled = false;
+}
+
+function stopIdleDrift() {
+  if (driftInterval !== null && typeof window !== 'undefined') {
+    window.clearInterval(driftInterval);
+    driftInterval = null;
+  }
+}
+
 function loop() {
   isRafScheduled = false;
   if (registry.size === 0) return;
 
   const isHidden = document.hidden;
-  const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const now = Date.now();
   const timeSinceMove = now - lastMoveTime;
-  const isIdle = timeSinceMove > 6000;
-  
-  let needsNextFrame = false;
 
-  // read every rect first, then write: interleaving reads with style writes forces a synchronous reflow per face
-  const rects = new Map<object, DOMRect>();
-  if (!isHidden && !isReducedMotion) {
-    for (const target of registry) rects.set(target, target.el.getBoundingClientRect());
+  if (isHidden || timeSinceMove > 4000) {
+    stopLoop();
+    stopIdleDrift();
+    for (const target of registry) {
+      target.tx = 0;
+      target.ty = 0;
+      if (target.gx !== 0 || target.gy !== 0) {
+        target.gx = 0;
+        target.gy = 0;
+        target.el.style.setProperty('--onyx-gx', '0');
+        target.el.style.setProperty('--onyx-gy', '0');
+      }
+    }
+    return;
   }
 
+  const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let needsNextFrame = false;
+
   for (const target of registry) {
-    const { el } = target;
+    const { el, cx, cy } = target;
     
-    if (isHidden || isReducedMotion) {
+    if (isReducedMotion) {
       target.tx = 0;
       target.ty = 0;
     } else {
-      const rect = rects.get(target) as DOMRect;
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      
       const dx = pointerX - cx;
       const dy = pointerY - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -52,7 +115,7 @@ function loop() {
       if (isClicked) {
         target.tx = 0;
         target.ty = 0;
-      } else if (dist > 0 && !isIdle) {
+      } else if (dist > 0) {
         const g = Math.tanh(dist / 320);
         target.tx = (dx / dist) * g;
         target.ty = (dy / dist) * g;
@@ -103,6 +166,7 @@ function onPointerMove(e: PointerEvent) {
   pointerX = e.clientX;
   pointerY = e.clientY;
   lastMoveTime = Date.now();
+  startIdleDrift();
   scheduleFrame();
 }
 
@@ -110,6 +174,9 @@ let isClicked = false;
 let clickTimeout: number | null = null;
 
 function onPointerDown(e: PointerEvent) {
+  pointerX = e.clientX;
+  pointerY = e.clientY;
+  lastMoveTime = Date.now();
   isClicked = true;
   if (clickTimeout !== null) window.clearTimeout(clickTimeout);
   clickTimeout = window.setTimeout(() => {
@@ -120,7 +187,14 @@ function onPointerDown(e: PointerEvent) {
 }
 
 function onVisibilityChange() {
-  scheduleFrame();
+  if (document.hidden) {
+    stopLoop();
+    stopIdleDrift();
+  } else {
+    if (Date.now() - lastMoveTime <= 4000) {
+      scheduleFrame();
+    }
+  }
 }
 
 function startIdleDrift() {
@@ -128,10 +202,18 @@ function startIdleDrift() {
   driftInterval = window.setInterval(() => {
     const isHidden = document.hidden;
     const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (isHidden || isReducedMotion || registry.size === 0) return;
+    if (isHidden || isReducedMotion || registry.size === 0) {
+      stopIdleDrift();
+      return;
+    }
     
     const timeSinceMove = Date.now() - lastMoveTime;
-    if (timeSinceMove > 6000) {
+    if (timeSinceMove > 4000) {
+      stopIdleDrift();
+      stopLoop();
+      return;
+    }
+    if (timeSinceMove > 2000) {
       const t = Date.now() / 1000;
       for (const target of registry) {
         target.tx = Math.sin(t * 0.8) * 0.12;
@@ -142,18 +224,14 @@ function startIdleDrift() {
   }, 250);
 }
 
-function stopIdleDrift() {
-  if (driftInterval && typeof window !== 'undefined') {
-    window.clearInterval(driftInterval);
-    driftInterval = null;
-  }
-}
-
 /** Hook that moves an element's gaze CSS variables toward the pointer; resets them when disabled. */
 export function useGaze(ref: React.RefObject<HTMLElement | null>, opts?: { enabled?: boolean }) {
   const enabled = opts?.enabled ?? true;
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+
     if (!enabled || !ref.current) {
       if (ref.current) {
         ref.current.style.setProperty('--onyx-gx', '0');
@@ -163,29 +241,37 @@ export function useGaze(ref: React.RefObject<HTMLElement | null>, opts?: { enabl
     }
     
     const el = ref.current;
-    const target: GazeTarget = { el, gx: 0, gy: 0, tx: 0, ty: 0 };
-    
-    if (registry.size === 0 && typeof window !== 'undefined') {
+    const target: GazeTarget = { el, gx: 0, gy: 0, tx: 0, ty: 0, cx: 0, cy: 0 };
+    measureTarget(target);
+
+    if (registry.size === 0) {
       window.addEventListener('pointermove', onPointerMove, { passive: true });
       window.addEventListener('pointerdown', onPointerDown, { passive: true });
+      window.addEventListener('resize', onResize, { passive: true });
+      window.addEventListener('scroll', onScroll, { passive: true });
+      if ('onscrollend' in window) {
+        window.addEventListener('scrollend', onScrollEnd, { passive: true });
+      }
       document.addEventListener('visibilitychange', onVisibilityChange);
       startIdleDrift();
     }
     
     registry.add(target);
+    requestAnimationFrame(() => measureTarget(target));
     scheduleFrame();
 
     return () => {
       registry.delete(target);
-      if (registry.size === 0 && typeof window !== 'undefined') {
+      if (registry.size === 0) {
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerdown', onPointerDown);
-        document.removeEventListener('visibilitychange', onVisibilityChange);
-        if (frameId !== null) {
-          cancelAnimationFrame(frameId);
-          frameId = null;
-          isRafScheduled = false;
+        window.removeEventListener('resize', onResize);
+        window.removeEventListener('scroll', onScroll);
+        if ('onscrollend' in window) {
+          window.removeEventListener('scrollend', onScrollEnd);
         }
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        stopLoop();
         stopIdleDrift();
       }
     };
