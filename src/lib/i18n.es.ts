@@ -3799,4 +3799,8 @@ export const esCatalog: Record<string, string> = {
   'A Gemini key is needed to translate the sheet.': 'Se necesita una clave de Gemini para traducir la hoja.',
   'No Gemini key on this device: click to add one, or the sheet is loaded as written': 'No hay clave de Gemini en este dispositivo: haz clic para añadir una, o la hoja se carga tal como está escrita',
   'The Colibrì Realtime relay is disabled until it is secured': 'El relay de Colibrì Realtime está desactivado hasta que se asegure',
+  'Colibrì link': 'Enlace de Colibrì',
+  'Tailscale': 'Tailscale',
+  'This PC (127.0.0.1:8000)': 'Esta PC (127.0.0.1:8000)',
+  'Tailscale (g7.tail2a809e.ts.net)': 'Tailscale (g7.tail2a809e.ts.net)',
 };

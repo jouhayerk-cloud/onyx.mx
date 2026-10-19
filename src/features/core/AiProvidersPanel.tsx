@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { geminiKeyStatus } from '../../lib/ai/keyPrompt';
 import { PROVIDER_INFOS, getProvider } from '../../lib/ai/providers';
-import { COLIBRI_DEFAULT_BASE_URL } from '../../lib/ai/providers/colibri';
+import { COLIBRI_DEFAULT_BASE_URL, COLIBRI_TAILSCALE_URL } from '../../lib/ai/providers/colibri';
 import { COLIBRI_MODELS } from '../../lib/ai/models';
 import type { ProviderConfig, ProviderId } from '../../lib/ai/providers/types';
 import {
@@ -182,7 +182,7 @@ export const AiProvidersPanel: React.FC = () => {
         setDraftBaseUrls((prev) => ({
             ...prev,
             compat: prev.compat || compatCfg.baseUrl || '',
-            colibri: prev.colibri || colibriCfg.baseUrl || COLIBRI_DEFAULT_BASE_URL,
+            colibri: colibriCfg.baseUrl || COLIBRI_DEFAULT_BASE_URL,
         }));
 
         const anthropicCfg = getProviderConfig('anthropic');
@@ -493,11 +493,31 @@ export const AiProvidersPanel: React.FC = () => {
                                                     size={12}
                                                     style={{ color: 'var(--ss-ok)', flex: 'none' }}
                                                 />
-                                                <span className="sk-truncate">
-                                                    {p.id === 'colibri'
-                                                        ? tr("Local Colibrì server")
-                                                        : tr("iOS A17 Native Bridge")}
-                                                </span>
+                                                {p.id === 'colibri' ? (
+                                                    <span className="sk-seg" role="radiogroup" aria-label={tr("Colibrì link")}>
+                                                        {([['local', tr("Local"), COLIBRI_DEFAULT_BASE_URL], ['tailscale', tr("Tailscale"), COLIBRI_TAILSCALE_URL]] as const).map(([key, label, url]) => {
+                                                            const current = (draftBaseUrls.colibri || COLIBRI_DEFAULT_BASE_URL).replace(/\/+$/, '');
+                                                            return (
+                                                                <button
+                                                                    key={key}
+                                                                    type="button"
+                                                                    role="radio"
+                                                                    aria-checked={current === url}
+                                                                    title={url}
+                                                                    className="sk-seg-btn"
+                                                                    onClick={() => {
+                                                                        setDraftBaseUrls((prev) => ({ ...prev, colibri: url }));
+                                                                        setProviderConfig('colibri', { baseUrl: url });
+                                                                    }}
+                                                                >
+                                                                    <span className="sk-seg-label">{label}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </span>
+                                                ) : (
+                                                    <span className="sk-truncate">{tr("iOS A17 Native Bridge")}</span>
+                                                )}
                                             </div>
                                         ) : hasKey && !isReplacing ? (
                                             <div className="sk-field">
