@@ -38,7 +38,6 @@ import { saveSegmentation, type SegmentationResult } from '../segmentationStore'
 import type { CatalogProcess } from '../catalogHubProcesses';
 import type { BatchOp } from '../catalogHubPipeline';
 import { finalizeColors, finalizeHtml, finalizeTitle } from './finalize';
-import { isBook826 } from './typePrompts';
 
 export type ProcessId = CatalogProcess['id'];
 export type InventoryRow = Database['public']['Tables']['inventory']['Row'];
@@ -398,14 +397,6 @@ export async function buildAiPatch(
 export const isEmptyPatch = (patch: AiPatch) =>
     Object.keys(patch.columns).length === 0 && patch.segmentations.length === 0;
 
-/** Thrown when AI would write a row outside workbook 826. */
-export class AiPersistBlockedError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = 'AiPersistBlockedError';
-    }
-}
-
 /** The 826 copy and character columns (AI_PROCESS_826_PLAN section B and the owner SQL list). */
 export interface Ai826Fields {
     characterAi?: string;
@@ -438,19 +429,6 @@ export function buildAi826Patch(fields: Ai826Fields): AiPatch {
     return { columns, segmentations: [], warnings: [], failedUploads: [] };
 }
 
-/** The row's workbook, read from Supabase: only workbook 826 rows may be written by AI. */
-async function assertBook826Row(rowId: string): Promise<void> {
-    const { data, error } = await supabase
-        .from('inventory')
-        .select('workbook')
-        .eq('id', rowId)
-        .maybeSingle();
-    if (error) throw new Error(`Save failed: ${error.message}`);
-    if (!isBook826(data?.workbook)) {
-        throw new AiPersistBlockedError('Write blocked: only workbook 826 items may be updated by AI Process.');
-    }
-}
-
 /**
  * Write a patch: Supabase by `id` (never by item_id, which is unique only
  * within a workbook), then the RxDB mirror, then the segmentation rows.
@@ -460,13 +438,11 @@ async function assertBook826Row(rowId: string): Promise<void> {
  * saveSegmentation already logs and swallows its own failures, because a
  * cutout upload timing out must not cost the text that saved beside it.
  *
- * Only workbook 826 rows may be written: the workbook is read from Supabase
- * first, and any other row throws AiPersistBlockedError. `dryRun` writes nothing.
+ * `dryRun` writes nothing.
  */
 export async function saveAiPatch(rowId: string, patch: AiPatch, opts: { user?: unknown; dryRun?: boolean } = {}): Promise<InventoryRow | null> {
     if (!rowId) throw new Error('saveAiPatch: no row id');
     if (opts.dryRun || isEmptyPatch(patch)) return null;
-    await assertBook826Row(rowId);
     let saved: InventoryRow | null = null;
 
     if (Object.keys(patch.columns).length > 0) {
