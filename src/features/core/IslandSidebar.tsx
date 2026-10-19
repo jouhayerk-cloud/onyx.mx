@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, startTransition } from 'react';
 import { useAtom, useSetAtom } from 'jotai/react';
 import { m, AnimatePresence, LazyMotion, domAnimation } from 'framer-motion';
 import {
@@ -20,6 +20,7 @@ import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { tr } from '../../lib/i18n';
 import { canSee } from '../../lib/navAccess';
+import { prefetchView } from './viewPrefetch';
 import './islandSidebar.css';
 import './islandSidebarRail.css';
 import './islandSidebarDrawer.css';
@@ -50,12 +51,13 @@ interface NavItemProps {
     label: string;
     isActive: boolean;
     action: () => void;
+    view: string;
     isCompact: boolean;
     isRail: boolean;
     isHoverPeek: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, isActive, action, isCompact, isRail, isHoverPeek }) => {
+const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, isActive, action, view, isCompact, isRail, isHoverPeek }) => {
     const [isHovered, setIsHovered] = useState(false);
     
     const showExpanded = (!isCompact && !isRail) || isHoverPeek;
@@ -67,6 +69,8 @@ const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, isActive, action, 
             href="#" 
             className={`isb-item ${isActive ? 'isb-item-active' : ''}`}
             onClick={(e) => { e.preventDefault(); action(); }}
+            onPointerEnter={() => prefetchView(view)}
+            onTouchStart={() => prefetchView(view)}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             aria-current={isActive ? 'page' : undefined}
@@ -261,6 +265,8 @@ const SidebarSection: React.FC<{ title: string, show: boolean, isCompact: boolea
 export const IslandSidebar: React.FC = () => {
     const [user] = useAtom(userAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
+    // View switches are transitions: the tap's own feedback paints first, the new view renders after.
+    const switchView = useCallback((view: Parameters<typeof setActiveView>[0]) => startTransition(() => setActiveView(view)), [setActiveView]);
     const [activeSubMenu] = useAtom(activeSubMenuAtom);
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
     const setLogisticsSubTab = useSetAtom(logisticsSubTabAtom);
@@ -417,15 +423,26 @@ export const IslandSidebar: React.FC = () => {
 
     useEffect(() => {
         handleScroll();
-        window.addEventListener('resize', handleScroll);
+        window.addEventListener('resize', handleScroll, { passive: true });
         return () => window.removeEventListener('resize', handleScroll);
     }, [handleScroll, sidebarState, isHoverPeek, isPhone]);
-    
+
     useEffect(() => {
         if (!listRef.current) return;
-        const ob = new MutationObserver(() => handleScroll());
+        // Mutations can arrive in bursts; the layout read runs at most once per frame.
+        let frameId: number | null = null;
+        const ob = new MutationObserver(() => {
+            if (frameId !== null) return;
+            frameId = requestAnimationFrame(() => {
+                frameId = null;
+                handleScroll();
+            });
+        });
         ob.observe(listRef.current, { childList: true, subtree: true });
-        return () => ob.disconnect();
+        return () => {
+            ob.disconnect();
+            if (frameId !== null) cancelAnimationFrame(frameId);
+        };
     }, [handleScroll]);
     
     useEffect(() => {
@@ -595,7 +612,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={House}
                             label={tr("Home")}
                             isActive={activeView === 'welcome'}
-                            action={() => { setActiveView('welcome'); handleMobileHide(); }}
+                            view="welcome"
+                            action={() => { switchView('welcome'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -606,7 +624,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={LayoutDashboard}
                             label={tr("Dashboard")}
                             isActive={activeView === 'dashboard' || activeView === 'overview'}
-                            action={() => { setActiveView('dashboard'); handleMobileHide(); }}
+                            view="dashboard"
+                            action={() => { switchView('dashboard'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -617,7 +636,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={BadgeDollarSign}
                             label={tr("Finances")}
                             isActive={activeView === 'finance'}
-                            action={() => { setActiveView('finance'); handleMobileHide(); }}
+                            view="finance"
+                            action={() => { switchView('finance'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -628,7 +648,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={FilePlus2}
                             label={tr("Add entry")}
                             isActive={activeView === 'upload'}
-                            action={() => { setActiveView('upload'); handleMobileHide(); }}
+                            view="upload"
+                            action={() => { switchView('upload'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -639,7 +660,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={Album}
                             label={tr("Inventory")}
                             isActive={activeView === 'inventory'}
-                            action={() => { setActiveView('inventory'); handleMobileHide(); }}
+                            view="inventory"
+                            action={() => { switchView('inventory'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -650,7 +672,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={Package}
                             label={tr("Warehouse")}
                             isActive={activeView === 'warehouse'}
-                            action={() => { setActiveView('warehouse'); setLogisticsSubTab('empty'); handleMobileHide(); }}
+                            view="warehouse"
+                            action={() => { switchView('warehouse'); setLogisticsSubTab('empty'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -661,7 +684,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={Truck}
                             label={tr("Trucking")}
                             isActive={activeView === 'trucking'}
-                            action={() => { setActiveView('trucking'); setLogisticsSubTab('shipping'); handleMobileHide(); }}
+                            view="trucking"
+                            action={() => { switchView('trucking'); setLogisticsSubTab('shipping'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -672,7 +696,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={Shell}
                             label={tr("Viewer")}
                             isActive={activeView === 'viewer'}
-                            action={() => { setActiveView('viewer'); handleMobileHide(); }}
+                            view="viewer"
+                            action={() => { switchView('viewer'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -687,7 +712,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={Shield}
                             label={tr("Admin Control Center")}
                             isActive={activeView === 'control'}
-                            action={() => { setActiveView('control'); handleMobileHide(); }}
+                            view="control"
+                            action={() => { switchView('control'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -698,7 +724,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={Layers}
                             label={tr("Archived")}
                             isActive={activeView === 'workbook'}
-                            action={() => { setActiveView('workbook'); handleMobileHide(); }}
+                            view="workbook"
+                            action={() => { switchView('workbook'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -709,7 +736,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={Cpu}
                             label={tr("Devices")}
                             isActive={activeView === 'devices'}
-                            action={() => { setActiveView('devices'); handleMobileHide(); }}
+                            view="devices"
+                            action={() => { switchView('devices'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}
@@ -721,7 +749,8 @@ export const IslandSidebar: React.FC = () => {
                             icon={Shapes}
                             label={tr("Type Board")}
                             isActive={activeView === 'typeboard'}
-                            action={() => { setActiveView('typeboard'); handleMobileHide(); }}
+                            view="typeboard"
+                            action={() => { switchView('typeboard'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}

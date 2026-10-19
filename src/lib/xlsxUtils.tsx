@@ -1,7 +1,5 @@
 
 
-import JSZip from 'jszip';
-
 /**
  * Sanitizes an individual cell value for Excel / OpenXML / ExcelJS export.
  * Strips out illegal XML 1.0 control characters (ASCII 0x00-0x08, 0x0B-0x0C, 0x0E-0x1F, 0x7F-0x9F, \uFFFD)
@@ -174,6 +172,7 @@ export const exportToXLSX = async (
     styles: { [key: string]: {bgColor?: string, bold?: boolean, textColor?: string} } = {},
     output: 'download' | 'blob' = 'download'
 ): Promise<Blob | void> => {
+    const JSZip = (await import('jszip')).default;
     const zip = new JSZip();
 
     const sheet = sheets[0];

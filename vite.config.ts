@@ -65,6 +65,8 @@ export default defineConfig(({ mode }) => {
                     // 3D viewer, in-browser embeddings runtime and AI SDKs: optional features.
                     'assets/vendor-3d-*.js',
                     'assets/vendor-ai-*.js',
+                    // ECharts (1.1 MB): only the chart views load it, never the shell.
+                    'assets/vendor-charts-*.js',
                     'assets/ort*.js',
                     // Brand/catalogue data chunk and the settings portal (0.7 MB, opened rarely).
                     'assets/rareEarthLogo-*.js',
@@ -212,19 +214,31 @@ export default defineConfig(({ mode }) => {
           viewer: fileURLToPath(new URL('./iFrameViewer.html', import.meta.url)),
         },
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom', 'jotai'],
-            'vendor-charts': ['echarts-for-react', 'echarts'],
-            'vendor-db': ['rxdb', 'rxjs'],
-            // Split icons/animation/export libs so they're loaded independently
-            'vendor-icons': ['lucide-react'],
-            'vendor-animation': ['gsap', 'framer-motion'],
-            'vendor-excel': ['xlsx', 'exceljs'],
-            'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
-            'vendor-3d': ['three'],
-            'vendor-ai': ['@google/genai', '@google/generative-ai'],
-            'vendor-supabase': ['@supabase/supabase-js'],
-            'vendor-qrcode': ['html5-qrcode', 'qrcode.react', 'react-barcode']
+          // Function form: same vendor groups as before, plus Vite's own preload helper in a chunk of its
+          // own. In the object form the helper landed in vendor-pdf, so the entry modulepreloaded jspdf.
+          manualChunks(id: string) {
+            if (id.includes('vite/preload-helper') || id.includes('commonjsHelpers')) return 'vite-runtime';
+            if (!id.includes('node_modules')) return undefined;
+            const groups: Record<string, string[]> = {
+              'vendor-react': ['react', 'react-dom', 'jotai', 'scheduler'],
+              'vendor-charts': ['echarts-for-react', 'echarts', 'zrender'],
+              'vendor-db': ['rxdb', 'rxjs'],
+              'vendor-icons': ['lucide-react'],
+              'vendor-framer': ['framer-motion', 'motion-dom', 'motion-utils'],
+              'vendor-gsap': ['gsap'],
+              'vendor-excel': ['xlsx', 'exceljs', 'jszip'],
+              'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
+              'vendor-3d': ['three'],
+              'vendor-ai': ['@google/genai', '@google/generative-ai'],
+              'vendor-supabase': ['@supabase'],
+              'vendor-qrcode': ['html5-qrcode', 'qrcode.react', 'react-barcode'],
+            };
+            const m = id.split(String.fromCharCode(92)).join('/').match(/node_modules[/]((?:@[^/]+[/])?[^/]+)/);   // Windows paths use backslashes
+            const pkg = m ? m[1] : '';
+            for (const [chunk, pkgs] of Object.entries(groups)) {
+              if (pkgs.some(p => pkg === p || pkg.startsWith(p + '/'))) return chunk;
+            }
+            return undefined;
           }
         }
       }

@@ -123,7 +123,7 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout, useDatabase } from '../../lib/hooks';
 
 import { CameraView } from '../../lib/Types';
-import ExcelJS from 'exceljs';
+import type { Fill } from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { sanitizeExcelRow } from '../../lib/xlsxUtils';
 import { sanitizeWorkbookForExcel, cleanExcelUrl, XLSX_MIME } from '../../lib/excelSafe';
@@ -1538,6 +1538,7 @@ export function MainHeader() {
         }
         setIsExporting(true);
         try {
+            const ExcelJS = (await import('exceljs')).default;
             const workbook = new ExcelJS.Workbook();
             workbook.creator = 'Onyx.mx Studio';
             workbook.lastModifiedBy = 'Onyx.mx Studio';
@@ -1790,6 +1791,7 @@ export function MainHeader() {
     }, async () => {
         setIsExporting(true);
         try {
+            const ExcelJS = (await import('exceljs')).default;
             const workbook = new ExcelJS.Workbook();
             workbook.creator = 'Onyx.mx Studio';
             workbook.lastModifiedBy = 'Onyx.mx Studio';
@@ -2725,7 +2727,7 @@ export function MainHeader() {
                                 const tagCell = row.getCell('tag_id');
                                 const vendorCode = tagIdStr.split('-')[0] || tagIdStr.substring(0, 2);
                                 const tagColor = getVendorColor(vendorCode);
-                                const rowFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tagColor } };
+                                const rowFill: Fill = {type: 'pattern', pattern: 'solid', fgColor: { argb: tagColor } };
                                 const rowFont = { color: { argb: getContrastColor(tagColor) }, bold: true };
                                 
                                 row.getCell('tag_id').fill = rowFill;
@@ -2912,6 +2914,7 @@ export function MainHeader() {
     const runMasterWorkbookExport = async (variant: 'v2' | 'v3') => {
         setIsExporting(true);
         try {
+            const ExcelJS = (await import('exceljs')).default;
             const workbook = new ExcelJS.Workbook();
             workbook.creator = 'Onyx.mx Studio';
             workbook.lastModifiedBy = 'Onyx.mx Studio';
@@ -3729,6 +3732,7 @@ export function MainHeader() {
     }, async () => {
         setIsShopifyExporting(true);
         try {
+            const ExcelJS = (await import('exceljs')).default;
             const workbook = new ExcelJS.Workbook();
             workbook.creator = 'Onyx Dashboard';
             workbook.lastModifiedBy = 'Onyx System';

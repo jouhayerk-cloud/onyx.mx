@@ -17,11 +17,7 @@ import {
     InventoryVersionAtom,
     userAtom,
     inventoryViewSliderAtom,
-    filteredInventoryCountAtom,
-    filteredInventoryTotalQtyAtom,
-    filteredInventoryTotalValueAtom,
-    filteredInventoryIdsAtom,
-    activeVendorsAtom,
+    filteredInventoryStatsAtom,
     inventoryVendorFilterAtom,
     isInventoryVendorFilterOpenAtom,
     inventorySortKeyAtom,
@@ -1420,7 +1416,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 export const UnifiedInventoryView = () => {
     const t = useTranslation(); const db = useDatabase(); const items = useAtomValue(inventoryAtom); const financeDocs = useAtomValue(financeDataAtom);
     const logisticsDocs = useAtomValue(logisticsDataAtom);
-    const [isLoading, setIsLoading] = useState(true); const [expandedCards, setExpandedCards] = useState<Record<string, number>>({});
+    const isLoading = items.length === 0; const [expandedCards, setExpandedCards] = useState<Record<string, number>>({});
     const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); 
     const viewSlider = useAtomValue(inventoryViewSliderAtom);
     const viewMode = viewSlider <= 33 ? 'list' : viewSlider <= 66 ? 'grid' : 'gallery';
@@ -1433,20 +1429,24 @@ export const UnifiedInventoryView = () => {
     const gridScale = viewMode === 'grid' ? 0.85 + ((viewSlider - 34) / 32) * 0.6 : 1;
     const galleryScale = viewMode === 'gallery' ? 0.9 + ((viewSlider - 67) / 33) * 0.9 : 1;
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
-    const setGlobalActiveVendors = useSetAtom(activeVendorsAtom); const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
+    const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
     const [itemData, setSelectedItemData] = useAtom(SelectedItemDataAtom); const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
     const [mode, setMode] = useAtom(detailsPanelModeAtom); const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom); const searchTerm = useAtomValue(inventorySearchTermAtom);
+    // Defer search and filter inputs so input typing and toggling remain responsive
     const deferredSearchTerm = useDeferredValue(searchTerm);
+    const deferredStatusFilter = useDeferredValue(statusFilter);
     const [sortOrder, setSortOrder] = useAtom(inventorySortOrderAtom); const [sortKey, setSortKey] = useAtom(inventorySortKeyAtom);
+    const deferredSortOrder = useDeferredValue(sortOrder);
+    const deferredSortKey = useDeferredValue(sortKey);
     const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom); const [categoryFilter, setCategoryFilter] = useAtom(inventoryCategoryFilterAtom);
+    const deferredVendorFilter = useDeferredValue(vendorFilter);
+    const deferredCategoryFilter = useDeferredValue(categoryFilter);
     const [isCategoryOpen, setIsCategoryOpen] = useAtom(isInventoryCategoryFilterOpenAtom); const [materialFilter, setMaterialFilter] = useAtom(inventoryMaterialFilterAtom);
+    const deferredMaterialFilter = useDeferredValue(materialFilter);
     const [isMaterialOpen, setIsMaterialOpen] = useAtom(isInventoryMaterialFilterOpenAtom); const [isSortMenuOpen, setIsSortMenuOpen] = useAtom(isInventorySortMenuOpenAtom);
     const user = useAtomValue(userAtom); 
-    const setFilteredCount = useSetAtom(filteredInventoryCountAtom); 
-    const setFilteredTotalQty = useSetAtom(filteredInventoryTotalQtyAtom);
-    const setFilteredTotalValue = useSetAtom(filteredInventoryTotalValueAtom);
-    const setFilteredIds = useSetAtom(filteredInventoryIdsAtom);
+    const setFilteredStats = useSetAtom(filteredInventoryStatsAtom);
     const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
     const setUploadItemData = useSetAtom(uploadItemDataAtom);
     const [savingProgress, setSavingProgress] = useState(0);
@@ -1591,96 +1591,124 @@ export const UnifiedInventoryView = () => {
     const shapeFilter = useAtomValue(inventoryShapeFilterAtom);
     const contentFilter = useAtomValue(inventoryContentFilterAtom);
     const materialColorFilter = useAtomValue(inventoryMaterialColorFilterAtom);
+    const deferredVisibleWorkbooks = useDeferredValue(visibleWorkbooks);
+    const deferredShapeFilter = useDeferredValue(shapeFilter);
+    const deferredContentFilter = useDeferredValue(contentFilter);
+    const deferredMaterialColorFilter = useDeferredValue(materialColorFilter);
 
-    const filteredItems = useMemo(() => {
-        const filtered = items.filter(item => {
-            if (item.data.is_hidden) return false;
-            
-            const itemIdStr = String(item.data.itemId || item.data.item_id || '');
-            
-            // Each season is toggled independently now, so 825 can be reviewed
-            // without 326 coming along. The season lives on the row itself —
-            // item_id never encodes it.
-            if (visibleWorkbooks[rowWorkbook(item.data)] === false) return false;
+    // Precompute prices, codes, search corpus and sort keys once per data/exchange rate change
+    const preparedItems = useMemo(() => {
+        const vendorKeys = Object.keys(vendors).sort((a, b) => b.length - a.length);
 
-            const status = getStatusClass(item.data, partialPayIds, fullPayIds);
-            if (statusFilter !== 'All') {
-                const crateId = item.data.crate_id;
-                const isPacked = item.data.packing_status === 'Packed';
-                const crate = logisticsDocs?.find((c: any) => c.id === crateId);
-                const isDeployed = isPacked && crateId && (!crate || crate.status === 'Deployed');
+        return items.map(item => {
+            const d = item.data;
+            const itemIdStr = String(d.itemId || d.item_id || '');
+            const itemIdLower = itemIdStr.toLowerCase();
+            const normalizedItemId = itemIdLower.replace(/[^a-z0-9]/g, '');
 
-                const itemKey = String(item.row ?? item.data?.id ?? '');
-                const isShipped = deployedItemsMap.has(itemKey) || isDeployed;
+            // Calculate codes and prices once per data change
+            const calculatedCodes = calculateCodesAndPrices(d, exchangeRate, '326');
+            const barcodeDisplay = calculatedCodes.bookBarcodeDisplay || '';
+            const barcodeDisplayClean = barcodeDisplay.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
-                if (statusFilter === 'Shipped' && !isShipped) return false;
-                if (statusFilter === 'Not Shipped' && isShipped) return false;
-                if (statusFilter === 'Packed' && !isPacked) return false;
-                if (statusFilter === 'Not Packed' && isPacked) return false;
-                
-                // 'Partial' and 'Production' were retired from the filter bar;
-                // their branches went with them. A session holding either
-                // persisted value is folded back to 'All' on read in atoms.tsx,
-                // so nothing can reach here asking for them.
-                if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
-                if (statusFilter === 'Paid' && status !== 'GREEN') return false;
-                if (statusFilter === 'New' && status !== 'BLUE') return false;
-            }
-            let vPre = item.data.vendor_id || item.data.vendorId || '';
+            // Wide search corpus for fast multi-token search
+            const searchStr = [
+                itemIdLower,
+                normalizedItemId,
+                barcodeDisplay,
+                barcodeDisplayClean,
+                d.shape || '',
+                d.shortDescription || d.short_description || '',
+                d.color || '',
+                d.material || '',
+                String(d.price || d.price_mxn || ''),
+                String(d.quantity || ''),
+                String(d.widthCm || ''),
+                String(d.heightCm || ''),
+                String(d.lengthCm || ''),
+                String(d.weightKg || ''),
+            ].join(' ').toLowerCase();
+
+            // Vendor prefix derivation
+            let vPre = d.vendor_id || d.vendorId || '';
             if (!vPre) {
                 if (itemIdStr.includes('-')) vPre = itemIdStr.split('-')[0];
                 else {
-                    const vKeys = Object.keys(vendors).sort((a,b) => b.length - a.length);
-                    const prefix = vKeys.find(v => itemIdStr.startsWith(v));
+                    const prefix = vendorKeys.find(v => itemIdStr.startsWith(v));
                     if (prefix) vPre = prefix;
                 }
             }
-            if (user?.role === 'Vendor' && vPre !== user?.name) return false;
-            
+
+            const catNormalized = Array.from(new Set(`${d.shape || ''} ${d.shortDescription || d.short_description || ''}`.toUpperCase().split(/\s+/).filter(Boolean))).join(' ');
+            const matNormalized = Array.from(new Set(`${d.color || ''} ${d.material || ''}`.toUpperCase().split(/\s+/).filter(Boolean))).join(' ');
+            const workbook = rowWorkbook(d);
+
+            // Precomputed sort keys
+            const dateKey = new Date(d.timestamp || d.updated_at || 0).getTime();
+            const vendorKey = itemIdStr;
+            const numberKey = parseInt(String(d.itemNumber || d.item_number || '0'), 10) || 0;
+            const qtyKey = parseInt(String(d.quantity || 1), 10) || 1;
+            const priceVal = parseFloat(String(d.price_mxn || d.price || 0)) || 0;
+            const valueKey = priceVal * qtyKey;
+
+            return {
+                item,
+                d,
+                vPre,
+                workbook,
+                catNormalized,
+                matNormalized,
+                searchStr,
+                dateKey,
+                vendorKey,
+                numberKey,
+                qtyKey,
+                valueKey,
+            };
+        });
+    }, [items, exchangeRate]);
+
+    const filteredItems = useMemo(() => {
+        const filtered = preparedItems.filter(p => {
+            const item = p.item;
+            if (p.d.is_hidden) return false;
+
+            if (deferredVisibleWorkbooks[p.workbook] === false) return false;
+
+            const status = getStatusClass(p.d, partialPayIds, fullPayIds);
+            if (deferredStatusFilter !== 'All') {
+                const crateId = p.d.crate_id;
+                const isPacked = p.d.packing_status === 'Packed';
+                const crate = logisticsDocs?.find((c: any) => c.id === crateId);
+                const isDeployed = isPacked && crateId && (!crate || crate.status === 'Deployed');
+
+                const itemKey = String(item.row ?? p.d?.id ?? '');
+                const isShipped = deployedItemsMap.has(itemKey) || isDeployed;
+
+                if (deferredStatusFilter === 'Shipped' && !isShipped) return false;
+                if (deferredStatusFilter === 'Not Shipped' && isShipped) return false;
+                if (deferredStatusFilter === 'Packed' && !isPacked) return false;
+                if (deferredStatusFilter === 'Not Packed' && isPacked) return false;
+
+                if (deferredStatusFilter === 'Requested' && status !== 'YELLOW') return false;
+                if (deferredStatusFilter === 'Paid' && status !== 'GREEN') return false;
+                if (deferredStatusFilter === 'New' && status !== 'BLUE') return false;
+            }
+
+            if (user?.role === 'Vendor' && p.vPre !== user?.name) return false;
+
             // Stackable Vendor Filter
-            if (!vendorFilter.includes('All') && !vendorFilter.includes(vPre)) return false;
-            
-            const catNormalized = Array.from(new Set(`${item.data.shape || ''} ${item.data.shortDescription || item.data.short_description || ''}`.toUpperCase().split(/\s+/).filter(Boolean))).join(' ');
-            const matNormalized = Array.from(new Set(`${item.data.color || ''} ${item.data.material || ''}`.toUpperCase().split(/\s+/).filter(Boolean))).join(' ');
+            if (!deferredVendorFilter.includes('All') && !deferredVendorFilter.includes(p.vPre)) return false;
 
             // Independent Attribute Filters
-            if (categoryFilter !== 'All' && catNormalized !== categoryFilter.toUpperCase()) return false;
-            if (materialFilter !== 'All' && matNormalized !== materialFilter.toUpperCase()) return false;
+            if (deferredCategoryFilter !== 'All' && p.catNormalized !== deferredCategoryFilter.toUpperCase()) return false;
+            if (deferredMaterialFilter !== 'All' && p.matNormalized !== deferredMaterialFilter.toUpperCase()) return false;
 
-            // Nested smart filters, sitting alongside the flat combined filters
-            // above rather than replacing them — the flat pair is what the
-            // header chips still drive.
-            //
-            // Shape is headed by the eight bounded classes from lib/geometry,
-            // which replaced the old type-headed tree: that one took its
-            // parents from short_description free text, so "parent" was
-            // dozens of near-duplicate strings and the bar was unusable.
-            if (!rowMatchesShape(item.data, shapeFilter)) return false;
-            if (!rowMatchesContent(item.data, contentFilter)) return false;
-            if (!rowMatchesMaterialColor(item.data, materialColorFilter)) return false;
+            if (!rowMatchesShape(p.d, deferredShapeFilter)) return false;
+            if (!rowMatchesContent(p.d, deferredContentFilter)) return false;
+            if (!rowMatchesMaterialColor(p.d, deferredMaterialColorFilter)) return false;
+
             if (deferredSearchTerm) {
-                const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
-                const normalizedItemId = itemId.replace(/[^a-z0-9]/g, '');
-                const calculatedCodes = calculateCodesAndPrices(item.data, exchangeRate, '326');
-                // Build a wide search string including all relevant fields
-                const searchStr = [
-                    itemId,
-                    normalizedItemId,
-                    calculatedCodes.bookBarcodeDisplay || '',
-                    (calculatedCodes.bookBarcodeDisplay || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(),
-                    item.data.shape || '',
-                    item.data.shortDescription || item.data.short_description || '',
-                    item.data.color || '',
-                    item.data.material || '',
-                    String(item.data.price || item.data.price_mxn || ''),
-                    String(item.data.quantity || ''),
-                    String(item.data.widthCm || ''),
-                    String(item.data.heightCm || ''),
-                    String(item.data.lengthCm || ''),
-                    String(item.data.weightKg || ''),
-                ].join(' ').toLowerCase();
-
-                // Space = OR between groups; + = AND within a group; * = wildcard
                 const groups = deferredSearchTerm.trim().split(/\s+/).filter(Boolean);
                 const matchesAnyGroup = groups.some(group => {
                     const tokens = group.toLowerCase().split('+').filter(Boolean);
@@ -1688,85 +1716,63 @@ export const UnifiedInventoryView = () => {
                         if (t.includes('*')) {
                             const regexStr = t.split('*').map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
                             try {
-                                return new RegExp(regexStr).test(searchStr);
+                                return new RegExp(regexStr).test(p.searchStr);
                             } catch {
-                                return searchStr.includes(t.replace(/\*/g, ''));
+                                return p.searchStr.includes(t.replace(/\*/g, ''));
                             }
                         }
-                        return searchStr.includes(t);
+                        return p.searchStr.includes(t);
                     });
                 });
                 if (!matchesAnyGroup) return false;
             }
             return true;
         });
-        return filtered.sort((a, b) => {
-            const sA = getStatusClass(a.data, partialPayIds); const sB = getStatusClass(b.data, partialPayIds);
-            if (sA === null && sB !== null) return -1; if (sA !== null && sB === null) return 1;
+
+        // Precompute status class for sort comparison once per filtered item
+        const statusMap = new Map<any, string | null>();
+        for (const p of filtered) {
+            statusMap.set(p, getStatusClass(p.d, partialPayIds));
+        }
+
+        filtered.sort((a, b) => {
+            const sA = statusMap.get(a) ?? null;
+            const sB = statusMap.get(b) ?? null;
+            if (sA === null && sB !== null) return -1;
+            if (sA !== null && sB === null) return 1;
             let comp = 0;
-            if (sortKey === 'Date') {
-                const dA = new Date(a.data.timestamp || a.data.updated_at || 0).getTime();
-                const dB = new Date(b.data.timestamp || b.data.updated_at || 0).getTime();
-                comp = dB - dA;
-            }
-            else if (sortKey === 'Vendor') {
-                const vA = String(a.data.itemId || a.data.item_id || '');
-                const vB = String(b.data.itemId || b.data.item_id || '');
-                comp = vA.localeCompare(vB);
-            }
-            else if (sortKey === 'Status') {
+            if (deferredSortKey === 'Date') {
+                comp = b.dateKey - a.dateKey;
+            } else if (deferredSortKey === 'Vendor') {
+                comp = a.vendorKey.localeCompare(b.vendorKey);
+            } else if (deferredSortKey === 'Status') {
                 const getVal = (s: string | null) => s === 'RED' ? 6 : s === 'YELLOW' ? 5 : s === 'GREEN' ? 4 : s === 'BLUE' ? 3 : s === 'PURPLE' ? 2 : 1;
                 comp = getVal(sB) - getVal(sA);
+            } else if (deferredSortKey === 'Number') {
+                comp = a.numberKey - b.numberKey;
+            } else if (deferredSortKey === 'Value') {
+                comp = b.valueKey - a.valueKey;
+            } else if (deferredSortKey === 'Qty') {
+                comp = b.qtyKey - a.qtyKey;
             }
-            else if (sortKey === 'Number') {
-                const nA = parseInt(String(a.data.itemNumber || a.data.item_number || '0'), 10);
-                const nB = parseInt(String(b.data.itemNumber || b.data.item_number || '0'), 10);
-                comp = nA - nB;
-            }
-            else if (sortKey === 'Value') {
-                const vA = parseFloat(String(a.data.price_mxn || a.data.price || 0)) * parseInt(String(a.data.quantity || 1), 10);
-                const vB = parseFloat(String(b.data.price_mxn || b.data.price || 0)) * parseInt(String(b.data.quantity || 1), 10);
-                comp = vB - vA;
-            }
-            else if (sortKey === 'Qty') {
-                const qA = parseInt(String(a.data.quantity || 1), 10);
-                const qB = parseInt(String(b.data.quantity || 1), 10);
-                comp = qB - qA;
-            }
-            return sortOrder === 'desc' ? comp : -comp;
+            return deferredSortOrder === 'desc' ? comp : -comp;
         });
-    }, [items, statusFilter, vendorFilter, deferredSearchTerm, sortKey, sortOrder, partialPayIds, fullPayIds, visibleWorkbooks, user, categoryFilter, materialFilter, shapeFilter, contentFilter, materialColorFilter, deployedItemsMap, logisticsDocs]);
 
-    const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
-    const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);
-    // Deduplicate materials cross-vendor: normalize color+material to lowercase for dedup, then Title Case
-    const activeMaterials = useMemo(() => {
-        const normalized = new Map<string, string>(); // key=lowercase, value=display
-        items.forEach(i => {
-            const raw = `${(i.data.color || '').trim()} ${(i.data.material || '').trim()}`.trim();
-            if (!raw) return;
-            const key = raw.toLowerCase();
-            if (!normalized.has(key)) {
-                const display = raw.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-                normalized.set(key, display);
-            }
-        });
-        return Array.from(normalized.values()).sort();
-    }, [items]);
-    
+        return filtered.map(p => p.item);
+    }, [preparedItems, deferredStatusFilter, deferredVendorFilter, deferredSearchTerm, deferredSortKey, deferredSortOrder, partialPayIds, fullPayIds, deferredVisibleWorkbooks, user, deferredCategoryFilter, deferredMaterialFilter, deferredShapeFilter, deferredContentFilter, deferredMaterialColorFilter, deployedItemsMap, logisticsDocs]);
+
     const totalCount = useMemo(() => filteredItems.reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0), [filteredItems]);
     const totalValueMXN = useMemo(() => filteredItems.reduce((acc, i) => acc + ((parseInt(i.data.price) || 0) * (parseInt(i.data.quantity) || 1)), 0), [filteredItems]);
 
+    // Atomic update to derived stats atom: one render per data change
     useEffect(() => {
-        setGlobalActiveVendors(activeVendors);
-        setFilteredCount(filteredItems.length);
-        setFilteredTotalQty(totalCount);
-        setFilteredTotalValue(totalValueMXN);
-        setFilteredIds(filteredItems.map(i => i.row ?? i.data?.id ?? i.data?.itemId ?? '').filter(Boolean));
-        setIsLoading(items.length === 0);
-    }, [activeVendors, filteredItems, items.length, totalCount, totalValueMXN]);
-
-    const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
+        setFilteredStats({
+            count: filteredItems.length,
+            totalQty: totalCount,
+            totalValue: totalValueMXN,
+            ids: filteredItems.map(i => i.row ?? i.data?.id ?? i.data?.itemId ?? '').filter(Boolean),
+        });
+    }, [filteredItems, totalCount, totalValueMXN, setFilteredStats]);
 
     // ── Scroll-container geometry shared by every virtualized mode ──────────────
     // The cards do not own their scrollbar: `.app-content` in MainAppView does, and
@@ -1805,15 +1811,11 @@ export const UnifiedInventoryView = () => {
         estimateSize: () => 48, // A collapsed row is 44px + the 4px rhythm gap.
         overscan: 10,
         scrollMargin,
-        // The zoom slider renders each row inside `transform: scale(listScale)`.
-        // virtual-core measures from ResizeObserver's `borderBoxSize`, which is
-        // the LAYOUT box — transforms do not touch it. So at any zoom below 1
-        // the list reserved each row's full unscaled height while the row drew
-        // itself smaller, leaving a dead band under every one of the 483 rows
-        // (7.5px each at the default 0.85 — about 16% of the list's height,
-        // spent on nothing). Multiplying the measurement back by the same scale
-        // is what closes it, and it keeps the slider's meaning unchanged.
-        measureElement: (el: Element) => el.getBoundingClientRect().height * listScale,
+        // Read unscaled layout height from ResizeObserver borderBoxSize to avoid getBoundingClientRect layout thrashing
+        measureElement: (el: Element, entry?: ResizeObserverEntry) => {
+            const rawHeight = entry?.borderBoxSize?.[0]?.blockSize ?? (el as HTMLElement).offsetHeight ?? el.getBoundingClientRect().height;
+            return rawHeight * listScale;
+        },
     });
 
     // A cached measurement is not re-taken when `measureElement` changes, so a
@@ -1883,24 +1885,6 @@ export const UnifiedInventoryView = () => {
         io.observe(el);
         return () => io.disconnect();
     }, [viewMode, galleryLimit, filteredItems.length, getScrollElement]);
-
-    // Fix for overlapping cards in list view due to virtualization caching heights during CSS transitions
-    // We must force the virtualizer to actually read the DOM element's getBoundingClientRect()
-    useEffect(() => {
-        if (viewMode !== 'list') return;
-        
-        const triggerMeasure = () => {
-            Object.values(itemRefs.current).forEach(el => {
-                if (el) listVirtualizer.measureElement(el);
-            });
-        };
-
-        triggerMeasure();
-        const t1 = setTimeout(triggerMeasure, 150);
-        const t2 = setTimeout(triggerMeasure, 350);
-        const t3 = setTimeout(triggerMeasure, 550);
-        return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-    }, [expandedCards, items, viewMode, listVirtualizer]);
 
     // Ken Burns Logic — deferred 2s after mount so it doesn't compete with initial render
     const [bgMediaUrls, setBgMediaUrls] = useState<string[]>([]);
@@ -2044,10 +2028,7 @@ export const UnifiedInventoryView = () => {
                                     return (
                                         <div
                                             key={item.row}
-                                            ref={(el) => {
-                                                listVirtualizer.measureElement(el);
-                                                itemRefs.current[virtualRow.index] = el;
-                                            }}
+                                            ref={listVirtualizer.measureElement}
                                             data-index={virtualRow.index}
                                             style={{
                                                 position: 'absolute',
@@ -2055,7 +2036,6 @@ export const UnifiedInventoryView = () => {
                                                 left: 0,
                                                 width: '100%',
                                                 transform: `translate3d(0, ${virtualRow.start - listVirtualizer.options.scrollMargin}px, 0)`,
-                                                willChange: 'transform',
                                                 backfaceVisibility: 'hidden',
                                                 zIndex: expandedCards[String(item.row)] ? 10 : 1,
                                             }}
@@ -2064,7 +2044,6 @@ export const UnifiedInventoryView = () => {
                                                 transform: `scale(${listScale}) translateZ(0)`,
                                                 transformOrigin: 'top left',
                                                 width: `${100 / listScale}%`,
-                                                willChange: 'transform',
                                                 backfaceVisibility: 'hidden',
                                             }}>
                                                 <UnifiedInventoryCard

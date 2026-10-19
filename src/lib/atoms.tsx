@@ -433,10 +433,36 @@ export const inventorySearchTermAtom = atom('');
 export const TOP_BAR_SEARCH_ATOM = atom('');
 export const isInventorySearchOpenAtom = atom(false);
 export const inventoryActiveFilterAtom = atom('All');
-export const filteredInventoryCountAtom = atom(0);
-export const filteredInventoryTotalQtyAtom = atom(0);
-export const filteredInventoryTotalValueAtom = atom(0);
-export const filteredInventoryIdsAtom = atom<(string | number)[]>([]);
+export interface FilteredInventoryStats {
+  count: number;
+  totalQty: number;
+  totalValue: number;
+  ids: (string | number)[];
+}
+
+export const filteredInventoryStatsAtom = atom<FilteredInventoryStats>({
+  count: 0,
+  totalQty: 0,
+  totalValue: 0,
+  ids: [],
+});
+
+export const filteredInventoryCountAtom = atom(
+  (get) => get(filteredInventoryStatsAtom).count,
+  (_get, set, update: number) => set(filteredInventoryStatsAtom, (prev) => ({ ...prev, count: update }))
+);
+export const filteredInventoryTotalQtyAtom = atom(
+  (get) => get(filteredInventoryStatsAtom).totalQty,
+  (_get, set, update: number) => set(filteredInventoryStatsAtom, (prev) => ({ ...prev, totalQty: update }))
+);
+export const filteredInventoryTotalValueAtom = atom(
+  (get) => get(filteredInventoryStatsAtom).totalValue,
+  (_get, set, update: number) => set(filteredInventoryStatsAtom, (prev) => ({ ...prev, totalValue: update }))
+);
+export const filteredInventoryIdsAtom = atom(
+  (get) => get(filteredInventoryStatsAtom).ids,
+  (_get, set, update: (string | number)[]) => set(filteredInventoryStatsAtom, (prev) => ({ ...prev, ids: update }))
+);
 export const isInventorySelectionModeAtom = atom<boolean>(false);
 export const selectedInventoryIdsAtom = atom<(string | number)[]>([]);
 export const isStoreSelectionModeAtom = atom<boolean>(false);
@@ -444,7 +470,18 @@ export const selectedStoreIdsAtom = atom<string[]>([]);
 export const isWarehouseSelectionModeAtom = atom<boolean>(false);
 export const warehouseSelectedIdsAtom = atom<Set<string>>(new Set<string>());
 export const showWarehouseExportWizardAtom = atom<boolean>(false);
-export const activeVendorsAtom = atom<string[]>([]);
+export const activeVendorsAtom = atom<string[], [string[]], void>(
+  (get) => {
+    const items = get(inventoryAtom);
+    const detected = new Set<string>();
+    items.forEach(i => {
+      const v = i.data?.itemId?.split('-')[0];
+      if (v) detected.add(v);
+    });
+    return Array.from(detected).sort();
+  },
+  (_get, _set, _update) => {}
+);
 
 export const storeInventoryAtom = atom<any[]>([]);
 export const storeShoppingBagAtom = atom<any[]>([]);
