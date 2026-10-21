@@ -423,6 +423,43 @@ body:has(#batchproc) .ui-root.ui-drawer-scrim { z-index: 10110; }
 body:has(#batchproc) .ui-root.ui-drawer--overlay { z-index: 10111; }
 body:has(#batchproc) .onyx-island-layer:has(.onyx-island--peek, .onyx-island--card) { z-index: 10200; }
 
+/* Type floor on desktop is 10px, and small keys are 28px (the default desktop
+   control size), not 24. */
+#batchproc .ui-thead {
+    font-size: 10px;
+}
+
+#batchproc .ui-step {
+    font-size: 10px;
+}
+
+#batchproc .ui-key--sm {
+    height: 28px;
+    font-size: 11px;
+}
+
+#batchproc .ui-key--icon.ui-key--sm {
+    width: 28px;
+}
+
+#batchproc .hub-brand-select {
+    min-height: 28px;
+}
+
+/* Hover is for pointers: on touch it would stay stuck after a tap. */
+@media (hover: none) {
+    #batchproc .ui-row:hover {
+        background-color: transparent;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    #batchproc .hub-bar {
+        background-color: var(--ui-ground);
+        backdrop-filter: none;
+    }
+}
+
 /* Rows and drawer breathe on the same 8px scale as the bars. */
 #batchproc .ui-row {
     padding-inline: 16px;
@@ -474,8 +511,28 @@ body:has(#batchproc) .ui-root.ui-drawer-scrim {
     #batchproc .hub-opts .hub-sep {
         display: none;
     }
-    #batchproc .hub-opts > .ui-chips {
-        flex: 1 1 100%;
+    #batchproc .hub-opts {
+        flex-direction: column;
+        align-items: stretch;
+        flex-wrap: nowrap;
+    }
+    /* Row 1 (processes) and row 2 (engine, room, hero) each scroll sideways
+       instead of wrapping, so the bar never grows past two rows. The block
+       padding keeps focus rings from being clipped. */
+    #batchproc .hub-opts > .ui-chips,
+    #batchproc .hub-opts > .hub-opts__sel {
+        flex-wrap: nowrap;
+        padding-block: 2px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: thin;
+    }
+    #batchproc .hub-opts > .ui-chips > *,
+    #batchproc .hub-opts > .hub-opts__sel > * {
+        flex: none;
+    }
+    #batchproc .hub-opts .ui-chips__set {
+        flex-wrap: nowrap;
     }
     body:has(#batchproc) .ui-root.ui-drawer--overlay {
         width: min(480px, 100vw);
@@ -526,8 +583,11 @@ body:has(#batchproc) .ui-root.ui-drawer-scrim {
         flex: 1 1 auto;
         margin-right: 0;
     }
-    #batchproc .hub-stop:disabled {
-        display: none;
+    /* Branding defers to content: on the narrowest phones the name gets the room. */
+    @media (max-width: 400px) {
+        #batchproc .hub-logo {
+            display: none;
+        }
     }
 
     /* Keys, chips and segments: 44px targets. */
@@ -674,7 +734,27 @@ body:has(#batchproc) .ui-root.ui-drawer-scrim {
     #batchproc .ui-step {
         min-width: 24px;
         height: 24px;
-        font-size: 10px;
+        font-size: 11px;
+    }
+    #batchproc .ui-chips__label,
+    #batchproc .hub-opt__label,
+    .ui-root .hub-opts--sheet .ui-chips__label,
+    .ui-root .hub-opts--sheet .hub-opt__label {
+        font-size: 11px;
+    }
+    #batchproc .hub-prog__now {
+        font-size: 12px;
+    }
+    #batchproc .ui-runbar__actions .ui-key--sm,
+    #batchproc .ui-key--icon.ui-key--sm {
+        height: 44px;
+        font-size: 12px;
+    }
+    #batchproc .ui-key--icon.ui-key--sm {
+        width: 44px;
+    }
+    #batchproc .hub-brand__facts {
+        font-size: 11px;
     }
 
     /* Progress: pinned, track + counts + current item, above the home bar. */
@@ -748,13 +828,13 @@ body:has(#batchproc) .ui-root.ui-drawer-scrim {
     }
     .ui-root.ui-drawer--overlay .ui-drawer__head {
         min-height: 56px;
-        padding-inline: 12px;
+        padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
     }
     .ui-root.ui-drawer--overlay .ui-drawer__foot {
         padding-bottom: calc(8px + env(safe-area-inset-bottom));
     }
     .ui-root.ui-drawer--overlay .ui-drawer__body {
-        padding: 16px 12px;
+        padding: 16px max(12px, env(safe-area-inset-right)) 16px max(12px, env(safe-area-inset-left));
     }
     .ui-root.ui-drawer--overlay .ui-drawer__title {
         flex-wrap: wrap;
