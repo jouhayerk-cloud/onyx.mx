@@ -5,8 +5,7 @@ import {
     getCleanImageUrl,
     resizeImage,
     loadImage,
-    findContour,
-    simplifyContour,
+    traceContourAsync,
     createCurvePath,
     generatePngAndSvgFromMasks,
     preprocessForMasking,
@@ -16,6 +15,7 @@ import {
 import { normalizeContour, type SegmentationResult } from './segmentationStore';
 import { removeBackground } from '@imgly/background-removal';
 import { generateBitmapAndHexMap } from './colorExtractor';
+import { runPixelOp, canvasToDataUrl } from './workers/imageWorkerClient';
 import { findDonor, isUsableDonor, type DonorCandidate, TIER_LABEL } from './variationMatch';
 import { generateAxonometricDataUrl, resolveItemColor } from './axonometric';
 import { describeIssues } from './copyValidation';
@@ -177,7 +177,7 @@ function loadSdrDataUrl(imageUrl: string): Promise<string> {
             const c = canvas.getContext('2d');
             if (!c) return reject(new Error('Canvas error'));
             c.drawImage(img, 0, 0, img.width, img.height);
-            resolve(canvas.toDataURL('image/jpeg', 1.0));
+            canvasToDataUrl(canvas, 'image/jpeg', 1.0).then(resolve, reject);
         };
         img.onerror = () => reject(new Error('Image load failed'));
         img.src = imageUrl;
@@ -191,8 +191,7 @@ async function traceCutout(cutoutUrl: string, tolerance: number) {
     canvas.width = maskImg.width; canvas.height = maskImg.height;
     const c = canvas.getContext('2d', { willReadFrequently: true })!;
     c.drawImage(maskImg, 0, 0);
-    const contour = findContour(c.getImageData(0, 0, maskImg.width, maskImg.height));
-    const simplified = simplifyContour(contour, tolerance);
+    const simplified = await traceContourAsync(c.getImageData(0, 0, maskImg.width, maskImg.height), tolerance);
     return { simplified, width: maskImg.width, height: maskImg.height };
 }
 
@@ -208,14 +207,9 @@ async function matteFromCutout(cutoutUrl: string): Promise<string> {
     const c = canvas.getContext('2d', { willReadFrequently: true })!;
     c.drawImage(img, 0, 0);
     const data = c.getImageData(0, 0, img.width, img.height);
-    const px = data.data;
-    for (let i = 0; i < px.length; i += 4) {
-        const on = px[i + 3] > 0 ? 255 : 0;
-        px[i] = px[i + 1] = px[i + 2] = on;
-        px[i + 3] = 255;
-    }
-    c.putImageData(data, 0, 0);
-    return canvas.toDataURL('image/png');
+    const px = await runPixelOp('matte', { data: data.data });
+    c.putImageData(new ImageData(px, img.width, img.height), 0, 0);
+    return canvasToDataUrl(canvas, 'image/png');
 }
 
 /**
@@ -243,7 +237,7 @@ async function cutoutSvgDocument(path: string, width: number, height: number, cu
         canvas.width = Math.max(1, Math.round(img.width * scale));
         canvas.height = Math.max(1, Math.round(img.height * scale));
         canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const href = canvas.toDataURL('image/png');
+        const href = await canvasToDataUrl(canvas, 'image/png');
         image = `<image xlink:href="${href}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none"/>`;
     } catch {
         // Without the photo the file is still a usable silhouette + outline.
@@ -673,7 +667,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                         rctx.globalCompositeOperation = 'source-in'; rctx.fillStyle = 'white'; rctx.fillRect(0, 0, rcv.width, rcv.height);
                         rctx.globalCompositeOperation = 'destination-over'; rctx.fillStyle = 'black'; rctx.fillRect(0, 0, rcv.width, rcv.height);
                         rctx.globalCompositeOperation = 'source-over';
-                        const simplifiedFull = simplifyContour(findContour(rctx.getImageData(0, 0, rcv.width, rcv.height)), 0.2);
+                        const simplifiedFull = await traceContourAsync(rctx.getImageData(0, 0, rcv.width, rcv.height), 0.2);
 
                         if (cancelTokens.current[op.id]) throw new AiCancelledError();
                         updateOp(op.id, { progress: 70, stepLabel: 'Extracting masks...' });

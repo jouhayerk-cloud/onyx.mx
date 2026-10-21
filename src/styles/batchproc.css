@@ -20,7 +20,8 @@
 #batchproc {
     position: fixed;
     inset: 0;
-    z-index: 1000;
+    /* Above the Onyx Island layer (10050). */
+    z-index: 10100;
     display: flex;
     min-width: 0;
     background-color: var(--ui-ground);
@@ -38,13 +39,27 @@
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* ══ Top bar ══════════════════════════════════════════════════════════════ */
+/* ══ Top bar ══════════════════════════════════════════════════════════════
+   Two rows. Row 1: brand, status, primary actions. Row 2: the process chips
+   and the run options, grouped. */
 #batchproc .hub-bar {
     position: relative;
     z-index: 2;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 8px;
 }
 
-/* The run controls, kept together at the right; they wrap as one group. */
+#batchproc .hub-bar__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    min-width: 0;
+}
+
+/* The primary actions, kept together at the right. */
 #batchproc .hub-bar__end {
     display: flex;
     flex-wrap: wrap;
@@ -54,6 +69,37 @@
     min-width: 0;
     max-width: 100%;
     margin-left: auto;
+}
+
+#batchproc .hub-opts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    min-width: 0;
+}
+
+#batchproc .hub-opts .ui-chips {
+    gap: 6px 14px;
+}
+
+#batchproc .hub-opts .ui-chip,
+#batchproc .hub-opts .ui-seg {
+    height: 28px;
+    min-height: 28px;
+}
+
+#batchproc .hub-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#batchproc .hub-opt__label {
+    color: var(--ui-faint);
+    font: 700 10px/1 var(--ui-font-display);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
 #batchproc .hub-brand {
@@ -132,7 +178,8 @@
     flex: 1 1 auto;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+    /* The details get the larger share: the photo and the title field need room. */
+    grid-template-columns: minmax(0, 1fr) clamp(420px, 44%, 640px);
 }
 
 #batchproc .hub-body--narrow {
@@ -239,6 +286,102 @@
     font-size: 11px;
 }
 
+/* ══ Progress bar ═════════════════════════════════════════════════════════
+   Thick segmented track (saved / running / failed / queued ...), count pills,
+   the item being worked on, and the overall percentage. */
+#batchproc .hub-prog {
+    gap: 10px 16px;
+}
+
+#batchproc .hub-prog__main {
+    flex: 1 1 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+#batchproc .hub-prog__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    min-width: 0;
+}
+
+#batchproc .hub-prog__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#batchproc .hub-prog__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px 2px 6px;
+    border: 1px solid var(--ui-edge);
+    border-radius: var(--ui-r-pill);
+    background-color: var(--ui-well);
+    color: var(--ui-dim);
+    font: 700 10.5px/1.2 var(--ui-font-display);
+    letter-spacing: 0.03em;
+}
+
+#batchproc .hub-prog__pill::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ui-seg-c, var(--ui-faint));
+}
+
+#batchproc .hub-prog__pill[data-run="queued"]::before {
+    border: 1px dashed var(--ui-edge-hi);
+}
+
+#batchproc .hub-prog__pill b {
+    color: var(--ui-ink);
+}
+
+#batchproc .hub-prog__now {
+    flex: 1 1 140px;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ui-run);
+    font: 600 11.5px/1.3 var(--ui-font-display);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#batchproc .hub-prog__pct {
+    margin-left: auto;
+    color: var(--ui-ink);
+    font: 800 12px/1.2 var(--ui-font-display);
+}
+
+#batchproc .hub-prog__track {
+    flex: none;
+    width: 100%;
+    height: 8px;
+    min-width: 0;
+    border: 1px solid var(--ui-edge-hi);
+    background-color: var(--ui-well);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.25);
+}
+
+/* ══ Above the island ═════════════════════════════════════════════════════
+   The hub sits above the island layer (10050), so what it opens from <body>
+   (the photo viewer, the review drawer on narrow screens) must sit above the
+   hub, and so must an island toast, which lives in the island layer. */
+body:has(#batchproc) .ui-root.ui-lightbox { z-index: 10130; }
+body:has(#batchproc) .ui-root.ui-drawer-scrim { z-index: 10110; }
+body:has(#batchproc) .ui-root.ui-drawer--overlay { z-index: 10111; }
+body:has(#batchproc) .onyx-island-layer:has(.onyx-island--peek, .onyx-island--card) { z-index: 10200; }
+
 /* ══ Narrow screens ═══════════════════════════════════════════════════════
    On a phone the top bar, the filter row and the run bar wrap onto many
    lines; held fixed around their own scrolling list they left it about one
@@ -264,6 +407,9 @@
     #batchproc .hub-bar {
         padding-right: 60px;
     }
+    #batchproc .hub-opts .hub-sep {
+        display: none;
+    }
     #batchproc .hub-close {
         position: absolute;
         top: 10px;
@@ -282,8 +428,8 @@
         gap: 8px;
         padding-block: 8px;
     }
-    #batchproc .ui-runbar .ui-legend {
-        display: none;
+    #batchproc .hub-prog__now {
+        flex-basis: 100%;
     }
     #batchproc .ui-runbar__actions {
         flex-wrap: nowrap;

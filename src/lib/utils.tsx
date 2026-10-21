@@ -5,6 +5,8 @@ import type { BoundingBoxMaskType } from './Types';
 import type { UserRole } from './atoms';
 import { supabase } from './supabase';
 import heic2any from 'heic2any';
+import { findContourPixels, simplifyContourPoints, trimRectPixels } from './workers/imagePixels';
+import { runPixelOp, canvasToDataUrl } from './workers/imageWorkerClient';
 export { reconstructRgbPixelMap, type RgbPixel, type ReconstructedPixelMap } from './colorExtractor';
 
 export function resolveUserRole(email: string): UserRole {
@@ -996,120 +998,19 @@ export function hash(): Record<string, string> {
 }
 
 export function findContour(imageData: ImageData): { x: number; y: number }[] {
-  const { data, width, height } = imageData;
-  
-  // Create a copy of the alpha channel to avoid modifying the original
-  const alpha = new Uint8Array(width * height);
-  for (let i = 0; i < width * height; i++) {
-    alpha[i] = data[i * 4];
-  }
-
-  const offsets = [
-    { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }, { x: -1, y: 1 },
-    { x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 }
-  ];
-
-  let bestContour: { x: number; y: number }[] = [];
-
-  for (let startY = 0; startY < height; startY++) {
-    for (let startX = 0; startX < width; startX++) {
-      if (alpha[startY * width + startX] > 128) {
-        // 1. Trace the contour for this blob
-        const contour: { x: number; y: number }[] = [];
-        let p = { x: startX, y: startY };
-        let dir = 0;
-        let count = 0;
-        const maxCount = width * height;
-        
-        do {
-          contour.push({ x: p.x, y: p.y });
-          let s_dir = (dir + 5) % 8;
-          let foundNext = false;
-          
-          for (let i = 0; i < 8; i++) {
-            dir = (s_dir + i) % 8;
-            const offset = offsets[dir];
-            let q = { x: p.x + offset.x, y: p.y + offset.y };
-            
-            if (q.x >= 0 && q.x < width && q.y >= 0 && q.y < height && alpha[q.y * width + q.x] > 128) {
-              p = q;
-              foundNext = true;
-              break;
-            }
-          }
-          if (!foundNext) break; // Isolated pixel
-          count++;
-        } while ((p.x !== startX || p.y !== startY) && count < maxCount);
-
-        if (contour.length > bestContour.length) {
-          bestContour = contour;
-        }
-
-        // 2. Erase this blob using flood fill so we don't scan it again
-        const stack = [{ x: startX, y: startY }];
-        while (stack.length > 0) {
-          const { x, y } = stack.pop()!;
-          const idx = y * width + x;
-          if (alpha[idx] > 128) {
-            alpha[idx] = 0; // Erase
-            if (x > 0) stack.push({ x: x - 1, y });
-            if (x < width - 1) stack.push({ x: x + 1, y });
-            if (y > 0) stack.push({ x, y: y - 1 });
-            if (y < height - 1) stack.push({ x, y: y + 1 });
-          }
-        }
-      }
-    }
-  }
-
-  return bestContour;
+  return findContourPixels(imageData.data, imageData.width, imageData.height);
 }
 
 export function simplifyContour(
   points: { x: number; y: number }[],
   tolerance: number,
 ): { x: number; y: number }[] {
-  if (points.length <= 2) return points;
+  return simplifyContourPoints(points, tolerance);
+}
 
-  const perpendicularDistance = (
-    point: { x: number; y: number },
-    lineStart: { x: number; y: number },
-    lineEnd: { x: number; y: number },
-  ) => {
-    let dx = lineEnd.x - lineStart.x;
-    let dy = lineEnd.y - lineStart.y;
-    if (dx === 0 && dy === 0) {
-      return Math.hypot(point.x - lineStart.x, point.y - lineStart.y);
-    }
-    let t =
-      ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) /
-      (dx * dx + dy * dy);
-    t = Math.max(0, Math.min(1, t));
-    const closestX = lineStart.x + t * dx;
-    const closestY = lineStart.y + t * dy;
-    return Math.hypot(point.x - closestX, point.y - closestY);
-  };
-
-  let firstPoint = points[0];
-  let lastPoint = points[points.length - 1];
-  let index = -1;
-  let maxDist = 0;
-
-  for (let i = 1; i < points.length - 1; i++) {
-    let dist = perpendicularDistance(points[i], firstPoint, lastPoint);
-    if (dist > maxDist) {
-      maxDist = dist;
-      index = i;
-    }
-  }
-
-  if (maxDist > tolerance) {
-    let recResults1 = simplifyContour(points.slice(0, index + 1), tolerance);
-    let recResults2 = simplifyContour(points.slice(index), tolerance);
-    return recResults1.slice(0, recResults1.length - 1).concat(recResults2);
-  } else {
-    return [firstPoint, lastPoint];
-  }
+/** findContour + simplifyContour in the image worker; the pixels are copied out of `imageData`'s buffer only if the caller still needs it. */
+export function traceContourAsync(imageData: ImageData, tolerance: number): Promise<{ x: number; y: number }[]> {
+  return runPixelOp('contour', { data: imageData.data, width: imageData.width, height: imageData.height, tolerance });
 }
 
 export function createCurvePath(points: { x: number; y: number }[]): string {
@@ -1175,6 +1076,17 @@ export async function preprocessForMasking(dataUrl: string): Promise<string> {
     });
 }
 
+function cropToRect(canvas: HTMLCanvasElement, r: { x: number; y: number; w: number; h: number } | null): HTMLCanvasElement {
+  if (!r) return canvas;
+  const trimmedCanvas = document.createElement('canvas');
+  trimmedCanvas.width = r.w;
+  trimmedCanvas.height = r.h;
+  const trimmedCtx = trimmedCanvas.getContext('2d');
+  if (!trimmedCtx) return canvas;
+  trimmedCtx.drawImage(canvas, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
+  return trimmedCanvas;
+}
+
 export function trimTransparentCanvas(canvas: HTMLCanvasElement, padding = 4): HTMLCanvasElement {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx || canvas.width === 0 || canvas.height === 0) return canvas;
@@ -1182,101 +1094,17 @@ export function trimTransparentCanvas(canvas: HTMLCanvasElement, padding = 4): H
   try {
     const { width, height } = canvas;
     const imgData = ctx.getImageData(0, 0, width, height);
-    const data = imgData.data;
-
-    let minX = width;
-    let minY = height;
-    let maxX = -1;
-    let maxY = -1;
-
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const alpha = data[(y * width + x) * 4 + 3];
-        if (alpha > 10) {
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-    }
-
-    if (maxX < minX || maxY < minY) return canvas;
-    if (minX === 0 && minY === 0 && maxX === width - 1 && maxY === height - 1) return canvas;
-
-    const trimX = Math.max(0, minX - padding);
-    const trimY = Math.max(0, minY - padding);
-    const trimW = Math.min(width - trimX, (maxX - minX + 1) + padding * 2);
-    const trimH = Math.min(height - trimY, (maxY - minY + 1) + padding * 2);
-
-    if (trimW <= 0 || trimH <= 0 || (trimW === width && trimH === height)) return canvas;
-
-    const trimmedCanvas = document.createElement('canvas');
-    trimmedCanvas.width = trimW;
-    trimmedCanvas.height = trimH;
-    const trimmedCtx = trimmedCanvas.getContext('2d');
-    if (!trimmedCtx) return canvas;
-
-    trimmedCtx.drawImage(
-      canvas,
-      trimX, trimY, trimW, trimH,
-      0, 0, trimW, trimH
-    );
-
-    return trimmedCanvas;
+    return cropToRect(canvas, trimRectPixels(imgData.data, width, height, padding));
   } catch (e) {
     console.error('Error trimming transparent canvas:', e);
     return canvas;
   }
 }
 
-function fillInternalMaskHoles(ctx: CanvasRenderingContext2D, width: number, height: number) {
+async function fillInternalMaskHoles(ctx: CanvasRenderingContext2D, width: number, height: number) {
     const imgData = ctx.getImageData(0, 0, width, height);
-    const data = imgData.data;
-    const visited = new Uint8Array(width * height);
-    const stack: number[] = [];
-
-    for (let x = 0; x < width; x++) {
-        if (data[x * 4 + 3] < 128 || data[x * 4] < 128) { stack.push(x); visited[x] = 1; }
-        const bBottom = (height - 1) * width + x;
-        if (data[bBottom * 4 + 3] < 128 || data[bBottom * 4] < 128) { stack.push(bBottom); visited[bBottom] = 1; }
-    }
-    for (let y = 0; y < height; y++) {
-        const bLeft = y * width;
-        if (data[bLeft * 4 + 3] < 128 || data[bLeft * 4] < 128) { stack.push(bLeft); visited[bLeft] = 1; }
-        const bRight = y * width + (width - 1);
-        if (data[bRight * 4 + 3] < 128 || data[bRight * 4] < 128) { stack.push(bRight); visited[bRight] = 1; }
-    }
-
-    while (stack.length > 0) {
-        const idx = stack.pop()!;
-        const x = idx % width;
-        const y = Math.floor(idx / width);
-
-        if (x > 0 && !visited[idx - 1]) {
-            if (data[(idx - 1) * 4 + 3] < 128 || data[(idx - 1) * 4] < 128) { visited[idx - 1] = 1; stack.push(idx - 1); }
-        }
-        if (x < width - 1 && !visited[idx + 1]) {
-            if (data[(idx + 1) * 4 + 3] < 128 || data[(idx + 1) * 4] < 128) { visited[idx + 1] = 1; stack.push(idx + 1); }
-        }
-        if (y > 0 && !visited[idx - width]) {
-            if (data[(idx - width) * 4 + 3] < 128 || data[(idx - width) * 4] < 128) { visited[idx - width] = 1; stack.push(idx - width); }
-        }
-        if (y < height - 1 && !visited[idx + width]) {
-            if (data[(idx + width) * 4 + 3] < 128 || data[(idx + width) * 4] < 128) { visited[idx + width] = 1; stack.push(idx + width); }
-        }
-    }
-
-    for (let i = 0; i < width * height; i++) {
-        if (!visited[i]) {
-            const idx = i * 4;
-            data[idx] = 255;
-            data[idx + 1] = 255;
-            data[idx + 2] = 255;
-            data[idx + 3] = 255;
-        }
-    }
-    ctx.putImageData(imgData, 0, 0);
+    const data = await runPixelOp('fillHoles', { data: imgData.data, width, height });
+    ctx.putImageData(new ImageData(data, width, height), 0, 0);
 }
 
 export async function applyAlphaMask(originalUrl: string, maskBlob: Blob, isCylinderPendant: boolean = false): Promise<string> {
@@ -1310,7 +1138,7 @@ export async function applyAlphaMask(originalUrl: string, maskBlob: Blob, isCyli
         maskCtx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
         
         if (!isCylinderPendant) {
-            fillInternalMaskHoles(maskCtx, canvas.width, canvas.height);
+            await fillInternalMaskHoles(maskCtx, canvas.width, canvas.height);
         }
 
         // Draw original scaled
@@ -1324,34 +1152,11 @@ export async function applyAlphaMask(originalUrl: string, maskBlob: Blob, isCyli
 
         // RULE: Post-process alpha to eliminate black studio background and prevent semi-transparent elements!
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-            const a = data[i + 3];
+        const out = await runPixelOp('alphaMask', { data: imgData.data, width: canvas.width, height: canvas.height, cyl: isCylinderPendant });
+        ctx.putImageData(new ImageData(out.data, canvas.width, canvas.height), 0, 0);
 
-            if (isCylinderPendant) {
-                const isBlackBg = r <= 60 && g <= 60 && b <= 60 && (Math.max(r, g, b) - Math.min(r, g, b)) <= 25;
-                data[i + 3] = isBlackBg ? 0 : 255;
-            } else if (a > 0) {
-                const isBlackBg = r <= 45 && g <= 45 && b <= 45 && (Math.max(r, g, b) - Math.min(r, g, b)) <= 15;
-                if (isBlackBg) {
-                    data[i + 3] = 0;
-                    continue;
-                }
-
-                if (a > 30) {
-                    data[i + 3] = 255;
-                } else {
-                    data[i + 3] = 0;
-                }
-            }
-        }
-        ctx.putImageData(imgData, 0, 0);
-
-        const trimmed = trimTransparentCanvas(canvas, 4);
-        resolve(trimmed.toDataURL('image/png'));
+        const trimmed = cropToRect(canvas, out.rect);
+        resolve(await canvasToDataUrl(trimmed, 'image/png'));
     });
 }
 
@@ -2067,28 +1872,11 @@ export const getItemPaddedVolume = (itemData: any, qty: number = 1) => {
 
   // Post-process alpha to eliminate black background and prevent semi-transparent elements
   const imgData = ctx.getImageData(0, 0, exportCanvas.width, exportCanvas.height);
-  const data = imgData.data;
-  for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const a = data[i + 3];
-      if (isCylinderPendant) {
-          const isBlackBg = r <= 60 && g <= 60 && b <= 60 && (Math.max(r, g, b) - Math.min(r, g, b)) <= 25;
-          data[i + 3] = isBlackBg ? 0 : 255;
-      } else if (a > 0) {
-          const isBlackBg = r <= 45 && g <= 45 && b <= 45 && (Math.max(r, g, b) - Math.min(r, g, b)) <= 15;
-          if (isBlackBg) {
-              data[i + 3] = 0;
-          } else if (a > 40) {
-              data[i + 3] = a > 20 ? 255 : 0;
-          }
-      }
-  }
-  ctx.putImageData(imgData, 0, 0);
+  const out = await runPixelOp('alphaCrop', { data: imgData.data, width: exportCanvas.width, height: exportCanvas.height, cyl: isCylinderPendant });
+  ctx.putImageData(new ImageData(out.data, exportCanvas.width, exportCanvas.height), 0, 0);
 
-  const trimmedCanvas = trimTransparentCanvas(exportCanvas, 4);
-  const pngData = trimmedCanvas.toDataURL('image/png');
+  const trimmedCanvas = cropToRect(exportCanvas, out.rect);
+  const pngData = await canvasToDataUrl(trimmedCanvas, 'image/png');
 
   let finalImageSrc = imageSrc;
   if (!imageSrc.startsWith('data:')) {
@@ -2097,7 +1885,7 @@ export const getItemPaddedVolume = (itemData: any, qty: number = 1) => {
     imgCanvas.height = height;
     const imgCtx = imgCanvas.getContext('2d')!;
     imgCtx.drawImage(image, 0, 0, width, height);
-    finalImageSrc = imgCanvas.toDataURL();
+    finalImageSrc = await canvasToDataUrl(imgCanvas);
   }
 
   let maskContent = '<g id="segmentation-masks">';

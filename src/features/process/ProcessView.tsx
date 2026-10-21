@@ -28,8 +28,7 @@ import {
     loadImage,
     extractGradientFromMask,
     generatePngAndSvgFromMasks,
-    findContour,
-    simplifyContour,
+    traceContourAsync,
     createCurvePath,
     resizeImage,
     cropImage
@@ -540,8 +539,7 @@ export const ProcessView: React.FC = () => {
                 const rctx = rcv.getContext('2d', { willReadFrequently: true })!;
                 rctx.drawImage(maskImg, 0, 0);
                 const iData = rctx.getImageData(0, 0, rcv.width, rcv.height);
-                const contour = findContour(iData);
-                const simplified = simplifyContour(contour, 0.8);
+                const simplified = await traceContourAsync(iData, 0.8);   // trace + simplify in the image worker
 
                 const x_pad = (box[1] / 1000) * targetSize; const y_pad = (box[0] / 1000) * targetSize;
                 const w_pad = ((box[3] - box[1]) / 1000) * targetSize; const h_pad = ((box[2] - box[0]) / 1000) * targetSize;

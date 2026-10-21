@@ -46,12 +46,16 @@ import type { BgQuality, BgRoom } from '../bgReplace';
 import type { DonorCandidate } from '../variationMatch';
 import { collectAllImages, getCleanImageUrl, normalizeInventoryData } from '../utils';
 import { supabase } from '../supabase';
+import { yieldToBrowser } from '../workers/imageWorkerClient';
 import { hasGeminiKey } from './keys';
 import { hasProviderKey } from './providerKeys';
 import { getRoute } from './routing';
 import type { ProviderId } from './providers/types';
 import { AiCancelledError, AiKeyMissingError, AiTimeoutError, aiErrorMessage, type AiErrorCode } from './errors';
 import { toPipelineItem, type PipelineItem } from './item';
+
+/** Progress ticks reach the store at most this often. */
+const PROGRESS_MIN_GAP_MS = 100;
 import {
     aiResultFromOps,
     buildAiPatch,
@@ -1695,8 +1699,12 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
         });
     }, []);
 
+    const progressSlots = useRef(new Map<string, { at: number; timer?: ReturnType<typeof setTimeout>; pending?: any }>()).current;
+
     const runOp = useCallback(async (spec: LaunchSpec) => {
         const { opId } = spec;
+        // Give input and paint a turn before each op starts.
+        await yieldToBrowser();
         const o = optsRef.current;
         if (cancelTokens.current[opId]) {
             store.dispatch({ type: 'op-settled', opId, at: Date.now(), interrupted: interruptRef.current.get(opId) || 'cancel' });
@@ -1704,6 +1712,27 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
         }
         const ctx: PipelineContext = {
             updateOp: (id, updates) => {
+                // Bare progress ticks are coalesced to ~10/s; anything else flushes the pending tick first.
+                const tick = typeof updates === 'object' && Object.keys(updates).every(k => k === 'progress' || k === 'stepLabel');
+                const slot = progressSlots.get(id) || { at: 0 } as { at: number; timer?: ReturnType<typeof setTimeout>; pending?: typeof updates };
+                progressSlots.set(id, slot);
+                if (slot.timer) { clearTimeout(slot.timer); slot.timer = undefined; }
+                if (tick) {
+                    const wait = PROGRESS_MIN_GAP_MS - (Date.now() - slot.at);
+                    if (wait > 0) {
+                        slot.pending = { ...(slot.pending as object || {}), ...(updates as object) } as typeof updates;
+                        slot.timer = setTimeout(() => {
+                            slot.timer = undefined; slot.at = Date.now();
+                            const p = slot.pending; slot.pending = undefined;
+                            if (p) store.dispatch({ type: 'op-update', opId: id, updates: p });
+                        }, wait);
+                        return;
+                    }
+                } else if (slot.pending) {
+                    store.dispatch({ type: 'op-update', opId: id, updates: slot.pending });
+                    slot.pending = undefined;
+                }
+                slot.at = Date.now();
                 if (typeof updates === 'object' && updates.processErrors
                     && Object.values(updates.processErrors).some(m => m === KEY_MISSING_MESSAGE)) {
                     // Every next item would fail on the same missing key.
@@ -1743,7 +1772,11 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
         store.dispatch({ type: 'op-settled', opId, at: Date.now(), error: interrupted ? undefined : error, interrupted });
         delete cancelTokens.current[opId];
         interruptRef.current.delete(opId);
-    }, [store, checkAbort, keyMissing, stop]);
+        const slot = progressSlots.get(opId);
+        if (slot?.timer) clearTimeout(slot.timer);
+        progressSlots.delete(opId);
+        await yieldToBrowser();
+    }, [store, checkAbort, keyMissing, stop, progressSlots]);
 
     const pump = useCallback(() => {
         const limit = Math.max(1, optsRef.current.concurrency || RUN_CONCURRENCY);

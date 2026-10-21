@@ -22,6 +22,7 @@
 
 import { Modality } from '@google/genai';
 import { loadImage, handleProcessedFileUpload } from './utils';
+import { canvasToDataUrl } from './workers/imageWorkerClient';
 import { getGeminiKey } from './ai/keys';
 import { AI_MODELS, modelChain } from './ai/models';
 import { getGenAiSdk, aiSleep, backoffMs, retryDelayFrom } from './ai/client';
@@ -121,7 +122,7 @@ export async function loadImageForGeneration(
     if (!ctx) throw new Error('Canvas unavailable for image preparation');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    const dataUrl = await canvasToDataUrl(canvas, 'image/jpeg', 0.92);
     return {
         data: dataUrl.split(',')[1],
         mimeType: 'image/jpeg',

@@ -71,8 +71,8 @@ import {
 } from '../../lib/ai/run';
 import {
     Key, Chip, ProcessChips, Segmented, Field, Input, Select, ItemTag, resolveItemTag, StatusPill, StepsStrip,
-    Thumb, MediaViewer, ItemList, ItemRow, FilterTabs, RunBar, Drawer, GeneratedContent, PROCESS_META, cx, itemStateLabel,
-    type MediaAngle, type MediaView, type GeneratedValue,
+    Thumb, MediaViewer, ItemList, ItemRow, FilterTabs, Drawer, GeneratedContent, PROCESS_META, cx, itemStateLabel,
+    type MediaAngle, type MediaView, type GeneratedValue, type ItemState,
     Dialog,
 } from '../../components/ui';
 import { trackDocumentJob } from '../print/jobTracking';
@@ -554,6 +554,67 @@ async function buildXlsx(entries: readonly ExportEntry[]): Promise<Blob> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Mounted only while open, so closing drops the run (and the engine stops whatever is in flight). */
+/** Draw order of the progress track: finished work first, waiting last. */
+const PROGRESS_ORDER: readonly ItemState[] = ['saved', 'done', 'review', 'partial', 'running', 'failed', 'skipped', 'queued'];
+
+/**
+ * The run at a glance: a thick track segmented by state, labelled count pills,
+ * the item being worked on with its step, an overall percentage, and the
+ * actions that act on the run.
+ */
+function HubProgress({ counts, total, percent, eta, working, actions }: {
+    counts: Partial<Record<ItemState, number>>;
+    total: number;
+    percent?: number;
+    eta?: string;
+    working?: { name: string; step?: string };
+    actions: React.ReactNode;
+}) {
+    const sum = PROGRESS_ORDER.reduce((n, s) => n + (counts[s] ?? 0), 0);
+    const all = Math.max(total, sum);
+    const finished = sum - (counts.queued ?? 0) - (counts.running ?? 0);
+    const present = PROGRESS_ORDER.filter(s => (counts[s] ?? 0) > 0);
+    const summary = present.map(s => `${counts[s]} ${itemStateLabel(s).toLowerCase()}`).join(', ');
+    const pct = Math.max(0, Math.min(100, Math.round(percent ?? (all ? (finished / all) * 100 : 0))));
+    return (
+        <div className="ui-runbar hub-prog">
+            <div className="hub-prog__main">
+                <div className="hub-prog__head">
+                    <ul className="hub-prog__pills">
+                        {present.map(s => (
+                            <li key={s} className="hub-prog__pill" data-run={s}>
+                                <b className="ui-tnum">{counts[s]}</b> {itemStateLabel(s).toLowerCase()}
+                            </li>
+                        ))}
+                    </ul>
+                    {working && (
+                        <span className="hub-prog__now" title={working.name}>
+                            <b>{working.name}</b>{working.step ? <> · {working.step}</> : null}
+                        </span>
+                    )}
+                    <span className="hub-prog__pct ui-tnum">{eta ? `${eta} · ` : ''}{pct}%</span>
+                </div>
+                <div
+                    className="ui-runbar__track hub-prog__track"
+                    role="progressbar"
+                    aria-label={tr('Run progress')}
+                    aria-valuemin={0}
+                    aria-valuemax={all || 1}
+                    aria-valuenow={Math.max(0, finished)}
+                    aria-valuetext={summary || tr('Nothing queued')}
+                >
+                    {all > 0 && PROGRESS_ORDER.map(s => {
+                        const n = counts[s] ?? 0;
+                        if (!n) return null;
+                        return <i key={s} className="ui-runbar__seg" data-run={s} style={{ width: `${(n / all) * 100}%` }} />;
+                    })}
+                </div>
+            </div>
+            <div className="ui-runbar__actions">{actions}</div>
+        </div>
+    );
+}
+
 export const BatchProcessingWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isBatchWizardOpenAtom);
     const batchItems = useAtomValue(batchWizardItemsAtom);
@@ -659,6 +720,8 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         for (const s of states.values()) c[s] = (c[s] || 0) + 1;
         return c;
     }, [states]);
+
+    const runningNow = useMemo(() => all.find(it => states.get(it.id) === 'running'), [all, states]);
 
     const searchText = useMemo(() => {
         const m = new Map<string, string>();
@@ -1289,49 +1352,58 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
             <div className="ui-root hub">
                 {/* ── Top bar: what runs and how ── */}
                 <header className="ui-bar hub-bar">
-                    <div className="hub-brand">
-                        <span className="hub-logo" aria-hidden="true"><Bot size={15} /></span>
-                        <div>
-                            <h2 className="hub-brand__name">{tr('Catalog Hub')}</h2>
-                            <small className="hub-brand__facts ui-tnum">{facts}</small>
+                    {/* Row 1: who, how much, and the primary actions. */}
+                    <div className="hub-bar__top">
+                        <div className="hub-brand">
+                            <span className="hub-logo" aria-hidden="true"><Bot size={15} /></span>
+                            <div>
+                                <h2 className="hub-brand__name">{tr('Catalog Hub')}</h2>
+                                <small className="hub-brand__facts ui-tnum">{facts}</small>
+                            </div>
+                        </div>
+                        <div className="hub-bar__end">
+                            <Key variant="stop" icon={<Square size={12} />} disabled={!run.isRunning} onClick={run.stop}>{tr('Stop')}</Key>
+                            <Key variant="go" icon={<Play size={13} />} busy={run.isRunning && runTargets.length === 0} disabled={runTargets.length === 0}
+                                title={tickedIds.length
+                                    ? tr('Run every ticked process on the ticked items, replacing what they have')
+                                    : tr('Run the ticked processes that are still missing; tick rows to run them again')}
+                                onClick={handleRun}>
+                                {trf('Run {n}', { n: runTargets.length })}
+                            </Key>
+                            <Key iconOnly variant="quiet" icon={<KeyRound size={15} />} label={tr('Gemini API key')}
+                                onClick={() => { pendingRef.current = null; setKeyDraft(''); setShowKey(true); }} />
+                            <Key iconOnly variant="quiet" className="hub-close" icon={<X size={16} />} label={tr('Close')} onClick={handleClose} />
                         </div>
                     </div>
-                    <ProcessChips value={processes} onChange={setProcesses} disabled={run.isRunning} />
-                    {/* One group, so when the bar wraps the run controls move
-                        down together instead of leaving Run alone on a line. */}
-                    <div className="hub-bar__end">
-                        <Segmented<ProcessingMode>
-                            label={tr('Cleaning engine')}
-                            size="sm"
-                            value={mode}
-                            onChange={setMode}
-                            options={MODE_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
-                        />
-                        {mode === 'bgreplace' && (
-                            <Segmented<BgRoom>
-                                label={tr('Studio room')}
-                                size="sm"
-                                value={room}
-                                onChange={setRoom}
-                                disabled={run.isRunning}
-                                options={ROOM_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
+                    {/* Row 2: what to run and how, grouped. */}
+                    <div className="hub-opts">
+                        <ProcessChips value={processes} onChange={setProcesses} disabled={run.isRunning} />
+                        <span className="hub-sep" aria-hidden="true" />
+                        <div className="hub-opt">
+                            <span className="hub-opt__label" aria-hidden="true">{tr('Background')}</span>
+                            <Segmented<ProcessingMode>
+                                label={tr('Cleaning engine')}
+                                value={mode}
+                                onChange={setMode}
+                                options={MODE_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
                             />
+                        </div>
+                        {mode === 'bgreplace' && (
+                            <div className="hub-opt">
+                                <span className="hub-opt__label" aria-hidden="true">{tr('Room')}</span>
+                                <Segmented<BgRoom>
+                                    label={tr('Studio room')}
+                                    value={room}
+                                    onChange={setRoom}
+                                    disabled={run.isRunning}
+                                    options={ROOM_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
+                                />
+                            </div>
                         )}
                         <Chip pressed={heroOnly} onPressedChange={setHeroOnly}
                             title={tr('All photos per item, or only the first. Hero-only is cheaper (roughly half the images) but leaves the rest uncleaned.')}>
                             {tr('Hero photo only')}
                         </Chip>
-                        <Key variant="stop" icon={<Square size={12} />} disabled={!run.isRunning} onClick={run.stop}>{tr('Stop')}</Key>
-                        <Key variant="go" icon={<Play size={13} />} busy={run.isRunning && runTargets.length === 0} disabled={runTargets.length === 0}
-                            title={tickedIds.length
-                                ? tr('Run every ticked process on the ticked items, replacing what they have')
-                                : tr('Run the ticked processes that are still missing; tick rows to run them again')}
-                            onClick={handleRun}>
-                            {trf('Run {n}', { n: runTargets.length })}
-                        </Key>
-                        <Key iconOnly variant="quiet" icon={<KeyRound size={15} />} label={tr('Gemini API key')}
-                            onClick={() => { pendingRef.current = null; setKeyDraft(''); setShowKey(true); }} />
-                        <Key iconOnly variant="quiet" className="hub-close" icon={<X size={16} />} label={tr('Close')} onClick={handleClose} />
                     </div>
                 </header>
 
@@ -1437,10 +1509,12 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                 </div>
 
                 {/* ── Run bar: progress, retry, save, exports ── */}
-                <RunBar
+                <HubProgress
                     counts={counts}
                     total={all.length}
-                    note={run.isRunning ? [etaLabel(run.etaMs), `${run.progress}%`].filter(Boolean).join(' · ') : undefined}
+                    percent={run.isRunning ? run.progress : undefined}
+                    eta={run.isRunning ? etaLabel(run.etaMs) : undefined}
+                    working={runningNow ? { name: `${runningNow.label} ${nameOf(runningNow)}`, step: runningNow.stage } : undefined}
                     actions={<>
                         <Key size="sm" variant="quiet" icon={<RotateCcw size={12} />} disabled={!failedCount || run.isRunning}
                             onClick={handleRetryFailed}>

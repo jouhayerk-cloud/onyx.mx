@@ -3248,6 +3248,8 @@ export const esCatalog: Record<string, string> = {
   'Vendor Batch Import (XLSX)': 'Importación por lotes de proveedores (XLSX)',
   'Vendor batch import template': 'Plantilla de importación por lotes de proveedores',
   'Studio room': 'Fondo de estudio',
+  'Background': 'Fondo',
+  'Room': 'Sala',
   'Dark room': 'Estudio oscuro',
   'Light room': 'Estudio claro',
   'Near-black studio behind the piece (the default)': 'Estudio casi negro detrás de la pieza (el predeterminado)',
