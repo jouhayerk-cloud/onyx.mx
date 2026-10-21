@@ -3590,6 +3590,8 @@ export const esCatalog: Record<string, string> = {
   'Connecting': 'Conectando',
   'Standby': 'En espera',
   'Use in Chan': 'Usar en Chan',
+  'Local segmentation (SAM 2)': 'Segmentación local (SAM 2)',
+  'Off': 'Apagado',
   'Connection failed': 'Falló la conexión',
   'Link': 'Enlace',
   'Transport mode': 'Modo de transporte',

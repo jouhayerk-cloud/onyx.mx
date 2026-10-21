@@ -18,6 +18,7 @@ import {
     AI_CONFIG_EVENT,
 } from '../../lib/ai/providerKeys';
 import { getRoute, setRoute } from '../../lib/ai/routing';
+import { getSegLocal, setSegLocal, segServiceHealth, SEG_LOCAL_EVENT, type SegLocalSwitch } from '../../lib/ai/providers/segService';
 import type { ProviderConfig } from '../../lib/ai/providers/types';
 import {
     MESH_NODES,
@@ -118,6 +119,19 @@ export const ColibriSettingsCard: React.FC = () => {
             setTelemetry(null);
         }
     }, []);
+
+    const [segSwitch, setSegSwitch] = useState<SegLocalSwitch>(getSegLocal);
+    const [segState, setSegState] = useState<'ok' | 'warn' | 'error'>('warn');
+    const refreshSeg = useCallback(async () => {
+        const h = await segServiceHealth(true);
+        setSegState(!h ? 'error' : h.models.birefnet && h.models.sam2 ? 'ok' : 'warn');
+    }, []);
+    useEffect(() => {
+        void refreshSeg();
+        const sync = () => setSegSwitch(getSegLocal());
+        window.addEventListener(SEG_LOCAL_EVENT, sync);
+        return () => window.removeEventListener(SEG_LOCAL_EVENT, sync);
+    }, [refreshSeg]);
 
     const handlePingAllNodes = useCallback(async () => {
         setPingingNodes(true);
@@ -352,6 +366,33 @@ export const ColibriSettingsCard: React.FC = () => {
                                     <option value={model}>{model}</option>
                                 )}
                             </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Local segmentation service (SAM 2) */}
+                <div className="sk-row">
+                    <span className="sk-dot" data-state={segState} />
+                    <div className="sk-row-label">
+                        <span className="sk-row-title">{tr("Local segmentation (SAM 2)")}</span>
+                        <span className="sk-row-sub">
+                            {segState === 'ok' ? tr("Ready") : segState === 'warn' ? tr("Loading") : tr("Offline")}
+                        </span>
+                    </div>
+                    <div className="sk-row-value">
+                        <div className="sk-seg" role="radiogroup" aria-label={tr("Local segmentation (SAM 2)")}>
+                            {(['auto', 'off'] as const).map((v) => (
+                                <button
+                                    key={v}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={segSwitch === v}
+                                    onClick={() => { setSegLocal(v); setSegSwitch(v); void refreshSeg(); }}
+                                    className="sk-seg-btn"
+                                >
+                                    <span className="sk-seg-label">{v === 'auto' ? tr("Auto") : tr("Off")}</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>

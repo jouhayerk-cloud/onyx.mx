@@ -24,6 +24,8 @@ import { generateJson } from './ai/client';
 import { AiCancelledError, aiErrorMessage } from './ai/errors';
 import { buildContentPrompt, buildSegmentationPrompt, type ContentField, type SegmentationLayer } from './ai/prompts';
 import { finalizeContent, type RawContent } from './ai/finalize';
+import { segmentImage, segServiceUsable, SEG_SOURCE, type SegMode } from './ai/providers/segService';
+import { resolve826TypeId } from './taxonomy/onyx826';
 import { toPipelineItem, isVendorEcho, isCylinderBoxSet, type PipelineItem } from './ai/item';
 
 export type ProcessingMode = 'bgreplace' | 'local' | 'cloud' | 'hybrid';
@@ -102,6 +104,8 @@ export interface BatchOp {
         cloudSegmentationMasks?: string;
         segmentation?: SegmentationResult;
         videoGen?: string;
+        /** Which engine produced each image output of the latest run, e.g. 'sam2-local' (in memory only, no column). */
+        sources?: Partial<Record<ProcessId, string>>;
     };
 }
 
@@ -291,6 +295,10 @@ interface Cutout {
     outlineSvg: string;
     localSegmentationMasks?: string;
     cloudSegmentationMasks?: string;
+    /** Black-and-white matte, when the producer already has one. */
+    matteDataUrl?: string;
+    /** Which engine produced it (SEG_SOURCE for the local service). */
+    source?: string;
 }
 
 export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
@@ -308,6 +316,8 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
     // snapshot of React state; mutating its result (as this used to) leaked
     // through `...op.result` into whatever the caller did next.
     const result: NonNullable<BatchOp['result']> = { ...(op.result || {}) };
+    /** White-backdrop image from the local segmentation service, so the hex map samples the stone only. */
+    let segWhite = '';
     const status: Partial<Record<ProcessId, ProcessRunStatus>> = { ...(op.processStatus || {}) };
     const errors: Partial<Record<ProcessId, string>> = { ...(op.processErrors || {}) };
     const ran = new Set<ProcessId>();
@@ -503,6 +513,9 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                 } catch (e: any) {
                     logOp(op.id, `[ WARN ] Matte not generated: ${e.message}`);
                 }
+                if (c.matteDataUrl) result.matteUrl = c.matteDataUrl;
+                const src = c.source || (mode === 'cloud' || mode === 'hybrid' ? 'gemini' : 'imgly-local');
+                result.sources = { ...result.sources, image_segmentation: src, ...(asCleaned ? { img_clean: src } : {}) };
                 result.segmentation = c.segmentation;
                 result.outlineSvg = c.outlineSvg || undefined;
                 if (c.localSegmentationMasks) result.localSegmentationMasks = c.localSegmentationMasks;
@@ -562,6 +575,40 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                         method: 'local',
                     },
                 };
+            };
+
+            /**
+             * The local SAM 2 service: cutout, matte, outline and a white-backdrop image in one call. Null when the
+             * switch is off, the service is down or it fails (one warning per item), and the caller runs its own pipeline.
+             */
+            const serviceCut = async (src: string): Promise<Cutout | null> => {
+                if (!(await segServiceUsable())) return null;
+                try {
+                    updateOp(op.id, { progress: 15, stepLabel: 'Local segmentation (SAM 2)...' });
+                    logOp(op.id, '[ WAIT ] Local segmentation service...');
+                    const segMode: SegMode = resolve826TypeId(item.type, item.shape) === 'mirror' || /mirror|espejo/i.test(item.type || '') ? 'mirror' : 'object';
+                    const sent = await resizeImage(src, 1024);
+                    const r = await segmentImage(sent, segMode, { signal: cancel.signal });
+                    if (cancelTokens.current[op.id]) throw new AiCancelledError();
+                    const cutoutDataUrl = r.cutoutPng || r.whitePng;
+                    if (!cutoutDataUrl) throw new Error('No cutout in the answer');
+                    if (r.whitePng) segWhite = r.whitePng;
+                    const dim = await loadImage(cutoutDataUrl);
+                    logOp(op.id, `[  OK  ] Local segmentation done (${segMode})`);
+                    return {
+                        cutoutDataUrl,
+                        outlineSvg: r.svg,
+                        matteDataUrl: r.maskPng || undefined,
+                        source: SEG_SOURCE,
+                        segmentation: { svgData: r.svg || undefined, cutoutDataUrl, imageWidth: dim.width, imageHeight: dim.height, sourceImageUrl: src, method: 'local' },
+                    };
+                } catch (e) {
+                    if (e instanceof AiCancelledError || cancelTokens.current[op.id]) throw new AiCancelledError();
+                    segWhite = '';
+                    console.warn(`Local segmentation failed for ${item.itemId || op.id}; using the built-in pipeline:`, aiErrorMessage(e));
+                    logOp(op.id, `[ WARN ] Local segmentation unavailable (${aiErrorMessage(e)}); using the built-in pipeline`);
+                    return null;
+                }
             };
 
             const segmentationLayers = async (kind: 'cloud' | 'hybrid', pointCount?: number): Promise<SegmentationLayer[]> => {
@@ -629,7 +676,8 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                         // Through getCleanImageUrl: the upload hands back Drive's
                         // uc?export=view link, which answers without CORS
                         // headers, so a crossOrigin load of it fails.
-                        const c = await localCutout(getCleanImageUrl(result.cleanedUrl) || imageUrl, 80, 10);
+                        const cleanSrc = getCleanImageUrl(result.cleanedUrl) || imageUrl;
+                        const c = (await serviceCut(cleanSrc)) ?? await localCutout(cleanSrc, 80, 10);
                         await keepCutout(c, false);
                         mark('image_segmentation', 'done');
                         emit();
@@ -647,7 +695,10 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                 // and stored as the clean image), its matte and its outline.
                 let cut: Cutout | null = null;
                 try {
-                    if (mode === 'cloud') {
+                    const svcCut = await serviceCut(imageUrl);
+                    if (svcCut) {
+                        cut = svcCut;
+                    } else if (mode === 'cloud') {
                         logOp(op.id, '[ WAIT ] Running Cloud AI for segmentation...');
                         const layers = await segmentationLayers('cloud');
                         logOp(op.id, `[  OK  ] Found ${layers.length} layers. Refining...`);
@@ -772,7 +823,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                 // be measured as the stone. The cut-out (transparent
                 // backdrop), else the original photo, instead.
                 const lightFrame = isLightRoomKey(result.cleanedKey, imageUrl);
-                const colorSource = (!lightFrame && getCleanImageUrl(result.cleanedUrl)) || getCleanImageUrl(result.cutoutUrl) || imageUrl;
+                const colorSource = segWhite || (!lightFrame && getCleanImageUrl(result.cleanedUrl)) || getCleanImageUrl(result.cutoutUrl) || imageUrl;
                 const bitmapRes = await generateBitmapAndHexMap(colorSource, 20, 20, 80, 149, 61, 199, item.material, item.shape, item.vendorColor);
                 // generateBitmapAndHexMap never throws: on a load failure, a
                 // CORS refusal or its timeout it returns an all-#FFFFFF grid,
@@ -782,6 +833,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                 const sampled = !!bitmapRes.bitmapDataUrl;
                 if (hexWanted) {
                     if (sampled && bitmapRes.hexString) {
+                        result.sources = { ...result.sources, hex_map: segWhite ? SEG_SOURCE : 'photo' };
                         result.bitmapUrl = bitmapRes.bitmapDataUrl;
                         result.hexString = bitmapRes.hexString;
                         result.cols = bitmapRes.cols || result.cols;

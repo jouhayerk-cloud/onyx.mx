@@ -551,7 +551,7 @@ export function buildRunItem(source: any): RunItem {
 /** The image outputs of an op, which belong to its photo and to nothing else. */
 const PHOTO_RESULT_KEYS = [
     'cleanedUrl', 'cleanedKey', 'cutoutUrl', 'maskUrl', 'matteUrl', 'outlineSvg', 'svgUrl',
-    'localSegmentationMasks', 'cloudSegmentationMasks', 'segmentation', 'videoGen', 'processedMap',
+    'localSegmentationMasks', 'cloudSegmentationMasks', 'segmentation', 'videoGen', 'processedMap', 'sources',
 ] as const;
 const PHOTO_PROCESSES: readonly ProcessId[] = [...IMAGE_PROCESSES, 'video_proc'];
 
