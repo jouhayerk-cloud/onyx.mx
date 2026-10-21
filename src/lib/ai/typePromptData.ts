@@ -77,12 +77,12 @@ export const TYPE_PROMPT_SPECS: readonly TypePromptSpec[] = [
             angle: 'How it stands on a flat surface and casts warm ambient illumination through solid translucent stone walls.',
             structure: [
                 'One opening sentence: describe the standing stone luminary with its verified stone variety and dominant color.',
-                'One sentence stating physical dimensions and form geometry including open or closed top if specified.',
+                'One sentence stating physical dimensions and form geometry.',
                 'Two to three bullet points outlining internal socket fitting, surface stability, and light transmission through the stone walls.',
                 'One closing sentence presenting bedside, credenza, or desk placement.',
             ],
             maxWords: 95,
-            facts: ['dimensions', 'form', 'top', 'material', 'colour', 'variety', 'finish'],
+            facts: ['dimensions', 'form', 'material', 'colour', 'variety', 'finish'],
             useCases: [
                 'Bedside nightstand for soft evening reading illumination',
                 'Living room credenza or console table accent light',
@@ -126,12 +126,12 @@ export const TYPE_PROMPT_SPECS: readonly TypePromptSpec[] = [
             angle: 'How this towering monolith anchors a room perimeter or corner while projecting a tall column of illuminated translucent stone.',
             structure: [
                 'One opening sentence: identify as a freestanding tall floor luminary with its stone variety and color tone.',
-                'One sentence reporting total height, footprint dimensions, and top aperture construction.',
+                'One sentence reporting total height and footprint dimensions.',
                 'Two to three bullet points covering floor base stability, vertical light diffusion, and internal electrical assembly.',
                 'One closing sentence featuring architectural placement in living rooms, entry halls, or lounges.',
             ],
             maxWords: 100,
-            facts: ['dimensions', 'form', 'top', 'material', 'colour', 'variety', 'finish'],
+            facts: ['dimensions', 'form', 'material', 'colour', 'variety', 'finish'],
             useCases: [
                 'Living room corner casting vertical ambient light against adjacent walls',
                 'Grand foyer or entryway welcoming guests with full-height illumination',
@@ -1055,9 +1055,9 @@ export const FAMILY_826_SPECS: readonly Family826Spec[] = [
         typeIds: ['pendant', 'table-lamp', 'floor-lamp'],
         lit: true,
         descriptionNoun: 'Luminary',
-        angle: 'Standing or suspended stone luminary with material, variety, colour, shape, top, dimensions, and how light passes through translucent stone.',
+        angle: 'Standing or suspended stone luminary with material, variety, colour, shape, dimensions, and how light passes through translucent stone.',
         structure: [
-            'Sentence 1: Identify as a stone luminary with material variety, colour tone, shape, top (open or closed), size, and weight if recorded.',
+            'Sentence 1: Identify as a stone luminary with material variety, colour tone, shape, size, and weight if recorded.',
             'Sentence 2-3: Light transmission: translucent stone emits a soft, even glow when lit.',
             'Sentence 4-5: Room placement: corner, kitchen island, dining table, or reading area.',
             'Sentence 6: Mention top is confirmed by the team before publication, and cord/wiring checked with sales team.',
