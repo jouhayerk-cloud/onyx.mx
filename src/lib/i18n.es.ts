@@ -2539,6 +2539,8 @@ export const esCatalog: Record<string, string> = {
   'Re-clean {n} photos': 'Volver a limpiar {n} fotos',
   'A new background clean on all {photos} photos of {items} items with the {engine} engine, including photos that already have one. Hero-only is switched off.': 'Una nueva limpieza de fondo en las {photos} fotos de {items} artículos con el motor {engine}, incluidas las que ya tienen una. Se desactiva Solo foto principal.',
   'Catalog Hub': 'Catalog Hub',
+  'Options': 'Opciones',
+  'Back to items': 'Volver a los artículos',
   'Cleaning engine': 'Motor de limpieza',
   'All photos per item, or only the first. Hero-only is cheaper (roughly half the images) but leaves the rest uncleaned.': 'Todas las fotos de cada artículo o solo la primera. Solo la principal cuesta menos (cerca de la mitad de imágenes) pero deja el resto sin limpiar.',
   'Hero photo only': 'Solo foto principal',

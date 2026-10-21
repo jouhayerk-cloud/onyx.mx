@@ -28,8 +28,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { createPortal } from 'react-dom';
 import {
-    Bot, Check, Copy, Crop, Eraser, FileSpreadsheet, FileText, ImageUp, KeyRound, Play, RefreshCw,
-    RotateCcw, Save, Search, Sparkles, Square, Upload, Wand2, X, XCircle,
+    Bot, Check, ChevronLeft, Copy, Crop, Eraser, FileSpreadsheet, FileText, ImageUp, KeyRound, Play, RefreshCw,
+    RotateCcw, Save, Search, SlidersHorizontal, Sparkles, Square, Upload, Wand2, X, XCircle,
 } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
 import ExcelJS from 'exceljs';
@@ -284,7 +284,7 @@ function etaLabel(ms: number | null): string | undefined {
     return min < 1 ? tr('under a minute left') : trf('about {n} min left', { n: min });
 }
 
-function useNarrow(query = '(max-width: 1020px)'): boolean {
+function useNarrow(query = '(max-width: 1024px)'): boolean {
     const get = () => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches;
     const [narrow, setNarrow] = useState(get);
     useEffect(() => {
@@ -690,7 +690,11 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
     const [makingXlsx, setMakingXlsx] = useState(false);
     const [makingPdf, setMakingPdf] = useState(false);
 
+    // Tablet and phone stack: the details open over the list. Phone also moves the run options into a sheet.
     const narrow = useNarrow();
+    const phone = useNarrow('(max-width: 640px)');
+    const [optionsOpen, setOptionsOpen] = useState(false);
+    useEffect(() => { if (!phone) setOptionsOpen(false); }, [phone]);
 
     // Object URLs are released when the hub closes.
     const urlsRef = useRef<string[]>([]);
@@ -1266,6 +1270,9 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
             variant={narrow ? 'overlay' : 'inline'}
             open={narrow ? overlayOpen : true}
             onClose={narrow ? () => setOverlayOpen(false) : undefined}
+            actions={phone ? (
+                <Key size="sm" variant="quiet" className="hub-back" icon={<ChevronLeft size={16} />} onClick={() => setOverlayOpen(false)}>{tr('Back to items')}</Key>
+            ) : undefined}
             label={`${tr('Item review')}: ${current.label}`}
             title={
                 <>
@@ -1279,6 +1286,41 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
             <p className="hub-name">{nameOf(current)}{sizeOf(current) ? ` · ${sizeOf(current)}` : ''}</p>
             {drawerBody(current)}
         </Drawer>
+    );
+
+    // The process chips and run options: a row in the top bar, a sheet on a phone.
+    const optionControls = (
+        <>
+            <ProcessChips value={processes} onChange={setProcesses} disabled={run.isRunning} />
+            <span className="hub-sep" aria-hidden="true" />
+            <div className="hub-opts__sel">
+                <div className="hub-opt">
+                    <span className="hub-opt__label" aria-hidden="true">{tr('Background')}</span>
+                    <Segmented<ProcessingMode>
+                        label={tr('Cleaning engine')}
+                        value={mode}
+                        onChange={setMode}
+                        options={MODE_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
+                    />
+                </div>
+                {mode === 'bgreplace' && (
+                    <div className="hub-opt">
+                        <span className="hub-opt__label" aria-hidden="true">{tr('Room')}</span>
+                        <Segmented<BgRoom>
+                            label={tr('Studio room')}
+                            value={room}
+                            onChange={setRoom}
+                            disabled={run.isRunning}
+                            options={ROOM_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
+                        />
+                    </div>
+                )}
+                <Chip pressed={heroOnly} onPressedChange={setHeroOnly}
+                    title={tr('All photos per item, or only the first. Hero-only is cheaper (roughly half the images) but leaves the rest uncleaned.')}>
+                    {tr('Hero photo only')}
+                </Chip>
+            </div>
+        </>
     );
 
     const filterTabs = [
@@ -1362,7 +1404,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                             </div>
                         </div>
                         <div className="hub-bar__end">
-                            <Key variant="stop" icon={<Square size={12} />} disabled={!run.isRunning} onClick={run.stop}>{tr('Stop')}</Key>
+                            <Key variant="stop" className="hub-stop" iconOnly={phone} label={tr('Stop')} icon={<Square size={12} />} disabled={!run.isRunning} onClick={run.stop}>{tr('Stop')}</Key>
                             <Key variant="go" icon={<Play size={13} />} busy={run.isRunning && runTargets.length === 0} disabled={runTargets.length === 0}
                                 title={tickedIds.length
                                     ? tr('Run every ticked process on the ticked items, replacing what they have')
@@ -1370,41 +1412,16 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                                 onClick={handleRun}>
                                 {trf('Run {n}', { n: runTargets.length })}
                             </Key>
-                            <Key iconOnly variant="quiet" icon={<KeyRound size={15} />} label={tr('Gemini API key')}
-                                onClick={() => { pendingRef.current = null; setKeyDraft(''); setShowKey(true); }} />
+                            {phone
+                                ? <Key iconOnly variant="quiet" icon={<SlidersHorizontal size={16} />} label={tr('Options')}
+                                    aria-haspopup="dialog" aria-expanded={optionsOpen} onClick={() => setOptionsOpen(true)} />
+                                : <Key iconOnly variant="quiet" icon={<KeyRound size={15} />} label={tr('Gemini API key')}
+                                    onClick={() => { pendingRef.current = null; setKeyDraft(''); setShowKey(true); }} />}
                             <Key iconOnly variant="quiet" className="hub-close" icon={<X size={16} />} label={tr('Close')} onClick={handleClose} />
                         </div>
                     </div>
-                    {/* Row 2: what to run and how, grouped. */}
-                    <div className="hub-opts">
-                        <ProcessChips value={processes} onChange={setProcesses} disabled={run.isRunning} />
-                        <span className="hub-sep" aria-hidden="true" />
-                        <div className="hub-opt">
-                            <span className="hub-opt__label" aria-hidden="true">{tr('Background')}</span>
-                            <Segmented<ProcessingMode>
-                                label={tr('Cleaning engine')}
-                                value={mode}
-                                onChange={setMode}
-                                options={MODE_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
-                            />
-                        </div>
-                        {mode === 'bgreplace' && (
-                            <div className="hub-opt">
-                                <span className="hub-opt__label" aria-hidden="true">{tr('Room')}</span>
-                                <Segmented<BgRoom>
-                                    label={tr('Studio room')}
-                                    value={room}
-                                    onChange={setRoom}
-                                    disabled={run.isRunning}
-                                    options={ROOM_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
-                                />
-                            </div>
-                        )}
-                        <Chip pressed={heroOnly} onPressedChange={setHeroOnly}
-                            title={tr('All photos per item, or only the first. Hero-only is cheaper (roughly half the images) but leaves the rest uncleaned.')}>
-                            {tr('Hero photo only')}
-                        </Chip>
-                    </div>
+                    {/* Row 2: what to run and how, grouped. On a phone these live in the Options sheet. */}
+                    {!phone && <div className="hub-opts">{optionControls}</div>}
                 </header>
 
                 {/* ── Filters, search and the batch tools ── */}
@@ -1416,6 +1433,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                     controls="hub-list"
                     end={
                         <div className="hub-tools">
+                            <div className="hub-tools__acts">
                             <Key size="sm" variant="quiet" icon={<Check size={12} />}
                                 onClick={() => setTicked(allShownTicked ? new Set() : new Set(visible.map(it => it.id)))}>
                                 {allShownTicked ? tr('Untick all') : tickedIds.length ? trf('{n} ticked', { n: tickedIds.length }) : tr('Tick shown')}
@@ -1439,6 +1457,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                                 onClick={() => setConfirm({ kind: 'clear', ids: actTargets })}>
                                 {tickedIds.length ? tr('Clear AI data (ticked)') : tr('Clear AI data')}
                             </Key>
+                            </div>
                             <label className="hub-search">
                                 <Search size={13} aria-hidden="true" />
                                 <Input type="search" value={query} onChange={(e) => setQuery(e.target.value)}
@@ -1549,6 +1568,23 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                 />
 
                 {confirmDialog}
+
+                {phone && (
+                    <Drawer
+                        variant="overlay"
+                        open={optionsOpen}
+                        onClose={() => setOptionsOpen(false)}
+                        title={tr('Options')}
+                        className="hub-optsheet"
+                        footer={<Key variant="go" className="hub-optsheet__done" onClick={() => setOptionsOpen(false)}>{tr('Done')}</Key>}
+                    >
+                        <div className="hub-opts hub-opts--sheet">{optionControls}</div>
+                        <Key icon={<KeyRound size={15} />}
+                            onClick={() => { setOptionsOpen(false); pendingRef.current = null; setKeyDraft(''); setShowKey(true); }}>
+                            {tr('Gemini API key')}
+                        </Key>
+                    </Drawer>
+                )}
 
                 {showKey && (
                     <Dialog title={tr('Gemini API key')} onCancel={() => { setShowKey(false); pendingRef.current = null; run.clearRunError(); }}

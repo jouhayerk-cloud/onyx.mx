@@ -35,6 +35,7 @@
     height: 100%;
     min-width: 0;
     min-height: 0;
+    overflow-x: hidden;
     /* A phone's notch and home bar. */
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
@@ -49,6 +50,7 @@
     flex-wrap: nowrap;
     align-items: stretch;
     gap: 8px;
+    padding: 12px 16px;
 }
 
 #batchproc .hub-bar__top {
@@ -80,7 +82,16 @@
 }
 
 #batchproc .hub-opts .ui-chips {
-    gap: 6px 14px;
+    gap: 8px 16px;
+}
+
+/* The engine / room / hero group wraps as one unit. */
+#batchproc .hub-opts__sel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    min-width: 0;
 }
 
 #batchproc .hub-opts .ui-chip,
@@ -96,17 +107,21 @@
 }
 
 #batchproc .hub-opt__label {
-    color: var(--ui-faint);
-    font: 700 10px/1 var(--ui-font-display);
-    letter-spacing: 0.1em;
+    color: var(--ui-dim);
+    font: 700 10.5px/1 var(--ui-font-display);
+    letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
 #batchproc .hub-brand {
     display: flex;
     align-items: center;
-    gap: 9px;
-    margin-right: 6px;
+    gap: 8px;
+    margin-right: 8px;
+    min-width: 0;
+}
+
+#batchproc .hub-brand > div {
     min-width: 0;
 }
 
@@ -122,16 +137,20 @@
 }
 
 #batchproc .hub-brand__name {
-    font: 800 13px/1.1 var(--ui-font-display);
-    letter-spacing: 0.02em;
+    overflow: hidden;
+    font: 800 14px/1.2 var(--ui-font-display);
+    letter-spacing: 0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #batchproc .hub-brand__facts {
     display: block;
-    color: var(--ui-faint);
-    font: 700 10px/1.3 var(--ui-font-display);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    overflow: hidden;
+    color: var(--ui-dim);
+    font: 600 11px/1.3 var(--ui-font-display);
+    letter-spacing: 0.04em;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
@@ -148,7 +167,20 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
-    gap: 6px;
+    gap: 8px;
+}
+
+#batchproc .hub-tools__acts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+}
+
+#batchproc .ui-ftabs {
+    padding-inline: 16px;
 }
 
 #batchproc .hub-search {
@@ -171,6 +203,11 @@
     padding-left: 26px;
     font-weight: 400;
     font-size: 12px;
+}
+
+#batchproc .hub-search .ui-input:focus-visible {
+    outline: 2px solid var(--ui-accent-text);
+    outline-offset: 1px;
 }
 
 /* ══ Rows beside the drawer ═══════════════════════════════════════════════ */
@@ -199,13 +236,13 @@
 }
 
 #batchproc .hub-untitled {
-    color: var(--ui-faint);
+    color: var(--ui-dim);
     font-weight: 400;
     font-style: italic;
 }
 
 #batchproc .hub-nophoto {
-    color: var(--ui-faint);
+    color: var(--ui-dim);
     font-size: 11px;
 }
 
@@ -290,7 +327,8 @@
    Thick segmented track (saved / running / failed / queued ...), count pills,
    the item being worked on, and the overall percentage. */
 #batchproc .hub-prog {
-    gap: 10px 16px;
+    gap: 8px 16px;
+    padding: 12px 16px;
 }
 
 #batchproc .hub-prog__main {
@@ -327,7 +365,8 @@
     border-radius: var(--ui-r-pill);
     background-color: var(--ui-well);
     color: var(--ui-dim);
-    font: 700 10.5px/1.2 var(--ui-font-display);
+    font: 700 11px/1.2 var(--ui-font-display);
+    font-variant-numeric: tabular-nums;
     letter-spacing: 0.03em;
 }
 
@@ -361,6 +400,8 @@
     margin-left: auto;
     color: var(--ui-ink);
     font: 800 12px/1.2 var(--ui-font-display);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 #batchproc .hub-prog__track {
@@ -382,16 +423,75 @@ body:has(#batchproc) .ui-root.ui-drawer-scrim { z-index: 10110; }
 body:has(#batchproc) .ui-root.ui-drawer--overlay { z-index: 10111; }
 body:has(#batchproc) .onyx-island-layer:has(.onyx-island--peek, .onyx-island--card) { z-index: 10200; }
 
-/* ══ Narrow screens ═══════════════════════════════════════════════════════
-   On a phone the top bar, the filter row and the run bar wrap onto many
-   lines; held fixed around their own scrolling list they left it about one
-   row tall. So below 640px the whole hub is the scroller: the top bar and
-   the filter row scroll away with the rows, the run bar stays pinned to the
-   bottom on two lines (track, then one swipeable row of actions; the legend
-   is aria-hidden and the track carries the same counts), and Close stays on
-   the brand line. */
+/* Rows and drawer breathe on the same 8px scale as the bars. */
+#batchproc .ui-row {
+    padding-inline: 16px;
+}
+
+.ui-root .hub-drawer .ui-drawer__head,
+.ui-root .hub-drawer .ui-drawer__foot {
+    padding-inline: 16px;
+}
+
+.ui-root .hub-drawer .ui-drawer__body {
+    gap: 16px;
+    padding: 16px;
+}
+
+.ui-root .hub-drawer .ui-drawer__foot {
+    gap: 8px;
+}
+
+/* Back control: only the phone sheet shows it. */
+.ui-root .hub-back {
+    display: none;
+}
+
+/* ══ Sheets (details and run options) ═════════════════════════════════════
+   Opened from <body> by the kit's overlay Drawer (focus trap, Escape, scrim,
+   focus returns to the opener). Only transform and opacity move. */
+@keyframes hub-sheet-in {
+    from { transform: translateY(32px); opacity: 0; }
+}
+
+@keyframes hub-scrim-in {
+    from { opacity: 0; }
+}
+
+body:has(#batchproc) .ui-root.ui-drawer-scrim {
+    animation: hub-scrim-in 0.2s ease-out;
+}
+
+/* ══ Tablet (641px - 1024px) ══════════════════════════════════════════════
+   The list is full width and the details open over it as a side panel: list
+   and details side by side would leave the list too narrow, and the details
+   never go under 420px. The bar keeps its two rows; the process chips take
+   the first, the engine / room / hero group the second. */
+@media (max-width: 1024px) {
+    #batchproc .hub-opts {
+        gap: 8px 16px;
+    }
+    #batchproc .hub-opts .hub-sep {
+        display: none;
+    }
+    #batchproc .hub-opts > .ui-chips {
+        flex: 1 1 100%;
+    }
+    body:has(#batchproc) .ui-root.ui-drawer--overlay {
+        width: min(480px, 100vw);
+    }
+}
+
+/* ══ Phone (up to 640px) ══════════════════════════════════════════════════
+   The whole hub is the scroller. The bar is one compact row, pinned to the
+   top (brand, Stop while running, Run, Options, Close); the filters and the
+   rows scroll under it; the progress bar is pinned to the bottom above the
+   home indicator. Rows are stacked cards; the details and the options are
+   sheets. Every control is 44px. */
 @media (max-width: 640px) {
     #batchproc .hub {
+        padding-top: 0;
+        padding-bottom: 0;
         overflow-y: auto;
         overscroll-behavior: contain;
     }
@@ -403,41 +503,316 @@ body:has(#batchproc) .onyx-island-layer:has(.onyx-island--peek, .onyx-island--ca
     }
     #batchproc .hub-list {
         overflow: visible;
+        padding: 8px 12px 16px;
     }
+
+    /* Bar: one row, pinned. */
     #batchproc .hub-bar {
-        padding-right: 60px;
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
     }
-    #batchproc .hub-opts .hub-sep {
+    #batchproc .hub-bar__top {
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+    #batchproc .hub-bar__end {
+        flex: none;
+        flex-wrap: nowrap;
+        gap: 4px;
+    }
+    #batchproc .hub-brand {
+        flex: 1 1 auto;
+        margin-right: 0;
+    }
+    #batchproc .hub-stop:disabled {
         display: none;
     }
-    #batchproc .hub-close {
-        position: absolute;
-        top: 10px;
-        right: 12px;
+
+    /* Keys, chips and segments: 44px targets. */
+    #batchproc .ui-key,
+    .ui-root.hub-drawer .ui-key,
+    .ui-root .hub-drawer .ui-key,
+    .ui-root.ui-drawer--overlay .ui-key {
+        min-height: 44px;
+        height: 44px;
+        font-size: 12px;
+    }
+    #batchproc .ui-key--icon,
+    .ui-root.ui-drawer--overlay .ui-key--icon {
+        width: 44px;
+    }
+    #batchproc .ui-chip,
+    #batchproc .ui-seg,
+    #batchproc .hub-opts .ui-chip,
+    #batchproc .hub-opts .ui-seg,
+    .ui-root .hub-opts--sheet .ui-chip,
+    .ui-root .hub-opts--sheet .ui-seg {
+        height: 44px;
+        min-height: 44px;
+    }
+    #batchproc .ui-chip,
+    #batchproc .ui-seg__opt,
+    .ui-root .hub-opts--sheet .ui-chip {
+        padding-inline: 14px;
+        font-size: 12px;
+    }
+
+    /* Filters: tabs swipe, tools stack. */
+    #batchproc .ui-ftabs {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        padding: 0;
+    }
+    #batchproc .ui-ftabs__list {
+        flex-wrap: nowrap;
+        gap: 0 20px;
+        padding-inline: 12px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+    #batchproc .ui-ftabs__list::-webkit-scrollbar,
+    #batchproc .hub-tools__acts::-webkit-scrollbar,
+    #batchproc .hub-prog__pills::-webkit-scrollbar,
+    #batchproc .ui-runbar__actions::-webkit-scrollbar {
+        display: none;
+    }
+    #batchproc .ui-ftab {
+        flex: none;
+        min-height: 44px;
+        padding-block: 0;
+        font-size: 12px;
+    }
+    #batchproc .ui-ftabs__end {
+        flex: none;
+        width: 100%;
+        padding: 8px 12px;
     }
     #batchproc .hub-tools {
+        flex-direction: column;
+        align-items: stretch;
         justify-content: flex-start;
-    }
-    #batchproc .hub-search {
+        gap: 8px;
         width: 100%;
     }
+    #batchproc .hub-search {
+        order: -1;
+        width: 100%;
+    }
+    #batchproc .hub-search > svg {
+        left: 12px;
+    }
+    #batchproc .hub-search .ui-input {
+        min-height: 44px;
+        padding-left: 36px;
+        font-size: 16px;
+    }
+    #batchproc .hub-tools__acts {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+    #batchproc .hub-tools__acts > * {
+        flex: none;
+    }
+
+    /* Item cards: check | tag + title + thumbs | state + steps. */
+    #batchproc .ui-list--fold .ui-row {
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        grid-template-areas:
+            "c i s"
+            "c t t"
+            "c m p";
+        gap: 4px 8px;
+        align-items: center;
+        min-height: 88px;
+        margin-bottom: 8px;
+        padding: 8px 12px 8px 0;
+        border: 1px solid var(--ui-edge);
+        border-radius: var(--ui-r-lg);
+        background-color: var(--ui-surface);
+    }
+    #batchproc .ui-list--fold .ui-row > :nth-child(1) {
+        align-self: start;
+    }
+    #batchproc .ui-list--fold .ui-row > :nth-child(5) {
+        display: flex;
+        grid-area: p;
+        justify-content: flex-end;
+    }
+    #batchproc .ui-row__check {
+        width: 44px;
+        height: 44px;
+        margin: 0;
+    }
+    #batchproc .ui-row__box {
+        width: 20px;
+        height: 20px;
+    }
+    #batchproc .ui-row__title {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        font-size: 14px;
+        line-height: 1.3;
+    }
+    #batchproc .ui-row__sub {
+        font-size: 12px;
+    }
+    #batchproc .ui-thumb {
+        width: 44px;
+        height: 44px;
+    }
+    #batchproc .ui-step {
+        min-width: 24px;
+        height: 24px;
+        font-size: 10px;
+    }
+
+    /* Progress: pinned, track + counts + current item, above the home bar. */
     #batchproc .ui-runbar {
         position: sticky;
         bottom: 0;
         z-index: 3;
         gap: 8px;
-        padding-block: 8px;
+        padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+        background-color: var(--ui-ground);
+    }
+    #batchproc .hub-prog__main {
+        flex: 1 1 100%;
+        gap: 4px;
+    }
+    #batchproc .hub-prog__head {
+        flex-wrap: wrap;
+        gap: 4px 8px;
+    }
+    #batchproc .hub-prog__pills {
+        flex: 1 1 0;
+        flex-wrap: nowrap;
+        min-width: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    #batchproc .hub-prog__pill {
+        flex: none;
+    }
+    #batchproc .hub-prog__pct {
+        order: 2;
+        margin-left: 0;
     }
     #batchproc .hub-prog__now {
+        order: 3;
         flex-basis: 100%;
     }
     #batchproc .ui-runbar__actions {
         flex-wrap: nowrap;
         width: 100%;
+        margin-left: 0;
         overflow-x: auto;
         overscroll-behavior-x: contain;
+        scrollbar-width: none;
     }
     #batchproc .ui-runbar__actions > * {
         flex: none;
+    }
+    #batchproc .hub-brand-select {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    /* Bottom sheets: the details (nearly full height, with a Back control)
+       and the run options (as tall as their content). */
+    body:has(#batchproc) .ui-root.ui-drawer--overlay {
+        top: calc(env(safe-area-inset-top) + 12px);
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding-top: 0;
+        border-top: 1px solid var(--ui-rim);
+        border-left: 0;
+        border-radius: 18px 18px 0 0;
+        animation: hub-sheet-in 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    body:has(#batchproc) .ui-root.ui-drawer--overlay.hub-optsheet {
+        top: auto;
+        max-height: calc(100dvh - env(safe-area-inset-top) - 48px);
+    }
+    .ui-root.ui-drawer--overlay .ui-drawer__head {
+        min-height: 56px;
+        padding-inline: 12px;
+    }
+    .ui-root.ui-drawer--overlay .ui-drawer__foot {
+        padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    }
+    .ui-root.ui-drawer--overlay .ui-drawer__body {
+        padding: 16px 12px;
+    }
+    .ui-root.ui-drawer--overlay .ui-drawer__title {
+        flex-wrap: wrap;
+    }
+    /* Back replaces the bare X on the details sheet. */
+    .ui-root.ui-drawer--overlay.hub-drawer .hub-back {
+        display: inline-flex;
+        order: -1;
+        margin-left: -4px;
+    }
+    .ui-root.ui-drawer--overlay.hub-drawer .ui-drawer__head > .ui-key--icon {
+        display: none;
+    }
+
+    /* Options sheet: groups stacked, segments full width. */
+    .ui-root .hub-opts--sheet,
+    .ui-root .hub-opts--sheet .hub-opts__sel {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+    .ui-root .hub-opts--sheet .hub-sep {
+        display: none;
+    }
+    .ui-root .hub-opts--sheet .hub-opt {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .ui-root .hub-opts--sheet .ui-seg {
+        display: flex;
+        width: 100%;
+    }
+    .ui-root .hub-opts--sheet .ui-seg__opt {
+        flex: 1 1 0;
+        justify-content: center;
+        padding-inline: 4px;
+    }
+    .ui-root .hub-opts--sheet .ui-chips,
+    .ui-root .hub-opts--sheet .ui-chips__set {
+        gap: 8px;
+    }
+    .ui-root .hub-opts--sheet .ui-chips__label {
+        flex-basis: 100%;
+        margin: 0;
+    }
+    .ui-root .hub-optsheet__done {
+        flex: 1 1 auto;
+    }
+}
+
+/* ══ Motion ═══════════════════════════════════════════════════════════════
+   The sheets keep their content and drop the travel. */
+@media (prefers-reduced-motion: reduce) {
+    body:has(#batchproc) .ui-root.ui-drawer--overlay,
+    body:has(#batchproc) .ui-root.ui-drawer-scrim {
+        animation: none;
     }
 }
