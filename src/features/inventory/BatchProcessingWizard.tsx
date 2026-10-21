@@ -1001,11 +1001,13 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         setHeroOnly(false);
         const dirty = ids.filter(id => run.get(id)?.dirty);
         const fresh = ids.filter(id => !run.get(id)?.dirty);
+        // The mask, PNG, SVG and hex map are cut from the cleaned photo, so a new clean redoes the ticked ones too
+        const only: ProcessId[] = ['img_clean', ...(['image_segmentation', 'hex_map'] as ProcessId[]).filter(p => processes.has(p))];
         const go = () => {
             void launch(() => Promise.all([
                 // Unsaved results are kept: a retry re-runs only the clean.
-                dirty.length ? run.retry(dirty, { processes: ['img_clean'], heroOnly: false }) : Promise.resolve({ started: 0 }),
-                fresh.length ? run.start(fresh, { processes: ['img_clean'], heroOnly: false }) : Promise.resolve({ started: 0 }),
+                dirty.length ? run.retry(dirty, { processes: only, heroOnly: false }) : Promise.resolve({ started: 0 }),
+                fresh.length ? run.start(fresh, { processes: only, heroOnly: false }) : Promise.resolve({ started: 0 }),
             ]), go, ids);
         };
         go();
