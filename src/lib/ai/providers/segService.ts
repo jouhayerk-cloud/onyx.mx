@@ -4,6 +4,11 @@
  * Images go only to this address, never anywhere else.
  */
 export const SEG_SERVICE_URL = 'http://127.0.0.1:8002';
+/** The same service through Tailscale Serve (tailnet only), for phones and other devices signed into the tailnet. */
+export const SEG_SERVICE_TAILSCALE_URL = 'https://g7.tail2a809e.ts.net/seg';
+const SEG_BASES = [SEG_SERVICE_URL, SEG_SERVICE_TAILSCALE_URL];
+/** The address the last health check reached; segmentImage uses it. */
+let activeBase = SEG_SERVICE_URL;
 export const SEG_SOURCE = 'sam2-local';
 export const SEG_LOCAL_EVENT = 'onyx-seg-local';
 
@@ -29,13 +34,16 @@ const HEALTH_TTL = 30_000;
 export async function segServiceHealth(force = false): Promise<SegHealth | null> {
     if (!force && healthCache && Date.now() - healthCache.at < HEALTH_TTL) return healthCache.value;
     let value: SegHealth | null = null;
-    try {
-        const res = await fetch(`${SEG_SERVICE_URL}/health`, { signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-            const j = await res.json();
-            if (j && j.ok) value = { ok: true, models: { birefnet: !!j.models?.birefnet, sam2: !!j.models?.sam2 }, busy: !!j.busy };
-        }
-    } catch { /* offline */ }
+    // This PC first, then Tailscale (a phone's 127.0.0.1 is the phone itself)
+    for (const base of SEG_BASES) {
+        try {
+            const res = await fetch(`${base}/health`, { signal: AbortSignal.timeout(base === SEG_SERVICE_URL ? 2000 : 4000) });
+            if (res.ok) {
+                const j = await res.json();
+                if (j && j.ok) { value = { ok: true, models: { birefnet: !!j.models?.birefnet, sam2: !!j.models?.sam2 }, busy: !!j.busy }; activeBase = base; break; }
+            }
+        } catch { /* not reachable at this address */ }
+    }
     healthCache = { at: Date.now(), value };
     return value;
 }
@@ -86,7 +94,7 @@ export async function segmentImage(dataUrl: string, mode: SegMode, opts: SegOpti
     const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
     let res: Response;
     try {
-        res = await fetch(`${SEG_SERVICE_URL}/v1/segment`, {
+        res = await fetch(`${activeBase}/v1/segment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
