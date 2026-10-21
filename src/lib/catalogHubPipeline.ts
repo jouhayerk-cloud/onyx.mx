@@ -229,7 +229,7 @@ async function matteFromCutout(cutoutUrl: string): Promise<string> {
  * once, as xlink:href, which browsers and older viewers all read (writing it
  * as href too doubled the file).
  */
-async function cutoutSvgDocument(path: string, width: number, height: number, cutoutDataUrl: string): Promise<string> {
+async function cutoutSvgDocument(path: string, width: number, height: number, cutoutDataUrl: string, fillRule: 'nonzero' | 'evenodd' = 'nonzero'): Promise<string> {
     const d = (path || '').trim();
     if (!d) return '';
     if (d.startsWith('<svg')) return d;
@@ -250,7 +250,7 @@ async function cutoutSvgDocument(path: string, width: number, height: number, cu
     // so the outline shows on both light and dark backgrounds.
     const sw = Math.max(2, Math.round(Math.max(width, height) / 500));
     return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
-        + `<path d="${d}" fill="#7a8a8c" fill-opacity="0.22" fill-rule="nonzero"/>`
+        + `<path d="${d}" fill="#7a8a8c" fill-opacity="0.22" fill-rule="${fillRule}"/>`
         + image
         + `<path d="${d}" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="${sw * 2}" stroke-linejoin="round" stroke-linecap="round"/>`
         + `<path d="${d}" fill="none" stroke="#0b6f7c" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>`
@@ -581,26 +581,43 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
              * The local SAM 2 service: cutout, matte, outline and a white-backdrop image in one call. Null when the
              * switch is off, the service is down or it fails (one warning per item), and the caller runs its own pipeline.
              */
+            // Same aspect ratio, long side at most `max`: resizeImage letterboxes into a padded square,
+            // which the service would segment as part of the picture.
+            const aspectDataUrl = async (src: string, max: number): Promise<string> => {
+                const img = await loadImage(src);
+                const k = Math.min(1, max / Math.max(img.width, img.height));
+                const c = document.createElement('canvas');
+                c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+                c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+                return canvasToDataUrl(c, 'image/jpeg', 0.95);
+            };
+            // The path data of the service's SVG (`frame` ring for mirrors, else `outline`)
+            const servicePath = (svg: string): string => {
+                const m = /<path[^>]*id="(?:frame|outline)"[^>]*\sd="([^"]+)"/.exec(svg) || /<path[^>]*\sd="([^"]+)"/.exec(svg);
+                return m ? m[1] : '';
+            };
             const serviceCut = async (src: string): Promise<Cutout | null> => {
                 if (!(await segServiceUsable())) return null;
                 try {
                     updateOp(op.id, { progress: 15, stepLabel: 'Local segmentation (SAM 2)...' });
                     logOp(op.id, '[ WAIT ] Local segmentation service...');
                     const segMode: SegMode = resolve826TypeId(item.type, item.shape) === 'mirror' || /mirror|espejo/i.test(item.type || '') ? 'mirror' : 'object';
-                    const sent = await resizeImage(src, 1024);
-                    const r = await segmentImage(sent, segMode, { signal: cancel.signal });
+                    const sent = await aspectDataUrl(src, 1536);
+                    const r = await segmentImage(sent, segMode, { signal: cancel.signal, maxSide: 1536 });
                     if (cancelTokens.current[op.id]) throw new AiCancelledError();
                     const cutoutDataUrl = r.cutoutPng || r.whitePng;
                     if (!cutoutDataUrl) throw new Error('No cutout in the answer');
                     if (r.whitePng) segWhite = r.whitePng;
                     const dim = await loadImage(cutoutDataUrl);
                     logOp(op.id, `[  OK  ] Local segmentation done (${segMode})`);
+                    const pathD = servicePath(r.svg || '');
                     return {
                         cutoutDataUrl,
-                        outlineSvg: r.svg,
+                        // the same document the built-in pipeline stores: silhouette, photo, outline
+                        outlineSvg: await cutoutSvgDocument(pathD, dim.width, dim.height, cutoutDataUrl, segMode === 'mirror' ? 'evenodd' : 'nonzero'),
                         matteDataUrl: r.maskPng || undefined,
                         source: SEG_SOURCE,
-                        segmentation: { svgData: r.svg || undefined, cutoutDataUrl, imageWidth: dim.width, imageHeight: dim.height, sourceImageUrl: src, method: 'local' },
+                        segmentation: { svgData: pathD || undefined, cutoutDataUrl, imageWidth: dim.width, imageHeight: dim.height, sourceImageUrl: src, method: 'local' },
                     };
                 } catch (e) {
                     if (e instanceof AiCancelledError || cancelTokens.current[op.id]) throw new AiCancelledError();
