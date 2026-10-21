@@ -1089,7 +1089,24 @@ export function initRunState(): RunState {
     return { items: {}, order: [], opIndex: {}, runIds: [], timing: { count: 0, totalMs: 0 }, runError: null, saving: false };
 }
 
-const isBusy = (it: RunItem) => it.status === 'running' || it.ops.some(o => o.state === 'queued' || o.state === 'running');
+/** Why an item counts as busy (null when it is not): running, or any op queued or running. */
+function busyReason(it: RunItem): string | null {
+    if (it.status === 'running') return 'status is running';
+    const live = it.ops.filter(o => o.state === 'queued' || o.state === 'running');
+    return live.length ? `${live.length} op(s) not settled (${live.map(o => `${o.id}:${o.state}`).join(', ')})` : null;
+}
+
+/** The one busy test: the reducer, the launch guard and the Catalog Hub all use it. */
+export const isBusy = (it: RunItem) => busyReason(it) !== null;
+
+/** Why Accept would be refused for this item, or null when it would go through. */
+export function acceptRefusal(it: RunItem): string | null {
+    const busy = busyReason(it);
+    if (busy) return busy;
+    if (it.saving) return 'a save is in flight';
+    if (!(it.status === 'review' || it.status === 'partial' || (it.dirty && it.status !== 'done'))) return `status ${it.status} cannot be accepted`;
+    return null;
+}
 
 function withItem(state: RunState, id: string, fn: (it: RunItem) => RunItem | null): RunState {
     const it = state.items[id];
@@ -1180,7 +1197,8 @@ export function runReducer(state: RunState, action: RunAction): RunState {
             });
 
         case 'op-start':
-            return withOp(state, action.opId, o => ({ ...o, state: 'running', startedAt: action.at }));
+            // A settled op never runs again: a late start must not bring it back to life under a finished item.
+            return withOp(state, action.opId, o => (o.state === 'settled' ? null : { ...o, state: 'running', startedAt: action.at }));
 
         case 'op-update':
             return withOp(state, action.opId, o => {
@@ -1243,12 +1261,16 @@ export function runReducer(state: RunState, action: RunAction): RunState {
             return { ...next, timing };
         }
 
-        case 'accept':
+        case 'accept': {
+            // The same test as the Catalog Hub's Accept button
+            const cur = state.items[action.itemId];
+            const why = cur ? acceptRefusal(cur) : null;
+            if (cur && why) console.warn(`[Catalog Hub] Accept refused for ${cur.label} (${cur.id}): ${why}`);
             return withItem(state, action.itemId, it => {
-                if (isBusy(it) || it.saving) return null;
-                if (!(it.status === 'review' || it.status === 'partial' || (it.dirty && it.status !== 'done'))) return null;
+                if (acceptRefusal(it)) return null;
                 return { ...it, status: 'done', logs: capLogs([...it.logs, '[  OK  ] Accepted']) };
             });
+        }
 
         case 'reject':
             return withItem(state, action.itemId, it => {
@@ -1649,6 +1671,18 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
 
     const settleIdle = useCallback(() => {
         if (activeRef.current.size || pendingRef.current.length) return;
+        // Idle means no op can be queued or running any more. One the store still
+        // shows so is an orphan: it would keep its item busy for good (Accept
+        // refused on an item that reads "To review"), so it is settled as failed.
+        const st = storeRef.current!.getState();
+        const at = Date.now();
+        for (const id of st.order) {
+            for (const o of st.items[id]?.ops || []) {
+                if (o.state === 'queued' || o.state === 'running') {
+                    storeRef.current!.dispatch({ type: 'op-settled', opId: o.id, at, error: 'The run ended before this step finished' });
+                }
+            }
+        }
         const waiters = idleWaiters.current;
         idleWaiters.current = [];
         donorsRef.current = null;

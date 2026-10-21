@@ -66,7 +66,7 @@ import { saveAiPatch, type AiPatch, type InventoryUpdate } from '../../lib/ai/pe
 import type { ProcessingMode } from '../../lib/catalogHubPipeline';
 import type { BgRoom } from '../../lib/bgReplace';
 import {
-    useAiRun, rowOf, TEXT_PROCESSES,
+    useAiRun, rowOf, TEXT_PROCESSES, isBusy as runIsBusy, acceptRefusal,
     type RunItem, type RunPhoto, type RunItemStatus, type RunProcessStatus, type ProcessId, type SaveOutcome,
 } from '../../lib/ai/run';
 import {
@@ -251,10 +251,11 @@ function missingOf(it: RunItem, selection: ReadonlySet<ProcessId>, heroOnly: boo
     });
 }
 
-const isBusy = (it: RunItem) => it.status === 'running' || it.saving;
+// The engine's own busy test (running, or any op queued/running), plus a save in flight.
+const isBusy = (it: RunItem) => runIsBusy(it) || it.saving;
 
-const canAccept = (it: RunItem) =>
-    !isBusy(it) && (it.status === 'review' || it.status === 'partial' || (it.dirty && it.status !== 'done'));
+// Enabled exactly when the reducer would accept: the same test, not a copy of it.
+const canAccept = (it: RunItem) => acceptRefusal(it) === null;
 
 /** Shape and Type, then the vendor colour and quantity: "Large Bowl · Blue Argentina". */
 function nameOf(it: RunItem): string {
