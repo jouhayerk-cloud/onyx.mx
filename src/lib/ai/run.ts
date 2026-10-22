@@ -772,9 +772,11 @@ export function planFreshLaunch(item: RunItem, selected: ReadonlySet<ProcessId>,
  * Returns null when there is nothing to (re)run; the caller decides what that
  * means, and must not fall back to a fresh launch for an item holding results.
  */
-export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: ReadonlySet<ProcessId> }): { item: RunItem; specs: LaunchSpec[] } | null {
+export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: ReadonlySet<ProcessId>; allow?: ReadonlySet<ProcessId> }): { item: RunItem; specs: LaunchSpec[] } | null {
     if (!item.ops.length) return null;
     const only = opts.only;
+    // Without `only`: what failed or never ran, limited to the ticked processes when `allow` is set
+    const allowed = (p: ProcessId) => !opts.allow || opts.allow.has(p);
     const keyOf = (kind: 'photo' | 'donor', index: number) => `${kind}:${index}`;
     // What a launch of `only` asks of each photo of this item.
     const wanted = new Map<string, PlannedOp>();
@@ -795,7 +797,7 @@ export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: Read
     const fits = (o: RunOp, p: ProcessId) => o.kind === 'donor' ? !hasStills : (o.index === 0 || !HERO_PROCESSES.includes(p));
     const asked = (o: RunOp) => only
         ? o.planned.filter(p => only.has(p))
-        : o.planned.filter(p => o.status[p] === 'failed' || o.status[p] === 'queued' || !o.status[p] || (o.status[p] === 'skipped' && !!o.errors[p]));
+        : o.planned.filter(p => allowed(p) && (o.status[p] === 'failed' || o.status[p] === 'queued' || !o.status[p] || (o.status[p] === 'skipped' && !!o.errors[p])));
     const moved = new Set<ProcessId>();
     for (const o of item.ops) {
         // A donor op on an item that now has photos is replaced whole: its
@@ -1857,7 +1859,8 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
                     continue;
                 }
             } else if (mode === 'retry') {
-                planned = planRetryLaunch(it, { processingMode, seq });
+                // The ticked processes decide what a retry may re-run: an unticked one never spends a call
+                planned = planRetryLaunch(it, { processingMode, seq, allow: selection });
             } else if (holdsResults) {
                 planned = planRetryLaunch(it, { processingMode, seq, heroOnly, only: selection });
                 if (!planned) {
@@ -1866,9 +1869,8 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
                 }
             }
             if (!planned) {
-                // A retry with nothing left to retry regenerates the item's
-                // last selection (or the current one if it never ran).
-                const sel = mode === 'retry' && !opts.processes && it.selected.length ? new Set(it.selected) : selection;
+                // A retry with nothing left to retry regenerates the ticked processes.
+                const sel = selection;
                 planned = holdsResults
                     ? planRetryLaunch(it, { processingMode, seq, heroOnly, only: sel })
                     : planFreshLaunch(it, sel, { processingMode, seq, heroOnly });
