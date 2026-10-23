@@ -884,5 +884,28 @@
    "- Enhanced the trucking module with landscape and portrait layouts, free-floating icons, and drag functionality."
   ],
   "source": "colibri"
+ },
+ "2026-10-23": {
+  "head": "1a75656",
+  "lines": [
+   "- feat(auth): Chrome can save/fill the login, Forgot password with new-password step, ask the browser to keep site storage",
+   "- Merge branch 'swarm/PACK1' into review/juan117-ready",
+   "- chore: refresh package-lock after removing unused deps",
+   "- Merge branch 'swarm/LEAN1' into review/juan117-ready",
+   "- TRUCKIN: fit iso view to its real extents, readable empty iso trailer, responsive hub and bottom bar",
+   "- fix(trucking): glass hub floats over the trailer map (map scrolls behind it); zoom changes only when the user zooms (one fit on open)",
+   "- fix(trucking): column fits the screen (controls no longer pushed off), views centre on the drawing after each fit, iso sized by zoom, hub one glass layer",
+   "- feat(island): All tools as Universal Tools Bar rows, one per group (drops tile grid, Pinned/Recent repeats and density switch)",
+   "- fix(trucking): island tools pinned (Panels, PLAN/DPLYD, Drafts, Save, Export, Ready Truck); hub starts below the island",
+   "- fix(security): stop shipping the label cypher key in the bundle (codes come from the DB trigger onyx_cypher)"
+  ],
+  "source": "git"
+ },
+ "2026-10-22": {
+  "head": "2ae99fc",
+  "lines": [
+   "- feat(settings): build log 2.0 from main's deploy days, summarised by local Colibri; version shows 2.0.<commit>"
+  ],
+  "source": "git"
  }
 }

@@ -2,6 +2,23 @@
 
 One entry per deploy day on main. Version 2.0.<commit>. Summaries written by the local Colibri model.
 
+## [2.0.1a75656] - 2026-10-23
+### 10 commit(s)
+- feat(auth): Chrome can save/fill the login, Forgot password with new-password step, ask the browser to keep site storage
+- Merge branch 'swarm/PACK1' into review/juan117-ready
+- chore: refresh package-lock after removing unused deps
+- Merge branch 'swarm/LEAN1' into review/juan117-ready
+- TRUCKIN: fit iso view to its real extents, readable empty iso trailer, responsive hub and bottom bar
+- fix(trucking): glass hub floats over the trailer map (map scrolls behind it); zoom changes only when the user zooms (one fit on open)
+- fix(trucking): column fits the screen (controls no longer pushed off), views centre on the drawing after each fit, iso sized by zoom, hub one glass layer
+- feat(island): All tools as Universal Tools Bar rows, one per group (drops tile grid, Pinned/Recent repeats and density switch)
+- fix(trucking): island tools pinned (Panels, PLAN/DPLYD, Drafts, Save, Export, Ready Truck); hub starts below the island
+- fix(security): stop shipping the label cypher key in the bundle (codes come from the DB trigger onyx_cypher)
+
+## [2.0.2ae99fc] - 2026-10-22
+### 1 commit(s)
+- feat(settings): build log 2.0 from main's deploy days, summarised by local Colibri; version shows 2.0.<commit>
+
 ## [2.0.0a38331] - 2026-10-21
 ### 10 commit(s)
 - Fixed catalog hub retry logic to only re-run ticked processes and corrected mask and hex map cleaning for cut photos.
@@ -632,7 +649,7 @@ One entry per deploy day on main. Version 2.0.<commit>. Summaries written by the
 - Increased .truckload thumbnail resolution to 2400px, applied vendor colors, and ensured tight fitting to trailer floor dimensions.
 
 ## [2.0.b72d646] - 2026-04-24
-### 3 commit(s)
+### 19 commit(s)
 - Deployed the crates tab, reopened packed crates, and refined dock and info panel sizing.
 - Added landscape view, free-floating icons, and a centimeter grid to the trucking module with solid crates and zoom fixes.
 - Introduced portrait layout, centimeter grid, solid crates, zoom, and drag fixes alongside vendor color names.
