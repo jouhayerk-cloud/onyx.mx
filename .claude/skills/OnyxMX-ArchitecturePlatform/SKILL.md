@@ -66,7 +66,6 @@ All feature modules in `src/features/`:
 | **Workbook** | `workbook/` | XLSX import/export, versioning | Log view, upload wizard |
 | **Process** | `process/` | Process view | ProcessView (the Catalog Hub, BatchProcessingWizard, is in `inventory/`) |
 | **Dashboard** | `dashboard/` | KPIs, ECharts analytics | AdminDashboard |
-| **DashboardEXP** | `dashboardEXP/` | Experimental dashboard | Prototype views |
 | **Store** | `store/` | E-commerce/Shopify integration | Store settings |
 | **Market** | `market/` | Marketplace export | Market views |
 | **Onyx** | `onyx/` | AI chat assistant | OnyxChat |
