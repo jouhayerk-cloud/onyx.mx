@@ -49,6 +49,15 @@ export const BASE_SCALE = 1.5; // px/cm — canvas is 2422 × 366 px at zoom=1
 // out". At 25% a 53' deck is still 600px wide and every crate is visible.
 export const MIN_ZOOM = 0.25;
 export const MAX_ZOOM = 3;
+// Iso view geometry, shared by IsoView and the fit button: the viewBox hugs the drawn trailer
+// (deck corner x = -W..L, top y = -H above the floor, far corner at the bottom) plus a margin.
+const ISO_S = 1.2 * BASE_SCALE, ISO_OX = 400, ISO_OY = 250, ISO_PAD = 24;
+const ISO_VB = {
+    x: ISO_OX - TRUCK_W_CM * ISO_S * 0.866 - ISO_PAD,
+    y: ISO_OY - TRUCK_H_CM * ISO_S - ISO_PAD,
+    w: (TRUCK_L_CM + TRUCK_W_CM) * ISO_S * 0.866 + ISO_PAD * 2,
+    h: (TRUCK_L_CM + TRUCK_W_CM) * ISO_S * 0.5 + TRUCK_H_CM * ISO_S + ISO_PAD * 2,
+};
 
 // getCrateDisplayName moved to utils.tsx
 
@@ -837,11 +846,8 @@ const IsoView: React.FC<{
     selectedId: string | null;
     onSelect: (id: string) => void;
 }> = ({ truckCrates, positions, truckNumbering, allCrates, allInventory, zoom, selectedId, onSelect }) => {
-    const S = 1.2 * BASE_SCALE;
-    const ox = 400;
-    const oy = 250;
-    const W = TRUCK_L_CM * S;
-    const H = (TRUCK_W_CM + TRUCK_H_CM) * S * 1.5;
+    const S = ISO_S, ox = ISO_OX, oy = ISO_OY;
+    const { w: W, h: H } = ISO_VB;
 
     const iso = (x: number, y: number, z: number): [number, number] => [
         ox + (x - y) * S * 0.866,
@@ -860,22 +866,27 @@ const IsoView: React.FC<{
         <div className="trk-stage relative overflow-auto flex items-center justify-center">
             <div className="p-6 lg:p-8" style={{ minWidth: W * zoom + 200, minHeight: H * zoom + 200 }}>
                 {/* sized by the zoom, not scaled by CSS: a scaled box keeps its full-size layout, so fitting and centring missed it */}
-                <svg width={W * zoom} height={H * zoom} viewBox={`0 0 ${W} ${H}`}
+                <svg width={W * zoom} height={H * zoom} viewBox={`${ISO_VB.x} ${ISO_VB.y} ${W} ${H}`}
                     style={{ overflow: 'visible' }}
                     onClick={() => onSelect('')}
                 >
                     <path 
                         d={`M ${iso(0,0,0).join(',')} L ${iso(TRUCK_L_CM,0,0).join(',')} L ${iso(TRUCK_L_CM,TRUCK_W_CM,0).join(',')} L ${iso(0,TRUCK_W_CM,0).join(',')} Z`} 
-                        fill="var(--trk-fill)" 
-                        stroke="var(--trk-grid-major)" 
-                        strokeWidth={1} 
+                        fill="var(--trk-iso-fill)" 
+                        stroke="var(--trk-ink-dim)" 
+                        strokeWidth={1.5} 
                     />
+                    {/* the two back walls, so an empty trailer reads as a box */}
+                    {[[[0,0],[TRUCK_L_CM,0]], [[0,0],[0,TRUCK_W_CM]]].map(([a, b], i) => (
+                        <path key={`wall${i}`} d={`M ${iso(a[0],a[1],0).join(',')} L ${iso(b[0],b[1],0).join(',')} L ${iso(b[0],b[1],TRUCK_H_CM).join(',')} L ${iso(a[0],a[1],TRUCK_H_CM).join(',')} Z`}
+                            fill="var(--trk-iso-wall)" stroke="var(--trk-ink-dim)" strokeWidth={1.5} />
+                    ))}
                     
                     {Array.from({ length: Math.floor(TRUCK_L_CM / 100) + 1 }).map((_, i) => (
-                        <path key={`x${i}`} d={`M ${iso(i * 100, 0, 0).join(',')} L ${iso(i * 100, TRUCK_W_CM, 0).join(',')}`} stroke="var(--trk-grid-minor)" strokeWidth={1} />
+                        <path key={`x${i}`} d={`M ${iso(i * 100, 0, 0).join(',')} L ${iso(i * 100, TRUCK_W_CM, 0).join(',')}`} stroke="var(--trk-grid-major)" strokeWidth={1} />
                     ))}
                     {Array.from({ length: Math.floor(TRUCK_W_CM / 100) + 1 }).map((_, i) => (
-                        <path key={`y${i}`} d={`M ${iso(0, i * 100, 0).join(',')} L ${iso(TRUCK_L_CM, i * 100, 0).join(',')}`} stroke="var(--trk-grid-minor)" strokeWidth={1} />
+                        <path key={`y${i}`} d={`M ${iso(0, i * 100, 0).join(',')} L ${iso(TRUCK_L_CM, i * 100, 0).join(',')}`} stroke="var(--trk-grid-major)" strokeWidth={1} />
                     ))}
                     
                     
@@ -4309,7 +4320,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         const tall = TRUCK_H_CM * BASE_SCALE;
         const [drawW, drawH] =
             viewMode === 'side' ? [long, tall] :
-            viewMode === 'iso'  ? [long, (TRUCK_W_CM + TRUCK_H_CM) * BASE_SCALE * 1.2] :
+            viewMode === 'iso'  ? [ISO_VB.w, ISO_VB.h] :
             isMobile            ? [across, long] : [long, across];
         // Room for the deck / bulkhead captions and the workspace padding.
         const z = Math.min((el.clientWidth - 96) / drawW, (el.clientHeight - hubHRef.current - 190) / drawH);
@@ -4338,7 +4349,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
 
                 {/* Bar 1: Primary Selector (Crates or Deployed) */}
-                <div className={`flex items-center gap-4 px-6 border-b border-white/5 transition-all duration-500 ${isCompact ? 'py-0.5' : 'py-1.5'}`}>
+                <div className={`trk-dockbar flex items-center gap-4 px-6 border-b border-white/5 transition-all duration-500 ${isCompact ? 'py-0.5' : 'py-1.5'}`}>
                     <button 
                         onClick={() => setTopBarState(topBarState === 'crates' ? 'trailers' : 'crates')}
                         className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-2 text-white/30 hover:text-white'}`}
@@ -4471,7 +4482,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
                 {/* ══ CONSOLIDATED HIGH-DENSITY DETAILS PANEL ══ */}
                 <div className={`px-4 transition-all duration-500 flex items-center backdrop-blur-3xl bg-black/5 ${isCompact ? 'py-1' : 'py-2.5'}`}>
-                    <div className={`flex items-center w-full ${isCompact ? 'gap-8 justify-between' : 'gap-1 justify-start'}`}>
+                    <div className={`trk-stats flex items-center w-full ${isCompact ? 'gap-8 justify-between' : 'gap-1 justify-start'}`}>
                         <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-2' : 'gap-4 flex-1 min-w-0'}`}>
                             {!isCompact && (
                                 <div className="flex items-center gap-2 shrink-0">
@@ -4554,7 +4565,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
                         {/* Section 5: Recalled Truck Metadata (Ultra-High-Density Onyx Grid) */}
                         {recalledShipment && (
-                            <div className={`flex border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 gap-6 flex-1' : 'px-8 gap-8 flex-[3] min-w-0'}`}>
+                            <div className={`trk-stats-meta flex border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 gap-6 flex-1' : 'px-8 gap-8 flex-[3] min-w-0'}`}>
                                 <div className={`grid w-full gap-x-8 ${isCompact ? 'grid-cols-2' : 'grid-cols-5'}`}>
                                     {/* Col 1: Tractor Context */}
                                     <div className="flex flex-col justify-center min-w-0">

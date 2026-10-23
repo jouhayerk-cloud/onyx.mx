@@ -26,6 +26,8 @@
     --trk-select-ink: #ffffff;
     --trk-bed:        rgb(255 255 255 / 0.04);
     --trk-edge:       rgb(255 255 255 / 0.22);
+    --trk-iso-fill:   rgb(255 255 255 / 0.10);
+    --trk-iso-wall:   rgb(255 255 255 / 0.05);
     --trk-chip:       rgb(0 0 0 / 0.6);
     --trk-chip-ink:   #ffffff;
 
@@ -48,6 +50,8 @@ html.style-paper #trucking {
     --trk-select-ink: #ffffff;
     --trk-bed:        color-mix(in srgb, var(--slab-sh, #bfc5bd) 30%, var(--slab, #e7eae6));
     --trk-edge:       color-mix(in srgb, var(--slab-ink, #1a1614) 38%, transparent);
+    --trk-iso-fill:   color-mix(in srgb, var(--slab-ink, #1a1614) 12%, transparent);
+    --trk-iso-wall:   color-mix(in srgb, var(--slab-ink, #1a1614) 6%, transparent);
     --trk-chip:       color-mix(in srgb, var(--slab-ink, #1a1614) 88%, transparent);
     --trk-chip-ink:   var(--slab, #e7eae6);
 }
@@ -169,7 +173,7 @@ html.style-slab #trucking .trk-bed {
 
 #trucking .trk-bar {
     display: flex;
-    justify-content: center;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     padding: 10px 16px 14px;
     background: linear-gradient(to top, var(--app-bg-solid, #0a0a0f) 55%, transparent);
 }
@@ -179,6 +183,7 @@ html.style-slab #trucking .trk-bed {
     align-items: center;
     gap: 6px;
     max-width: 100%;
+    margin-inline: auto; /* not justify-content:center, which clips the overflowing left edge unreachably */
     padding: 6px 10px;
     overflow-x: auto;
     scrollbar-width: none;
@@ -233,10 +238,22 @@ html.style-slab #trucking .trk-bar-inner {
     outline-offset: 2px;
 }
 
+/* Tablet: the recalled-truck metadata drops to its own row under the stats. */
+@media (max-width: 1024px) {
+    #trucking .trk-stats { flex-wrap: wrap; row-gap: 10px; }
+    #trucking .trk-stats-meta { flex: 1 1 100%; order: 5; border-left-width: 0; padding-inline: 0; }
+}
+
 @media (max-width: 640px) {
     #trucking .trk-hub { padding: 8px 10px 0; }
-    #trucking .trk-bar { padding: 8px 10px 10px; }
+    #trucking .trk-bar { padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)); }
     #trucking .trk-bar-inner { gap: 4px; padding: 5px 8px; }
+    #trucking .trk-dockbar { gap: 8px; padding-inline: 12px; }
+    /* Stats: two per row. Sections keep their natural size inside a 50% cell; the left rules go. */
+    #trucking .trk-stats { gap: 10px 0; }
+    #trucking .trk-stats > * { flex: 1 1 50%; min-width: 0; border-left-width: 0; padding-inline: 0; }
+    #trucking .trk-stats > .trk-stats-meta { flex-basis: 100%; }
+    #trucking .trk-stats-meta > div { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
 }
 
 /* Glass hub (2026-10-23): one glass layer. The hub column and its nested bars were each tinted
