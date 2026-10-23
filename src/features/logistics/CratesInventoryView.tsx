@@ -5,6 +5,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { Box, Plus, Search, Package, ArrowLeft, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save, Hash, Ruler, Shield, Check, FolderUp, Printer } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
 import { supabase } from '../../lib/supabase';
+import { unpackItems } from './packItems';
 import { useDatabase, useNotify } from '../../lib/hooks';
 import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom, TOP_BAR_SEARCH_ATOM, isCrateCreationModalOpenAtom, financeDataAtom, isWarehouseSelectionModeAtom, warehouseSelectedIdsAtom, showWarehouseExportWizardAtom, isCratePackingManagerOpenAtom, packingManagerTargetCrateIdAtom, CrateStatus} from '../../lib/atoms';
 import { computeCutTelemetry, generateProceduralCrateSvg, type PackedItemSpec } from '../../lib/logistics/boxesBridge';
@@ -994,14 +995,9 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                                             if (!window.confirm(tr("Remove item from this unit?"))) return;
                                             const tid = toast.loading(tr("Removing item..."));
                                             try {
-                                                const db = (window as any).onyxDb;
                                                 const invTbl = item.source === 'production' ? 'production' : 'inventory';
                                                 
-                                                if (db) {
-                                                    const iDoc = await db[invTbl].findOne({ selector: { id: item.id } }).exec();
-                                                    if (iDoc) await iDoc.patch({ crate_id: '', packing_status: 'Unpacked', pack_date: null, updated_at: new Date().toISOString() });
-                                                }
-                                                await supabase.from(invTbl).update({ crate_id: null, packing_status: 'Unpacked', pack_date: null, updated_at: new Date().toISOString() }).eq('id', item.id);
+                                                await unpackItems([item.id], invTbl);
                                                 
                                                 let newIds = '';
                                                 if (crate.inventory_ids) {
@@ -1709,15 +1705,7 @@ export const CratesInventoryView: React.FC<{
             if (crate.inventory_ids) {
                 const itemIds = crate.inventory_ids.split(',').filter(Boolean).map(entry => entry.split(':')[0]);
                 if (itemIds.length > 0) {
-                    await supabase.from('inventory').update({ crate_id: null }).in('id', itemIds);
-                    if (db) {
-                        for (const id of itemIds) {
-                            try {
-                                const lDoc = await db.inventory.findOne({ selector: { id } }).exec();
-                                if (lDoc) await lDoc.patch({ crate_id: null });
-                            } catch (_) {}
-                        }
-                    }
+                    await unpackItems(itemIds);
                 }
             }
 

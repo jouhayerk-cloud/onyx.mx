@@ -11,6 +11,7 @@ import {
     selectedInventoryIdsAtom, CrateStatus} from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
+import { packItems, unpackItems } from './packItems';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
 import toast from '../onyxIsland/notify/toast';
 import {
@@ -1267,28 +1268,12 @@ export const CratePackingManager: React.FC = () => {
 
             // Mark additions
             if (addedIds.length > 0) {
-                await supabase.from('inventory').update({ crate_id: selectedCrate.id }).in('id', addedIds);
-                if (db) {
-                    for (const id of addedIds) {
-                        try { 
-                            const lDoc = await db.inventory.findOne({ selector: { id } }).exec(); 
-                            if (lDoc) await lDoc.patch({ crate_id: selectedCrate.id }); 
-                        } catch (_) {}
-                    }
-                }
+                await packItems(selectedCrate.id, addedIds);
             }
 
             // Mark removals
             if (removedIds.length > 0) {
-                await supabase.from('inventory').update({ crate_id: null }).in('id', removedIds);
-                if (db) {
-                    for (const id of removedIds) {
-                        try { 
-                            const lDoc = await db.inventory.findOne({ selector: { id } }).exec(); 
-                            if (lDoc) await lDoc.patch({ crate_id: null }); 
-                        } catch (_) {}
-                    }
-                }
+                await unpackItems(removedIds);
             }
 
             toast.success(isUpdate ? "Crate contents updated" : "Packing confirmed", { id: tid });
@@ -1344,15 +1329,7 @@ export const CratePackingManager: React.FC = () => {
 
             // 3. Sync Inventory (remove crate_id)
             const itemIds = Array.from(currentIds.keys());
-            await supabase.from('inventory').update({ crate_id: null }).in('id', itemIds);
-            if (db) {
-                for (const id of itemIds) {
-                    try {
-                        const lDoc = await db.inventory.findOne({ selector: { id } }).exec();
-                        if (lDoc) await lDoc.patch({ crate_id: null });
-                    } catch (_) {}
-                }
-            }
+            await unpackItems(itemIds);
 
             toast.success(tr("Crate unpacked"), { id: tid });
             setSelectedItemIds(new Set());
@@ -1438,15 +1415,7 @@ export const CratePackingManager: React.FC = () => {
             const currentIds = parseInventoryIds(selectedCrate.inventory_ids);
             if (currentIds.size > 0) {
                 const itemIds = Array.from(currentIds.keys());
-                await supabase.from('inventory').update({ crate_id: null }).in('id', itemIds);
-                if (db) {
-                    for (const id of itemIds) {
-                        try {
-                            const lDoc = await db.inventory.findOne({ selector: { id } }).exec();
-                            if (lDoc) await lDoc.patch({ crate_id: null });
-                        } catch (_) {}
-                    }
-                }
+                await unpackItems(itemIds);
             }
 
             // 2. Delete from Supabase
