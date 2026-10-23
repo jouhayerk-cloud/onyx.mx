@@ -18,6 +18,22 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  // Sends Supabase's reset email; its link opens the app, where App shows the new-password step
+  const handleForgot = async () => {
+    setError('');
+    setNotice('');
+    if (!email) { setError(tr('Type your email first, then tap Forgot password.')); return; }
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+      if (error) throw error;
+      setNotice(tr('Check your email for the reset link.'));
+    } catch (err: any) {
+      setError(err.message || tr('Could not send the reset email'));
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,9 +116,12 @@ export function Login() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs uppercase font-bold tracking-wider opacity-60">{tr("Email Address")}</label>
+            <label htmlFor="login-email" className="text-xs uppercase font-bold tracking-wider opacity-60">{tr("Email Address")}</label>
             <input
+              id="login-email"
+              name="email"
               type="email"
+              autoComplete="username"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder={tr("name@company.com")}
@@ -112,9 +131,12 @@ export function Login() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs uppercase font-bold tracking-wider opacity-60">{tr("Security Key")}</label>
+            <label htmlFor="login-password" className="text-xs uppercase font-bold tracking-wider opacity-60">{tr("Security Key")}</label>
             <input
+              id="login-password"
+              name="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -124,6 +146,7 @@ export function Login() {
           </div>
 
           {error && <p className="text-red-400 text-xs py-2 animate-shake">{error}</p>}
+          {notice && <p className="text-emerald-400 text-xs py-2" role="status">{notice}</p>}
 
           <button
             type="submit"
@@ -133,6 +156,10 @@ export function Login() {
             {loading ? "Onyx-mx loading..." : tr("Enter System")}
           </button>
         </form>
+
+        <button type="button" onClick={handleForgot} className="mt-4 w-full text-center text-xs opacity-70 hover:opacity-100 underline-offset-4 hover:underline">
+          {tr("Forgot password?")}
+        </button>
 
         <div className="mt-8 pt-6 border-t border-white/10 text-center">
           <p className="text-sm text-[var(--text-color-secondary)]">

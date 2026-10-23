@@ -4,6 +4,7 @@ import { themeAtom, appStyleAtom, userAtom, performanceModeAtom, languageAtom, u
 import { resolveUserRole } from '../../lib/utils';
 import type { UserRole } from '../../lib/atoms';
 import { Login } from '../auth/Login';
+import { SetNewPassword } from '../auth/SetNewPassword';
 import { MainAppView } from './MainAppView';
 import { SCRIPT_URL } from '../../lib/consts';
 import { WelcomePage } from '../auth/WelcomePage';
@@ -23,6 +24,8 @@ const SentTruckViewer = React.lazy(() => import('../logistics/SentTruckViewer'))
 const ViewerView      = React.lazy(() => import('../viewer/ViewerView').then(m => ({ default: m.ViewerView })));
 
 export default function App() {
+  // a password-reset link signed the user in: ask for the new password before anything else
+  const [recovering, setRecovering] = useState(false);
   const [user, setUser] = useAtom(userAtom);
   const theme = useAtomValue(themeAtom);
   const appStyle = useAtomValue(appStyleAtom);
@@ -221,6 +224,9 @@ export default function App() {
       });
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (_event === 'PASSWORD_RECOVERY') setRecovering(true);
+        // ask Chrome to keep this site's storage (the saved login) instead of evicting it under storage pressure
+        if (_event === 'SIGNED_IN') navigator.storage?.persist?.().catch(() => {});
         if (session) {
           resolveAuthorizedUser(session);
         } else {
@@ -318,6 +324,7 @@ export default function App() {
       ) : (
         <>
           <DataSyncProvider />
+          {recovering && <SetNewPassword onDone={() => setRecovering(false)} />}
           {showWelcome && <WelcomePage onComplete={() => setShowWelcome(false)} />}
           {(user as any)?.__denied ? (
             <div className="w-full h-full flex items-center justify-center">
