@@ -37,7 +37,7 @@ export const LogisticsView: React.FC = () => {
     return (
         <div className="flex flex-col h-full flex-1 min-h-0">
             {/* ── Content ── */}
-            <div className="flex-1 relative flex flex-col">
+            <div className="flex-1 relative flex flex-col min-h-0">
                 {activeTab === 'shipping' ? (
                     <TruckingModule docs={docs} onRefresh={refresh} />
                 ) : activeTab === 'deployed' ? (

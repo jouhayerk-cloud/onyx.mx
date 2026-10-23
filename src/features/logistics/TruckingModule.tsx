@@ -859,8 +859,9 @@ const IsoView: React.FC<{
     return (
         <div className="trk-stage relative overflow-auto flex items-center justify-center">
             <div className="p-6 lg:p-8" style={{ minWidth: W * zoom + 200, minHeight: H * zoom + 200 }}>
-                <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} 
-                    style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible' }}
+                {/* sized by the zoom, not scaled by CSS: a scaled box keeps its full-size layout, so fitting and centring missed it */}
+                <svg width={W * zoom} height={H * zoom} viewBox={`0 0 ${W} ${H}`}
+                    style={{ overflow: 'visible' }}
                     onClick={() => onSelect('')}
                 >
                     <path 
@@ -4271,6 +4272,24 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     // trailer off-screen, which is what made the map look empty or missing.
     // Each view is measured on its own drawing: the deck from above, the
     // trailer's height from the side, the taller isometric box.
+    // Scroll the workspace so the trailer sits in its middle (after a fit, a view change or a resize)
+    const centerOnTrailer = useCallback(() => {
+        const el = canvasRef.current;
+        if (!el) return;
+        // the top view's deck, else the side or iso drawing itself
+        const area = (e: Element) => { const r = e.getBoundingClientRect(); return r.width * r.height; };
+        const target = document.getElementById('trailer-main-map')
+            || Array.from(el.querySelectorAll('svg')).sort((a, b) => area(b) - area(a))[0];
+        if (!target) return;
+        const box = el.getBoundingClientRect();
+        const t = target.getBoundingClientRect();
+        el.scrollTo({
+            left: el.scrollLeft + t.left - box.left + t.width / 2 - el.clientWidth / 2,
+            top: el.scrollTop + t.top - box.top + t.height / 2 - el.clientHeight / 2,
+            behavior: 'smooth',
+        });
+    }, []);
+
     const fitToView = useCallback(() => {
         const el = canvasRef.current;
         if (!el || !el.clientWidth) return;
@@ -4284,7 +4303,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         // Room for the deck / bulkhead captions and the workspace padding.
         const z = Math.min((el.clientWidth - 96) / drawW, (el.clientHeight - 190) / drawH);
         setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z)));
-    }, [viewMode, isMobile]);
+        // centre once the new zoom has been drawn
+        setTimeout(centerOnTrailer, 150);
+    }, [viewMode, isMobile, centerOnTrailer]);
 
     // Fit on the first paint of each view, and whenever the workspace resizes
     // while the user has not zoomed themselves.
@@ -4309,25 +4330,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         let timeoutId: number;
         const centerCanvas = () => {
             clearTimeout(timeoutId);
-            timeoutId = window.setTimeout(() => {
-                const trailer = document.getElementById('trailer-main-map');
-                if (trailer && el) {
-                    // Calculate absolute center scroll positions
-                    const centerX = trailer.offsetLeft + (trailer.offsetWidth / 2) - (el.clientWidth / 2);
-                    const centerY = trailer.offsetTop + (trailer.offsetHeight / 2) - (el.clientHeight / 2);
-                    
-                    el.scrollTo({
-                        left: centerX,
-                        top: centerY,
-                        behavior: 'smooth'
-                    });
-                } else if (el) {
-                    const scrollX = (el.scrollWidth - el.clientWidth) / 2;
-                    const scrollY = (el.scrollHeight - el.clientHeight) / 2;
-                    el.scrollLeft = scrollX;
-                    el.scrollTop = scrollY;
-                }
-            }, 100) as unknown as number;
+            timeoutId = window.setTimeout(centerOnTrailer, 100) as unknown as number;
         };
 
         // Center on mount and after render cycles
@@ -4674,7 +4677,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             >
                 <div className="relative">
                 {viewMode === 'side' ? (
-                    <div className="w-full h-[600px] mt-8">
+                    <div className="w-full h-full flex items-center justify-center">
                         <SideView
                             truckCrates={truckCrates} positions={positions} truckNumbering={truckNumbering}
                             allCrates={allCrates} allInventory={allInventory}
@@ -4687,7 +4690,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         />
                     </div>
                 ) : viewMode === 'iso' ? (
-                    <div className="w-full h-full mt-8">
+                    <div className="w-full h-full flex items-center justify-center">
                         <IsoView
                             truckCrates={truckCrates} positions={positions} truckNumbering={truckNumbering}
                             allCrates={allCrates} allInventory={allInventory}

@@ -238,3 +238,15 @@ html.style-slab #trucking .trk-bar-inner {
     #trucking .trk-bar { padding: 8px 10px 10px; }
     #trucking .trk-bar-inner { gap: 4px; padding: 5px 8px; }
 }
+
+/* Glass hub (2026-10-23): one glass layer. The hub column and its nested bars were each tinted
+   (0.24 + 0.24 + 0.30), which stacked into a near-solid slab; only the hub's panel keeps the glass. */
+html #trucking .trk-hub {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+}
+html #trucking .trk-hub > * [class*="backdrop-"],
+html #trucking .trk-hub > * [class*="bg-black"] {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+}
