@@ -14,7 +14,8 @@ import {
     Shield, CreditCard, Truck, Package, MapPin,
     ChevronRight, Zap, BarChart3, LayoutDashboard, Pipette, Layers,
     Box, Cuboid, BadgeDollarSign, Rotate3d, Cpu, Shapes, Album, Shell, Printer,
-    ChevronsLeft, ChevronsRight, House, FilePlus2
+    ChevronsLeft, ChevronsRight, House, FilePlus2,
+    Settings,
 } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { SyncStatusBadge } from '../../components/SyncStatusBadge';
@@ -767,14 +768,14 @@ export const IslandSidebar: React.FC = () => {
             >
                 {showExpanded ? (
                     <>
-                        <OnyxMiniLogo className={`w-8 h-8 transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : 'opacity-80'}`} />
+                        <Settings size={28} strokeWidth={1.75} aria-hidden="true" className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : 'opacity-80'}`} />
                         <div className="mt-4">
                             <SyncStatusBadge />
                         </div>
                     </>
                 ) : (
                     <>
-                        <OnyxMiniLogo className={`w-7 h-7 transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : 'opacity-80'}`} />
+                        <Settings size={24} strokeWidth={1.75} aria-hidden="true" className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : 'opacity-80'}`} />
                         <div className="mt-3 scale-75 origin-center">
                             <SyncStatusBadge />
                         </div>
