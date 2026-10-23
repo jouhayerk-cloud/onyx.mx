@@ -11,8 +11,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.check.json"
   },
   "dependencies": {
-    "@ffmpeg/core": "^0.12.10",
-    "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@google/genai": "^2.14.0",
     "@google/generative-ai": "^0.24.1",
@@ -39,8 +37,6 @@
     "jspdf-autotable": "^5.0.7",
     "jszip": "^3.10.1",
     "lucide-react": "^0.576.0",
-    "page-mascot": "^0.1.0",
-    "perfect-freehand": "^1.2.2",
     "qrcode.react": "^4.2.0",
     "quick-liquid": "^0.1.2",
     "react": "^19.2.0",
