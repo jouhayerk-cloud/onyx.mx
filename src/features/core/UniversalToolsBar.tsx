@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { 
     InventorySearchPanel,
@@ -40,26 +40,10 @@ import {
     paymentsArtifactConfigAtom,
     exchangeRateAtom,
     liveExchangeRateAtom,
-    truckShowSaveDraftAtom,
-    truckShowOpenDraftAtom,
-    truckShowExportModalAtom,
-    truckShowReadyWizardAtom,
-    truckIsBusyAtom,
-    truckShowPanelsAtom,
-    truckTopBarStateAtom,
-    truckingDockCratesAtom,
-    truckingTotalWeightAtom,
-    truckingFloorPctAtom,
-    truckingRecalledShipmentAtom,
-    truckingAllCratesAtom,
-    truckingPositionsAtom,
     logisticsDocsAtom,
     isInventorySearchOpenAtom,
     inventoryToolsOpenAtom,
     isInventorySmartFiltersOpenAtom,
-    truckDockIsCompactAtom,
-    truckStatsIsCompactAtom,
-    truckingReadyFieldsAtom,
     inventoryArtifactConfigAtom,
     isPackingNFCWizardOpenAtom,
     isPackingCrateWizardOpenAtom,
@@ -83,7 +67,6 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 const CompactDockCard = React.lazy(() => import('../logistics/TruckingModule').then(m => ({ default: m.CompactDockCard })));
 const DeployedTrailerCard = React.lazy(() => import('../logistics/TruckingModule').then(m => ({ default: m.DeployedTrailerCard })));
 import toast from '../onyxIsland/notify/toast';
-import { supabase } from '../../lib/supabase';
 import { normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
 
@@ -285,56 +268,8 @@ export const UniversalToolsBar: React.FC = () => {
     const fixedEx = useAtomValue(exchangeRateAtom);
     const exRate = liveEx || fixedEx;
 
-    // Trucking States
-    const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
-    const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
-    const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
-    const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
-    const truckBusy = useAtomValue(truckIsBusyAtom);
-    const showPanels = useAtomValue(truckShowPanelsAtom);
-    const topBarState = useAtomValue(truckTopBarStateAtom);
-    const [positions, setPositions] = useAtom(truckingPositionsAtom);
-    const [recalledShipment, setRecalledShipment] = useAtom(truckingRecalledShipmentAtom);
-    const dockCrates = useAtomValue(truckingDockCratesAtom);
-    const allCrates = useAtomValue(truckingAllCratesAtom);
     const allLogistics = useAtomValue(logisticsDocsAtom);
     const allInventory = useAtomValue(inventoryAtom);
-    const totalWeight = useAtomValue(truckingTotalWeightAtom);
-    const floorPct = useAtomValue(truckingFloorPctAtom);
-    const [isDockCompact, setIsDockCompact] = useAtom(truckDockIsCompactAtom);
-    const [isStatsCompact, setIsStatsCompact] = useAtom(truckStatsIsCompactAtom);
-    const readyFields = useAtomValue(truckingReadyFieldsAtom);
-    const [recentShipments, setRecentShipments] = useState<any[]>([]);
-
-    useEffect(() => {
-        if (activeView === 'trucking' && topBarState === 'trailers') {
-            const fetchRecent = async () => {
-                try {
-                    const { data, error } = await supabase.from('shipments')
-                        .select('*')
-                        .order('timestamp', { ascending: false })
-                        .limit(10);
-                    if (!error) setRecentShipments(data || []);
-                } catch (err) { console.error('Recent shipments fetch error:', err); }
-            };
-            fetchRecent();
-        }
-    }, [activeView, topBarState]);
-
-    const handleRecall = (shipment: any) => {
-        setRecalledShipment(shipment);
-        toast.success(`Recalling manifest ${shipment.manifest_id}`);
-    };
-
-    const handleDeleteShipment = async (id: string) => {
-        if (!confirm(tr("Delete this shipment record permanently?"))) return;
-        try {
-            const { error } = await supabase.from('shipments').delete().eq('id', id);
-            if (error) throw error;
-            setRecentShipments(s => s.filter(x => x.id !== id));
-            toast.success(tr("Shipment deleted"));
-        } catch (e) { toast.error(tr("Failed to delete shipment")); }
-    };
 
     // Inventory Atoms for Filtering
 
