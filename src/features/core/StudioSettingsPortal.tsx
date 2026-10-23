@@ -39,7 +39,7 @@ import { LazyMotion, domMax, m, AnimatePresence } from 'framer-motion';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { THEME_ASSETS } from '../../lib/themes-assets';
 import { useTranslation, useLogout } from '../../lib/hooks';
-import changelogText from '../../assets/CHANGELOG.md?raw';
+import changelogText from '../../assets/BUILDLOG.md?raw';
 import { SiriAccessPanel } from './SiriAccessPanel';
 import { McpAccessPanel } from './McpAccessPanel';
 import { AiProvidersPanel } from './AiProvidersPanel';

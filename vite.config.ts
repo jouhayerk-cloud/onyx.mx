@@ -4,9 +4,13 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import { readFileSync } from 'fs';
+import { execSync } from 'child_process';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
+// Build log 2.0: the shown version is 2.0.<7-char commit> (0a38331 -> 2.0.0a38331), the same key as src/assets/BUILDLOG.md
+let APP_COMMIT = '';
+try { APP_COMMIT = execSync('git rev-parse --short=7 HEAD').toString().trim(); } catch { /* not a git checkout */ }
 
 // Bump with every icon redesign. Browsers, iOS and installed apps cache icons
 // by URL, so an unchanged URL keeps showing the old cube. This one value is
@@ -195,6 +199,7 @@ export default defineConfig(({ mode }) => {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),
       'import.meta.env.VITE_GEMINI_API_KEY': mode === 'development' ? JSON.stringify(env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY) : '""',
       __APP_VERSION__: JSON.stringify(pkg.version),
+      __APP_COMMIT__: JSON.stringify(APP_COMMIT),
       'import.meta.env.VITE_CYPHER_KEY': JSON.stringify(env.VITE_CYPHER_KEY),
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY),

@@ -5,7 +5,7 @@ import { X, Info, Sparkles, Github, Zap, AlertCircle } from 'lucide-react';
 import { OnyxMiniLogo } from './OnyxLogo';
 
 // Import markdown files as raw strings from assets to ensure bundling
-import changelogText from '../assets/CHANGELOG.md?raw';
+import changelogText from '../assets/BUILDLOG.md?raw';
 import { tr } from '../lib/i18n';
 
 interface AboutModalProps {
