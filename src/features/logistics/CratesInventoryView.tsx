@@ -995,6 +995,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                                             if (!window.confirm(tr("Remove item from this unit?"))) return;
                                             const tid = toast.loading(tr("Removing item..."));
                                             try {
+                                                const db = (window as any).onyxDb;
                                                 const invTbl = item.source === 'production' ? 'production' : 'inventory';
                                                 
                                                 await unpackItems([item.id], invTbl);
