@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
 import { supabase } from '../../lib/supabase';
+import { packItems } from './packItems';
 import { 
     normalizeInventoryData, 
     getCleanImageUrl, 
@@ -444,19 +445,7 @@ export const PackWizard: React.FC = () => {
                 if (crateError) throw crateError;
             }
 
-            // Update packing_status, crate_id, and pack_date in inventory table
-            const inventoryRowsToUpdate = selectedItems.map(item => item.row ?? item.data.id);
-            if (inventoryRowsToUpdate.length > 0) {
-                const { error: invError } = await supabase.from('inventory')
-                    .update({
-                        packing_status: 'Packed',
-                        crate_id: targetCrateId,
-                        pack_date: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                    })
-                    .in('id', inventoryRowsToUpdate.map(String));
-                if (invError) throw invError;
-            }
+            await packItems(targetCrateId, selectedItems.map(item => String(item.row ?? item.data.id)));
 
             toast.success(`Successfully packed ${selectedItems.length} items into ${targetCrateId}`, { id: tid });
             setIsOpen(false);
