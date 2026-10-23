@@ -1,3 +1,4 @@
+import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { InventoryItemData } from '../../lib/Types';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
@@ -3404,6 +3405,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
     const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const showPanels = useAtomValue(truckShowPanelsAtom);
+    // the floating island sits over the top of the screen: the hub starts below it
+    const islandOn = useAtomValue(islandCommandsEnabledAtom);
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
     const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
@@ -4346,7 +4349,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         <div id="trucking" className="trk relative flex-1 w-full h-full flex flex-col overflow-hidden bg-transparent select-none">
             {/* ── FLOATING STUDIO HUB (Persistent Glassmorphic Panel) ── */}
             {showPanels && (
-            <div className="trk-hub relative z-[60] shrink-0">
+            <div className={`trk-hub relative z-[60] shrink-0 ${islandOn ? 'island-safe-pt' : ''}`}>
                 <div 
                     className={`pointer-events-auto flex flex-col backdrop-blur-3xl bg-black/5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 hover:bg-black/10 ${isCompact ? 'rounded-2xl' : 'rounded-[2rem]'}`}
                     onWheel={e => e.stopPropagation()}

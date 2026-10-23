@@ -83,6 +83,8 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
         kind: 'widget',
         group: tr('Sections'),
         order: 10,
+        // TRUCKIN: PLAN / DPLYD on the island bar, or the registry has no way back to the trailer map
+        pinned: activeView === 'trucking',
         render: () => (
             <widgets.SubTabPills
                 tabs={tabs}
@@ -226,7 +228,8 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
         });
     }
 
-    if (subTab === 'shipping' || subTab === 'deployed') {
+    // TRUCKIN itself too: without this switch a hidden Studio Hub could not be brought back from the island
+    if (subTab === 'shipping' || subTab === 'deployed' || activeView === 'trucking') {
         tools.push({
             id: 'truck.panels-toggle',
             moduleId,
@@ -236,6 +239,7 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
             kind: 'toggle',
             group: tr('View'),
             order: 80,
+            pinned: true,
             pressed: showPanels,
             run: () => setShowPanels(!showPanels)
         });
@@ -251,6 +255,7 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
             kind: 'action',
             group: tr('Trucking'),
             order: 90,
+            pinned: true,
             run: () => setShowOpenDraft(true)
         });
 
@@ -263,6 +268,7 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
             kind: 'action',
             group: tr('Trucking'),
             order: 100,
+            pinned: true,
             run: () => setShowSaveDraft(true)
         });
 
@@ -275,6 +281,7 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
             kind: 'action',
             group: tr('Export'),
             order: 110,
+            pinned: true,
             run: () => setShowExportModal(true)
         });
 
@@ -286,6 +293,7 @@ export function useLogisticsTools(widgets: LogisticsWidgets, handlers?: any): To
             kind: 'action',
             group: tr('Trucking'),
             order: 120,
+            pinned: true,
             disabled: truckBusy,
             run: () => setShowReadyWizard(true)
         });
