@@ -3408,6 +3408,17 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const showPanels = useAtomValue(truckShowPanelsAtom);
     // the floating island sits over the top of the screen: the hub starts below it
     const islandOn = useAtomValue(islandCommandsEnabledAtom);
+    // the glass hub floats over the trailer map: the map starts below it and scrolls behind it
+    const hubRef = useRef<HTMLDivElement>(null);
+    const hubHRef = useRef(0);
+    const [hubH, setHubH] = useState(0);
+    useEffect(() => {
+        const el = hubRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') { hubHRef.current = 0; setHubH(0); return; }
+        const ro = new ResizeObserver(() => { hubHRef.current = el.offsetHeight; setHubH(el.offsetHeight); });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [showPanels]);
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
     const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
@@ -4285,7 +4296,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         const t = target.getBoundingClientRect();
         el.scrollTo({
             left: el.scrollLeft + t.left - box.left + t.width / 2 - el.clientWidth / 2,
-            top: el.scrollTop + t.top - box.top + t.height / 2 - el.clientHeight / 2,
+            top: el.scrollTop + t.top - box.top + t.height / 2 - (hubHRef.current + (el.clientHeight - hubHRef.current) / 2),
             behavior: 'smooth',
         });
     }, []);
@@ -4301,58 +4312,24 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             viewMode === 'iso'  ? [long, (TRUCK_W_CM + TRUCK_H_CM) * BASE_SCALE * 1.2] :
             isMobile            ? [across, long] : [long, across];
         // Room for the deck / bulkhead captions and the workspace padding.
-        const z = Math.min((el.clientWidth - 96) / drawW, (el.clientHeight - 190) / drawH);
+        const z = Math.min((el.clientWidth - 96) / drawW, (el.clientHeight - hubHRef.current - 190) / drawH);
         setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z)));
         // centre once the new zoom has been drawn
         setTimeout(centerOnTrailer, 150);
     }, [viewMode, isMobile, centerOnTrailer]);
 
-    // Fit on the first paint of each view, and whenever the workspace resizes
-    // while the user has not zoomed themselves.
+    // Fit once, when TRUCKIN opens. After that only the user changes the zoom (buttons, wheel, pinch, the fit button).
     useEffect(() => {
-        hasFitRef.current = false;
+        if (hasFitRef.current) return;
         const t = setTimeout(() => { fitToView(); hasFitRef.current = true; }, 60);
         return () => clearTimeout(t);
-    }, [viewMode, fitToView]);
-
-    useEffect(() => {
-        const el = canvasRef.current;
-        if (!el || typeof ResizeObserver === 'undefined') return;
-        const ro = new ResizeObserver(() => { if (!hasFitRef.current) fitToView(); });
-        ro.observe(el);
-        return () => ro.disconnect();
     }, [fitToView]);
-
-    useEffect(() => {
-        const el = canvasRef.current;
-        if (!el) return;
-
-        let timeoutId: number;
-        const centerCanvas = () => {
-            clearTimeout(timeoutId);
-            timeoutId = window.setTimeout(centerOnTrailer, 100) as unknown as number;
-        };
-
-        // Center on mount and after render cycles
-        const timers = [
-            setTimeout(centerCanvas, 100),
-            setTimeout(centerCanvas, 500),
-            setTimeout(centerCanvas, 1000)
-        ];
-        
-        window.addEventListener('resize', centerCanvas);
-        return () => {
-            timers.forEach(t => clearTimeout(t));
-            clearTimeout(timeoutId);
-            window.removeEventListener('resize', centerCanvas);
-        };
-    }, [zoom, viewMode]);
 
     return (
         <div id="trucking" className="trk relative flex-1 w-full h-full flex flex-col overflow-hidden bg-transparent select-none">
             {/* ── FLOATING STUDIO HUB (Persistent Glassmorphic Panel) ── */}
             {showPanels && (
-            <div className={`trk-hub relative z-[60] shrink-0 ${islandOn ? 'island-safe-pt' : ''}`}>
+            <div ref={hubRef} className={`trk-hub absolute inset-x-0 top-0 z-[60] ${islandOn ? 'island-safe-pt' : ''}`}>
                 <div 
                     className={`pointer-events-auto flex flex-col backdrop-blur-3xl bg-black/5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 hover:bg-black/10 ${isCompact ? 'rounded-2xl' : 'rounded-[2rem]'}`}
                     onWheel={e => e.stopPropagation()}
@@ -4666,7 +4643,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             <div 
                 ref={canvasRef}
                 className="flex-1 overflow-auto custom-scrollbar relative bg-white/[0.02] backdrop-blur-3xl"
-                style={{ touchAction: 'none' }}
+                style={{ touchAction: 'none', paddingTop: showPanels ? hubH : 0 }}
                 onMouseDown={handleMouseDown}
                 onClick={(e) => {
                     if (e.target === e.currentTarget) {
