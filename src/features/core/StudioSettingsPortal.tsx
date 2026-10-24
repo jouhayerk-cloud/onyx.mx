@@ -1071,7 +1071,12 @@ export const StudioSettingsPortal: React.FC = () => {
 
                     {/* Footer */}
                     {viewMode === 'settings' && (
-                        <div className="h-[32px] border-t border-(--ss-sep) px-3.5 flex items-center justify-between shrink-0">
+                        <div
+                            className="min-h-[32px] border-t border-(--ss-sep) px-3.5 flex items-center justify-between shrink-0"
+                            // on iPhone Safari (both a browser tab and an installed PWA) this bar sits at the true
+                            // bottom edge; without this the home-indicator gesture strip overlaps "Synced"/the version
+                            style={{ paddingBottom: 'max(0px, env(safe-area-inset-bottom))' }}
+                        >
                             <div className="flex items-center gap-1.5 text-[11px]">
                                 <span
                                     className="sk-dot"
