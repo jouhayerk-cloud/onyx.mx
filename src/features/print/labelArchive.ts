@@ -106,7 +106,11 @@ export async function archiveLabelPng(options: ArchiveLabelOptions): Promise<str
         }
 
         let existingMap: Record<string, any> = {};
-        const rawMedia = rowData?.processed_media_urls;
+        // processed_media_urls is a text column (always string | null at the type level),
+        // but this is defensive runtime handling for whatever shape is actually in it --
+        // `any` so the typeof narrowing below isn't fighting a static type that can never
+        // be "object".
+        const rawMedia: any = rowData?.processed_media_urls;
 
         if (rawMedia !== undefined && rawMedia !== null && rawMedia !== '') {
             if (typeof rawMedia === 'string') {
@@ -215,7 +219,7 @@ export async function verifyLabelPngParity(
     if (typeof crypto !== 'undefined' && crypto.subtle) {
         const hashBuffer = await crypto.subtle.digest(
             'SHA-256',
-            bitmap.data.buffer.slice(bitmap.data.byteOffset, bitmap.data.byteOffset + bitmap.data.byteLength)
+            bitmap.data.buffer.slice(bitmap.data.byteOffset, bitmap.data.byteOffset + bitmap.data.byteLength) as ArrayBuffer
         );
         digestHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
