@@ -48,7 +48,10 @@ function getFigureParts(
 /**
  * Material-aware CSS color tokens mapped across all 22 types and families.
  */
-function getShapeColor(typeId: string | null | undefined, family: Geometry, isMirror: boolean): string {
+function getShapeColor(typeId: string | null | undefined, family: Geometry, isMirror: boolean, colorOverride?: string): string {
+    if (colorOverride) {
+        return colorOverride;
+    }
     if (isMirror || typeId === 'mirror' || family === 'mirror') {
         return '#00aeef'; // Sky Cyan
     }
@@ -105,6 +108,7 @@ export const ShapeFigure: React.FC<ShapeFigureProps> = ({
     lift = 0,
     active = false,
     className = '',
+    color: customColor,
 }) => {
     const [isHovered, setIsHovered] = useState(false);
     const svgRef = useRef<SVGSVGElement>(null);
@@ -116,8 +120,8 @@ export const ShapeFigure: React.FC<ShapeFigureProps> = ({
     );
 
     const color = useMemo(
-        () => getShapeColor(typeId, family, isMirror),
-        [typeId, family, isMirror],
+        () => getShapeColor(typeId, family, isMirror, customColor),
+        [customColor, typeId, family, isMirror],
     );
 
     // Spring physics for dynamic hover / active vertical elevation
@@ -207,6 +211,13 @@ export const ShapeFigure: React.FC<ShapeFigureProps> = ({
                     <path
                         key={index}
                         className={`sf-${part.kind}`}
+                        style={
+                            active && part.kind === 'plate'
+                                ? { stroke: color }
+                                : active && (part.kind === 'mark' || part.kind === 'bright')
+                                  ? { fill: color, stroke: part.kind === 'bright' ? color : undefined, filter: part.kind === 'bright' ? `drop-shadow(0 0 6px ${color})` : undefined }
+                                  : undefined
+                        }
                         d={part.d}
                     />
                 ))}

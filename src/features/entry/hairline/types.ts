@@ -76,6 +76,8 @@ export interface ShapeFigureProps {
     /** The tile that is chosen: its silhouette uses the bright stroke (the only highlight). */
     active?: boolean;
     className?: string;
+    /** Custom stroke/shading color override */
+    color?: string;
 }
 
 // ── drawing contract shared by the family and motif builders ───────────────────────────────────────────────────────

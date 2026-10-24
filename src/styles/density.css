@@ -1260,3 +1260,68 @@ html.dark .inv-head-wrap {
     }
 }
 
+
+/* ── Hero image AXO overlay ──────────────────────────────────────────────── */
+.inv-hero-axo-overlay {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 5;
+    width: 110px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--slab, #111) 45%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.8) brightness(1.05);
+    backdrop-filter: blur(16px) saturate(1.8) brightness(1.05);
+    border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.25));
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    pointer-events: auto;
+    cursor: default;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+}
+
+.inv-hero-axo-overlay:hover {
+    transform: scale(1.04);
+    background: color-mix(in srgb, var(--slab, #111) 60%, transparent);
+}
+
+.inv-hero-axo-overlay img,
+.inv-hero-axo-overlay svg {
+    max-width: 95%;
+    max-height: 95%;
+    object-fit: contain;
+}
+
+@media (min-width: 768px) {
+    .inv-hero-axo-overlay {
+        top: 16px;
+        right: 16px;
+        width: 130px;
+        height: 130px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .inv-hero-axo-overlay {
+        width: 140px;
+        height: 140px;
+    }
+}
+
+.inv-hairline-card.inv-hairline-card--prominent {
+    width: 108px;
+    height: 84px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--text-color) 4%, transparent);
+}
+
+@media (min-width: 768px) {
+    .inv-hairline-card.inv-hairline-card--prominent {
+        width: 124px;
+        height: 96px;
+    }
+}

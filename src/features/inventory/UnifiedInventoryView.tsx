@@ -71,6 +71,9 @@ import { ItemDetailsModal } from './ItemDetailsModal';
 import { classifyGeometry } from '../../lib/geometry';
 import { canonicalType } from '../../lib/canonicalType';
 import { ShapeFigure } from '../entry/hairline/ShapeFigure';
+import { resolveStonePalette } from '../../lib/canonicalColors';
+import { canonicalColor } from '../../lib/inventoryTaxonomy';
+import { lookupCanonicalColors } from '../../lib/colorVocabulary';
 
 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -516,6 +519,26 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const aiBodyText = useMemo(() => (isContentExpanded ? htmlToText(norm.generatedDescription || '') : ''), [isContentExpanded, norm.generatedDescription]);
     const aiColors = String(norm.generatedColor || '').split(',').map(c => c.trim()).filter(Boolean);
     const aiTypePath = String(norm.generatedType || '').split('>').map(p => p.trim()).filter(Boolean);
+
+    const itemCanonicalColor = useMemo(() => {
+        const pal = resolveStonePalette(norm);
+        if (pal && pal.primary && pal.primary !== '#71717A') return pal.primary;
+        const raw = norm.color || (aiColors.length > 0 ? aiColors[0] : '');
+        if (!raw) return pal?.primary;
+        const canonName = canonicalColor(raw);
+        if (canonName) {
+            const sw = swatchFor(canonName);
+            if (sw && sw !== 'transparent' && !sw.startsWith('conic-gradient')) return sw;
+        }
+        const mapped = lookupCanonicalColors(raw);
+        if (mapped && mapped.length > 0) {
+            const sw = swatchFor(mapped[0]);
+            if (sw && sw !== 'transparent' && !sw.startsWith('conic-gradient')) return sw;
+        }
+        const directSw = swatchFor(raw);
+        if (directSw && directSw !== 'transparent' && !directSw.startsWith('conic-gradient')) return directSw;
+        return pal?.primary;
+    }, [norm, aiColors]);
     const hasAiCopy = !!(aiTitle || aiBodyText);
     const hasAnyAi = hasAiCopy || aiColors.length > 0 || aiTypePath.length > 0;
     const aiIssues = useMemo(() => (isContentExpanded && (aiTitle || aiBodyText))
@@ -688,7 +711,9 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     // sheet has no row to share its fields with, so it shows every one
     // (cards.css reveals the overflow entries there) and adds acquisition USD,
     // which the old modal carried.
-    const clusters = (full = false) => (
+    const clusters = (full = false) => {
+        const hasAxoOverlay = mediaUrls.length > 0 && (viewMode === 'gallery' || full);
+        return (
         <div className="inv-clusters">
             {/* SPECS — the piece's axonometric silhouette beside its
                 measurements. No SIZE / WEIGHT titles: 5' 3" × 2' 3 9/16"
@@ -699,16 +724,19 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             <section className="inv-cluster" aria-label={tr("Specs")}>
                 <h5 className="inv-cluster-t">{tr("Specs")}</h5>
                 <div className="inv-specs-body">
-                    <div className={`inv-axo bg-black/40${mediaUrls.length > 0 ? ' inv-axo--large' : ''}`} title={tr("Proportions")} aria-hidden="true">
-                        <WireframeIcon item={norm} color={accentColor} />
-                    </div>
-                    <div className="inv-hairline-card" title={hairCanonical.label || norm.shape || tr("Hairline figure")} aria-hidden="true">
+                    {!hasAxoOverlay && (
+                        <div className="inv-axo bg-black/40" title={tr("Proportions")} aria-hidden="true">
+                            <WireframeIcon item={norm} color={accentColor} />
+                        </div>
+                    )}
+                    <div className={`inv-hairline-card${hasAxoOverlay ? ' inv-hairline-card--prominent' : ''}`} title={hairCanonical.label || norm.shape || tr("Hairline figure")} aria-hidden="true">
                         <ShapeFigure
                             family={hairGeom.geom}
                             isMirror={hairGeom.isMirror}
                             typeId={hairCanonical.id}
                             holes={hairCanonical.holes}
                             dims={hairDims}
+                            color={itemCanonicalColor}
                         />
                     </div>
                     <div className="inv-measures" aria-label={tr("Size and weight")}>
@@ -761,6 +789,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             </section>
         </div>
     );
+    };
 
     // GENERATED — the AI copy this item carries for the store: the title
     // (detailed_description), the classification (generated_type), the colour
@@ -1291,6 +1320,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             }}
                             onClick={() => { if (mediaUrls.length) openViewer(sheetIdx); }}>
                             {heroMedia(sheetIdx, 'inv-gal-img')}
+                            {mediaUrls.length > 0 && (
+                                <div className="inv-hero-axo-overlay" title={tr("Proportions")} aria-hidden="true" onClick={(e) => { e.stopPropagation(); }}>
+                                    <WireframeIcon item={norm} color={accentColor} />
+                                </div>
+                            )}
                             {heroKeys(sheetIdx, stepSheet, 20)}
                         </div>
                         {photoStrip(sheetIdx, setModalIdx)}
@@ -1326,6 +1360,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             <div className={`inv-gal-hero${mediaUrls.length ? "" : " is-axo"}`} {...swipeHandlers}
                                 onClick={(e) => { e.stopPropagation(); if (mediaUrls.length) openViewer(heroIdx); }}>
                                 {heroMedia(heroIdx, 'inv-gal-img')}
+                                {mediaUrls.length > 0 && (
+                                    <div className="inv-hero-axo-overlay" title={tr("Proportions")} aria-hidden="true" onClick={(e) => { e.stopPropagation(); }}>
+                                        <WireframeIcon item={norm} color={accentColor} />
+                                    </div>
+                                )}
                                 {heroKeys(heroIdx, stepPhoto, 18)}
                             </div>
                             {photoStrip(heroIdx, setCardIdx)}

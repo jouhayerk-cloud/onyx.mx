@@ -4,36 +4,11 @@ import type { AxoMirrorClass } from './axoMirrors';
 import type { AxoExtraClass } from './axoExtra';
 import { classifyGeometry } from './geometry';
 import type { Geometry } from './geometry';
+import { resolveStonePalette, resolveItemColor } from './canonicalColors';
+import type { StonePalette } from './canonicalColors';
 
-export function resolveItemColor(item: any): string {
-    const textToSearch = [
-        item.color, item.color_en, item.color_es,
-        item.finish, item.finish_en, item.finish_es,
-        item.material, item.material_en, item.material_es,
-        item.description, item.shortDescription,
-        item.title, item.name
-    ].filter(Boolean).join(' ').toLowerCase();
-
-    if (textToSearch.includes('gold') || textToSearch.includes('brass') || textToSearch.includes('laton') || textToSearch.includes('dorado')) return '#FDE047'; 
-    if (textToSearch.includes('silver') || textToSearch.includes('chrome') || textToSearch.includes('steel') || textToSearch.includes('aluminum') || textToSearch.includes('plata') || textToSearch.includes('acero')) return '#E2E8F0';
-    if (textToSearch.includes('copper') || textToSearch.includes('bronze') || textToSearch.includes('rust') || textToSearch.includes('cobre') || textToSearch.includes('bronce')) return '#F59E0B'; 
-    if (textToSearch.includes('aqua') || textToSearch.includes('teal')) return '#0D9488'; 
-    if (textToSearch.includes('emperador')) return '#FB923C'; 
-    if (textToSearch.includes('amber') || textToSearch.includes('ambar')) return '#D97706'; 
-    if (textToSearch.includes('red') || textToSearch.includes('rojo')) return '#EF4444'; 
-    if (textToSearch.includes('blue') || textToSearch.includes('azul')) return '#3B82F6'; 
-    if (textToSearch.includes('green') || textToSearch.includes('verde') || textToSearch.includes('emerald')) return '#10B981'; 
-    if (textToSearch.includes('pink') || textToSearch.includes('rosa')) return '#EC4899'; 
-    if (textToSearch.includes('purple') || textToSearch.includes('violet') || textToSearch.includes('morado')) return '#8B5CF6'; 
-    if (textToSearch.includes('orange') || textToSearch.includes('naranja')) return '#F97316'; 
-    if (textToSearch.includes('yellow') || textToSearch.includes('amarillo')) return '#EAB308'; 
-    if (textToSearch.includes('brown') || textToSearch.includes('wood') || textToSearch.includes('walnut') || textToSearch.includes('oak') || textToSearch.includes('madera') || textToSearch.includes('cafe') || textToSearch.includes('marrón')) return '#D97706'; 
-    if (textToSearch.includes('black') || textToSearch.includes('nero') || textToSearch.includes('dark') || textToSearch.includes('negro')) return '#888888';
-    if (textToSearch.includes('white') || textToSearch.includes('blanco') || textToSearch.includes('clear') || textToSearch.includes('transparent')) return '#FFFFFF';
-    if (textToSearch.includes('grey') || textToSearch.includes('gray') || textToSearch.includes('gris') || textToSearch.includes('concrete') || textToSearch.includes('cement')) return '#A1A1AA'; 
-    
-    return '#71717A'; // default neutral
-}
+export { resolveStonePalette, resolveItemColor };
+export type { StonePalette };
 
 export type AxoGeom = Geometry | 'diamond-table';
 
@@ -82,9 +57,21 @@ export function normalizeHexMapTexture(
 ): string[] {
     if (!hexList || hexList.length === 0) return [];
 
-    // If small palette (e.g. from vein colors/SVG), generate natural mineral banding grid
+    const toOpaqueHex = (h: string): string => {
+        if (!h) return '#CCCCCC';
+        const clean = String(h).trim().replace(/^#/, '');
+        if (clean.length >= 6) {
+            return `#${clean.slice(0, 6)}`;
+        }
+        if (clean.length === 3 || clean.length === 4) {
+            return `#${clean[0]}${clean[0]}${clean[1]}${clean[1]}${clean[2]}${clean[2]}`;
+        }
+        return `#${clean}`;
+    };
+
+    // If small palette (e.g. from vein colors/SVG or canonical palette), generate natural mineral banding grid
     if (hexList.length < 16) {
-        const palette = hexList.map(s => s.startsWith('#') ? s : `#${s}`);
+        const palette = hexList.map(s => toOpaqueHex(s));
         const veined: string[] = [];
         for (let r = 0; r < targetRows; r++) {
             for (let c = 0; c < targetCols; c++) {
@@ -127,8 +114,8 @@ export function normalizeHexMapTexture(
         if (!rgba) return false;
         // Transparent or low opacity cutout
         if (rgba.a < 32) return false;
-        // Background white / near-white (#ffffff, #fafafa, #f5f5f5, etc.)
-        if (rgba.r >= 242 && rgba.g >= 242 && rgba.b >= 242) return false;
+        // Background white / near-white cutout
+        if (rgba.r >= 248 && rgba.g >= 248 && rgba.b >= 248) return false;
         return true;
     };
 
@@ -147,67 +134,64 @@ export function normalizeHexMapTexture(
     let maxX = -1;
     let minY = srcRows;
     let maxY = -1;
-    let stoneCount = 0;
+    let stoneCoords: { r: number; c: number; hex: string }[] = [];
 
     for (let r = 0; r < srcRows; r++) {
         for (let c = 0; c < srcCols; c++) {
             if (isStoneCell(grid[r][c])) {
+                stoneCoords.push({ r, c, hex: grid[r][c] });
                 if (c < minX) minX = c;
                 if (c > maxX) maxX = c;
                 if (r < minY) minY = r;
                 if (r > maxY) maxY = r;
-                stoneCount++;
             }
         }
     }
 
-    // Fallback if image was all white or empty
-    if (stoneCount === 0 || minX > maxX || minY > maxY) {
+    // Fallback if image was all white or empty (e.g. pure white marble or uniform stone)
+    if (stoneCoords.length === 0 || minX > maxX || minY > maxY) {
         minX = 0;
         maxX = srcCols - 1;
         minY = 0;
         maxY = srcRows - 1;
+        for (let r = 0; r < srcRows; r++) {
+            for (let c = 0; c < srcCols; c++) {
+                const rgba = parseRgba(grid[r][c]);
+                if (rgba && rgba.a >= 32) {
+                    stoneCoords.push({ r, c, hex: grid[r][c] });
+                }
+            }
+        }
     }
 
     // 3. Crop matrix to stone bounding box
-    const cropW = maxX - minX + 1;
-    const cropH = maxY - minY + 1;
+    const cropW = Math.max(1, maxX - minX + 1);
+    const cropH = Math.max(1, maxY - minY + 1);
     const cropped: string[][] = [];
     for (let r = minY; r <= maxY; r++) {
         const row: string[] = [];
         for (let c = minX; c <= maxX; c++) {
-            row.push(grid[r][c]);
+            row.push(grid[r] && grid[r][c] ? grid[r][c] : '');
         }
         cropped.push(row);
     }
 
     // 4. Fill internal empty/background cells with nearest valid stone neighbor
-    if (stoneCount > 0) {
-        const stoneCoords: { r: number; c: number; hex: string }[] = [];
+    if (stoneCoords.length > 0) {
         for (let r = 0; r < cropH; r++) {
             for (let c = 0; c < cropW; c++) {
-                if (isStoneCell(cropped[r][c])) {
-                    stoneCoords.push({ r, c, hex: cropped[r][c] });
-                }
-            }
-        }
-
-        if (stoneCoords.length > 0) {
-            for (let r = 0; r < cropH; r++) {
-                for (let c = 0; c < cropW; c++) {
-                    if (!isStoneCell(cropped[r][c])) {
-                        let bestDist = Infinity;
-                        let bestHex = stoneCoords[0].hex;
-                        for (let k = 0; k < stoneCoords.length; k++) {
-                            const sc = stoneCoords[k];
-                            const d = (sc.r - r) * (sc.r - r) + (sc.c - c) * (sc.c - c);
-                            if (d < bestDist) {
-                                bestDist = d;
-                                bestHex = sc.hex;
-                            }
+                if (!cropped[r][c] || !isStoneCell(cropped[r][c])) {
+                    let bestDist = Infinity;
+                    let bestHex = stoneCoords[0].hex;
+                    for (let k = 0; k < stoneCoords.length; k++) {
+                        const sc = stoneCoords[k];
+                        const d = (sc.r - (minY + r)) * (sc.r - (minY + r)) + (sc.c - (minX + c)) * (sc.c - (minX + c));
+                        if (d < bestDist) {
+                            bestDist = d;
+                            bestHex = sc.hex;
                         }
-                        cropped[r][c] = bestHex;
                     }
+                    cropped[r][c] = bestHex;
                 }
             }
         }
@@ -219,8 +203,8 @@ export function normalizeHexMapTexture(
         const srcR = Math.min(cropH - 1, Math.floor((tr / targetRows) * cropH));
         for (let tc = 0; tc < targetCols; tc++) {
             const srcC = Math.min(cropW - 1, Math.floor((tc / targetCols) * cropW));
-            const hex = cropped[srcR][srcC] || '#CCCCCC';
-            result.push(hex.startsWith('#') ? hex : `#${hex}`);
+            const hex = (cropped[srcR] && cropped[srcR][srcC]) || (stoneCoords[0] && stoneCoords[0].hex) || '#CCCCCC';
+            result.push(toOpaqueHex(hex));
         }
     }
 
@@ -663,7 +647,22 @@ export async function generateAxonometricDataUrl(
         const COLOR_TOP = isWireframe ? 'rgba(0,0,0,0)' : '#F0F0F0';
         const COLOR_RIGHT = isWireframe ? 'rgba(0,0,0,0)' : '#D4D4D4';
         const COLOR_LEFT = isWireframe ? 'rgba(0,0,0,0)' : '#9E9E9E';
-        const COLOR_OUTLINE = wireframeColor || '#111111';
+
+        const palette = resolveStonePalette({
+            color: wireframeColor,
+            shape: shapeStr,
+            description: descStr,
+        });
+
+        const strokeGradient = ctx.createLinearGradient(
+            cx + minU * scale, cy + minV * scale,
+            cx + maxU * scale, cy + maxV * scale
+        );
+        palette.gradientColors.forEach((col, idx) => {
+            strokeGradient.addColorStop(idx / (palette.gradientColors.length - 1), col);
+        });
+
+        const COLOR_OUTLINE = strokeGradient;
 
         const shouldDrawBoundingBox =
             boundingBoxOptions === false ||
@@ -675,10 +674,11 @@ export async function generateAxonometricDataUrl(
 
         let hexPattern: CanvasPattern | null = null;
         let parsedHexList: string[] = [];
-        let tCols = 20;
-        let tRows = 20;
-        if (hexMapString) {
-            try {
+        let tCols = 24;
+        let tRows = 24;
+
+        try {
+            if (hexMapString) {
                 const rawHexList = parseHexMapString(hexMapString);
                 if (rawHexList.length > 0) {
                     let sCols = 20;
@@ -693,31 +693,36 @@ export async function generateAxonometricDataUrl(
                         sCols = Math.max(1, Math.round(Math.sqrt(rawHexList.length)));
                         sRows = Math.ceil(rawHexList.length / sCols);
                     }
-
-                    tCols = 20;
-                    tRows = 20;
                     parsedHexList = normalizeHexMapTexture(rawHexList, sCols, sRows, tCols, tRows);
-
-                    const texCan = document.createElement('canvas');
-                    const cellSize = Math.max(4, Math.round(160 / tCols));
-                    texCan.width = tCols * cellSize;
-                    texCan.height = tRows * cellSize;
-                    const texCtx = texCan.getContext('2d');
-                    if (texCtx) {
-                        for (let r = 0; r < tRows; r++) {
-                            for (let c = 0; c < tCols; c++) {
-                                const idx = r * tCols + c;
-                                const color = parsedHexList[idx] || parsedHexList[0] || '#CCCCCC';
-                                texCtx.fillStyle = color.startsWith('#') ? color : `#${color}`;
-                                texCtx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
-                            }
-                        }
-                        hexPattern = ctx.createPattern(texCan, 'repeat');
-                    }
                 }
-            } catch(e) {
-                console.error("Failed to create hex texture pattern", e);
             }
+
+            // Fallback: If no photo hex map, use canonical stone palette to build continuous veined texture
+            if (!parsedHexList || parsedHexList.length === 0) {
+                parsedHexList = normalizeHexMapTexture(palette.gradientColors, 4, 4, tCols, tRows);
+            }
+
+            if (parsedHexList && parsedHexList.length > 0) {
+                const texCan = document.createElement('canvas');
+                texCan.width = canvasSize;
+                texCan.height = canvasSize;
+                const texCtx = texCan.getContext('2d');
+                if (texCtx) {
+                    const cellW = canvasSize / tCols;
+                    const cellH = canvasSize / tRows;
+                    for (let r = 0; r < tRows; r++) {
+                        for (let c = 0; c < tCols; c++) {
+                            const idx = r * tCols + c;
+                            const color = parsedHexList[idx] || palette.primary || '#CCCCCC';
+                            texCtx.fillStyle = color.startsWith('#') ? color : `#${color}`;
+                            texCtx.fillRect(c * cellW, r * cellH, cellW + 0.5, cellH + 0.5);
+                        }
+                    }
+                    hexPattern = ctx.createPattern(texCan, 'repeat');
+                }
+            }
+        } catch (e) {
+            console.error("Failed to generate stretched stone texture", e);
         }
 
         ctx.font = 'bold 18px "Helvetica Neue", Helvetica, Arial, sans-serif';
@@ -730,7 +735,7 @@ export async function generateAxonometricDataUrl(
         }
 
         ctx.lineWidth = 1.8;
-        ctx.strokeStyle = COLOR_OUTLINE;
+        ctx.strokeStyle = strokeGradient;
 
         // Render back occluded edges of 3D bounding dimension frame
         if (shouldDrawBoundingBox) {
@@ -746,7 +751,7 @@ export async function generateAxonometricDataUrl(
         if (mirrorClass) {
             drawMirror(ctx, mirrorClass, { W, H, D }, {
                 project, scale, cx, cy,
-                colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: COLOR_OUTLINE,
+                colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: strokeGradient,
                 lineWidth: 1.8, isWireframe, hexPattern,
             });
             if (shouldDrawBoundingBox) {
@@ -765,7 +770,7 @@ export async function generateAxonometricDataUrl(
         if (extra) {
             drawExtra(ctx, extra, { W, H, D }, {
                 project, scale, cx, cy,
-                colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: COLOR_OUTLINE,
+                colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: strokeGradient,
                 lineWidth: 1.8, holes: extractHolesCount(shapeStr, descStr), isWireframe, hexPattern,
             });
             if (shouldDrawBoundingBox) {
@@ -833,7 +838,7 @@ export async function generateAxonometricDataUrl(
             
             if (hexPattern) {
                 ctx.save();
-                ctx.globalAlpha = isWireframe ? 0.50 : 0.78;
+                ctx.globalAlpha = isWireframe ? 0.0 : 1.0;
                 ctx.fillStyle = hexPattern;
                 ctx.fill();
                 ctx.restore();
@@ -867,7 +872,7 @@ export async function generateAxonometricDataUrl(
             }
             if (hexPattern) {
                 ctx.save();
-                ctx.globalAlpha = isWireframe ? 0.50 : 0.78;
+                ctx.globalAlpha = isWireframe ? 0.0 : 1.0;
                 ctx.fillStyle = hexPattern;
                 ctx.fill();
                 ctx.restore();
@@ -1000,7 +1005,7 @@ export async function generateAxonometricDataUrl(
                 
                 if (hexPattern) {
                     ctx.save();
-                    ctx.globalAlpha = isWireframe ? 0.50 : 0.78;
+                    ctx.globalAlpha = isWireframe ? 0.0 : 1.0;
                     ctx.fillStyle = hexPattern;
                     ctx.fill();
                     ctx.restore();
@@ -1033,7 +1038,7 @@ export async function generateAxonometricDataUrl(
                 }
                 if (hexPattern) {
                     ctx.save();
-                    ctx.globalAlpha = isWireframe ? 0.50 : 0.78;
+                    ctx.globalAlpha = isWireframe ? 0.0 : 1.0;
                     ctx.fillStyle = hexPattern;
                     ctx.fill();
                     ctx.restore();
@@ -1119,7 +1124,7 @@ export async function generateAxonometricDataUrl(
             }
             if (hexPattern) {
                 ctx!.save();
-                ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
+                ctx!.globalAlpha = isWireframe ? 0.0 : 1.0;
                 ctx!.fillStyle = hexPattern;
                 ctx!.fill();
                 ctx!.restore();
@@ -1185,7 +1190,7 @@ export async function generateAxonometricDataUrl(
             
             if (hexPattern) {
                 ctx!.save();
-                ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
+                ctx!.globalAlpha = isWireframe ? 0.0 : 1.0;
                 ctx!.fillStyle = hexPattern;
                 ctx!.fill();
                 ctx!.restore();
@@ -1230,7 +1235,7 @@ export async function generateAxonometricDataUrl(
                 }
                 if (hexPattern) {
                     ctx!.save();
-                    ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
+                    ctx!.globalAlpha = isWireframe ? 0.0 : 1.0;
                     ctx!.fillStyle = hexPattern;
                     ctx!.fill();
                     ctx!.restore();
@@ -1261,14 +1266,7 @@ export async function generateAxonometricDataUrl(
             const strokeWidth = 1.8;
             ctx!.lineWidth = strokeWidth;
 
-            const resolvedColor = resolveItemColor({
-                description: descStr,
-                shortDescription: descStr,
-                name: shapeStr,
-                shape: shapeStr,
-                type: descStr,
-            });
-            const tableOutlineColor = wireframeColor || (resolvedColor !== '#71717A' ? resolvedColor : COLOR_OUTLINE);
+            const tableOutlineColor = strokeGradient;
             ctx!.strokeStyle = tableOutlineColor;
 
             const N = 10;
@@ -1345,7 +1343,7 @@ export async function generateAxonometricDataUrl(
                 }
                 if (hexPattern) {
                     ctx!.save();
-                    ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
+                    ctx!.globalAlpha = isWireframe ? 0.0 : 1.0;
                     ctx!.fillStyle = hexPattern;
                     ctx!.fill();
                     ctx!.restore();
@@ -1461,7 +1459,7 @@ export async function generateAxonometricDataUrl(
                 }
                 if (hexPattern) {
                     ctx!.save();
-                    ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
+                    ctx!.globalAlpha = isWireframe ? 0.0 : 1.0;
                     ctx!.fillStyle = hexPattern;
                     ctx!.fill();
                     ctx!.restore();

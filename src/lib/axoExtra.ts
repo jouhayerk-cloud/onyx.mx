@@ -61,7 +61,7 @@ export interface AxoDrawHelpers {
     /** Shading colour for left isometric faces (darkest) */
     colorLeft: string;
     /** Stroke outline colour */
-    colorOutline?: string;
+    colorOutline?: string | CanvasGradient;
     /** Stroke line width (typically 5) */
     lineWidth?: number;
     /** Hole count for wine racks (defaults to 6 if unspecified) */
