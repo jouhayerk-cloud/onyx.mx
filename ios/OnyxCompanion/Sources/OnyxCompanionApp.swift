@@ -15,11 +15,16 @@ struct OnyxMainView: View {
     @ObservedObject var modelStore: ModelStore
 
     var body: some View {
-        VStack(spacing: 0) {
+        // True edge-to-edge: the webview ignores every safe area (including the home indicator
+        // strip), and the status line floats over it as an overlay that also ignores safe areas, so
+        // neither view leaves the system a gap to pad with a bare background. The status line keeps
+        // its own bottom padding so its text/dots clear the home indicator without reserving space.
+        ZStack(alignment: .bottom) {
             WebContainer(modelStore: modelStore)
-                .ignoresSafeArea(edges: .top)
+                .ignoresSafeArea()
 
             statusLine
+                .ignoresSafeArea(edges: .bottom)
         }
         .onAppear {
             modelStore.refresh()
@@ -57,7 +62,10 @@ struct OnyxMainView: View {
             Spacer()
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.top, 6)
+        // extra bottom padding, not safe-area inset: the background must still reach the true edge
+        // (fullscreen), only the text/dots need to clear the home indicator's swipe strip
+        .padding(.bottom, 6 + 20)
         .background(Color(UIColor.systemBackground).opacity(0.95))
     }
 

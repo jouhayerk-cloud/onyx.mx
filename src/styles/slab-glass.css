@@ -1020,37 +1020,59 @@ html.style-slab .inv-row + .inv-drawer .inv-drawer-body {
         background-attachment: scroll !important;
     }
 
-    /* (1) Replace backdrop-filter on repeated elements with fallback solid tokens */
+    /* (1) Translucent glass tokens on touch / mobile: iOS handles backdrop-filter with ease */
     html.style-slab {
-        --slab-glass-blur: 12px;
-        --slab-glass:    var(--slab);
-        --slab-glass-hi: var(--slab);
-        --slab-glass-lo: var(--slab);
-        --slab-glass-well: var(--slab);
-        --slab-glass-row: var(--slab);
-        --slab-glass-row-hover: var(--slab-tint-hover);
-        --slab-glass-hover: var(--slab-tint-hover);
-        --slab-glass-on: var(--slab-tint-on);
-        --slab-glass-modal: var(--slab);
-        --slab-glass-sheet: var(--slab);
-        --slab-glass-pop: var(--slab);
+        --slab-glass-blur: 16px;
+        --slab-glass:          color-mix(in srgb, var(--slab) 52%, transparent);
+        --slab-glass-hi:       color-mix(in srgb, var(--slab) 58%, transparent);
+        --slab-glass-lo:       color-mix(in srgb, var(--slab) 28%, transparent);
+        --slab-glass-well:     color-mix(in srgb, var(--slab) 36%, transparent);
+        --slab-glass-row:      color-mix(in srgb, var(--slab-hi) 10%, color-mix(in srgb, var(--slab) 25%, transparent));
+        --slab-glass-row-hover: color-mix(in srgb, var(--slab-hi) 25%, color-mix(in srgb, var(--slab) 65%, transparent));
+        --slab-glass-hover:    color-mix(in srgb, var(--slab-tint-hover) 55%, transparent);
+        --slab-glass-on:       var(--slab-tint-on);
+        --slab-glass-modal:    color-mix(in srgb, var(--slab) 58%, transparent);
+        --slab-glass-sheet:    color-mix(in srgb, var(--slab) 62%, transparent);
+        --slab-glass-pop:      color-mix(in srgb, var(--slab) 52%, transparent);
     }
 
-    /* (1) Remove backdrop-filter from list rows, cards, buttons, chips and repeated elements */
-    html.style-slab *,
-    html.style-slab *::before,
-    html.style-slab *::after {
+    /* (1) Remove backdrop-filter from low-priority micro-chips to protect GPU */
+    html.style-slab .smart-chip,
+    html.style-slab .utb-status-chip,
+    html.style-slab .utb-smart-chip {
         -webkit-backdrop-filter: none !important;
         backdrop-filter: none !important;
     }
 
-    /* Repeated elements fallback backgrounds */
-    html.style-slab .inv-sheet {
-        background-color: var(--slab) !important;
+    /* (2) Inventory Item Details & Drawer on iOS: Frosted Liquid Glass */
+    html.style-slab .inv-sheet,
+    .inv-sheet {
+        background-color: color-mix(in srgb, var(--slab) 60%, transparent) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(1.8) brightness(1.08) !important;
+        backdrop-filter: blur(20px) saturate(1.8) brightness(1.08) !important;
+        box-shadow: none !important;
     }
-    html.style-slab .inv-row + .inv-drawer {
-        background-color: var(--slab) !important;
-        background-image: none !important;
+    html.style-slab .inv-row + .inv-drawer,
+    .inv-row + .inv-drawer {
+        background-color: color-mix(in srgb, var(--slab) 55%, transparent) !important;
+        background-image: var(--lq-sheen) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(1.6) brightness(1.06) !important;
+        backdrop-filter: blur(20px) saturate(1.6) brightness(1.06) !important;
+    }
+    html.style-slab .inv-sheet-scrim,
+    .inv-sheet-scrim {
+        background-color: transparent !important;
+        -webkit-backdrop-filter: blur(14px) saturate(1.1) !important;
+        backdrop-filter: blur(14px) saturate(1.1) !important;
+    }
+    html.style-slab .inv-sheet .inv-readout,
+    html.style-slab .inv-row + .inv-drawer .inv-readout,
+    html.style-slab .inv-sheet .payment-row,
+    html.style-slab .inv-row + .inv-drawer .payment-row {
+        background-color: color-mix(in srgb, var(--slab) 36%, transparent) !important;
+        -webkit-backdrop-filter: blur(10px) saturate(1.3) !important;
+        backdrop-filter: blur(10px) saturate(1.3) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
     }
 
     /* (2) Keep backdrop-filter only on top bar, Onyx island surface, and sidebar (blur radius at most 12px) */
@@ -1071,13 +1093,47 @@ html.style-slab .inv-row + .inv-drawer .inv-drawer-body {
     html.style-slab .sidebar,
     html.style-slab .isb-panel,
     html.style-slab .smd-card,
-    html.style-slab .isb-toggle-circle,
     .sidebar,
     .isb-panel,
-    .smd-card,
-    .isb-toggle-circle {
+    .smd-card {
         -webkit-backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
         backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
+    }
+
+    /* Sidebar compact toggle bubble on iOS: Liquid Glass translucency with hover lift */
+    html.style-slab .isb-toggle-circle,
+    .isb-toggle-circle {
+        background-color: color-mix(in srgb, var(--slab) 42%, transparent) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
+        backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
+        border: 1px solid var(--slab-glass-rim, rgba(255, 255, 255, 0.22)) !important;
+        transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    html.style-slab .isb-toggle-circle:hover,
+    .isb-toggle-circle:hover {
+        background-color: color-mix(in srgb, var(--slab-hi, #fff) 20%, color-mix(in srgb, var(--slab) 65%, transparent)) !important;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.65) !important;
+    }
+    html.theme-aqua .isb-toggle-circle,
+    html.style-slab.theme-aqua .isb-toggle-circle {
+        background-color: rgba(255, 255, 255, 0.72) !important;
+    }
+    html.theme-aqua .isb-toggle-circle:hover,
+    html.style-slab.theme-aqua .isb-toggle-circle:hover {
+        background-color: rgba(255, 255, 255, 0.88) !important;
+    }
+
+    /* List rows on touch and desktop: glass at rest, denser with sheen on hover */
+    html.style-slab .inv-row,
+    html.style-slab .inv-grid.inv-row {
+        background-color: var(--slab-glass-row) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(1.4) !important;
+        backdrop-filter: blur(14px) saturate(1.4) !important;
+        transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+    html.style-slab .inv-row:hover,
+    html.style-slab .inv-grid.inv-row:hover {
+        background-color: var(--slab-glass-row-hover) !important;
     }
 
     html.style-slab .app-topbar > .ql-lens {

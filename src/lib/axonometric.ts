@@ -67,6 +67,245 @@ export function parseHexMapString(hexMapString?: string): string[] {
         .map(s => s.startsWith('#') ? s : `#${s}`);
 }
 
+/**
+ * Normalises a hex map matrix extracted from cutout images.
+ * Detects empty/white background cells, computes the bounding box of genuine onyx stone pixels,
+ * crops out the background, infills internal holes with nearest-neighbor stone sampling,
+ * and resamples the resulting dense stone matrix to targetCols x targetRows.
+ */
+export function normalizeHexMapTexture(
+    hexList: string[],
+    srcCols: number,
+    srcRows: number,
+    targetCols = 20,
+    targetRows = 20
+): string[] {
+    if (!hexList || hexList.length === 0) return [];
+
+    // If small palette (e.g. from vein colors/SVG), generate natural mineral banding grid
+    if (hexList.length < 16) {
+        const palette = hexList.map(s => s.startsWith('#') ? s : `#${s}`);
+        const veined: string[] = [];
+        for (let r = 0; r < targetRows; r++) {
+            for (let c = 0; c < targetCols; c++) {
+                const param = ((r * 0.75 + c * 1.25) % targetRows) / targetRows;
+                const idx = Math.floor(param * palette.length);
+                veined.push(palette[idx % palette.length]);
+            }
+        }
+        return veined;
+    }
+
+    // Helper: Parse any hex string to RGBA numbers
+    const parseRgba = (hex: string): { r: number; g: number; b: number; a: number } | null => {
+        if (!hex) return null;
+        let s = String(hex).trim().replace(/^#/, '');
+        if (s.length === 3) {
+            s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2] + 'ff';
+        } else if (s.length === 6) {
+            s += 'ff';
+        } else if (s.length === 4) {
+            s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2] + s[3] + s[3];
+        } else if (s.length === 8) {
+            // ok
+        } else {
+            return null;
+        }
+        const num = parseInt(s, 16);
+        if (Number.isNaN(num)) return null;
+        return {
+            r: (num >> 24) & 0xff,
+            g: (num >> 16) & 0xff,
+            b: (num >> 8) & 0xff,
+            a: num & 0xff,
+        };
+    };
+
+    // Helper: Detect cutout white / empty / transparent background cell
+    const isStoneCell = (hex: string): boolean => {
+        const rgba = parseRgba(hex);
+        if (!rgba) return false;
+        // Transparent or low opacity cutout
+        if (rgba.a < 32) return false;
+        // Background white / near-white (#ffffff, #fafafa, #f5f5f5, etc.)
+        if (rgba.r >= 242 && rgba.g >= 242 && rgba.b >= 242) return false;
+        return true;
+    };
+
+    // 1. Build 2D matrix
+    const grid: string[][] = [];
+    for (let r = 0; r < srcRows; r++) {
+        const row: string[] = [];
+        for (let c = 0; c < srcCols; c++) {
+            row.push(hexList[r * srcCols + c] || '');
+        }
+        grid.push(row);
+    }
+
+    // 2. Find bounding box of real stone
+    let minX = srcCols;
+    let maxX = -1;
+    let minY = srcRows;
+    let maxY = -1;
+    let stoneCount = 0;
+
+    for (let r = 0; r < srcRows; r++) {
+        for (let c = 0; c < srcCols; c++) {
+            if (isStoneCell(grid[r][c])) {
+                if (c < minX) minX = c;
+                if (c > maxX) maxX = c;
+                if (r < minY) minY = r;
+                if (r > maxY) maxY = r;
+                stoneCount++;
+            }
+        }
+    }
+
+    // Fallback if image was all white or empty
+    if (stoneCount === 0 || minX > maxX || minY > maxY) {
+        minX = 0;
+        maxX = srcCols - 1;
+        minY = 0;
+        maxY = srcRows - 1;
+    }
+
+    // 3. Crop matrix to stone bounding box
+    const cropW = maxX - minX + 1;
+    const cropH = maxY - minY + 1;
+    const cropped: string[][] = [];
+    for (let r = minY; r <= maxY; r++) {
+        const row: string[] = [];
+        for (let c = minX; c <= maxX; c++) {
+            row.push(grid[r][c]);
+        }
+        cropped.push(row);
+    }
+
+    // 4. Fill internal empty/background cells with nearest valid stone neighbor
+    if (stoneCount > 0) {
+        const stoneCoords: { r: number; c: number; hex: string }[] = [];
+        for (let r = 0; r < cropH; r++) {
+            for (let c = 0; c < cropW; c++) {
+                if (isStoneCell(cropped[r][c])) {
+                    stoneCoords.push({ r, c, hex: cropped[r][c] });
+                }
+            }
+        }
+
+        if (stoneCoords.length > 0) {
+            for (let r = 0; r < cropH; r++) {
+                for (let c = 0; c < cropW; c++) {
+                    if (!isStoneCell(cropped[r][c])) {
+                        let bestDist = Infinity;
+                        let bestHex = stoneCoords[0].hex;
+                        for (let k = 0; k < stoneCoords.length; k++) {
+                            const sc = stoneCoords[k];
+                            const d = (sc.r - r) * (sc.r - r) + (sc.c - c) * (sc.c - c);
+                            if (d < bestDist) {
+                                bestDist = d;
+                                bestHex = sc.hex;
+                            }
+                        }
+                        cropped[r][c] = bestHex;
+                    }
+                }
+            }
+        }
+    }
+
+    // 5. Resample / scale to targetCols x targetRows
+    const result: string[] = [];
+    for (let tr = 0; tr < targetRows; tr++) {
+        const srcR = Math.min(cropH - 1, Math.floor((tr / targetRows) * cropH));
+        for (let tc = 0; tc < targetCols; tc++) {
+            const srcC = Math.min(cropW - 1, Math.floor((tc / targetCols) * cropW));
+            const hex = cropped[srcR][srcC] || '#CCCCCC';
+            result.push(hex.startsWith('#') ? hex : `#${hex}`);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Extracts a hex map or texture string from an item across all known database fields:
+ * processed_media_urls._pixel_map_hex, item.hexMap, item.hex_map, spatial_points,
+ * vein_svg_urls, or vein colors/palette.
+ */
+export function extractItemHexMapString(item: any): string | undefined {
+    if (!item) return undefined;
+
+    // 1. Direct fields
+    if (item.hexMap && typeof item.hexMap === 'string') return item.hexMap;
+    if (item.hex_map && typeof item.hex_map === 'string') return item.hex_map;
+    if (Array.isArray(item.hexMap) && item.hexMap.length > 0) return JSON.stringify(item.hexMap);
+    if (Array.isArray(item.hex_map) && item.hex_map.length > 0) return JSON.stringify(item.hex_map);
+    if (item.hexString && typeof item.hexString === 'string') return item.hexString;
+    if (item.hex_string && typeof item.hex_string === 'string') return item.hex_string;
+
+    // 2. processed_media_urls._pixel_map_hex
+    const pmu = item.processed_media_urls || item.processedMediaUrls;
+    if (pmu) {
+        let parsedPmu = pmu;
+        if (typeof parsedPmu === 'string') {
+            try { parsedPmu = JSON.parse(parsedPmu); } catch {}
+        }
+        if (parsedPmu && typeof parsedPmu === 'object') {
+            if (parsedPmu._pixel_map_hex) return String(parsedPmu._pixel_map_hex);
+            if (parsedPmu.pixel_map_hex) return String(parsedPmu.pixel_map_hex);
+        }
+    }
+
+    // 3. spatial_points
+    const sp = item.spatial_points || item.spatialPoints;
+    if (sp) {
+        let parsedSp = sp;
+        if (typeof parsedSp === 'string') {
+            try { parsedSp = JSON.parse(parsedSp); } catch {}
+        }
+        if (Array.isArray(parsedSp)) {
+            const pm = parsedSp.find((p: any) => p && (p.type === 'pixel_map' || p.hex_string || p.hexString || p.hex_map));
+            if (pm) return pm.hex_string || pm.hexString || pm.hex_map || (Array.isArray(pm.hexList) ? JSON.stringify(pm.hexList) : undefined);
+        } else if (parsedSp && typeof parsedSp === 'object') {
+            if (parsedSp.hex_string || parsedSp.hexString) return parsedSp.hex_string || parsedSp.hexString;
+        }
+    }
+
+    // 4. vein_svg_urls / vein colors
+    const vUrls = item.vein_svg_urls || item.veinSvgUrls;
+    if (vUrls) {
+        let parsedV = vUrls;
+        if (typeof parsedV === 'string') {
+            try { parsedV = JSON.parse(parsedV); } catch { parsedV = [parsedV]; }
+        }
+        if (Array.isArray(parsedV) && parsedV.length > 0) {
+            const colorMatches: string[] = [];
+            for (const u of parsedV) {
+                if (typeof u === 'string') {
+                    const matches = u.match(/(?:%23|[#])([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})/g);
+                    if (matches) {
+                        for (const m of matches) {
+                            colorMatches.push(m.replace('%23', '#'));
+                        }
+                    }
+                }
+            }
+            if (colorMatches.length > 0) {
+                return JSON.stringify(colorMatches);
+            }
+        }
+    }
+
+    // 5. Direct vein_colors or vein_palette
+    const vc = item.vein_colors || item.veinColors || item.vein_palette;
+    if (vc) {
+        if (typeof vc === 'string') return vc;
+        if (Array.isArray(vc) && vc.length > 0) return JSON.stringify(vc);
+    }
+
+    return undefined;
+}
+
 export function draw3DBoundingDimensionFrame(
     ctx: CanvasRenderingContext2D,
     geo: { W: number; H: number; D: number },
@@ -100,10 +339,10 @@ export function draw3DBoundingDimensionFrame(
     const t3 = toCanvas(0, H, D);     // left top
 
     const isLight = helpers.wireframeColor === '#000000' || helpers.wireframeColor === 'black' || !helpers.isDark;
-    const frontColor = options?.hairlineColor || (isLight ? 'rgba(71, 85, 105, 0.45)' : 'rgba(255, 255, 255, 0.35)');
-    const backColor = options?.hairlineColor ? frontColor : (isLight ? 'rgba(148, 163, 184, 0.22)' : 'rgba(255, 255, 255, 0.16)');
-    const tickColor = isLight ? 'rgba(51, 65, 85, 0.65)' : 'rgba(255, 255, 255, 0.55)';
-    const textColor = isLight ? 'rgba(30, 41, 59, 0.85)' : 'rgba(241, 245, 249, 0.88)';
+    const frontColor = options?.hairlineColor || (isLight ? 'rgba(30, 41, 59, 0.75)' : 'rgba(255, 255, 255, 0.70)');
+    const backColor = options?.hairlineColor ? frontColor : (isLight ? 'rgba(100, 116, 139, 0.35)' : 'rgba(255, 255, 255, 0.28)');
+    const tickColor = isLight ? 'rgba(15, 23, 42, 0.90)' : 'rgba(255, 255, 255, 0.92)';
+    const textColor = isLight ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)';
     const unit = options?.unit || 'cm';
 
     ctx.save();
@@ -114,7 +353,7 @@ export function draw3DBoundingDimensionFrame(
     if (pass === 'back' || pass === 'all' || !pass) {
         ctx.beginPath();
         ctx.setLineDash([3, 3]);
-        ctx.lineWidth = 0.85;
+        ctx.lineWidth = 1.0;
         ctx.strokeStyle = backColor;
 
         // b1 -> b2 -> b3
@@ -130,7 +369,7 @@ export function draw3DBoundingDimensionFrame(
     // 2. Front visible edges, hairline ticks, and dimension labels
     if (pass === 'front' || pass === 'all' || !pass) {
         ctx.setLineDash([]);
-        ctx.lineWidth = 1.0;
+        ctx.lineWidth = 2.0;
         ctx.strokeStyle = frontColor;
 
         // Bottom visible: b3 -> b0 -> b1
@@ -155,12 +394,12 @@ export function draw3DBoundingDimensionFrame(
         ctx.lineTo(t3.x, t3.y);
         ctx.stroke();
 
-        // Precision corner tick points (1.2px dot)
+        // Precision corner tick points (2.0px dot)
         const corners = [b0, b1, b3, t0, t1, t2, t3];
         ctx.fillStyle = tickColor;
         for (const pt of corners) {
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 1.2, 0, 2 * Math.PI);
+            ctx.arc(pt.x, pt.y, 2.0, 0, 2 * Math.PI);
             ctx.fill();
         }
 
@@ -168,7 +407,7 @@ export function draw3DBoundingDimensionFrame(
         const showLabels = options?.showDimensionLabels !== false;
 
         if (showTicks) {
-            ctx.lineWidth = 0.85;
+            ctx.lineWidth = 1.6;
             ctx.strokeStyle = tickColor;
 
             const drawAxisTicks = (
@@ -181,7 +420,7 @@ export function draw3DBoundingDimensionFrame(
                 const dy = pEnd.y - pStart.y;
                 for (const f of fractions) {
                     const isMajor = f === 0 || f === 0.5 || f === 1;
-                    const len = isMajor ? 5.5 : 3.2;
+                    const len = isMajor ? 6.5 : 3.8;
                     const px = pStart.x + f * dx;
                     const py = pStart.y + f * dy;
                     ctx.beginPath();
@@ -214,10 +453,20 @@ export function draw3DBoundingDimensionFrame(
         }
 
         if (showLabels) {
-            ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif';
-            ctx.fillStyle = textColor;
+            ctx.font = '700 13px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", monospace, system-ui, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
+
+            const drawHaloText = (text: string, x: number, y: number) => {
+                ctx.save();
+                ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)';
+                ctx.lineWidth = 3.5;
+                ctx.lineJoin = 'round';
+                ctx.strokeText(text, x, y);
+                ctx.fillStyle = textColor;
+                ctx.fillText(text, x, y);
+                ctx.restore();
+            };
 
             // Width label (b0 -> b1)
             const wMidX = (b0.x + b1.x) / 2;
@@ -228,7 +477,7 @@ export function draw3DBoundingDimensionFrame(
             let wNx = -wDy / wLen;
             let wNy = wDx / wLen;
             if (wNy < 0) { wNx = -wNx; wNy = -wNy; }
-            ctx.fillText(`${Math.round(W)} ${unit}`, wMidX + wNx * 14, wMidY + wNy * 14);
+            drawHaloText(`${Math.round(W)} ${unit}`, wMidX + wNx * 16, wMidY + wNy * 16);
 
             // Depth label (b0 -> b3)
             const dMidX = (b0.x + b3.x) / 2;
@@ -239,12 +488,12 @@ export function draw3DBoundingDimensionFrame(
             let dNx = dDy / dLen;
             let dNy = -dDx / dLen;
             if (dNy < 0) { dNx = -dNx; dNy = -dNy; }
-            ctx.fillText(`${Math.round(D)} ${unit}`, dMidX + dNx * 14, dMidY + dNy * 14);
+            drawHaloText(`${Math.round(D)} ${unit}`, dMidX + dNx * 16, dMidY + dNy * 16);
 
             // Height label (b1 -> t1)
             const hMidX = (b1.x + t1.x) / 2;
             const hMidY = (b1.y + t1.y) / 2;
-            ctx.fillText(`${Math.round(H)} ${unit}`, hMidX + 16, hMidY);
+            drawHaloText(`${Math.round(H)} ${unit}`, hMidX + 18, hMidY);
         }
     }
 
@@ -428,20 +677,26 @@ export async function generateAxonometricDataUrl(
         let parsedHexList: string[] = [];
         let tCols = 20;
         let tRows = 20;
-        if (hexMapString && !isWireframe) {
+        if (hexMapString) {
             try {
-                parsedHexList = parseHexMapString(hexMapString);
-                if (parsedHexList.length > 0) {
-                    if (parsedHexList.length === 160) { tCols = 20; tRows = 8; }
-                    else if (parsedHexList.length === 400) { tCols = 20; tRows = 20; }
-                    else if (parsedHexList.length === 64) { tCols = 8; tRows = 8; }
-                    else if (parsedHexList.length === 100) { tCols = 10; tRows = 10; }
-                    else if (parsedHexList.length > 0 && parsedHexList.length % 20 === 0) { tCols = 20; tRows = parsedHexList.length / 20; }
-                    else if (parsedHexList.length > 0 && parsedHexList.length % 16 === 0) { tCols = 16; tRows = parsedHexList.length / 16; }
+                const rawHexList = parseHexMapString(hexMapString);
+                if (rawHexList.length > 0) {
+                    let sCols = 20;
+                    let sRows = 20;
+                    if (rawHexList.length === 160) { sCols = 20; sRows = 8; }
+                    else if (rawHexList.length === 400) { sCols = 20; sRows = 20; }
+                    else if (rawHexList.length === 64) { sCols = 8; sRows = 8; }
+                    else if (rawHexList.length === 100) { sCols = 10; sRows = 10; }
+                    else if (rawHexList.length > 0 && rawHexList.length % 20 === 0) { sCols = 20; sRows = rawHexList.length / 20; }
+                    else if (rawHexList.length > 0 && rawHexList.length % 16 === 0) { sCols = 16; sRows = rawHexList.length / 16; }
                     else {
-                        tCols = Math.max(1, Math.round(Math.sqrt(parsedHexList.length)));
-                        tRows = Math.ceil(parsedHexList.length / tCols);
+                        sCols = Math.max(1, Math.round(Math.sqrt(rawHexList.length)));
+                        sRows = Math.ceil(rawHexList.length / sCols);
                     }
+
+                    tCols = 20;
+                    tRows = 20;
+                    parsedHexList = normalizeHexMapTexture(rawHexList, sCols, sRows, tCols, tRows);
 
                     const texCan = document.createElement('canvas');
                     const cellSize = Math.max(4, Math.round(160 / tCols));
@@ -474,7 +729,7 @@ export async function generateAxonometricDataUrl(
             return;
         }
 
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 1.8;
         ctx.strokeStyle = COLOR_OUTLINE;
 
         // Render back occluded edges of 3D bounding dimension frame
@@ -492,7 +747,7 @@ export async function generateAxonometricDataUrl(
             drawMirror(ctx, mirrorClass, { W, H, D }, {
                 project, scale, cx, cy,
                 colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: COLOR_OUTLINE,
-                lineWidth: 5, isWireframe, hexPattern,
+                lineWidth: 1.8, isWireframe, hexPattern,
             });
             if (shouldDrawBoundingBox) {
                 draw3DBoundingDimensionFrame(
@@ -511,7 +766,7 @@ export async function generateAxonometricDataUrl(
             drawExtra(ctx, extra, { W, H, D }, {
                 project, scale, cx, cy,
                 colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: COLOR_OUTLINE,
-                lineWidth: 5, holes: extractHolesCount(shapeStr, descStr), isWireframe, hexPattern,
+                lineWidth: 1.8, holes: extractHolesCount(shapeStr, descStr), isWireframe, hexPattern,
             });
             if (shouldDrawBoundingBox) {
                 draw3DBoundingDimensionFrame(
@@ -577,8 +832,11 @@ export async function generateAxonometricDataUrl(
             ctx.closePath();
             
             if (hexPattern) {
+                ctx.save();
+                ctx.globalAlpha = isWireframe ? 0.50 : 0.78;
                 ctx.fillStyle = hexPattern;
                 ctx.fill();
+                ctx.restore();
                 const shGrd = ctx!.createLinearGradient(cx + (cb_u + u2)*scale, 0, cx + (cb_u + u1)*scale, 0);
                 shGrd.addColorStop(0, 'rgba(0,0,0,0.35)');
                 shGrd.addColorStop(0.5, 'rgba(255,255,255,0.1)');
@@ -603,9 +861,16 @@ export async function generateAxonometricDataUrl(
             ctx.stroke();
 
             drawEllipsePath(ct_u, ct_v, 1.0, 0, 2 * Math.PI);
-            ctx.fillStyle = hexPattern || COLOR_TOP;
-            ctx.fill();
+            if (!isWireframe) {
+                ctx.fillStyle = COLOR_TOP;
+                ctx.fill();
+            }
             if (hexPattern) {
+                ctx.save();
+                ctx.globalAlpha = isWireframe ? 0.50 : 0.78;
+                ctx.fillStyle = hexPattern;
+                ctx.fill();
+                ctx.restore();
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx.fill();
             }
@@ -734,8 +999,11 @@ export async function generateAxonometricDataUrl(
                 ctx.closePath();
                 
                 if (hexPattern) {
+                    ctx.save();
+                    ctx.globalAlpha = isWireframe ? 0.50 : 0.78;
                     ctx.fillStyle = hexPattern;
                     ctx.fill();
+                    ctx.restore();
                     const shGrd = ctx.createLinearGradient(p0_u, 0, p2_u, 0);
                     shGrd.addColorStop(0, 'rgba(0,0,0,0.35)');
                     shGrd.addColorStop(0.5, 'rgba(255,255,255,0.1)');
@@ -759,9 +1027,16 @@ export async function generateAxonometricDataUrl(
 
                 // Draw full top ellipse (outer rim)
                 drawEllipsePath(ct_u, ct_v, 1.0, 0, 2 * Math.PI);
-                ctx.fillStyle = hexPattern || COLOR_TOP;
-                ctx.fill();
+                if (!isWireframe) {
+                    ctx.fillStyle = COLOR_TOP;
+                    ctx.fill();
+                }
                 if (hexPattern) {
+                    ctx.save();
+                    ctx.globalAlpha = isWireframe ? 0.50 : 0.78;
+                    ctx.fillStyle = hexPattern;
+                    ctx.fill();
+                    ctx.restore();
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                     ctx.fill();
                 }
@@ -838,9 +1113,16 @@ export async function generateAxonometricDataUrl(
 
             // 3. Draw front face
             traceIsoCircle(frontCx, frontCy, R);
-            ctx!.fillStyle = hexPattern || COLOR_TOP;
-            ctx!.fill();
+            if (!isWireframe) {
+                ctx!.fillStyle = COLOR_TOP;
+                ctx!.fill();
+            }
             if (hexPattern) {
+                ctx!.save();
+                ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
+                ctx!.fillStyle = hexPattern;
+                ctx!.fill();
+                ctx!.restore();
                 ctx!.fillStyle = 'rgba(255, 255, 255, 0.2)';
                 ctx!.fill();
             }
@@ -901,16 +1183,19 @@ export async function generateAxonometricDataUrl(
             grd.addColorStop(0.7, COLOR_RIGHT);
             grd.addColorStop(1, COLOR_LEFT);
             
-            if (isWireframe) {
-                ctx!.fillStyle = 'rgba(0,0,0,0)';
-            } else if (hexPattern) {
+            if (hexPattern) {
+                ctx!.save();
+                ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
                 ctx!.fillStyle = hexPattern;
                 ctx!.fill();
+                ctx!.restore();
                 const shGrd = ctx!.createRadialGradient(ptX - (R*0.3)*scale, ptY - (R*0.3)*scale, R*0.1*scale, ptX, ptY, R*scale);
                 shGrd.addColorStop(0, 'rgba(255,255,255,0.3)');
                 shGrd.addColorStop(0.7, 'rgba(0,0,0,0.1)');
                 shGrd.addColorStop(1, 'rgba(0,0,0,0.45)');
                 ctx!.fillStyle = shGrd;
+            } else if (isWireframe) {
+                ctx!.fillStyle = 'rgba(0,0,0,0)';
             } else {
                 ctx!.fillStyle = grd;
             }
@@ -939,9 +1224,18 @@ export async function generateAxonometricDataUrl(
                 ctx!.moveTo(pts[indices[0]].u, pts[indices[0]].v);
                 for (let i = 1; i < indices.length; i++) ctx!.lineTo(pts[indices[i]].u, pts[indices[i]].v);
                 ctx!.closePath();
-                ctx!.fillStyle = hexPattern || color;
-                ctx!.fill();
-                if (hexPattern && shadeOverlay) {
+                if (!isWireframe) {
+                    ctx!.fillStyle = color;
+                    ctx!.fill();
+                }
+                if (hexPattern) {
+                    ctx!.save();
+                    ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
+                    ctx!.fillStyle = hexPattern;
+                    ctx!.fill();
+                    ctx!.restore();
+                }
+                if (shadeOverlay) {
                     ctx!.fillStyle = shadeOverlay;
                     ctx!.fill();
                 }
@@ -964,7 +1258,7 @@ export async function generateAxonometricDataUrl(
             drawLabel(H, 'H', boxPts[1], boxPts[5], Math.atan2(boxPts[5].v - boxPts[1].v, boxPts[5].u - boxPts[1].u), 25);
 
         } else if (geom === 'diamond-table') {
-            const strokeWidth = 10;
+            const strokeWidth = 1.8;
             ctx!.lineWidth = strokeWidth;
 
             const resolvedColor = resolveItemColor({
@@ -1045,18 +1339,19 @@ export async function generateAxonometricDataUrl(
                 for (let i = 1; i < pts.length; i++) ctx!.lineTo(pts[i].x, pts[i].y);
                 ctx!.closePath();
 
-                if (isWireframe) {
-                    ctx!.fillStyle = 'rgba(0,0,0,0)';
+                if (!isWireframe) {
+                    ctx!.fillStyle = fillColor;
                     ctx!.fill();
-                } else if (hexPattern) {
+                }
+                if (hexPattern) {
+                    ctx!.save();
+                    ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
                     ctx!.fillStyle = hexPattern;
                     ctx!.fill();
-                    if (shadeOverlay) {
-                        ctx!.fillStyle = shadeOverlay;
-                        ctx!.fill();
-                    }
-                } else {
-                    ctx!.fillStyle = fillColor;
+                    ctx!.restore();
+                }
+                if (shadeOverlay) {
+                    ctx!.fillStyle = shadeOverlay;
                     ctx!.fill();
                 }
                 ctx!.stroke();
@@ -1160,9 +1455,18 @@ export async function generateAxonometricDataUrl(
                 ctx!.moveTo(pts[indices[0]].u, pts[indices[0]].v);
                 for (let i = 1; i < indices.length; i++) ctx!.lineTo(pts[indices[i]].u, pts[indices[i]].v);
                 ctx!.closePath();
-                ctx!.fillStyle = hexPattern || color;
-                ctx!.fill();
-                if (hexPattern && shadeOverlay) {
+                if (!isWireframe) {
+                    ctx!.fillStyle = color;
+                    ctx!.fill();
+                }
+                if (hexPattern) {
+                    ctx!.save();
+                    ctx!.globalAlpha = isWireframe ? 0.50 : 0.78;
+                    ctx!.fillStyle = hexPattern;
+                    ctx!.fill();
+                    ctx!.restore();
+                }
+                if (shadeOverlay) {
                     ctx!.fillStyle = shadeOverlay;
                     ctx!.fill();
                 }
@@ -1255,10 +1559,26 @@ export async function generateAxonometricDataUrl(
                 }
             }
 
-            if (parsedHexList && parsedHexList.length > 0 && !isWireframe) {
+            if (parsedHexList && parsedHexList.length > 0) {
+                ctx!.save();
+                if (isWireframe) {
+                    ctx!.globalAlpha = 0.55;
+                }
                 drawProjectedHexGrid('top', 'rgba(255, 255, 255, 0.15)');
                 drawProjectedHexGrid('left', 'rgba(0, 0, 0, 0.35)');
                 drawProjectedHexGrid('front', 'rgba(0, 0, 0, 0.15)');
+                ctx!.restore();
+
+                const strokeFace = (indices: number[]) => {
+                    ctx!.beginPath();
+                    ctx!.moveTo(pts[indices[0]].u, pts[indices[0]].v);
+                    for (let i = 1; i < indices.length; i++) ctx!.lineTo(pts[indices[i]].u, pts[indices[i]].v);
+                    ctx!.closePath();
+                    ctx!.stroke();
+                };
+                strokeFace([4, 5, 6, 7]);
+                strokeFace([0, 3, 7, 4]);
+                strokeFace([0, 1, 5, 4]);
             } else {
                 drawFace([4, 5, 6, 7], COLOR_TOP, 'rgba(255, 255, 255, 0.15)');
                 drawFace([0, 3, 7, 4], COLOR_LEFT, 'rgba(0, 0, 0, 0.35)');
