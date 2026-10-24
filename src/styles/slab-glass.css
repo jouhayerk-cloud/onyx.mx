@@ -1055,17 +1055,25 @@ html.style-slab .inv-row + .inv-drawer .inv-drawer-body {
 
     /* (2) Keep backdrop-filter only on top bar, Onyx island surface, and sidebar (blur radius at most 12px) */
     html.style-slab .app-topbar:not(.app-topbar--island):not(:has(> .ql-lens)),
-    html.style-slab .sidebar,
-    html.style-slab .isb-panel,
     html.style-slab .onyx-island-surface,
     html.style-slab .liquid-surface,
     .app-topbar:not(.app-topbar--island):not(:has(> .ql-lens)),
-    .sidebar,
-    .isb-panel,
     .onyx-island-surface,
     .liquid-surface {
         -webkit-backdrop-filter: blur(12px) saturate(1.9) brightness(1.08) !important;
         backdrop-filter: blur(12px) saturate(1.9) brightness(1.08) !important;
+    }
+
+    /* The sidebar looked flat/washed at the shared 12px cap (owner report, 24
+       Oct 2026) -- it has thinner backing than the topbar/island, so the same
+       cut read worse. Still below the 22px desktop --lq-blur for GPU cost,
+       but enough to actually look like glass. */
+    html.style-slab .sidebar,
+    html.style-slab .isb-panel,
+    .sidebar,
+    .isb-panel {
+        -webkit-backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
+        backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
     }
 
     html.style-slab .app-topbar > .ql-lens {
