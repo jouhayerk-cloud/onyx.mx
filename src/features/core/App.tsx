@@ -19,7 +19,7 @@ import { CheckCircle, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-r
 import toast from '../onyxIsland/notify/toast';
 
 // Lazy-load deep-link views — only needed for URL-based tag/truck entry flows
-const TagView         = React.lazy(() => import('../logistics/TagView').then(m => ({ default: m.TagView })));
+const TagView         = React.lazy(() => import('../public/TagPublicView').then(m => ({ default: m.TagPublicView })));
 const SentTruckViewer = React.lazy(() => import('../logistics/SentTruckViewer'));
 const ViewerView      = React.lazy(() => import('../viewer/ViewerView').then(m => ({ default: m.ViewerView })));
 

@@ -62,6 +62,10 @@ export interface PublicArtifactRecord {
     retailUsd: number | null;
     images: string[];
     icon: string | null;
+    cutoutUrl?: string | null;
+    cleanPhotoUrl?: string | null;
+    svgUrl?: string | null;
+    hexMap?: string | null;
 }
 
 export async function fetchPublicArtifactRecord(tagId: string): Promise<PublicArtifactRecord | null> {
@@ -70,7 +74,16 @@ export async function fetchPublicArtifactRecord(tagId: string): Promise<PublicAr
         const res = await fetch(`${ARTIFACT_FN}?tagid=${encodeURIComponent(tagId)}&format=json`);
         if (!res.ok) return null;
         const body = await res.json();
-        return body?.found && body.artifact ? (body.artifact as PublicArtifactRecord) : null;
+        if (!body?.found || !body.artifact) return null;
+        const artifact: PublicArtifactRecord = body.artifact;
+        const data = body.data || {};
+        if (!artifact.svgUrl && data.generated_svg_url) artifact.svgUrl = getCleanImageUrl(data.generated_svg_url);
+        if (!artifact.cutoutUrl && data.generated_png_url) artifact.cutoutUrl = getCleanImageUrl(data.generated_png_url);
+        if (!artifact.cleanPhotoUrl && data.media_urls) {
+            const first = String(data.media_urls).split(/[,;]/)[0]?.trim();
+            if (first) artifact.cleanPhotoUrl = getCleanImageUrl(first);
+        }
+        return artifact;
     } catch (err) {
         console.error('[artifact] public record lookup failed:', err);
         return null;

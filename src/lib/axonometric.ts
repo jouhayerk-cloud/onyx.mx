@@ -37,6 +37,220 @@ export function resolveItemColor(item: any): string {
 
 export type AxoGeom = Geometry | 'diamond-table';
 
+export interface AxoBoundingBoxOptions {
+    showBoundingBox?: boolean;
+    showDimensionLabels?: boolean;
+    showMeasurementTicks?: boolean;
+    hairlineColor?: string;
+    unit?: string;
+}
+
+export function parseHexMapString(hexMapString?: string): string[] {
+    if (!hexMapString) return [];
+    const trimmed = hexMapString.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+                return parsed
+                    .map((s: any) => String(s).trim())
+                    .filter(s => /^#?[0-9A-Fa-f]{3,8}$/.test(s))
+                    .map(s => s.startsWith('#') ? s : `#${s}`);
+            }
+        } catch {}
+    }
+    return trimmed
+        .replace(/[\[\]"']/g, '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => /^#?[0-9A-Fa-f]{3,8}$/.test(s))
+        .map(s => s.startsWith('#') ? s : `#${s}`);
+}
+
+export function draw3DBoundingDimensionFrame(
+    ctx: CanvasRenderingContext2D,
+    geo: { W: number; H: number; D: number },
+    helpers: {
+        project: (x: number, y: number, z: number) => { u: number; v: number };
+        scale: number;
+        cx: number;
+        cy: number;
+        isDark?: boolean;
+        wireframeColor?: string;
+    },
+    options?: AxoBoundingBoxOptions,
+    pass?: 'back' | 'front' | 'all'
+): void {
+    const { W, H, D } = geo;
+    const { project, scale, cx, cy } = helpers;
+
+    const toCanvas = (x: number, y: number, z: number) => {
+        const p = project(x, y, z);
+        return { x: cx + p.u * scale, y: cy + p.v * scale };
+    };
+
+    const b0 = toCanvas(0, 0, 0);     // front bottom
+    const b1 = toCanvas(W, 0, 0);     // right bottom
+    const b2 = toCanvas(W, 0, D);     // back bottom
+    const b3 = toCanvas(0, 0, D);     // left bottom
+
+    const t0 = toCanvas(0, H, 0);     // front top
+    const t1 = toCanvas(W, H, 0);     // right top
+    const t2 = toCanvas(W, H, D);     // back top
+    const t3 = toCanvas(0, H, D);     // left top
+
+    const isLight = helpers.wireframeColor === '#000000' || helpers.wireframeColor === 'black' || !helpers.isDark;
+    const frontColor = options?.hairlineColor || (isLight ? 'rgba(71, 85, 105, 0.45)' : 'rgba(255, 255, 255, 0.35)');
+    const backColor = options?.hairlineColor ? frontColor : (isLight ? 'rgba(148, 163, 184, 0.22)' : 'rgba(255, 255, 255, 0.16)');
+    const tickColor = isLight ? 'rgba(51, 65, 85, 0.65)' : 'rgba(255, 255, 255, 0.55)';
+    const textColor = isLight ? 'rgba(30, 41, 59, 0.85)' : 'rgba(241, 245, 249, 0.88)';
+    const unit = options?.unit || 'cm';
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // 1. Back / occluded edges (dashed hairline)
+    if (pass === 'back' || pass === 'all' || !pass) {
+        ctx.beginPath();
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 0.85;
+        ctx.strokeStyle = backColor;
+
+        // b1 -> b2 -> b3
+        ctx.moveTo(b1.x, b1.y);
+        ctx.lineTo(b2.x, b2.y);
+        ctx.lineTo(b3.x, b3.y);
+        // vertical back edge: b2 -> t2
+        ctx.moveTo(b2.x, b2.y);
+        ctx.lineTo(t2.x, t2.y);
+        ctx.stroke();
+    }
+
+    // 2. Front visible edges, hairline ticks, and dimension labels
+    if (pass === 'front' || pass === 'all' || !pass) {
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1.0;
+        ctx.strokeStyle = frontColor;
+
+        // Bottom visible: b3 -> b0 -> b1
+        ctx.beginPath();
+        ctx.moveTo(b3.x, b3.y);
+        ctx.lineTo(b0.x, b0.y);
+        ctx.lineTo(b1.x, b1.y);
+
+        // Top face: t0 -> t1 -> t2 -> t3 -> t0
+        ctx.moveTo(t0.x, t0.y);
+        ctx.lineTo(t1.x, t1.y);
+        ctx.lineTo(t2.x, t2.y);
+        ctx.lineTo(t3.x, t3.y);
+        ctx.closePath();
+
+        // Front / side verticals: b0 -> t0, b1 -> t1, b3 -> t3
+        ctx.moveTo(b0.x, b0.y);
+        ctx.lineTo(t0.x, t0.y);
+        ctx.moveTo(b1.x, b1.y);
+        ctx.lineTo(t1.x, t1.y);
+        ctx.moveTo(b3.x, b3.y);
+        ctx.lineTo(t3.x, t3.y);
+        ctx.stroke();
+
+        // Precision corner tick points (1.2px dot)
+        const corners = [b0, b1, b3, t0, t1, t2, t3];
+        ctx.fillStyle = tickColor;
+        for (const pt of corners) {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 1.2, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+
+        const showTicks = options?.showMeasurementTicks !== false;
+        const showLabels = options?.showDimensionLabels !== false;
+
+        if (showTicks) {
+            ctx.lineWidth = 0.85;
+            ctx.strokeStyle = tickColor;
+
+            const drawAxisTicks = (
+                pStart: { x: number; y: number },
+                pEnd: { x: number; y: number },
+                outNormal: { x: number; y: number },
+                fractions: number[]
+            ) => {
+                const dx = pEnd.x - pStart.x;
+                const dy = pEnd.y - pStart.y;
+                for (const f of fractions) {
+                    const isMajor = f === 0 || f === 0.5 || f === 1;
+                    const len = isMajor ? 5.5 : 3.2;
+                    const px = pStart.x + f * dx;
+                    const py = pStart.y + f * dy;
+                    ctx.beginPath();
+                    ctx.moveTo(px, py);
+                    ctx.lineTo(px + outNormal.x * len, py + outNormal.y * len);
+                    ctx.stroke();
+                }
+            };
+
+            // Width ticks along b0 -> b1 (normal points outward down-right)
+            const wDx = b1.x - b0.x;
+            const wDy = b1.y - b0.y;
+            const wLen = Math.hypot(wDx, wDy) || 1;
+            let wNx = -wDy / wLen;
+            let wNy = wDx / wLen;
+            if (wNy < 0) { wNx = -wNx; wNy = -wNy; }
+            drawAxisTicks(b0, b1, { x: wNx, y: wNy }, [0, 0.25, 0.5, 0.75, 1]);
+
+            // Depth ticks along b0 -> b3 (normal points outward down-left)
+            const dDx = b3.x - b0.x;
+            const dDy = b3.y - b0.y;
+            const dLen = Math.hypot(dDx, dDy) || 1;
+            let dNx = dDy / dLen;
+            let dNy = -dDx / dLen;
+            if (dNy < 0) { dNx = -dNx; dNy = -dNy; }
+            drawAxisTicks(b0, b3, { x: dNx, y: dNy }, [0, 0.25, 0.5, 0.75, 1]);
+
+            // Height ticks along b1 -> t1 (vertical right, normal points right)
+            drawAxisTicks(b1, t1, { x: 1, y: 0 }, [0, 0.25, 0.5, 0.75, 1]);
+        }
+
+        if (showLabels) {
+            ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif';
+            ctx.fillStyle = textColor;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Width label (b0 -> b1)
+            const wMidX = (b0.x + b1.x) / 2;
+            const wMidY = (b0.y + b1.y) / 2;
+            const wDx = b1.x - b0.x;
+            const wDy = b1.y - b0.y;
+            const wLen = Math.hypot(wDx, wDy) || 1;
+            let wNx = -wDy / wLen;
+            let wNy = wDx / wLen;
+            if (wNy < 0) { wNx = -wNx; wNy = -wNy; }
+            ctx.fillText(`${Math.round(W)} ${unit}`, wMidX + wNx * 14, wMidY + wNy * 14);
+
+            // Depth label (b0 -> b3)
+            const dMidX = (b0.x + b3.x) / 2;
+            const dMidY = (b0.y + b3.y) / 2;
+            const dDx = b3.x - b0.x;
+            const dDy = b3.y - b0.y;
+            const dLen = Math.hypot(dDx, dDy) || 1;
+            let dNx = dDy / dLen;
+            let dNy = -dDx / dLen;
+            if (dNy < 0) { dNx = -dNx; dNy = -dNy; }
+            ctx.fillText(`${Math.round(D)} ${unit}`, dMidX + dNx * 14, dMidY + dNy * 14);
+
+            // Height label (b1 -> t1)
+            const hMidX = (b1.x + t1.x) / 2;
+            const hMidY = (b1.y + t1.y) / 2;
+            ctx.fillText(`${Math.round(H)} ${unit}`, hMidX + 16, hMidY);
+        }
+    }
+
+    ctx.restore();
+}
+
 export interface ResolvedAxoGeometry {
     W: number;
     H: number;
@@ -146,7 +360,8 @@ export async function generateAxonometricDataUrl(
     shapeStr: string = '', descStr: string = '',
     wireframeColor?: string,
     asJpeg: boolean = false,
-    hexMapString?: string
+    hexMapString?: string,
+    boundingBoxOptions?: boolean | AxoBoundingBoxOptions
 ): Promise<string> {
     return new Promise((resolve) => {
         const { W, H, D, geom, isMirror, extra, mirrorClass } = resolveAxoGeometry(w_cm, h_cm, d_cm, shapeStr, descStr);
@@ -201,13 +416,21 @@ export async function generateAxonometricDataUrl(
         const COLOR_LEFT = isWireframe ? 'rgba(0,0,0,0)' : '#9E9E9E';
         const COLOR_OUTLINE = wireframeColor || '#111111';
 
+        const shouldDrawBoundingBox =
+            boundingBoxOptions === false ||
+            (typeof boundingBoxOptions === 'object' && boundingBoxOptions.showBoundingBox === false)
+                ? false
+                : true;
+        const bboxOpts: AxoBoundingBoxOptions | undefined =
+            typeof boundingBoxOptions === 'object' ? boundingBoxOptions : undefined;
+
         let hexPattern: CanvasPattern | null = null;
         let parsedHexList: string[] = [];
         let tCols = 20;
         let tRows = 20;
         if (hexMapString && !isWireframe) {
             try {
-                parsedHexList = hexMapString.split(',').map(s => s.trim()).filter(s => s.startsWith('#') || /^[0-9A-Fa-f]{6}$/.test(s));
+                parsedHexList = parseHexMapString(hexMapString);
                 if (parsedHexList.length > 0) {
                     if (parsedHexList.length === 160) { tCols = 20; tRows = 8; }
                     else if (parsedHexList.length === 400) { tCols = 20; tRows = 20; }
@@ -254,12 +477,32 @@ export async function generateAxonometricDataUrl(
         ctx.lineWidth = 5;
         ctx.strokeStyle = COLOR_OUTLINE;
 
+        // Render back occluded edges of 3D bounding dimension frame
+        if (shouldDrawBoundingBox) {
+            draw3DBoundingDimensionFrame(
+                ctx,
+                { W, H, D },
+                { project, scale, cx, cy, isDark: !asJpeg, wireframeColor },
+                bboxOpts,
+                'back'
+            );
+        }
+
         if (mirrorClass) {
             drawMirror(ctx, mirrorClass, { W, H, D }, {
                 project, scale, cx, cy,
                 colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: COLOR_OUTLINE,
-                lineWidth: 5, isWireframe,
+                lineWidth: 5, isWireframe, hexPattern,
             });
+            if (shouldDrawBoundingBox) {
+                draw3DBoundingDimensionFrame(
+                    ctx,
+                    { W, H, D },
+                    { project, scale, cx, cy, isDark: !asJpeg, wireframeColor },
+                    bboxOpts,
+                    'front'
+                );
+            }
             resolve(canvas.toDataURL(asJpeg ? 'image/jpeg' : 'image/png', 1.0));
             return;
         }
@@ -268,8 +511,17 @@ export async function generateAxonometricDataUrl(
             drawExtra(ctx, extra, { W, H, D }, {
                 project, scale, cx, cy,
                 colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: COLOR_OUTLINE,
-                lineWidth: 5, holes: extractHolesCount(shapeStr, descStr), isWireframe,
+                lineWidth: 5, holes: extractHolesCount(shapeStr, descStr), isWireframe, hexPattern,
             });
+            if (shouldDrawBoundingBox) {
+                draw3DBoundingDimensionFrame(
+                    ctx,
+                    { W, H, D },
+                    { project, scale, cx, cy, isDark: !asJpeg, wireframeColor },
+                    bboxOpts,
+                    'front'
+                );
+            }
             resolve(canvas.toDataURL(asJpeg ? 'image/jpeg' : 'image/png', 1.0));
             return;
         }
@@ -704,14 +956,7 @@ export async function generateAxonometricDataUrl(
             drawFace([1, 5, 2], COLOR_LEFT, 'rgba(0, 0, 0, 0.35)');
             
             // Bottom-Right Face
-            ctx!.fillStyle = isWireframe ? 'rgba(0,0,0,0)' : '#A3A3A3'; 
-            ctx!.beginPath();
-            ctx!.moveTo(pts[1].u, pts[1].v);
-            ctx!.lineTo(pts[2].u, pts[2].v);
-            ctx!.lineTo(pts[3].u, pts[3].v);
-            ctx!.closePath();
-            ctx!.fill();
-            ctx!.stroke();
+            drawFace([1, 2, 3], isWireframe ? 'rgba(0,0,0,0)' : '#A3A3A3', 'rgba(0, 0, 0, 0.25)');
 
             const boxPts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
             drawLabel(D, 'D', boxPts[0], boxPts[3], Math.PI / 6, 25);
@@ -1088,6 +1333,17 @@ export async function generateAxonometricDataUrl(
             drawLabel(D, 'D', pts[0], pts[3], Math.PI / 6, 25);
             drawLabel(W, 'W', pts[0], pts[1], -Math.PI / 6, 25);
             drawLabel(H, 'H', pts[1], pts[5], Math.atan2(pts[5].v - pts[1].v, pts[5].u - pts[1].u), 25);
+        }
+
+        // Render front edges, precision ticks, and labels for the 3D bounding dimension frame
+        if (shouldDrawBoundingBox) {
+            draw3DBoundingDimensionFrame(
+                ctx,
+                { W, H, D },
+                { project, scale, cx, cy, isDark: !asJpeg, wireframeColor },
+                bboxOpts,
+                'front'
+            );
         }
 
         resolve(canvas.toDataURL(asJpeg ? 'image/jpeg' : 'image/png', 1.0));

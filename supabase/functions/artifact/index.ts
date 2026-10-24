@@ -161,6 +161,23 @@ function publicArtifact(item: Record<string, unknown>) {
     retailUsd: num(item.book_retail),
     images,
     icon: isHttp(item.axo_icon_url) ? cleanImageUrl(item.axo_icon_url) : null,
+    cutoutUrl: isHttp(item.generated_png_url) ? cleanImageUrl(item.generated_png_url) : (images[0] || null),
+    cleanPhotoUrl: (() => {
+      const rawUrls = String(item.media_urls || '').split(/[,;]/).map(u => u.trim()).filter(Boolean)
+      const first = rawUrls.find(u => !isVideo(u))
+      return first ? cleanImageUrl(first) : null
+    })(),
+    svgUrl: isHttp(item.generated_svg_url) ? cleanImageUrl(item.generated_svg_url) : null,
+    hexMap: (() => {
+      let raw = item.processed_media_urls
+      if (raw && typeof raw === 'string' && raw.trim().startsWith('{')) {
+        try { raw = JSON.parse(raw) } catch (_e) { raw = {} }
+      }
+      if (raw && typeof raw === 'object' && (raw as Record<string, unknown>)['_pixel_map_hex']) {
+        return String((raw as Record<string, unknown>)['_pixel_map_hex'])
+      }
+      return null
+    })(),
   }
 }
 

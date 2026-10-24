@@ -72,6 +72,8 @@ export interface AxoDrawHelpers {
     hexPattern?: CanvasPattern | null;
     /** Optional shape text override (e.g. 'cylinder', 'round', 'squared', 'cube') */
     shapeText?: string;
+    /** Optional flag to render 3D bounding dimension frame */
+    showBoundingCube?: boolean;
 }
 
 /**

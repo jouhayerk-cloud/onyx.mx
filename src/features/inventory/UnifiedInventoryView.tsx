@@ -67,6 +67,7 @@ import { validateCopy } from '../../lib/copyValidation';
 import { COLOR_PALETTE, ALLOWED_SHOPIFY_COLORS } from '../../lib/colorExtractor';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, Truck, CreditCard, Link } from 'lucide-react';
 import { tr } from '../../lib/i18n';
+import { ItemDetailsModal } from './ItemDetailsModal';
 
 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -406,6 +407,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     // The GENERATED body opens clamped to three lines; this expands it.
     const [showFullBody, setShowFullBody] = useState(false);
     const [isHoveringCard, setIsHoveringCard] = useState(false);
+    const [isCutoutModalOpen, setIsCutoutModalOpen] = useState(false);
 
 
     const mediaUrls = useMemo(() => {
@@ -826,6 +828,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             title={tr("Copy Trace Link")}>
             <Copy size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Copy link")}</span>
         </button>
+        <button type="button"
+            onClick={(e) => {
+                e.stopPropagation();
+                setIsCutoutModalOpen(true);
+            }}
+            title={tr("View PNG cutouts & 3D axo")}>
+            <Layers size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Cutouts")}</span>
+        </button>
         {isEditable && (
             <button type="button" onClick={handleEdit} title={tr("Edit Item")}>
                 <Pencil size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Edit")}</span>
@@ -1083,6 +1093,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         </div>
                     </div>
                 )}
+                <ItemDetailsModal
+                    isOpen={isCutoutModalOpen}
+                    onClose={() => setIsCutoutModalOpen(false)}
+                    item={item}
+                    onEdit={isEditable ? handleEdit : undefined}
+                />
             </div>
         );
     }
@@ -1366,6 +1382,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 </article>
                 {FullscreenModal}
                 {viewer}
+                <ItemDetailsModal
+                    isOpen={isCutoutModalOpen}
+                    onClose={() => setIsCutoutModalOpen(false)}
+                    item={item}
+                    onEdit={isEditable ? handleEdit : undefined}
+                />
             </>
         );
     }
@@ -1409,6 +1431,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             </article>
             {FullscreenModal}
             {viewer}
+            <ItemDetailsModal
+                isOpen={isCutoutModalOpen}
+                onClose={() => setIsCutoutModalOpen(false)}
+                item={item}
+                onEdit={isEditable ? handleEdit : undefined}
+            />
         </>
     );
 });
