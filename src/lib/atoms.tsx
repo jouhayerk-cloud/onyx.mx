@@ -124,7 +124,29 @@ const appStyleStorage = {
   },
 };
 export const appStyleAtom = atomWithStorage<AppStyle>('appStyle', 'slab', appStyleStorage);
-export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v2', true);
+
+/** iOS (incl. iPadOS, which reports as "Macintosh" but exposes touch points a real Mac never does). */
+const isIOSDevice = (): boolean =>
+  typeof navigator !== 'undefined' &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+/** Performance Mode disables backdrop-filter (glass/blur) everywhere -- see "Performance Mode
+ *  Overrides" in index.css. It was defaulted ON for every platform (key bumped to force it on all
+ *  sessions) to help weak Android GPUs with the 8-layer mesh backdrop; that swept in iOS, whose
+ *  GPUs handle backdrop-filter fine and lost their glass look for no reason. Bumping the key again
+ *  (_v2 -> _v3) re-defaults it, this time per platform: off (glass restored) on iOS, on (unchanged)
+ *  everywhere else. A value a user explicitly sets after this, on either platform, is still honoured
+ *  -- only a session with nothing stored under the new key gets the platform-aware default. */
+const performanceModeStorage = {
+  ...createJSONStorage<boolean>(),
+  getItem: (key: string, initialValue: boolean) => {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    if (raw === null) return !isIOSDevice();
+    try { return JSON.parse(raw) as boolean; } catch { return initialValue; }
+  },
+};
+export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v3', true, performanceModeStorage);
 export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
 // NOTE: atomWithStorage persists, so a browser that stored an older rate keeps it
 // until changed in Settings — this default only applies to fresh sessions. The key

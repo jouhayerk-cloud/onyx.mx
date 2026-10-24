@@ -111,7 +111,11 @@ export const HeroBackground = () => {
         return (
             <div
                 className="fixed inset-0 z--2"
-                style={{ background: 'var(--performance-bg)' }}
+                // translateZ(0): forces its own compositing layer, same as the non-performance path
+                // below. Without it, iOS Safari can fail to track the real viewport on a plain
+                // position:fixed + inset:0 layer, leaving a gap at the bottom where this background
+                // doesn't paint and the flat fallback colour behind it shows through instead.
+                style={{ background: 'var(--performance-bg)', transform: 'translateZ(0)' }}
             />
         );
     }
