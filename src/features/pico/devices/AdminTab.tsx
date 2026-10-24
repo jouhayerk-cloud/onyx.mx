@@ -5,6 +5,7 @@ import type { DeviceState } from '../surfaces/types';
 import { relativeTime } from '../surfaces/format';
 import { useNow } from '../surfaces/useDeviceFleet';
 import { useDeviceAdmin, AdminDevice, Assignment } from './useDeviceAdmin';
+import { supabase } from '../../../lib/supabase';
 
 const ConfirmActionDialog: React.FC<{
   isOpen: boolean;
@@ -37,6 +38,9 @@ interface AdminTabProps {
 }
 
 function getTokenState(dev: AdminDevice, now: number) {
+  if (!dev.token_issued_at) {
+    return { key: 'No token', colorClass: 'bg-neutral-500/10 text-neutral-400 border-neutral-500/30' };
+  }
   if (dev.revoked_at || dev.token_revoked_at) {
     return { key: 'Revoked', colorClass: 'bg-rose-500/10 text-rose-400 border-rose-500/30' };
   }
@@ -58,14 +62,38 @@ const ExpandableRow: React.FC<{
   device: AdminDevice;
   assignment?: Assignment;
   now: number;
-}> = ({ device, assignment, now }) => {
+  onChanged: () => void;
+}> = ({ device, assignment, now, onChanged }) => {
   const [expanded, setExpanded] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'issue' | 'rotate' | 'revoke' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState('');
+  // the raw token exists only here, once: the database keeps just its hash
+  const [newToken, setNewToken] = useState('');
 
   const tokenState = getTokenState(device, now);
+  const hasToken = !!device.token_issued_at && !device.token_revoked_at && !device.revoked_at;
 
-  const onConfirm = () => {
+  const onConfirm = async () => {
+    const action = confirmAction;
     setConfirmAction(null);
+    setBusy(true);
+    setActionError('');
+    try {
+      if (action === 'revoke') {
+        const { error } = await (supabase as any).rpc('revoke_device_token', { p_device_id: device.device_id });
+        if (error) throw error;
+      } else {
+        const { data, error } = await (supabase as any).rpc('issue_device_token', { p_device_id: device.device_id });
+        if (error) throw error;
+        setNewToken(String(data));
+      }
+      onChanged();
+    } catch (err: any) {
+      setActionError(err.message || tr('The action failed'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const actionTooltip = tr('This action is not available yet.');
@@ -125,19 +153,17 @@ const ExpandableRow: React.FC<{
                 <h4 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Actions')}</h4>
                 <div className="flex flex-wrap gap-2">
                   <button 
-                    title={actionTooltip}
-                    disabled
+                    disabled={busy || hasToken}
                     onClick={() => setConfirmAction('issue')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-500 text-xs font-bold border border-white/5 opacity-50 cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-200 hover:bg-neutral-700 text-xs font-bold border border-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Key size={14} />
                     {tr('Issue token')}
                   </button>
                   <button 
-                    title={actionTooltip}
-                    disabled
+                    disabled={busy || !hasToken}
                     onClick={() => setConfirmAction('rotate')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-500 text-xs font-bold border border-white/5 opacity-50 cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-200 hover:bg-neutral-700 text-xs font-bold border border-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <RotateCcw size={14} />
                     {tr('Rotate token')}
@@ -145,17 +171,16 @@ const ExpandableRow: React.FC<{
                   <button 
                     title={actionTooltip}
                     disabled
-                    onClick={() => setConfirmAction('assign')}
+                    onClick={() => undefined}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-500 text-xs font-bold border border-white/5 opacity-50 cursor-not-allowed"
                   >
                     <User size={14} />
                     {tr('Assign to user')}
                   </button>
                   <button 
-                    title={actionTooltip}
-                    disabled
+                    disabled={busy || !hasToken}
                     onClick={() => setConfirmAction('revoke')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-500 text-xs font-bold border border-rose-500/20 opacity-50 cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-bold border border-rose-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ShieldBan size={14} />
                     {tr('Revoke device')}
@@ -164,8 +189,20 @@ const ExpandableRow: React.FC<{
                 {/* Explain revocation clearly as requested */}
                 <div className="flex items-start gap-1.5 text-[10px] text-rose-400/80 bg-rose-500/5 p-2 rounded-lg border border-rose-500/10">
                   <ShieldAlert size={12} className="shrink-0 mt-px" />
-                  <p>{tr('Revoking drops the live session and permanently blocks the device.')}</p>
+                  <p>{tr('Revoking drops the live session and blocks the device until a new token is issued.')}</p>
                 </div>
+                {actionError && <p className="text-[11px] text-rose-400">{actionError}</p>}
+                {newToken && (
+                  <div className="space-y-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                    <p className="text-[11px] text-amber-300">{tr('Copy this token now and paste it into the device setup page. It is shown only once.')}</p>
+                    <input readOnly value={newToken} onFocus={e => e.currentTarget.select()} aria-label={tr('New device token')}
+                      className="w-full font-mono text-[11px] bg-black/40 border border-white/10 rounded px-2 py-1 text-neutral-200" />
+                    <div className="flex gap-2">
+                      <button onClick={() => navigator.clipboard.writeText(newToken)} className="px-3 py-1 text-xs font-bold text-neutral-200 bg-white/5 hover:bg-white/10 rounded border border-white/10">{tr('Copy')}</button>
+                      <button onClick={() => setNewToken('')} className="px-3 py-1 text-xs font-bold text-neutral-400 hover:bg-white/5 rounded">{tr('Done, hide it')}</button>
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="space-y-4">
@@ -202,7 +239,11 @@ const ExpandableRow: React.FC<{
         onConfirm={onConfirm}
         title={tr('Are you sure?')}
       >
-        <p>{tr('This action is not available yet.')}</p>
+        <p>{confirmAction === 'revoke'
+          ? tr('The device stops working until a new token is issued.')
+          : confirmAction === 'rotate'
+            ? tr('The current token stops working. The device needs the new one.')
+            : tr('A new token is created and shown once.')}</p>
       </ConfirmActionDialog>
     </>
   );
@@ -264,6 +305,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({ devices: _telemetryDevices }
                 device={d} 
                 assignment={assignments.find(a => a.device_id === d.device_id)}
                 now={now}
+                onChanged={refresh}
               />
             ))}
           </tbody>
