@@ -113,11 +113,21 @@ export function extractAllCutoutUrls(rawItem: any): string[] {
 
     // 5. processed_media_urls (JSON map or CSV)
     const procMedia = item.processedMediaUrls || item.processed_media_urls;
+    // Keys whose value is itself a map of sub-urls (one per photo angle), not a single url string.
+    // Each one is flattened into the gallery alongside the plain cutouts.
+    const nestedUrlMapKeys = ['vein_svg_urls'];
+    const addNestedUrlMap = (v: unknown) => {
+        if (!v || typeof v !== 'object') return;
+        for (const sub of Object.values(v as Record<string, unknown>)) {
+            if (typeof sub === 'string') addUrl(sub);
+        }
+    };
     if (procMedia) {
         if (typeof procMedia === 'object') {
             for (const [k, v] of Object.entries(procMedia)) {
                 if (k.startsWith('_') || k.startsWith('videoGen')) continue;
                 if (typeof v === 'string') addUrl(v);
+                else if (nestedUrlMapKeys.includes(k)) addNestedUrlMap(v);
             }
         } else if (typeof procMedia === 'string' && procMedia.trim()) {
             const pStr = procMedia.trim();
@@ -127,6 +137,7 @@ export function extractAllCutoutUrls(rawItem: any): string[] {
                     for (const [k, v] of Object.entries(parsed)) {
                         if (k.startsWith('_') || k.startsWith('videoGen')) continue;
                         if (typeof v === 'string') addUrl(v);
+                        else if (nestedUrlMapKeys.includes(k)) addNestedUrlMap(v);
                     }
                 } catch {}
             } else {
