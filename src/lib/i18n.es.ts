@@ -3899,4 +3899,16 @@ export const esCatalog: Record<string, string> = {
   'Hex Texture': 'Textura hex',
   'Stone Geometry': 'Geometría de piedra',
   'View PNG cutouts & 3D axo': 'Ver recortes PNG y axo 3D',
+  // Embeddings Sync & Vector Search
+  'Item Embeddings': 'Incrustaciones de Artículos',
+  'Sync vector embeddings for semantic search in inventory.': 'Sincronizar incrustaciones vectoriales para búsqueda semántica en inventario.',
+  'Open this page in the OnyxCompanion iOS app to sync embeddings': 'Abre esta página en la app OnyxCompanion de iOS para sincronizar incrustaciones',
+  'Sync Embeddings': 'Sincronizar Incrustaciones',
+  'Syncing embeddings...': 'Sincronizando incrustaciones...',
+  'Embeddings synced successfully': 'Incrustaciones sincronizadas con éxito',
+  'Failed to sync embeddings': 'Error al sincronizar incrustaciones',
+  'Model mismatch': 'Discrepancia de modelo',
+  'Embedding sync interrupted or failed': 'Sincronización de incrustaciones interrumpida o fallida',
+  'updated': 'actualizados',
+  'up to date': 'al día',
 };
