@@ -1,3 +1,4 @@
+import { tr } from './i18n';
 import { getGeminiKey } from './ai/keys';
 import { AI_MODELS } from './ai/models';
 import { AiCancelledError, AiError, AiKeyMissingError, AiTimeoutError } from './ai/errors';
@@ -149,6 +150,8 @@ export const processVideoWithGemini = async (
 
         onProgress?.(2, 'Initializing FFmpeg for splitting...');
         const ff = await getFFmpegInstance(undefined);
+        // FFmpeg is not bundled (getFFmpegInstance returns null), so splitting is unavailable
+        if (!ff) throw new Error(tr('Videos longer than 10 seconds are not supported yet. Trim the video and try again.'));
         const srcName = 'src_video.mp4';
         await ff.writeFile(srcName, await fetchFile(file));
 

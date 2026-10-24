@@ -2940,6 +2940,7 @@ export const esCatalog: Record<string, string> = {
   'Revoke device': 'Revocar dispositivo',
   'Assign to user': 'Asignar a usuario',
   'Issue token': 'Emitir token',
+  'Videos longer than 10 seconds are not supported yet. Trim the video and try again.': 'Los videos de más de 10 segundos aún no son compatibles. Recorta el video e inténtalo de nuevo.',
   'Copy failed: select the token and press Ctrl+C': 'No se pudo copiar: selecciona el token y presiona Ctrl+C',
   'No token': 'Sin token',
   'The action failed': 'La acción falló',
