@@ -5,6 +5,7 @@ import { buildFamilyFigure } from './figures/familyFigures';
 import { buildMotifFigure } from './figures/motifFigures';
 import { buildTypeFigure } from './typeFigures';
 import { Spring, wake, sleep } from '../../welcome/hairline/engine';
+import { resolveItemColor } from '../../../lib/canonicalColors';
 import './shapeFigure.css';
 
 /**
@@ -46,14 +47,14 @@ function getFigureParts(
 }
 
 /**
- * Material-aware CSS color tokens mapped across all 22 types and families.
+ * Canonical stone & material color tokens for hairline figures.
  */
 function getShapeColor(typeId: string | null | undefined, family: Geometry, isMirror: boolean, colorOverride?: string): string {
     if (colorOverride) {
-        return colorOverride;
+        return resolveItemColor(colorOverride);
     }
     if (isMirror || typeId === 'mirror' || family === 'mirror') {
-        return '#00aeef'; // Sky Cyan
+        return resolveItemColor('mirror');
     }
     if (
         typeId === 'pendant' ||
@@ -62,7 +63,7 @@ function getShapeColor(typeId: string | null | undefined, family: Geometry, isMi
         typeId === 'luminary' ||
         typeId === 'tower-lamp'
     ) {
-        return '#f59e0b'; // Radiant Amber
+        return resolveItemColor('amber');
     }
     if (
         typeId === 'bowl' ||
@@ -77,7 +78,7 @@ function getShapeColor(typeId: string | null | undefined, family: Geometry, isMi
         family === 'bowl' ||
         family === 'plate'
     ) {
-        return '#10b981'; // Emerald Jade
+        return resolveItemColor('serpentine');
     }
     if (
         typeId === 'wall-panel' ||
@@ -91,9 +92,15 @@ function getShapeColor(typeId: string | null | undefined, family: Geometry, isMi
         typeId === 'bar' ||
         typeId === 'wine-rack'
     ) {
-        return '#ff7a45'; // Architectural Terracotta Coral
+        return resolveItemColor('tehuacan');
     }
-    return '#b85bf8'; // Vivid Amethyst Stone
+    if (typeId) {
+        return resolveItemColor(typeId);
+    }
+    if (family) {
+        return resolveItemColor(family);
+    }
+    return resolveItemColor('default');
 }
 
 export const ShapeFigure: React.FC<ShapeFigureProps> = ({

@@ -12,10 +12,40 @@ export interface StonePalette {
 }
 
 export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
+    aquaSerpentine: {
+        primary: '#2DD4BF',
+        secondary: '#B26C1B',
+        gradientColors: ['#2DD4BF', '#A2B599', '#FFF9C0', '#EDA954', '#B26C1B', '#9B6F42'],
+    },
     aqua: {
         primary: '#2DD4BF',
         secondary: '#0D9488',
         gradientColors: ['#2DD4BF', '#0D9488', '#FBBF24', '#F97316', '#FB7185', '#F472B6'],
+    },
+    zebra: {
+        primary: '#0F172A',
+        secondary: '#FFFFFF',
+        gradientColors: ['#0F172A', '#334155', '#CBD5E1', '#FFFFFF', '#64748B', '#0F172A'],
+    },
+    talan: {
+        primary: '#059669',
+        secondary: '#78350F',
+        gradientColors: ['#059669', '#10B981', '#D97706', '#78350F', '#B45309'],
+    },
+    ice: {
+        primary: '#BAE6FD',
+        secondary: '#CBD5E1',
+        gradientColors: ['#BAE6FD', '#E0F2FE', '#FFFFFF', '#94A3B8', '#FFFFFF'],
+    },
+    cloud: {
+        primary: '#FFFFFF',
+        secondary: '#CBD5E1',
+        gradientColors: ['#FFFFFF', '#F8FAFC', '#E2E8F0', '#CBD5E1', '#FFFFFF'],
+    },
+    emperor: {
+        primary: '#78350F',
+        secondary: '#A8A29E',
+        gradientColors: ['#78350F', '#92400E', '#D6D3D1', '#A8A29E', '#78350F'],
     },
     tehuacanGray: {
         primary: '#94A3B8',
@@ -142,6 +172,39 @@ export function resolveStonePalette(itemOrText: any): StonePalette {
     }
 
     const t = normalizeText(rawText);
+
+    // 0. Aqua Serpentine (specific mineral variety with turquoise & terracotta bands)
+    if (
+        (t.includes('aqua') || t.includes('teal') || t.includes('turquesa') || t.includes('turquoise')) &&
+        (t.includes('serpentine') || t.includes('serpentina'))
+    ) {
+        return CANONICAL_STONE_PALETTES.aquaSerpentine;
+    }
+
+    // 0b. Zebra (black and white banded)
+    if (t.includes('zebra') || t.includes('cebra')) {
+        return CANONICAL_STONE_PALETTES.zebra;
+    }
+
+    // 0c. Emperor / Brown Calcite
+    if (t.includes('emperor') || t.includes('emperador')) {
+        return CANONICAL_STONE_PALETTES.emperor;
+    }
+
+    // 0d. Ice / Cristaline
+    if (t.includes('ice') || t.includes('hielo') || t.includes('cristaline') || t.includes('cristalino')) {
+        return CANONICAL_STONE_PALETTES.ice;
+    }
+
+    // 0e. Cloud
+    if (t.includes('cloud') || t.includes('nube')) {
+        return CANONICAL_STONE_PALETTES.cloud;
+    }
+
+    // 0f. Talan / Queretaro (deep green & earthy brown)
+    if (t.includes('talan') || t.includes('queretaro')) {
+        return CANONICAL_STONE_PALETTES.talan;
+    }
 
     // 1. Aqua
     if (

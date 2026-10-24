@@ -664,10 +664,6 @@ export async function generateAxonometricDataUrl(
         ctx.lineCap = 'round';
 
         const isWireframe = wireframeColor === 'black' || wireframeColor === 'wireframe' || wireframeColor === 'transparent' || wireframeColor === '#000000';
-        // Grayscale Palette (transparent if wireframe to achieve hidden-line look)
-        const COLOR_TOP = isWireframe ? 'rgba(0,0,0,0)' : '#F0F0F0';
-        const COLOR_RIGHT = isWireframe ? 'rgba(0,0,0,0)' : '#D4D4D4';
-        const COLOR_LEFT = isWireframe ? 'rgba(0,0,0,0)' : '#9E9E9E';
 
         const palette = resolveStonePalette({
             color: (wireframeColor && !wireframeColor.startsWith('rgba') && !wireframeColor.startsWith('#ef4444') && !wireframeColor.startsWith('#22c55e') && !wireframeColor.startsWith('#38bdf8') && !wireframeColor.startsWith('#eab308')) ? wireframeColor : undefined,
@@ -675,6 +671,11 @@ export async function generateAxonometricDataUrl(
             description: descStr,
             shortDescription: descStr,
         });
+
+        // Canonical stone face tints (defaulting to the item's canonical stone colors, transparent if wireframe)
+        const COLOR_TOP = isWireframe ? 'rgba(0,0,0,0)' : (palette.gradientColors[0] || palette.primary || '#F0F0F0');
+        const COLOR_RIGHT = isWireframe ? 'rgba(0,0,0,0)' : (palette.gradientColors[1] || palette.secondary || '#D4D4D4');
+        const COLOR_LEFT = isWireframe ? 'rgba(0,0,0,0)' : (palette.gradientColors[palette.gradientColors.length - 1] || palette.primary || '#9E9E9E');
 
         const strokeGradient = ctx.createLinearGradient(
             cx + minU * scale, cy + minV * scale,
@@ -952,15 +953,34 @@ export async function generateAxonometricDataUrl(
                 ctx.fill();
                 ctx.stroke();
             } else {
-                const holeGrd = ctx!.createLinearGradient(
-                    cx + (ct_u) * scale, cy + (ct_v - (W/2)*sin30) * scale,
-                    cx + (ct_u) * scale, cy + (ct_v + (W/2)*sin30) * scale
-                );
-                holeGrd.addColorStop(0, '#555555');
-                holeGrd.addColorStop(1, '#0A0A0A');
-                ctx.fillStyle = holeGrd;
-                ctx.fill();
-                ctx.stroke();
+                if (!isWireframe) {
+                    if (hexPattern) {
+                        ctx!.save();
+                        ctx!.globalAlpha = 1.0;
+                        ctx!.fillStyle = hexPattern;
+                        ctx!.fill();
+                        ctx!.restore();
+                        const holeGrd = ctx!.createLinearGradient(
+                            cx + (ct_u) * scale, cy + (ct_v - (W/2)*sin30) * scale,
+                            cx + (ct_u) * scale, cy + (ct_v + (W/2)*sin30) * scale
+                        );
+                        holeGrd.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
+                        holeGrd.addColorStop(0.6, 'rgba(0, 0, 0, 0.28)');
+                        holeGrd.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
+                        ctx!.fillStyle = holeGrd;
+                        ctx!.fill();
+                    } else {
+                        const holeGrd = ctx!.createLinearGradient(
+                            cx + (ct_u) * scale, cy + (ct_v - (W/2)*sin30) * scale,
+                            cx + (ct_u) * scale, cy + (ct_v + (W/2)*sin30) * scale
+                        );
+                        holeGrd.addColorStop(0, COLOR_LEFT);
+                        holeGrd.addColorStop(1, COLOR_RIGHT);
+                        ctx!.fillStyle = holeGrd;
+                        ctx!.fill();
+                    }
+                }
+                ctx!.stroke();
             }
 
             const pts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
@@ -1085,11 +1105,64 @@ export async function generateAxonometricDataUrl(
                 }
                 ctx.stroke();
 
-                // Draw inner top ellipse (hollow interior)
+                // Draw inner top ellipse (hollow interior cavity)
                 drawEllipsePath(ct_u, ct_v, 0.85, 0, 2 * Math.PI);
-                ctx.fillStyle = '#C0C0C0';
-                ctx.fill();
+                if (!isWireframe) {
+                    if (hexPattern) {
+                        ctx.save();
+                        ctx.globalAlpha = 1.0;
+                        ctx.fillStyle = hexPattern;
+                        ctx.fill();
+                        ctx.restore();
+
+                        // Soft concave interior depth shadow overlay (under back rim down into basin)
+                        const innerGrd = ctx.createLinearGradient(
+                            cx + ct_u * scale,
+                            cy + (ct_v - (D / 2) * sin30) * scale,
+                            cx + ct_u * scale,
+                            cy + (ct_v + (D / 2) * sin30) * scale
+                        );
+                        innerGrd.addColorStop(0, 'rgba(0, 0, 0, 0.40)');
+                        innerGrd.addColorStop(0.5, 'rgba(0, 0, 0, 0.18)');
+                        innerGrd.addColorStop(1, 'rgba(0, 0, 0, 0.05)');
+                        ctx.fillStyle = innerGrd;
+                        ctx.fill();
+                    } else {
+                        const innerGrd = ctx.createLinearGradient(
+                            cx + ct_u * scale,
+                            cy + (ct_v - (D / 2) * sin30) * scale,
+                            cx + ct_u * scale,
+                            cy + (ct_v + (D / 2) * sin30) * scale
+                        );
+                        innerGrd.addColorStop(0, COLOR_LEFT);
+                        innerGrd.addColorStop(1, COLOR_RIGHT);
+                        ctx.fillStyle = innerGrd;
+                        ctx.fill();
+                    }
+                }
                 ctx.stroke();
+
+                // Draw concave basin floor
+                drawEllipsePath(ct_u, ct_v + visualH * 0.28, 0.50, 0, 2 * Math.PI);
+                if (!isWireframe) {
+                    if (hexPattern) {
+                        ctx.save();
+                        ctx.globalAlpha = 1.0;
+                        ctx.fillStyle = hexPattern;
+                        ctx.fill();
+                        ctx.restore();
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.30)';
+                        ctx.fill();
+                    } else {
+                        ctx.fillStyle = COLOR_LEFT;
+                        ctx.fill();
+                    }
+                }
+                ctx.save();
+                ctx.strokeStyle = strokeGradient;
+                ctx.globalAlpha = 0.45;
+                ctx.stroke();
+                ctx.restore();
 
             const pts = projected_box.map(p => ({ u: p.u * scale + cx, v: p.v * scale + cy }));
             drawLabel(D, 'D', pts[0], pts[3], Math.PI / 6, 25);
@@ -1534,10 +1607,13 @@ export async function generateAxonometricDataUrl(
                             
                             const y1 = H - (r / tRows) * H;
                             const y2 = H - ((r + 1) / tRows) * H;
-                            p1_3d = { x: x1_top, y: y1, z: 0 };
-                            p2_3d = { x: x2_top, y: y1, z: 0 };
-                            p3_3d = { x: x2_bot, y: y2, z: 0 };
-                            p4_3d = { x: x1_bot, y: y2, z: 0 };
+                            const z1 = D * topInset * yRatio1;
+                            const z2 = D * topInset * yRatio2;
+
+                            p1_3d = { x: x1_top, y: y1, z: z1 };
+                            p2_3d = { x: x2_top, y: y1, z: z1 };
+                            p3_3d = { x: x2_bot, y: y2, z: z2 };
+                            p4_3d = { x: x1_bot, y: y2, z: z2 };
                         } else if (faceType === 'top') {
                             const x1 = W * topInset + (c / tCols) * (W * (1 - 2 * topInset));
                             const x2 = W * topInset + ((c + 1) / tCols) * (W * (1 - 2 * topInset));
@@ -1562,10 +1638,13 @@ export async function generateAxonometricDataUrl(
 
                             const y1 = H - (r / tRows) * H;
                             const y2 = H - ((r + 1) / tRows) * H;
-                            p1_3d = { x: 0, y: y1, z: z1_top };
-                            p2_3d = { x: 0, y: y1, z: z2_top };
-                            p3_3d = { x: 0, y: y2, z: z2_bot };
-                            p4_3d = { x: 0, y: y2, z: z1_bot };
+                            const x1 = W * topInset * yRatio1;
+                            const x2 = W * topInset * yRatio2;
+
+                            p1_3d = { x: x1, y: y1, z: z1_top };
+                            p2_3d = { x: x1, y: y1, z: z2_top };
+                            p3_3d = { x: x2, y: y2, z: z2_bot };
+                            p4_3d = { x: x2, y: y2, z: z1_bot };
                         }
 
                         const p1 = project(p1_3d.x, p1_3d.y, p1_3d.z);
