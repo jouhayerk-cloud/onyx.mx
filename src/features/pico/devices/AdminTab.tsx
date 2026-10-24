@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
-import { AlertCircle, ChevronDown, ChevronRight, Key, User, RotateCcw, ShieldBan, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useAtomValue } from 'jotai/react';
+import { AlertCircle, ChevronDown, ChevronRight, Key, User, RotateCcw, ShieldBan, ShieldAlert, RefreshCw, Database } from 'lucide-react';
 import { tr } from '../../../lib/i18n';
 import type { DeviceState } from '../surfaces/types';
 import { relativeTime } from '../surfaces/format';
 import { useNow } from '../surfaces/useDeviceFleet';
 import { useDeviceAdmin, AdminDevice, Assignment } from './useDeviceAdmin';
 import { supabase } from '../../../lib/supabase';
+import { userAtom, inventoryAtom } from '../../../lib/atoms';
+import { isCompanionAvailable } from '../../../lib/ai/embeddings';
+import { syncItemEmbeddingsToSupabase, SyncProgressUpdate } from '../../../lib/embeddings/syncToSupabase';
 
 const ConfirmActionDialog: React.FC<{
   isOpen: boolean;
@@ -254,6 +258,128 @@ const ExpandableRow: React.FC<{
 export const AdminTab: React.FC<AdminTabProps> = ({ devices: _telemetryDevices }) => {
   const { status, devices, assignments, error, refresh } = useDeviceAdmin();
   const now = useNow();
+  const user = useAtomValue(userAtom);
+  const inventoryItems = useAtomValue(inventoryAtom);
+  const [companionAvailable, setCompanionAvailable] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncProgress, setSyncProgress] = useState<SyncProgressUpdate | null>(null);
+  const [syncMessage, setSyncMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+
+  const isAdmin = user?.role === 'Developer' || user?.role === 'Admin';
+
+  useEffect(() => {
+    let active = true;
+    isCompanionAvailable().then(avail => {
+      if (active) setCompanionAvailable(avail);
+    }).catch(() => {
+      if (active) setCompanionAvailable(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const handleSyncEmbeddings = async () => {
+    if (!companionAvailable || isSyncing || !isAdmin) return;
+    setIsSyncing(true);
+    setSyncProgress(null);
+    setSyncMessage(null);
+
+    try {
+      // item_embeddings.item_id has a foreign key to inventory(id): a production row in the
+      // batch throws and fails the whole sync, every run. inventoryAtom mixes both sources.
+      let itemsToSync = inventoryItems
+        .filter((x: any) => x.source !== 'production')
+        .map((x: any) => x.data ?? x);
+      if (itemsToSync.length === 0) {
+        const { data } = await supabase.from('inventory').select('*');
+        if (data) itemsToSync = data;
+      }
+
+      const res = await syncItemEmbeddingsToSupabase(itemsToSync, {
+        onProgress: (prog) => {
+          setSyncProgress(prog);
+        },
+      });
+
+      if (!res.completed) {
+        if (res.modelMismatch) {
+          setSyncMessage({
+            text: `${tr('Model mismatch')}: expected ${res.modelMismatch.expected}, got ${res.modelMismatch.actual}`,
+            isError: true,
+          });
+        } else {
+          setSyncMessage({
+            text: tr('Embedding sync interrupted or failed'),
+            isError: true,
+          });
+        }
+      } else {
+        setSyncMessage({
+          text: `${tr('Embeddings synced successfully')}: ${res.recordsToUpsert.length} ${tr('updated')}, ${res.planned.upToDate} ${tr('up to date')}.`,
+        });
+      }
+    } catch (err: any) {
+      setSyncMessage({
+        text: err?.message || tr('Failed to sync embeddings'),
+        isError: true,
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const embeddingsCard = (
+    <div className="rounded-xl bg-black/40 border border-white/5 p-4 space-y-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Database size={16} className="text-cyan-400" />
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">{tr('Item Embeddings')}</h3>
+          </div>
+          <p className="text-xs text-neutral-400">
+            {tr('Sync vector embeddings for semantic search in inventory.')}
+          </p>
+        </div>
+        <div>
+          <button
+            disabled={!companionAvailable || isSyncing || !isAdmin}
+            onClick={handleSyncEmbeddings}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-200 hover:bg-neutral-700 text-xs font-bold border border-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <RefreshCw size={14} className={isSyncing ? 'animate-spin text-cyan-400' : ''} />
+            {isSyncing ? tr('Syncing...') : tr('Sync Embeddings')}
+          </button>
+        </div>
+      </div>
+
+      {!companionAvailable && (
+        <div className="flex items-start gap-2 text-xs text-neutral-400 bg-white/[0.03] p-2.5 rounded-lg border border-white/5">
+          <AlertCircle size={14} className="text-neutral-500 shrink-0 mt-0.5" />
+          <p>{tr('Open this page in the OnyxCompanion iOS app to sync embeddings')}</p>
+        </div>
+      )}
+
+      {syncProgress && syncProgress.stage === 'embedding' && (
+        <div className="space-y-1 pt-1">
+          <div className="flex justify-between text-[11px] font-mono text-neutral-400">
+            <span>{tr('Syncing embeddings...')}</span>
+            <span>{syncProgress.current} / {syncProgress.total}</span>
+          </div>
+          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-cyan-400 transition-all duration-300"
+              style={{ width: `${syncProgress.total > 0 ? (syncProgress.current / syncProgress.total) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {syncMessage && (
+        <p className={`text-xs ${syncMessage.isError ? 'text-rose-400' : 'text-emerald-400'}`}>
+          {syncMessage.text}
+        </p>
+      )}
+    </div>
+  );
 
   if (status === 'loading') {
     return (
@@ -265,53 +391,62 @@ export const AdminTab: React.FC<AdminTabProps> = ({ devices: _telemetryDevices }
 
   if (error) {
     return (
-      <div className="py-8 text-center space-y-3">
-        <p className="text-xs font-semibold text-rose-400">{error}</p>
-        <button 
-          onClick={refresh}
-          className="px-3 py-1.5 text-xs font-bold text-neutral-300 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10"
-        >
-          {tr('Refresh')}
-        </button>
+      <div className="space-y-4">
+        {embeddingsCard}
+        <div className="py-8 text-center space-y-3">
+          <p className="text-xs font-semibold text-rose-400">{error}</p>
+          <button 
+            onClick={refresh}
+            className="px-3 py-1.5 text-xs font-bold text-neutral-300 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10"
+          >
+            {tr('Refresh')}
+          </button>
+        </div>
       </div>
     );
   }
 
   if (devices.length === 0) {
     return (
-      <div className="py-8 text-center">
-        <p className="text-xs font-semibold text-neutral-500">{tr('No devices found.')}</p>
+      <div className="space-y-4">
+        {embeddingsCard}
+        <div className="py-8 text-center">
+          <p className="text-xs font-semibold text-neutral-500">{tr('No devices found.')}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-black/40 border border-white/5 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-white/10 bg-black/20">
-              <th className="w-10 p-4"></th>
-              <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Device ID')}</th>
-              <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Hardware Model')}</th>
-              <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Firmware')}</th>
-              <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Token State')}</th>
-              <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Assigned User')}</th>
-              <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Last Check-in')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {devices.map((d) => (
-              <ExpandableRow 
-                key={d.device_id} 
-                device={d} 
-                assignment={assignments.find(a => a.device_id === d.device_id)}
-                now={now}
-                onChanged={refresh}
-              />
-            ))}
-          </tbody>
-        </table>
+    <div className="space-y-4">
+      {embeddingsCard}
+      <div className="rounded-xl bg-black/40 border border-white/5 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-white/10 bg-black/20">
+                <th className="w-10 p-4"></th>
+                <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Device ID')}</th>
+                <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Hardware Model')}</th>
+                <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Firmware')}</th>
+                <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Token State')}</th>
+                <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Assigned User')}</th>
+                <th className="p-4 text-[9px] font-bold text-neutral-400 uppercase tracking-widest">{tr('Last Check-in')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {devices.map((d) => (
+                <ExpandableRow 
+                  key={d.device_id} 
+                  device={d} 
+                  assignment={assignments.find(a => a.device_id === d.device_id)}
+                  now={now}
+                  onChanged={refresh}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
