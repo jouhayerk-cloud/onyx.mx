@@ -12,7 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'src', 'assets', 'BUILDLOG.md')
 CACHE = os.path.join(ROOT, 'scripts', '.buildlog-cache.json')
 COLIBRI = 'http://127.0.0.1:8000/v1/chat/completions'
-MAX_SUBJECTS = 40  # a busy day stays inside the 4B model's context
+MAX_SUBJECTS = 100  # a busy day stays inside the 4B model's context
 
 def git(*args):
     return subprocess.run(['git', *args], cwd=ROOT, capture_output=True, text=True, encoding='utf-8', check=True).stdout

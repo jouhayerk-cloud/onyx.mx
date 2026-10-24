@@ -20,6 +20,7 @@ import { COPY_LIMITS } from './typePromptSpec';
 /** What a content prompt asks the model for (see CONTENT_SCHEMA). */
 export interface RawContent {
     title?: string;
+    shopifyTitle?: string;
     body?: string;
     dominantColors?: string[];
     generatedType?: string;
@@ -323,7 +324,7 @@ export function finalizeType(raw: string | undefined | null, item: PipelineItem,
 export function finalizeContent(raw: RawContent, item: PipelineItem, opts: { boxSet?: boolean } = {}): FinalContent {
     const spec = promptSpecFor(itemTypeId(item));
     const maxWords = spec ? Math.min(spec.description.maxWords, COPY_LIMITS.descriptionMaxWords) : 100;
-    const title = finalizeTitle(raw.title);
+    const title = finalizeTitle(raw.title || raw.shopifyTitle);
     const html = raw.body ? finishDescription(raw.body, maxWords) : '';
     const colors = raw.dominantColors === undefined ? [] : finalizeColors(raw.dominantColors, opts);
     const genType = finalizeType(raw.generatedType, item, opts);

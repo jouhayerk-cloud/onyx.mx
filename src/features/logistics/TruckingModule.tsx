@@ -4323,7 +4323,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             viewMode === 'iso'  ? [ISO_VB.w, ISO_VB.h] :
             isMobile            ? [across, long] : [long, across];
         // Room for the deck / bulkhead captions and the workspace padding.
-        const z = Math.min((el.clientWidth - 96) / drawW, (el.clientHeight - hubHRef.current - 190) / drawH);
+        // In isometric mode, expand margins so the initial fit has comfortable breathing room.
+        const marginX = viewMode === 'iso' ? 220 : 96;
+        const marginY = viewMode === 'iso' ? 320 : 190;
+        const z = Math.min((el.clientWidth - marginX) / drawW, (el.clientHeight - hubHRef.current - marginY) / drawH);
         setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z)));
         // centre once the new zoom has been drawn
         setTimeout(centerOnTrailer, 150);
