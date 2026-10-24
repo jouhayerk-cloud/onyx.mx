@@ -1070,8 +1070,10 @@ html.style-slab .inv-row + .inv-drawer .inv-drawer-body {
        but enough to actually look like glass. */
     html.style-slab .sidebar,
     html.style-slab .isb-panel,
+    html.style-slab .smd-card,
     .sidebar,
-    .isb-panel {
+    .isb-panel,
+    .smd-card {
         -webkit-backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
         backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
     }

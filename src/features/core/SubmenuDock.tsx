@@ -56,18 +56,25 @@ export const SubmenuDock: React.FC<{ children: React.ReactNode }> = ({ children 
   useLayoutEffect(() => {
     const stack = stackRef.current;
     const host = document.querySelector<HTMLElement>('.app-content');
+    const root = document.documentElement;
     if (!mounted || !stack || !host) return;
-    // desktop: the layer starts 82 px below the top (under the bar row); phone: 8 px under the status bar (see submenuDock.css)
+    // desktop: the layer starts 8 px below the top, same spot the island used to start at (under the bar row);
+    // phone: 8 px under the status bar (see submenuDock.css). --utb-stack-h pushes the island (desktop only,
+    // see .onyx-island in island.css) below the open stack instead of the stack rendering under the island.
+    // The page's own top padding still has to clear BOTH the bar stack and the island now sitting below it --
+    // swapping their order doesn't shrink the total space needed, so this keeps the original 82px island
+    // allowance (it was never just a top offset) and adds the stack height on top of it, same as before.
     const apply = () => {
       const h = stack.offsetHeight;
       const phone = window.matchMedia('(max-width: 768px)').matches;
       host.style.setProperty('--submenu-h', h <= 0 ? '0px' : phone ? `calc(env(safe-area-inset-top, 0px) + ${8 + h + 8}px)` : `${82 + h + 8}px`);
+      root.style.setProperty('--utb-stack-h', (h <= 0 || phone) ? '0px' : `${h + 8}px`);
     };
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(stack);
     window.addEventListener('resize', apply);
-    return () => { ro.disconnect(); window.removeEventListener('resize', apply); host.style.setProperty('--submenu-h', '0px'); };
+    return () => { ro.disconnect(); window.removeEventListener('resize', apply); host.style.setProperty('--submenu-h', '0px'); root.style.setProperty('--utb-stack-h', '0px'); };
   }, [mounted, rect]);
   
   if (!mounted || !rect) return null;
@@ -112,8 +119,11 @@ export const SubmenuCard: React.FC<{
     if (!isChromium) return;
     if (window.matchMedia('(prefers-reduced-transparency: reduce)').matches) return;
     const isRefractionOptedIn = document.documentElement.classList.contains('lq-refraction') || (typeof localStorage !== 'undefined' && localStorage.getItem('lqRefraction') === '1');
-    // desktop keeps the refraction as before; touch screens skip it unless the owner opted in (lqRefraction)
-    if (!isRefractionOptedIn && window.matchMedia('(pointer: coarse)').matches) return;
+    // Refraction is opt-in everywhere (policy: be35c873 disabled it app-wide after it smeared
+    // glass on Chrome; 45ec31dc made it opt-in-only). This used to skip only touch screens when
+    // not opted in, so desktop Chrome applied it unconditionally -- the exact smeared/blank-looking
+    // glass the policy exists to prevent (owner report, 24 Oct 2026: transparent on Windows Chrome).
+    if (!isRefractionOptedIn) return;
 
     const target = cardRef.current;
     if (!target) return;

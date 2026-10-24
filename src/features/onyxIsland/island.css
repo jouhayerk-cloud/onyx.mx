@@ -60,7 +60,10 @@ html.theme-aqua {
 .onyx-island {
   /* MOBILE BOTTOM: overridden in media query */
   position: absolute;
-  top: max(8px, env(safe-area-inset-top, 8px));
+  /* Desktop: pushed below the open Universal Tools Bar stack (--utb-stack-h,
+     set by SubmenuDock) so the bars read as above the island. 0px when no
+     bar is open, or on mobile where the island lives at the bottom. */
+  top: calc(max(8px, env(safe-area-inset-top, 8px)) + var(--utb-stack-h, 0px));
   left: 0;
   right: 0;
   margin-inline: auto;

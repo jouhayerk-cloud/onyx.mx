@@ -11,7 +11,11 @@ html.theme-aqua {
 .smd-layer {
   position: fixed;
   /* no fixed height: a 0-height flex layer let the cards (overflow hidden) shrink to nothing while the stack still kept its gaps */
-  margin-top: calc(env(safe-area-inset-top, 0px) + 82px);
+  /* Desktop: the stack sits where the island used to start (top:8px, see
+     .onyx-island); the island is pushed down below it by --utb-stack-h
+     (set by SubmenuDock, read in island.css), so the tools bars read as
+     ABOVE the island instead of the island's old spot below them. */
+  margin-top: max(8px, env(safe-area-inset-top, 8px));
   z-index: 10040;
   pointer-events: none;
   display: flex;
@@ -644,6 +648,12 @@ html.theme-aqua .smd-card [class*="bg-red"] svg {
   min-width: 0;
   -webkit-overflow-scrolling: touch;
 }
+/* overflow-x: auto forces overflow-y to auto too (spec), which clipped a
+   vendor chip mid-grow on hover -- the vertical padding gives the scaled-up
+   chip room so it always shows complete. */
+.utb-vendor-row.utb-scroll-row {
+  padding-block: 7px;
+}
 .utb-scroll-row::-webkit-scrollbar {
   display: none;
 }
@@ -665,14 +675,21 @@ html.theme-aqua .smd-card [class*="bg-red"] svg {
 .utb-vendor-chip {
   scroll-snap-align: start;
   flex-shrink: 0;
-  height: 28px;
-  padding: 0 8px;
-  min-width: 28px;
+  height: 22px;
+  padding: 0 5px;
+  min-width: 22px;
   font-family: monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
-  border-radius: 14px;
+  border-radius: 11px;
+  /* transform, not width/height: grows on hover without ever reflowing its
+     neighbours or the row (owner report, 24 Oct 2026); ease-in-out both ways. */
+  transition: transform 0.18s ease-in-out, background-color 0.15s, border-color 0.15s;
+}
+.utb-vendor-chip:hover {
+  transform: scale(1.3);
+  z-index: 1;
 }
 
 .utb-smart-chip {
@@ -955,7 +972,7 @@ html:root:root:root .smd-card.smd-card input.utb-view-slider.utb-view-slider::-m
 
 /* Filters bar without the AI chips: the status chips and the vendor chips grow to use the row, and scroll sideways only when they do not fit */
 .utb-filters-panel .utb-status-chip { flex: 1 0 auto; height: 36px; padding: 0 14px; font-size: 13px; }
-.utb-filters-panel .utb-vendor-row .utb-vendor-chip { flex: 1 0 auto; height: 32px; min-width: 38px; max-width: 72px; font-size: 12px; }
+.utb-filters-panel .utb-vendor-row .utb-vendor-chip { flex: 1 0 auto; height: 22px; min-width: 26px; max-width: 44px; font-size: 12px; }
 .utb-filters-panel .utb-vendor-row .utb-vendor-all { max-width: 64px; }
 
 /* View slider: the runnable track must not paint over the tinted fill */
