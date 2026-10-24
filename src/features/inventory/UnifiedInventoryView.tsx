@@ -55,7 +55,11 @@ import { rowMatchesShape, rowMatchesMaterialColor } from '../../lib/smartFilters
 import { rowMatchesContent } from '../../lib/aiContent';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
-import { InventoryItemData, UploadedFile } from '../../lib/Types';
+import { InventoryItemData, UploadedFile, InventoryItem } from '../../lib/Types';
+import { useHybridSearch, QUERY_VECTOR_DIMS } from '../../lib/embeddings/useHybridSearch';
+import type { VectorIndex } from '../../lib/embeddings/vectorIndex';
+import { embedSearchQuery } from '../../lib/ai/embeddings';
+import { loadSessionVectorIndex } from '../../lib/embeddings/syncToSupabase';
 import { supabase } from '../../lib/supabase';
 import toast from '../onyxIsland/notify/toast';
 import { islandItemAtom } from '../onyxIsland/islandState';
@@ -377,6 +381,7 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
 const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs, deployedItemsMap, logisticsDocs, allInventory }: any) => {
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+
     const theme = useAtomValue(themeAtom);
     const qrColor = theme === 'aqua' ? '#000000' : '#FFFFFF'; // aqua is the only light theme left
     
@@ -1480,6 +1485,8 @@ export const UnifiedInventoryView = () => {
     const [savingProgress, setSavingProgress] = useState(0);
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+
+    const displayItemsRef = useRef<InventoryItem[]>([]);
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setIsPrintWizardOpen = useSetAtom(isPackingPrintWizardOpenAtom);
     const setIsNFCWizardOpen = useSetAtom(isPackingNFCWizardOpenAtom);
@@ -1519,7 +1526,7 @@ export const UnifiedInventoryView = () => {
 
 
     const handleCopyShareLink = () => {
-        const idsToShare = selectedIds.length > 0 ? selectedIds : filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean);
+        const idsToShare = selectedIds.length > 0 ? selectedIds : (displayItemsRef.current.length > 0 ? displayItemsRef.current : filteredItems).map(i => i.row ?? i.data?.id).filter(Boolean);
         if (idsToShare.length === 0) return toast.error(tr("No items to share."));
         const idsParam = encodeURIComponent(idsToShare.join(','));
         const viewParam = viewMode;
@@ -1592,7 +1599,8 @@ export const UnifiedInventoryView = () => {
     };
 
     const handleSelectAll = () => {
-        const allFilteredIds = filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean);
+        const currentItems = displayItemsRef.current.length > 0 ? displayItemsRef.current : filteredItems;
+        const allFilteredIds = currentItems.map(i => i.row ?? i.data?.id).filter(Boolean);
         const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedIds.includes(id));
         
         if (isAllSelected) {
@@ -1789,18 +1797,65 @@ export const UnifiedInventoryView = () => {
         return filtered.map(p => p.item);
     }, [preparedItems, deferredStatusFilter, deferredVendorFilter, deferredSearchTerm, deferredSortKey, deferredSortOrder, partialPayIds, fullPayIds, deferredVisibleWorkbooks, user, deferredCategoryFilter, deferredMaterialFilter, deferredShapeFilter, deferredContentFilter, deferredMaterialColorFilter, deployedItemsMap, logisticsDocs]);
 
-    const totalCount = useMemo(() => filteredItems.reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0), [filteredItems]);
-    const totalValueMXN = useMemo(() => filteredItems.reduce((acc, i) => acc + ((parseInt(i.data.price) || 0) * (parseInt(i.data.quantity) || 1)), 0), [filteredItems]);
+    // ── Semantic Vector Re-ranking (iOS companion embedder + Supabase VectorIndex) ──
+    const [vectorIndex, setVectorIndex] = useState<VectorIndex | null>(null);
+
+    useEffect(() => {
+        if (!deferredSearchTerm.trim()) return;
+        let mounted = true;
+        loadSessionVectorIndex().then(idx => {
+            if (mounted && idx) {
+                setVectorIndex(idx);
+            }
+        });
+        return () => {
+            mounted = false;
+        };
+    }, [deferredSearchTerm]);
+
+    const searchableItems = useMemo(() => {
+        return filteredItems.map(item => ({
+            ...item,
+            id: String(item.data?.id ?? item.id ?? item.row ?? ''),
+        }));
+    }, [filteredItems]);
+
+    const keywordMatchIds = useMemo(() => {
+        return searchableItems.map(i => i.id);
+    }, [searchableItems]);
+
+    const embedQuery = useCallback((q: string) => embedSearchQuery(q, QUERY_VECTOR_DIMS), []);
+
+    const hybridSearchResult = useHybridSearch({
+        query: deferredSearchTerm,
+        items: searchableItems,
+        keywordMatchIds,
+        vectorIndex,
+        limit: Math.max(1000, filteredItems.length),
+        embedQuery,
+    });
+
+    const displayItems: InventoryItem[] = useMemo(() => {
+        if (deferredSearchTerm.trim() && hybridSearchResult.isVectorActive) {
+            return hybridSearchResult.results;
+        }
+        return filteredItems;
+    }, [deferredSearchTerm, hybridSearchResult.isVectorActive, hybridSearchResult.results, filteredItems]);
+
+    displayItemsRef.current = displayItems;
+
+    const totalCount = useMemo(() => displayItems.reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0), [displayItems]);
+    const totalValueMXN = useMemo(() => displayItems.reduce((acc, i) => acc + ((parseInt(i.data.price) || 0) * (parseInt(i.data.quantity) || 1)), 0), [displayItems]);
 
     // Atomic update to derived stats atom: one render per data change
     useEffect(() => {
         setFilteredStats({
-            count: filteredItems.length,
+            count: displayItems.length,
             totalQty: totalCount,
             totalValue: totalValueMXN,
-            ids: filteredItems.map(i => i.row ?? i.data?.id ?? i.data?.itemId ?? '').filter(Boolean),
+            ids: displayItems.map(i => i.row ?? i.data?.id ?? i.data?.itemId ?? '').filter(Boolean),
         });
-    }, [filteredItems, totalCount, totalValueMXN, setFilteredStats]);
+    }, [displayItems, totalCount, totalValueMXN, setFilteredStats]);
 
     // ── Scroll-container geometry shared by every virtualized mode ──────────────
     // The cards do not own their scrollbar: `.app-content` in MainAppView does, and
@@ -1834,7 +1889,7 @@ export const UnifiedInventoryView = () => {
     }, [viewMode, getScrollElement]);
 
     const listVirtualizer = useVirtualizer({
-        count: viewMode === 'list' ? filteredItems.length : 0,
+        count: viewMode === 'list' ? displayItems.length : 0,
         getScrollElement,
         estimateSize: () => 48, // A collapsed row is 44px + the 4px rhythm gap.
         overscan: 10,
@@ -1877,7 +1932,7 @@ export const UnifiedInventoryView = () => {
     }, [gridInner, gridColumns, gridMinColumn]);
 
     const gridVirtualizer = useVirtualizer({
-        count: viewMode === 'grid' ? Math.ceil(filteredItems.length / gridColumns) : 0,
+        count: viewMode === 'grid' ? Math.ceil(displayItems.length / gridColumns) : 0,
         getScrollElement,
         estimateSize: () => gridRowEstimate,
         overscan: 3,
@@ -1900,19 +1955,19 @@ export const UnifiedInventoryView = () => {
     const GALLERY_PAGE = 40;
     const [galleryLimit, setGalleryLimit] = useState(GALLERY_PAGE);
     const gallerySentinelRef = useRef<HTMLDivElement | null>(null);
-    useEffect(() => { setGalleryLimit(GALLERY_PAGE); }, [viewMode, filteredItems]);
+    useEffect(() => { setGalleryLimit(GALLERY_PAGE); }, [viewMode, displayItems]);
     useEffect(() => {
         if (viewMode !== 'gallery') return;
         const el = gallerySentinelRef.current;
-        if (!el || galleryLimit >= filteredItems.length) return;
+        if (!el || galleryLimit >= displayItems.length) return;
         const io = new IntersectionObserver((entries) => {
             if (entries.some(e => e.isIntersecting)) {
-                setGalleryLimit(prev => Math.min(prev + GALLERY_PAGE, filteredItems.length));
+                setGalleryLimit(prev => Math.min(prev + GALLERY_PAGE, displayItems.length));
             }
         }, { root: getScrollElement(), rootMargin: '800px' });
         io.observe(el);
         return () => io.disconnect();
-    }, [viewMode, galleryLimit, filteredItems.length, getScrollElement]);
+    }, [viewMode, galleryLimit, displayItems.length, getScrollElement]);
 
     // Ken Burns Logic — deferred 2s after mount so it doesn't compete with initial render
     const [bgMediaUrls, setBgMediaUrls] = useState<string[]>([]);
@@ -2051,7 +2106,7 @@ export const UnifiedInventoryView = () => {
                                 }}
                             >
                                 {listVirtualizer.getVirtualItems().map(virtualRow => {
-                                    const item = filteredItems[virtualRow.index];
+                                    const item = displayItems[virtualRow.index];
                                     if (!item) return null;
                                     return (
                                         <div
@@ -2100,7 +2155,7 @@ export const UnifiedInventoryView = () => {
                             <div style={{ height: `${gridVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
                                 {gridVirtualizer.getVirtualItems().map(virtualRow => {
                                     const start = virtualRow.index * gridColumns;
-                                    const rowItems = filteredItems.slice(start, start + gridColumns);
+                                    const rowItems = displayItems.slice(start, start + gridColumns);
                                     if (rowItems.length === 0) return null;
                                     return (
                                         <div
@@ -2161,7 +2216,7 @@ export const UnifiedInventoryView = () => {
                             </div>
                         ) : (
                             <>
-                            {filteredItems.slice(0, galleryLimit).map(item => {
+                            {displayItems.slice(0, galleryLimit).map(item => {
                                 const mediaCount = ((item.data.generatedPngUrl ? item.data.generatedPngUrl + ',' : '') + (item.data.mediaUrls || '')).split(',').map((u: string) => u.trim()).filter(Boolean).length;
                                 const isLarge = mediaCount >= 1 && mediaCount < 10;
                                 const isFull = mediaCount >= 10;
@@ -2193,7 +2248,7 @@ export const UnifiedInventoryView = () => {
                                     </div>
                                 );
                             })}
-                            {galleryLimit < filteredItems.length && (
+                            {galleryLimit < displayItems.length && (
                                 <div ref={gallerySentinelRef} className="col-span-full h-1" aria-hidden="true" />
                             )}
                             </>
