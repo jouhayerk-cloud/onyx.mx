@@ -731,7 +731,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 <div className="inv-specs-body">
                     {!hasAxoOverlay && (
                         <div className="inv-axo bg-black/40" title={tr("Proportions")} aria-hidden="true">
-                            <WireframeIcon item={norm} color={accentColor} />
+                            <WireframeIcon item={norm} />
                         </div>
                     )}
                     <div className={`inv-hairline-card${hasAxoOverlay ? ' inv-hairline-card--prominent' : ''}`} title={hairCanonical.label || norm.shape || tr("Hairline figure")} aria-hidden="true">
@@ -1007,7 +1007,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             if (dist > 30) setCardIdx(p => (p + 1) % mediaUrls.length);
                             if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
                         }}>
-                        {mediaUrls[cardIdx] ? <DriveImage loading="lazy" key={cardIdx} src={mediaUrls[cardIdx]} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full opacity-60 flex items-center justify-center mix-blend-screen scale-[1.3]"><WireframeIcon item={norm} color={accentColor} /></div>}
+                        {mediaUrls[cardIdx] ? <DriveImage loading="lazy" key={cardIdx} src={mediaUrls[cardIdx]} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full opacity-60 flex items-center justify-center mix-blend-screen scale-[1.3]"><WireframeIcon item={norm} /></div>}
                         {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={12} /></div>}
 
                         {mediaUrls.length > 1 && (
@@ -1224,7 +1224,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     );
     // The piece's silhouette, standing in for a photo it does not have yet.
     const axoFill = (
-        <div className="inv-card-axo mix-blend-screen"><WireframeIcon item={norm} color={accentColor} /></div>
+        <div className="inv-card-axo mix-blend-screen"><WireframeIcon item={norm} /></div>
     );
     // Photo keys over a hero: previous / next, the position, and an explicit
     // full-screen key — the hero itself is not a button, so these never nest.
@@ -1327,7 +1327,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             {heroMedia(sheetIdx, 'inv-gal-img')}
                             {mediaUrls.length > 0 && (
                                 <div className="inv-hero-axo-overlay" title={tr("Proportions")} aria-hidden="true" onClick={(e) => { e.stopPropagation(); }}>
-                                    <WireframeIcon item={norm} color={accentColor} />
+                                    <WireframeIcon item={norm} />
                                 </div>
                             )}
                             {heroKeys(sheetIdx, stepSheet, 20)}
@@ -1367,7 +1367,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 {heroMedia(heroIdx, 'inv-gal-img')}
                                 {mediaUrls.length > 0 && (
                                     <div className="inv-hero-axo-overlay" title={tr("Proportions")} aria-hidden="true" onClick={(e) => { e.stopPropagation(); }}>
-                                        <WireframeIcon item={norm} color={accentColor} />
+                                        <WireframeIcon item={norm} />
                                     </div>
                                 )}
                                 {heroKeys(heroIdx, stepPhoto, 18)}

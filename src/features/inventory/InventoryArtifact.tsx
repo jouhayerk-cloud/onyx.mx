@@ -45,7 +45,7 @@ export const WireframeIcon = ({ item, color }: { item: any, color?: string }) =>
     // Cheap and pure, so the key is available before the first paint. Depending on
     // `item` (a memoised `norm` object at every call site) keeps this to one run
     // per card rather than one per render.
-    const req = useMemo(() => describeAxoIcon(item), [item]);
+    const req = useMemo(() => describeAxoIcon(item, color), [item, color]);
 
     // Seed from the cache synchronously: a card scrolling back into view reuses the
     // already-rasterised silhouette with no fallback flash and no state update.
@@ -321,7 +321,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         <img src={getCleanImageUrl(mainImageUrl)} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-1000 opacity-60 group-hover:opacity-100" />
                                     ) : (
                                         <div className="flex flex-col items-center justify-center w-full h-full p-4 group-hover:scale-110 transition-transform duration-1000">
-                                            <WireframeIcon item={norm} color={accentColor} />
+                                            <WireframeIcon item={norm} />
                                         </div>
                                     )}
                                     <div className={`absolute top-6 right-8 font-black text-white/60 group-hover:text-white transition-colors tabular-nums ${displayMode === 'gallery' ? 'text-3xl' : 'text-lg'}`}>${Math.ceil(Number(norm.price || 0)).toLocaleString()}</div>

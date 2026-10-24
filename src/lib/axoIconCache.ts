@@ -1,4 +1,4 @@
-import { generateAxonometricDataUrl, resolveAxoGeometry, resolveItemColor } from './axonometric';
+import { generateAxonometricDataUrl, resolveAxoGeometry, resolveItemColor, extractItemHexMapString } from './axonometric';
 
 /**
  * Process-wide cache for the axonometric card icons.
@@ -12,9 +12,8 @@ import { generateAxonometricDataUrl, resolveAxoGeometry, resolveItemColor } from
  *
  * Two properties do the work here:
  *  1. The key is built from the RESOLVED geometry (8 shapes + a normalised W/H/D
- *     triple + the outline colour), not from the free-text shape/description the
- *     row carries. Hundreds of distinct descriptions collapse onto a handful of
- *     silhouettes.
+ *     triple + the outline colour or unique photo hex map), not from the free-text
+ *     shape/description the row carries.
  *  2. Identical inputs yield the identical data-URL *string*, so the browser
  *     decodes the bitmap once and shares it across every <img> that uses it.
  *
@@ -33,6 +32,7 @@ export interface AxoIconRequest {
     shape: string;
     desc: string;
     color: string;
+    hexMapString?: string;
 }
 
 // Bounded so a long session with many distinct silhouettes cannot grow without
@@ -47,7 +47,7 @@ const inFlight = new Map<string, Promise<string>>();
  * Derive the render inputs + cache key for an inventory row.
  * Pure and cheap; safe to call inside a render or useMemo.
  */
-export function describeAxoIcon(item: any): AxoIconRequest {
+export function describeAxoIcon(item: any, colorOverride?: string): AxoIconRequest {
     // Field fallbacks mirror the original WireframeIcon exactly — snake_case rows
     // come from Supabase, camelCase from normalizeInventoryData.
     // `||` not `??` on purpose: a stored 0 or '' must fall through to the other
@@ -58,15 +58,19 @@ export function describeAxoIcon(item: any): AxoIconRequest {
 
     const shape = item?.shape || '';
     const desc = item?.shortDescription || item?.description || '';
-    const color = resolveItemColor(item || {});
+    const color = colorOverride || resolveItemColor(item || {});
 
     const g = resolveAxoGeometry(w, h, d, shape, desc);
     // Round the dimensions: sub-0.01cm differences cannot survive the projection
     // and would only fragment the cache.
     const dims = `${g.W.toFixed(2)}x${g.H.toFixed(2)}x${g.D.toFixed(2)}`;
-    const key = `${g.extra ? 'x:' + g.extra : g.geom}|${g.isMirror ? 'm' : ''}|${dims}|${color}`;
+    
+    const hexMapString = extractItemHexMapString(item);
+    const itemId = item?.id || item?.itemId || item?.row || item?.book_barcode || item?.bookBarcode || '';
+    const texIdentity = hexMapString ? `hex:${itemId || hexMapString.slice(0, 32)}` : `c:${color}`;
+    const key = `${g.extra ? 'x:' + g.extra : g.geom}|${g.isMirror ? 'm' : ''}|${dims}|${texIdentity}`;
 
-    return { key, w, h, d, shape, desc, color };
+    return { key, w, h, d, shape, desc, color, hexMapString };
 }
 
 /** Synchronous cache read — lets a card paint its icon on first render with no flash. */
@@ -85,7 +89,13 @@ export function getAxoIcon(req: AxoIconRequest): Promise<string> {
     const pending = inFlight.get(req.key);
     if (pending) return pending;
 
-    const job = generateAxonometricDataUrl(req.w, req.h, req.d, req.shape, req.desc, req.color)
+    const job = generateAxonometricDataUrl(
+        req.w, req.h, req.d,
+        req.shape, req.desc,
+        req.color,
+        false,
+        req.hexMapString
+    )
         .then(url => {
             inFlight.delete(req.key);
             if (url) {

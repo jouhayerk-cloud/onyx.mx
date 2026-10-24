@@ -213,35 +213,24 @@ export function normalizeHexMapTexture(
 
 /**
  * Extracts a hex map or texture string from an item across all known database fields:
- * processed_media_urls._pixel_map_hex, item.hexMap, item.hex_map, spatial_points,
- * vein_svg_urls, or vein colors/palette.
+ * spatial_points (with cols/rows), processed_media_urls._pixel_map_hex, item.hexMap,
+ * item.hex_map, vein_svg_urls, or vein colors/palette.
  */
 export function extractItemHexMapString(item: any): string | undefined {
     if (!item) return undefined;
+    const it = item.data ? { ...item.data, ...item } : item;
 
     // 1. Direct fields
-    if (item.hexMap && typeof item.hexMap === 'string') return item.hexMap;
-    if (item.hex_map && typeof item.hex_map === 'string') return item.hex_map;
-    if (Array.isArray(item.hexMap) && item.hexMap.length > 0) return JSON.stringify(item.hexMap);
-    if (Array.isArray(item.hex_map) && item.hex_map.length > 0) return JSON.stringify(item.hex_map);
-    if (item.hexString && typeof item.hexString === 'string') return item.hexString;
-    if (item.hex_string && typeof item.hex_string === 'string') return item.hex_string;
+    if (it.hexMap && typeof it.hexMap === 'string') return it.hexMap;
+    if (it.hex_map && typeof it.hex_map === 'string') return it.hex_map;
+    if (Array.isArray(it.hexMap) && it.hexMap.length > 0) return JSON.stringify(it.hexMap);
+    if (Array.isArray(it.hex_map) && it.hex_map.length > 0) return JSON.stringify(it.hex_map);
+    if (it.hexString && typeof it.hexString === 'string') return it.hexString;
+    if (it.hex_string && typeof it.hex_string === 'string') return it.hex_string;
+    if (it.hexMap && typeof it.hexMap === 'object' && it.hexMap.hexString) return String(it.hexMap.hexString);
 
-    // 2. processed_media_urls._pixel_map_hex
-    const pmu = item.processed_media_urls || item.processedMediaUrls;
-    if (pmu) {
-        let parsedPmu = pmu;
-        if (typeof parsedPmu === 'string') {
-            try { parsedPmu = JSON.parse(parsedPmu); } catch {}
-        }
-        if (parsedPmu && typeof parsedPmu === 'object') {
-            if (parsedPmu._pixel_map_hex) return String(parsedPmu._pixel_map_hex);
-            if (parsedPmu.pixel_map_hex) return String(parsedPmu.pixel_map_hex);
-        }
-    }
-
-    // 3. spatial_points
-    const sp = item.spatial_points || item.spatialPoints;
+    // 2. spatial_points (primary source of pixel_map from photo segmentation/hex map)
+    const sp = it.spatial_points || it.spatialPoints;
     if (sp) {
         let parsedSp = sp;
         if (typeof parsedSp === 'string') {
@@ -249,14 +238,46 @@ export function extractItemHexMapString(item: any): string | undefined {
         }
         if (Array.isArray(parsedSp)) {
             const pm = parsedSp.find((p: any) => p && (p.type === 'pixel_map' || p.hex_string || p.hexString || p.hex_map));
-            if (pm) return pm.hex_string || pm.hexString || pm.hex_map || (Array.isArray(pm.hexList) ? JSON.stringify(pm.hexList) : undefined);
+            if (pm) {
+                const hex = pm.hex_string || pm.hexString || pm.hex_map || (Array.isArray(pm.hexList) ? JSON.stringify(pm.hexList) : undefined);
+                if (hex) {
+                    if (pm.cols && pm.rows) {
+                        return `${pm.cols}x${pm.rows}:${hex}`;
+                    }
+                    if (pm.dimensions) {
+                        return `${pm.dimensions}:${hex}`;
+                    }
+                    return hex;
+                }
+            }
         } else if (parsedSp && typeof parsedSp === 'object') {
-            if (parsedSp.hex_string || parsedSp.hexString) return parsedSp.hex_string || parsedSp.hexString;
+            if (parsedSp.hex_string || parsedSp.hexString) {
+                const hex = parsedSp.hex_string || parsedSp.hexString;
+                if (parsedSp.cols && parsedSp.rows) return `${parsedSp.cols}x${parsedSp.rows}:${hex}`;
+                if (parsedSp.dimensions) return `${parsedSp.dimensions}:${hex}`;
+                return hex;
+            }
+        }
+    }
+
+    // 3. processed_media_urls._pixel_map_hex
+    const pmu = it.processed_media_urls || it.processedMediaUrls;
+    let parsedPmu: any = pmu;
+    if (pmu) {
+        if (typeof parsedPmu === 'string') {
+            try { parsedPmu = JSON.parse(parsedPmu); } catch {}
+        }
+        if (parsedPmu && typeof parsedPmu === 'object') {
+            const hex = parsedPmu._pixel_map_hex || parsedPmu.pixel_map_hex;
+            if (hex) {
+                if (parsedPmu.dimensions) return `${parsedPmu.dimensions}:${hex}`;
+                return String(hex);
+            }
         }
     }
 
     // 4. vein_svg_urls / vein colors
-    const vUrls = item.vein_svg_urls || item.veinSvgUrls;
+    const vUrls = it.vein_svg_urls || it.veinSvgUrls || (parsedPmu && typeof parsedPmu === 'object' ? parsedPmu.vein_svg_urls : undefined);
     if (vUrls) {
         let parsedV = vUrls;
         if (typeof parsedV === 'string') {
@@ -281,7 +302,7 @@ export function extractItemHexMapString(item: any): string | undefined {
     }
 
     // 5. Direct vein_colors or vein_palette
-    const vc = item.vein_colors || item.veinColors || item.vein_palette;
+    const vc = it.vein_colors || it.veinColors || it.vein_palette || (parsedPmu && typeof parsedPmu === 'object' ? (parsedPmu.vein_colors || parsedPmu.vein_palette) : undefined);
     if (vc) {
         if (typeof vc === 'string') return vc;
         if (Array.isArray(vc) && vc.length > 0) return JSON.stringify(vc);
@@ -649,9 +670,10 @@ export async function generateAxonometricDataUrl(
         const COLOR_LEFT = isWireframe ? 'rgba(0,0,0,0)' : '#9E9E9E';
 
         const palette = resolveStonePalette({
-            color: wireframeColor,
+            color: (wireframeColor && !wireframeColor.startsWith('rgba') && !wireframeColor.startsWith('#ef4444') && !wireframeColor.startsWith('#22c55e') && !wireframeColor.startsWith('#38bdf8') && !wireframeColor.startsWith('#eab308')) ? wireframeColor : undefined,
             shape: shapeStr,
             description: descStr,
+            shortDescription: descStr,
         });
 
         const strokeGradient = ctx.createLinearGradient(
@@ -679,19 +701,35 @@ export async function generateAxonometricDataUrl(
 
         try {
             if (hexMapString) {
-                const rawHexList = parseHexMapString(hexMapString);
+                let sCols = 20;
+                let sRows = 20;
+                let hexStrToParse = hexMapString;
+
+                // Support explicit "COLSxROWS:" dimensions prefix from spatial_points/dimensions
+                const dimMatch = hexMapString.match(/^(\d+)x(\d+):([\s\S]+)$/);
+                if (dimMatch) {
+                    sCols = parseInt(dimMatch[1], 10);
+                    sRows = parseInt(dimMatch[2], 10);
+                    hexStrToParse = dimMatch[3];
+                }
+
+                const rawHexList = parseHexMapString(hexStrToParse);
                 if (rawHexList.length > 0) {
-                    let sCols = 20;
-                    let sRows = 20;
-                    if (rawHexList.length === 160) { sCols = 20; sRows = 8; }
-                    else if (rawHexList.length === 400) { sCols = 20; sRows = 20; }
-                    else if (rawHexList.length === 64) { sCols = 8; sRows = 8; }
-                    else if (rawHexList.length === 100) { sCols = 10; sRows = 10; }
-                    else if (rawHexList.length > 0 && rawHexList.length % 20 === 0) { sCols = 20; sRows = rawHexList.length / 20; }
-                    else if (rawHexList.length > 0 && rawHexList.length % 16 === 0) { sCols = 16; sRows = rawHexList.length / 16; }
-                    else {
-                        sCols = Math.max(1, Math.round(Math.sqrt(rawHexList.length)));
-                        sRows = Math.ceil(rawHexList.length / sCols);
+                    if (!dimMatch) {
+                        const len = rawHexList.length;
+                        const isTall = H > W * 1.3;
+                        if (len === 180) { sCols = isTall ? 9 : 20; sRows = isTall ? 20 : 9; }
+                        else if (len === 300) { sCols = isTall ? 15 : 20; sRows = isTall ? 20 : 15; }
+                        else if (len === 160) { sCols = isTall ? 8 : 20; sRows = isTall ? 20 : 8; }
+                        else if (len === 400) { sCols = 20; sRows = 20; }
+                        else if (len === 100) { sCols = 10; sRows = 10; }
+                        else if (len === 64) { sCols = 8; sRows = 8; }
+                        else if (len > 0 && len % 20 === 0) { sCols = 20; sRows = len / 20; }
+                        else if (len > 0 && len % 16 === 0) { sCols = 16; sRows = len / 16; }
+                        else {
+                            sCols = Math.max(1, Math.round(Math.sqrt(len)));
+                            sRows = Math.ceil(len / sCols);
+                        }
                     }
                     parsedHexList = normalizeHexMapTexture(rawHexList, sCols, sRows, tCols, tRows);
                 }
