@@ -46,6 +46,12 @@
 
 html, body {
   height: 100%;
+  /* iOS Safari (both a regular tab, whose bottom toolbar shows/hides as you scroll, and installed to
+     the Home Screen) can resolve 100% shorter than the real screen; the gap shows our content's own
+     background giving way to Safari's default white beneath it. 100dvh tracks the live visual
+     viewport, so the max() takes whichever is taller; see the #root rule below for the sibling fix
+     already in place for the Home-Screen status-bar case. */
+  height: max(100%, 100dvh);
   margin: 0;
   padding: 0;
   overflow: hidden;
