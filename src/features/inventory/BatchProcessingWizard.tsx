@@ -17,19 +17,18 @@
  *     what was ticked and worked plus what a person typed, through
  *     lib/ai/persist. Accept marks an item reviewed; Save reviewed writes them.
  *
- * Kept from the old hub, moved into this layout: the API key dialog, Write
- * From Similar for items with no photograph, the 1:1 crop and the cutout
- * upload, a background clean for one item, hero-only runs, re-clean all,
- * clearing the AI columns (now confirmed here, not in a native confirm(), and
- * written through saveAiPatch), and the Matrixify XLSX and catalogue PDF
- * exports. Book codes are the 17 book rate; a stored barcode always wins.
+ * Kept from the old hub, moved into this layout: the API key dialog, the 1:1
+ * crop and the cutout upload, a background clean for one item, clearing the AI
+ * columns (now confirmed here, not in a native confirm(), and written through
+ * saveAiPatch), and the Matrixify XLSX and catalogue PDF exports. Book codes
+ * are the 17 book rate; a stored barcode always wins.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { createPortal } from 'react-dom';
 import {
-    Bot, Check, ChevronLeft, Copy, Crop, Eraser, FileSpreadsheet, FileText, ImageUp, KeyRound, Play, RefreshCw,
-    RotateCcw, Save, Search, SlidersHorizontal, Sparkles, Square, Upload, Wand2, X, XCircle,
+    Bot, Check, ChevronLeft, Copy, Crop, Eraser, FileSpreadsheet, FileText, Play, RefreshCw,
+    RotateCcw, Save, Search, SlidersHorizontal, Square, Upload, Wand2, X, XCircle,
 } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
 import ExcelJS from 'exceljs';
@@ -70,7 +69,7 @@ import {
     type RunItem, type RunPhoto, type RunItemStatus, type RunProcessStatus, type ProcessId, type SaveOutcome,
 } from '../../lib/ai/run';
 import {
-    Key, Chip, ProcessChips, Segmented, Field, Input, Select, ItemTag, resolveItemTag, StatusPill, StepsStrip,
+    Key, ProcessChips, Field, Input, Select, ItemTag, resolveItemTag, StatusPill, StepsStrip,
     Thumb, MediaViewer, ItemList, ItemRow, FilterTabs, Drawer, GeneratedContent, PROCESS_META, cx, itemStateLabel,
     type MediaAngle, type MediaView, type GeneratedValue, type ItemState,
     Dialog,
@@ -91,29 +90,6 @@ const PROCESS_ORDER: readonly ProcessId[] = [
     ...CATALOG_PROCESSES.filter(p => PROCESS_META[p.id].group === 'text'),
     ...CATALOG_PROCESSES.filter(p => PROCESS_META[p.id].group === 'image'),
 ].map(p => p.id);
-
-/**
- * The cleaning engine. Cloud is bgreplace, the default: it repaints the
- * background instead of cutting the piece out, the only one that cannot punch
- * holes in a translucent or dark-veined stone. The other three cut the piece
- * out; they stay for the items that genuinely need transparency.
- */
-const MODE_OPTIONS: readonly { value: ProcessingMode; label: string; title: string }[] = [
-    { value: 'bgreplace', label: 'Cloud', title: 'Gemini repaints the background as a dark studio (the default)' },
-    { value: 'local', label: 'Local', title: 'Cut the piece out on this device; no Gemini call for the image' },
-    { value: 'cloud', label: 'AI mask', title: 'Gemini traces the piece and its layers, then the cut-out is made from that' },
-    { value: 'hybrid', label: 'Hybrid', title: 'Local cut-out, refined by Gemini' },
-];
-
-/**
- * The studio the Cloud engine paints behind the piece. Dark is what the
- * catalogue was cleaned with; Light is a second look. Colours are never read
- * from a light backdrop (see bgReplace.ts), so picking it does not change them.
- */
-const ROOM_OPTIONS: readonly { value: BgRoom; label: string; title: string }[] = [
-    { value: 'dark', label: 'Dark room', title: 'Near-black studio behind the piece (the default)' },
-    { value: 'light', label: 'Light room', title: 'Soft light grey studio behind the piece. Colours are read from the cut-out or the original photo, never from this background.' },
-];
 
 /** The columns "Clear AI data" empties: the AI half of the canonical map, never the vendor's fields. */
 const CLEAR_COLUMNS: InventoryUpdate = {
@@ -140,8 +116,7 @@ type DisplayState = RunItemStatus;
 
 type Confirm =
     | { kind: 'close' }
-    | { kind: 'clear'; ids: string[] }
-    | { kind: 'reclean'; ids: string[] };
+    | { kind: 'clear'; ids: string[] };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reading an item
@@ -238,15 +213,11 @@ function storedState(it: RunItem, p: ProcessId, heroOnly: boolean): RunProcessSt
 }
 
 /**
- * The ticked processes this item still lacks. An item with no photograph is
- * left to Write From Similar: copy invented without a photo is a deliberate
- * step, as it was in the old hub, not a side effect of Run.
+ * The ticked processes this item still lacks.
  */
 function missingOf(it: RunItem, selection: ReadonlySet<ProcessId>, heroOnly: boolean): ProcessId[] {
-    const photoless = !it.media.some(m => !m.isVideo);
     return PROCESS_ORDER.filter(p => {
         if (!selection.has(p) || !applies(it, p)) return false;
-        if (photoless && p !== 'video_proc') return false;
         return storedState(it, p, heroOnly) !== 'done';
     });
 }
@@ -646,15 +617,9 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         if (handoffRef.current) return new Set(handoffRef.current.processes.filter(p => p !== 'variation_donor'));
         return new Set(DEFAULT_PROCESSES);
     });
-    const [mode, setMode] = useState<ProcessingMode>('bgreplace');
-    const [room, setRoom] = useState<BgRoom>('dark');
-    /**
-     * Restrict fresh runs to each item's first photo. Off by default: it was
-     * once hard-wired on with no control, which is why multi-photo items only
-     * ever came back with one cleaned photo. Still offered, because at about
-     * two photos an item it halves the image bill.
-     */
-    const [heroOnly, setHeroOnly] = useState(false);
+    const mode: ProcessingMode = 'auto';
+    const room: BgRoom = 'dark';
+    const heroOnly = false;
 
     const run = useAiRun({
         items,
@@ -782,10 +747,6 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         ? tickedIds.filter(id => { const it = run.get(id); return it && !isBusy(it); })
         : gapGroups.flatMap(g => g.ids);
 
-    const donorIds = useMemo(() => all
-        .filter(it => !it.media.some(m => !m.isVideo) && !it.item.existing.title && !isBusy(it))
-        .map(it => it.id), [all]);
-
     const reviewedIds = all.filter(it => it.status === 'done' && it.dirty).map(it => it.id);
     const failedCount = all.filter(it => it.status === 'failed' || it.status === 'partial').length;
     const unsaved = run.counts.unsaved;
@@ -866,16 +827,8 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         void launch(() => Promise.all(groups.map(g => run.start(g.ids, { processes: g.processes }))), handleRun, groups.flatMap(g => g.ids));
     };
 
-    const handleWriteFromSimilar = () => {
-        const ids = donorIds;
-        if (!ids.length) return;
-        void launch(() => Promise.all([run.start(ids, { processes: ['variation_donor', ...TEXT_PROCESSES] })]), handleWriteFromSimilar, ids);
-    };
-
     // The hand-off's run, once: on the first render that has the items (the
     // engine syncs them in an effect, so the very first render has none).
-    // The photo items run the ticked processes as Run would; with `donor`,
-    // the ones without a photo get Write From Similar.
     useEffect(() => {
         const h = handoffRef.current;
         if (!h || !all.length) return;
@@ -883,11 +836,20 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         setHandoff(null);
         if (!h.autoRun) return;
         const go = () => {
-            const picked = h.processes.filter(p => p !== 'variation_donor');
-            if (picked.length && processes.size && gapGroups.length) handleRun();
-            if (h.donor && donorIds.length) handleWriteFromSimilar();
+            // h.donor: Write From Similar for the items without a photo. processes
+            // deliberately excludes 'variation_donor' (above), so handleRun's own
+            // gapGroups never include it -- without this, a donor-only hand-off ran
+            // nothing (HUBREV2 #3), and a hand-off that also wants text/colour fields
+            // never produced an axo icon for those items either (HUBREV2 #5), since
+            // variation_donor is the only process applies() accepts for a photo-less
+            // item (see applies() above).
+            if (h.donor) {
+                const donorIds = all.filter(it => !it.media.some(m => !m.isVideo)).map(it => it.id);
+                if (donorIds.length) void run.start(donorIds, { processes: ['variation_donor', ...TEXT_PROCESSES] });
+            }
+            if (processes.size && gapGroups.length) handleRun();
         };
-        // One key prompt for both launches, not one each.
+        // One key prompt for launches, not one each.
         if (!hasGeminiKey()) needKey(go); else go();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [all.length]);
@@ -992,25 +954,6 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         if (cleared) setInventoryVersion(Date.now());
         if (failures.length) toast.error(trf('Cleared {n}, failed {f}: {detail}', { n: cleared, f: failures.length, detail: failures.slice(0, 3).join(' · ') }), { duration: 10000 });
         else toast.success(trf('Cleared the AI data of {n} items', { n: cleared }));
-    };
-
-    const doReclean = (ids: string[]) => {
-        setConfirm(null);
-        // Every photo, so hero-only goes off: asking to re-clean everything and
-        // then skipping the second photo of every item is the old bug.
-        setHeroOnly(false);
-        const dirty = ids.filter(id => run.get(id)?.dirty);
-        const fresh = ids.filter(id => !run.get(id)?.dirty);
-        // The mask, PNG, SVG and hex map are cut from the cleaned photo, so a new clean redoes the ticked ones too
-        const only: ProcessId[] = ['img_clean', ...(['image_segmentation', 'hex_map'] as ProcessId[]).filter(p => processes.has(p))];
-        const go = () => {
-            void launch(() => Promise.all([
-                // Unsaved results are kept: a retry re-runs only the clean.
-                dirty.length ? run.retry(dirty, { processes: only, heroOnly: false }) : Promise.resolve({ started: 0 }),
-                fresh.length ? run.start(fresh, { processes: only, heroOnly: false }) : Promise.resolve({ started: 0 }),
-            ]), go, ids);
-        };
-        go();
     };
 
     /**
@@ -1291,39 +1234,9 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         </Drawer>
     );
 
-    // The process chips and run options: a row in the top bar, a sheet on a phone.
+    // The process chips: a row in the top bar, a sheet on a phone.
     const optionControls = (
-        <>
-            <ProcessChips value={processes} onChange={setProcesses} disabled={run.isRunning} />
-            <span className="hub-sep" aria-hidden="true" />
-            <div className="hub-opts__sel">
-                <div className="hub-opt">
-                    <span className="hub-opt__label" aria-hidden="true">{tr('Background')}</span>
-                    <Segmented<ProcessingMode>
-                        label={tr('Cleaning engine')}
-                        value={mode}
-                        onChange={setMode}
-                        options={MODE_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
-                    />
-                </div>
-                {mode === 'bgreplace' && (
-                    <div className="hub-opt">
-                        <span className="hub-opt__label" aria-hidden="true">{tr('Room')}</span>
-                        <Segmented<BgRoom>
-                            label={tr('Studio room')}
-                            value={room}
-                            onChange={setRoom}
-                            disabled={run.isRunning}
-                            options={ROOM_OPTIONS.map(o => ({ value: o.value, label: tr(o.label), title: tr(o.title) }))}
-                        />
-                    </div>
-                )}
-                <Chip pressed={heroOnly} onPressedChange={setHeroOnly}
-                    title={tr('All photos per item, or only the first. Hero-only is cheaper (roughly half the images) but leaves the rest uncleaned.')}>
-                    {tr('Hero photo only')}
-                </Chip>
-            </div>
-        </>
+        <ProcessChips value={processes} onChange={setProcesses} disabled={run.isRunning} />
     );
 
     const filterTabs = [
@@ -1334,7 +1247,6 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
         { id: 'saved' as const, label: tr('Saved'), count: counts.saved || 0 },
     ];
 
-    const allShownTicked = visible.length > 0 && visible.every(it => ticked.has(it.id));
     const actTargets = tickedIds.length ? tickedIds : all.map(it => it.id);
 
     const confirmDialog = confirm && (() => {
@@ -1374,22 +1286,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                 </Dialog>
             );
         }
-        const photos = confirm.ids.reduce((n, id) => n + (run.get(id)?.media.filter(m => !m.isVideo).length || 0), 0);
-        return (
-            <Dialog title={tr('Re-clean every photo?')} onCancel={() => setConfirm(null)}
-                actions={<>
-                    <Key data-autofocus onClick={() => setConfirm(null)}>{tr('Cancel')}</Key>
-                    <Key variant="go" icon={<Wand2 size={14} />} onClick={() => doReclean(confirm.ids)}>
-                        {trf('Re-clean {n} photos', { n: photos })}
-                    </Key>
-                </>}>
-                <p>{trf('A new background clean on all {photos} photos of {items} items with the {engine} engine, including photos that already have one. Hero-only is switched off.', {
-                    photos, items: confirm.ids.length,
-                    engine: tr(MODE_OPTIONS.find(o => o.value === mode)?.label || mode)
-                        + (mode === 'bgreplace' ? ` · ${tr(ROOM_OPTIONS.find(o => o.value === room)?.label || room)}` : ''),
-                })}</p>
-            </Dialog>
-        );
+        return null;
     })();
 
     return createPortal(
@@ -1415,15 +1312,14 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                                 onClick={handleRun}>
                                 {trf('Run {n}', { n: runTargets.length })}
                             </Key>
-                            {phone
-                                ? <Key iconOnly variant="quiet" icon={<SlidersHorizontal size={16} />} label={tr('Options')}
+                            {phone && (
+                                <Key iconOnly variant="quiet" icon={<SlidersHorizontal size={16} />} label={tr('Options')}
                                     aria-haspopup="dialog" aria-expanded={optionsOpen} onClick={() => setOptionsOpen(true)} />
-                                : <Key iconOnly variant="quiet" icon={<KeyRound size={15} />} label={tr('Gemini API key')}
-                                    onClick={() => { pendingRef.current = null; setKeyDraft(''); setShowKey(true); }} />}
+                            )}
                             <Key iconOnly variant="quiet" className="hub-close" icon={<X size={16} />} label={tr('Close')} onClick={handleClose} />
                         </div>
                     </div>
-                    {/* Row 2: what to run and how, grouped. On a phone these live in the Options sheet. */}
+                    {/* Row 2: what to run, grouped. On a phone these live in the Options sheet. */}
                     {!phone && <div className="hub-opts">{optionControls}</div>}
                 </header>
 
@@ -1437,29 +1333,14 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                     end={
                         <div className="hub-tools">
                             <div className="hub-tools__acts">
-                            <Key size="sm" variant="quiet" icon={<Check size={12} />}
-                                onClick={() => setTicked(allShownTicked ? new Set() : new Set(visible.map(it => it.id)))}>
-                                {allShownTicked ? tr('Untick all') : tickedIds.length ? trf('{n} ticked', { n: tickedIds.length }) : tr('Tick shown')}
-                            </Key>
-                            {donorIds.length > 0 && (
-                                <Key size="sm" icon={<Sparkles size={12} />} disabled={run.isRunning}
-                                    title={tr('These items have no photograph. Their description, colours and type are written by varying the most similar item that does; no image is generated.')}
-                                    onClick={handleWriteFromSimilar}>
-                                    {trf('Write from similar ({n})', { n: donorIds.length })}
+                                <Key size="sm" variant="quiet" icon={<Check size={12} />}
+                                    onClick={() => setTicked(tickedIds.length > 0 ? new Set() : new Set(visible.map(it => it.id)))}>
+                                    {tickedIds.length > 0 ? tr('Untick all') : tr('Tick shown')}
                                 </Key>
-                            )}
-                            <Key size="sm" variant="quiet" icon={<ImageUp size={12} />} disabled={run.isRunning}
-                                onClick={() => {
-                                    const ids = actTargets.filter(id => run.get(id)?.media.some(m => !m.isVideo));
-                                    if (!ids.length) { toast.error(tr('No photos to re-clean.')); return; }
-                                    setConfirm({ kind: 'reclean', ids });
-                                }}>
-                                {tickedIds.length ? tr('Re-clean ticked') : tr('Re-clean all')}
-                            </Key>
-                            <Key size="sm" variant="quiet" icon={<Eraser size={12} />} disabled={run.isRunning}
-                                onClick={() => setConfirm({ kind: 'clear', ids: actTargets })}>
-                                {tickedIds.length ? tr('Clear AI data (ticked)') : tr('Clear AI data')}
-                            </Key>
+                                <Key size="sm" variant="quiet" icon={<Eraser size={12} />} disabled={run.isRunning}
+                                    onClick={() => setConfirm({ kind: 'clear', ids: actTargets })}>
+                                    {tickedIds.length ? tr('Clear AI data (ticked)') : tr('Clear AI data')}
+                                </Key>
                             </div>
                             <label className="hub-search">
                                 <Search size={13} aria-hidden="true" />
@@ -1582,10 +1463,6 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                         footer={<Key variant="go" className="hub-optsheet__done" onClick={() => setOptionsOpen(false)}>{tr('Done')}</Key>}
                     >
                         <div className="hub-opts hub-opts--sheet">{optionControls}</div>
-                        <Key icon={<KeyRound size={15} />}
-                            onClick={() => { setOptionsOpen(false); pendingRef.current = null; setKeyDraft(''); setShowKey(true); }}>
-                            {tr('Gemini API key')}
-                        </Key>
                     </Drawer>
                 )}
 

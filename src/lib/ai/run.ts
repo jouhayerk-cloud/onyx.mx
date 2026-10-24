@@ -383,6 +383,7 @@ export function providerForProcess(p: ProcessId, mode: ProcessingMode, donorPath
     }
     if (p === 'img_clean') {
         if (mode === 'bgreplace') return 'gemini';
+        if (mode === 'auto') return 'gemini';
         if (mode === 'cloud' || mode === 'hybrid') return getRoute('segmentation').provider;
         return null;
     }
@@ -634,7 +635,7 @@ function sameRow(a: any, b: any): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface PlanOptions {
-    processingMode: ProcessingMode;
+    processingMode?: ProcessingMode;
     /** Distinguishes this launch's op ids from the last one's, so a late callback from a stopped op is ignored. */
     seq: number;
     /** Plan the first still only (plus videos); the other photos are left alone. */
@@ -658,7 +659,7 @@ interface PlannedOp {
  * what lets the writer also store the axonometric icon), and the videos.
  * variation_donor on an item that has photos does not apply.
  */
-export function planOps(item: Pick<RunItem, 'media'>, selected: ReadonlySet<ProcessId>, opts: { heroOnly?: boolean } = {}): PlannedOp[] {
+export function planOps(item: Pick<RunItem, 'media'>, selected: ReadonlySet<ProcessId>, opts: { heroOnly?: boolean; processingMode?: ProcessingMode } = {}): PlannedOp[] {
     const pick = (ids: readonly ProcessId[]) => ids.filter(p => selected.has(p));
     const stills = item.media.filter(m => !m.isVideo);
     // Hero-only is a deliberate economy (about half the images of a run),
@@ -685,7 +686,7 @@ export function planOps(item: Pick<RunItem, 'media'>, selected: ReadonlySet<Proc
 const opIdFor = (itemId: string, kind: 'photo' | 'donor', index: number, seq: number) =>
     `${itemId}#${kind === 'donor' ? 'd' : 'p'}${index}@${seq}`;
 
-function makeBatchOp(item: RunItem, opId: string, p: { kind: 'photo' | 'donor'; index: number; imageUrl: string }, processes: ProcessId[], mode: ProcessingMode, base?: { result?: BatchOp['result']; status?: RunOp['status']; errors?: RunOp['errors'] }): BatchOp {
+function makeBatchOp(item: RunItem, opId: string, p: { kind: 'photo' | 'donor'; index: number; imageUrl: string }, processes: ProcessId[], mode: ProcessingMode = 'auto', base?: { result?: BatchOp['result']; status?: RunOp['status']; errors?: RunOp['errors'] }): BatchOp {
     // The pipeline starts from op.processStatus and reports only what it
     // marks on top, so the earlier outcomes of the processes NOT re-run are
     // passed in and the re-run ones are left out.
@@ -720,7 +721,8 @@ function makeBatchOp(item: RunItem, opId: string, p: { kind: 'photo' | 'donor'; 
 
 /** A fresh launch of the whole selection: earlier outputs are dropped. */
 export function planFreshLaunch(item: RunItem, selected: ReadonlySet<ProcessId>, opts: PlanOptions): { item: RunItem; specs: LaunchSpec[] } {
-    const plan = planOps(item, selected, { heroOnly: opts.heroOnly });
+    const processingMode = opts.processingMode || 'auto';
+    const plan = planOps(item, selected, { heroOnly: opts.heroOnly, processingMode });
     const planned = Array.from(new Set(plan.flatMap(p => p.processes)));
     const ops: RunOp[] = plan.map(p => {
         const id = opIdFor(item.id, p.kind, p.index, opts.seq);
@@ -731,7 +733,7 @@ export function planFreshLaunch(item: RunItem, selected: ReadonlySet<ProcessId>,
             state: 'queued',
             planned: p.processes,
             current: p.processes,
-            op: makeBatchOp(item, id, p, p.processes, opts.processingMode),
+            op: makeBatchOp(item, id, p, p.processes, processingMode),
             status: {},
             errors: {},
         };
@@ -774,6 +776,7 @@ export function planFreshLaunch(item: RunItem, selected: ReadonlySet<ProcessId>,
  */
 export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: ReadonlySet<ProcessId>; allow?: ReadonlySet<ProcessId> }): { item: RunItem; specs: LaunchSpec[] } | null {
     if (!item.ops.length) return null;
+    const processingMode = opts.processingMode || 'auto';
     const only = opts.only;
     // Without `only`: what failed or never ran, limited to the ticked processes when `allow` is set
     const allowed = (p: ProcessId) => !opts.allow || opts.allow.has(p);
@@ -787,7 +790,7 @@ export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: Read
             wanted.set(key, had ? { ...had, processes: Array.from(new Set([...had.processes, ...p.processes])) } : p);
         }
     };
-    if (only) want(planOps(item, only, { heroOnly: opts.heroOnly }));
+    if (only) want(planOps(item, only, { heroOnly: opts.heroOnly, processingMode }));
 
     // Where a process can still run. The hero processes run on the first
     // still only (or on the donor op of a photo-less item): a photo added
@@ -808,7 +811,7 @@ export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: Read
             else moved.add(p);
         }
     }
-    if (moved.size) want(planOps(item, moved, { heroOnly: true }));
+    if (moved.size) want(planOps(item, moved, { heroOnly: true, processingMode }));
 
     const specs: LaunchSpec[] = [];
     const rerunAll = new Set<ProcessId>();
@@ -832,7 +835,7 @@ export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: Read
         if (!rerun.length) return [o];
         const id = opIdFor(item.id, o.kind, o.index, opts.seq);
         const media = item.media.find(m => m.index === o.index);
-        const op = makeBatchOp(item, id, { kind: o.kind, index: o.index, imageUrl: o.kind === 'donor' ? '' : (media?.url || o.op.imageUrl || '') }, rerun, opts.processingMode, {
+        const op = makeBatchOp(item, id, { kind: o.kind, index: o.index, imageUrl: o.kind === 'donor' ? '' : (media?.url || o.op.imageUrl || '') }, rerun, processingMode, {
             result: o.op.result, status: o.status, errors: o.errors,
         });
         const status = { ...o.status };
@@ -849,7 +852,7 @@ export function planRetryLaunch(item: RunItem, opts: PlanOptions & { only?: Read
     for (const [key, p] of wanted) {
         if (matched.has(key)) continue;
         const id = opIdFor(item.id, p.kind, p.index, opts.seq);
-        const op = makeBatchOp(item, id, p, p.processes, opts.processingMode);
+        const op = makeBatchOp(item, id, p, p.processes, processingMode);
         p.processes.forEach(x => rerunAll.add(x));
         specs.push({ opId: id, itemId: item.id, kind: p.kind, op });
         ops.push({ id, kind: p.kind, index: p.index, state: 'queued', planned: p.processes, current: p.processes, op, status: {}, errors: {} });
@@ -1586,7 +1589,7 @@ export interface UseAiRunOptions {
     items: readonly any[];
     /** The ticked processes (CATALOG_PROCESSES ids). */
     processes: ReadonlySet<ProcessId> | readonly ProcessId[];
-    /** Defaults to 'bgreplace'. */
+    /** Defaults to 'auto'. */
     processingMode?: ProcessingMode;
     /** Defaults to '2K'. */
     bgQuality?: BgQuality;
@@ -1836,7 +1839,7 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
     const launch = useCallback(async (ids: string[], mode: 'fresh' | 'retry', opts: RunLaunchOptions = {}): Promise<RunStartResult> => {
         const o = optsRef.current;
         const st = store.getState();
-        const processingMode: ProcessingMode = opts.processingMode || o.processingMode || 'bgreplace';
+        const processingMode: ProcessingMode = opts.processingMode || o.processingMode || 'auto';
         const heroOnly = opts.heroOnly ?? o.heroOnly ?? false;
         const selection = opts.processes ? toSet(opts.processes) : toSet(o.processes);
         const launched: RunItem[] = [];

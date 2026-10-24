@@ -28,7 +28,7 @@ import { segmentImage, segServiceUsable, SEG_SOURCE, type SegMode } from './ai/p
 import { resolve826TypeId } from './taxonomy/onyx826';
 import { toPipelineItem, isVendorEcho, isCylinderBoxSet, type PipelineItem } from './ai/item';
 
-export type ProcessingMode = 'bgreplace' | 'local' | 'cloud' | 'hybrid';
+export type ProcessingMode = 'auto' | 'bgreplace' | 'local' | 'cloud' | 'hybrid';
 
 /** CATALOG_PROCESSES ids. */
 export type ProcessId = CatalogProcess['id'];
@@ -310,7 +310,11 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
     const isHero = (op.imageIndex || 0) === 0;
     const explicit = !!op.processes;
     const wants = (p: ProcessId) => !!op.processes?.has(p);
-    const mode: ProcessingMode = op.processingMode || 'bgreplace';
+    const requestedMode: ProcessingMode = op.processingMode || 'auto';
+    // In auto mode: prefer local SAM2 on :8002, then Gemini bgreplace
+    const mode: ProcessingMode = requestedMode === 'auto'
+        ? ((await segServiceUsable()) ? 'local' : 'bgreplace')
+        : requestedMode;
 
     // Local copies, emitted whole on every update. The op handed in is a
     // snapshot of React state; mutating its result (as this used to) leaked
@@ -642,7 +646,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
 
             let imageFailed = false;
 
-            if (mode === 'bgreplace') {
+            const doBgReplace = async () => {
                 // Deliberately short-circuits the mask path: no
                 // preprocessForMasking, no removeBackground, no
                 // applyAlphaMask, no findContour -- every one of those is a
@@ -707,6 +711,10 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                         console.error(err);
                     }
                 }
+            };
+
+            if (mode === 'bgreplace') {
+                await doBgReplace();
             } else {
                 // The cut-out modes. Each yields the RGBA cutout (uploaded,
                 // and stored as the clean image), its matte and its outline.
@@ -715,6 +723,8 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                     const svcCut = await serviceCut(imageUrl);
                     if (svcCut) {
                         cut = svcCut;
+                    } else if (requestedMode === 'auto') {
+                        await doBgReplace();
                     } else if (mode === 'cloud') {
                         logOp(op.id, '[ WAIT ] Running Cloud AI for segmentation...');
                         const layers = await segmentationLayers('cloud');
@@ -807,11 +817,13 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                         cut = await localCutout(imageUrl, 15, 70);
                     }
 
-                    updateOp(op.id, { progress: 90, stepLabel: 'Finalizing Image...' });
-                    await keepCutout(cut, cleanImage);
-                    if (cleanImage) mark('img_clean', 'done');
-                    if (segment) mark('image_segmentation', 'done');
-                    emit();
+                    if (cut) {
+                        updateOp(op.id, { progress: 90, stepLabel: 'Finalizing Image...' });
+                        await keepCutout(cut, cleanImage);
+                        if (cleanImage) mark('img_clean', 'done');
+                        if (segment) mark('image_segmentation', 'done');
+                        emit();
+                    }
                 } catch (err) {
                     if (err instanceof AiCancelledError || cancelTokens.current[op.id]) throw new AiCancelledError();
                     imageFailed = true;
@@ -887,6 +899,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
             forceRegenerateDescription: false,
             forceRecleanImage: false,
         });
+
         // Every other setHasUnsavedChanges(true) follows a manual UI action.
         // The automatic run had none, so a finished run left SAVE TO DB
         // disabled with results sitting only in React state.
@@ -951,17 +964,22 @@ export const processVariationItem = async (op: BatchOp, donors: DonorCandidate[]
         const d = match.donor;
         const built = buildContentPrompt(item, { variant: 'donor', donor: d });
 
-        const askModel = (extra: string) => generateJson<RawContent>({
-            job: 'content',
-            prompt: built.prompt + extra,
-            system: built.system,
-            schema: built.schema,
-            signal: cancel.signal,
-        }).then(raw => {
+        const askModel = async (extra: string) => {
+            // generateJson already routes to Colibri when configured (client.ts), with the
+            // AI slot limit, retries and COLIBRI_MIN_TIMEOUT_MS it needs -- a direct call to
+            // colibriProvider here bypassed all of that, ignored the user's content route
+            // setting, and shipped with no timeoutMs (TS2345, caught in review).
+            const raw = await generateJson<RawContent>({
+                job: 'content',
+                prompt: built.prompt + extra,
+                system: built.system,
+                schema: built.schema,
+                signal: cancel.signal,
+            });
             const fin = finalizeContent(raw, item);
             if (!fin.title) throw new Error('Invalid output format from AI');
             return fin;
-        });
+        };
 
         // The record is the authority. The prompt already forbids
         // contradicting it, and on 8 Sep the model contradicted it anyway on
