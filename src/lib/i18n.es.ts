@@ -2940,6 +2940,7 @@ export const esCatalog: Record<string, string> = {
   'Revoke device': 'Revocar dispositivo',
   'Assign to user': 'Asignar a usuario',
   'Issue token': 'Emitir token',
+  'Copy failed: select the token and press Ctrl+C': 'No se pudo copiar: selecciona el token y presiona Ctrl+C',
   'No token': 'Sin token',
   'The action failed': 'La acción falló',
   'Revoking drops the live session and blocks the device until a new token is issued.': 'Revocar corta la sesión activa y bloquea el dispositivo hasta que se emita un token nuevo.',

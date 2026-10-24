@@ -70,6 +70,7 @@ const ExpandableRow: React.FC<{
   const [actionError, setActionError] = useState('');
   // the raw token exists only here, once: the database keeps just its hash
   const [newToken, setNewToken] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const tokenState = getTokenState(device, now);
   const hasToken = !!device.token_issued_at && !device.token_revoked_at && !device.revoked_at;
@@ -87,6 +88,7 @@ const ExpandableRow: React.FC<{
         const { data, error } = await (supabase as any).rpc('issue_device_token', { p_device_id: device.device_id });
         if (error) throw error;
         setNewToken(String(data));
+        return; // refresh only after the token is hidden: a refresh remounts this row and would lose it
       }
       onChanged();
     } catch (err: any) {
@@ -198,8 +200,8 @@ const ExpandableRow: React.FC<{
                     <input readOnly value={newToken} onFocus={e => e.currentTarget.select()} aria-label={tr('New device token')}
                       className="w-full font-mono text-[11px] bg-black/40 border border-white/10 rounded px-2 py-1 text-neutral-200" />
                     <div className="flex gap-2">
-                      <button onClick={() => navigator.clipboard.writeText(newToken)} className="px-3 py-1 text-xs font-bold text-neutral-200 bg-white/5 hover:bg-white/10 rounded border border-white/10">{tr('Copy')}</button>
-                      <button onClick={() => setNewToken('')} className="px-3 py-1 text-xs font-bold text-neutral-400 hover:bg-white/5 rounded">{tr('Done, hide it')}</button>
+                      <button onClick={() => navigator.clipboard.writeText(newToken).then(() => setCopied(true), () => setActionError(tr('Copy failed: select the token and press Ctrl+C')))} className="px-3 py-1 text-xs font-bold text-neutral-200 bg-white/5 hover:bg-white/10 rounded border border-white/10">{copied ? tr('Copied') : tr('Copy')}</button>
+                      <button onClick={() => { setNewToken(''); setCopied(false); onChanged(); }} className="px-3 py-1 text-xs font-bold text-neutral-400 hover:bg-white/5 rounded">{tr('Done, hide it')}</button>
                     </div>
                   </div>
                 )}
