@@ -381,9 +381,11 @@ html.style-slab .onyx-island.onyx-island.onyx-island .info-notch-stats { border-
 
 @media (max-width: 768px) {
   .onyx-island {
-    /* MOBILE BOTTOM: rests on the bottom edge above env(safe-area-inset-bottom), centred */
+    /* MOBILE BOTTOM: rests close to the bottom edge, just clear of the home
+       indicator -- the full safe-area-inset-bottom (owner report, 24 Oct
+       2026: too far up) left a dead gap below the island. */
     top: auto !important;
-    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    bottom: max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px)) !important;
     left: 0;
     right: 0;
     margin-inline: auto;
@@ -418,7 +420,7 @@ body:has(.wl-root) .onyx-island-layer {
 body[data-active-view="welcome"] .onyx-island:not(.isl-is-sheet),
 body:has(.wl-root) .onyx-island:not(.isl-is-sheet) {
   top: auto !important;
-  bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+  bottom: max(4px, calc(env(safe-area-inset-bottom, 0px) - 18px)) !important;
   left: 0 !important;
   right: 0 !important;
   margin-inline: auto !important;

@@ -28,7 +28,11 @@
     padding: 8px;
     border-radius: 10px;
     border: 1px solid color-mix(in srgb, var(--pay) 40%, var(--border-color));
-    background-color: var(--sidebar-bg);
+    /* Frosted, not opaque (owner, 24 Oct 2026) -- same fix as the list row
+       (.glass-sm): let the gradient show through instead of a flat fill. */
+    background-color: color-mix(in srgb, var(--sidebar-bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     color: var(--text-color);
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -693,7 +697,13 @@
     overflow: hidden;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    background-color: var(--app-bg-solid, #0a0a0f);
+    /* Frosted, not opaque (owner, 24 Oct 2026, replaces the 11 Oct opaque
+       call): the scrim behind already blurs the page, so a solid sheet on
+       top just hid the gradient entirely. Same surface tokens as the rest
+       of the liquid-glass system (.liquid-surface). */
+    background-color: var(--lq-fill-surface);
+    -webkit-backdrop-filter: blur(var(--lq-blur)) saturate(var(--lq-saturate)) brightness(var(--lq-brightness));
+    backdrop-filter: blur(var(--lq-blur)) saturate(var(--lq-saturate)) brightness(var(--lq-brightness));
     color: var(--text-color);
     box-shadow: none;
     animation: inv-sheet-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);

@@ -894,7 +894,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         return (
             <div className="flex flex-col gap-0.5">
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-                <div className={`inv-grid inv-row overflow-hidden bg-(--sidebar-bg) border rounded-md hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isSelectionMode ? 'is-selecting' : ''} ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : ''}`}
+                <div className={`inv-grid inv-row glass-sm overflow-hidden hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isSelectionMode ? 'is-selecting' : ''} ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : ''}`}
                     onClick={() => onToggleExpand()} style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
 
                     {/* RAIL — payment + deployment status, or the selection box.
