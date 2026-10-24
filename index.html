@@ -61,7 +61,7 @@
        stale cache (an old index.html that points at JS or CSS chunks a newer
        deploy deleted), so the app can never mount. Only a REAL load failure of
        a same-origin script or stylesheet, or of a lazy chunk, may unregister the
-       service worker and wipe the caches, and only once per build (2.0.0-mvn0908z).
+       service worker and wipe the caches, and only once per build (2.0.0-mvn0b90d).
 
        What it must never do: act on a timer alone. On a slow phone or a weak
        signal the 2.4 MB main chunk can take longer than any fixed timeout, and
@@ -69,7 +69,7 @@
        timers below only change the splash text and offer a plain reload. It
        also never wipes while the device is offline: nothing could be refetched. */
     (function () {
-      var BUILD = '2.0.0-mvn0908z';
+      var BUILD = '2.0.0-mvn0b90d';
       var HEAL_KEY = 'onyx_healed_build';
       var recovered = false;
       var errorShown = false; // a failure message is on screen: the slow-start hints must not overwrite it
@@ -222,12 +222,12 @@
       filter: drop-shadow(0 10px 24px rgba(0,0,0,0.6));
     }
   </style>
-  <script type="module" crossorigin src="/onyx.mx/assets/main-BF3GXdWQ.js"></script>
+  <script type="module" crossorigin src="/onyx.mx/assets/main-GU2aE2J4.js"></script>
   <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vite-runtime-3BNxX5Sv.js">
   <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-react-lQR86yIG.js">
   <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-supabase-CHLpTVyu.js">
   <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-framer-CNGS0mtC.js">
-  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-icons-C9-Y3zK-.js">
+  <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-icons-gCqFkl6S.js">
   <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-db-6kCuSNuD.js">
   <link rel="modulepreload" crossorigin href="/onyx.mx/assets/vendor-gsap-DDlvirwQ.js">
   <link rel="stylesheet" crossorigin href="/onyx.mx/assets/main-DWXysB_l.css">
