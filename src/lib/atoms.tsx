@@ -27,6 +27,12 @@ const sessionJSONStorage = createJSONStorage<any>(() => sessionStorage);
 const localJSONStorage = createJSONStorage<any>(() => localStorage);
 import { colors, DEFAULT_EXCHANGE_RATE } from './consts';
 export { inventoryStatusSetsAtom } from './inventoryStatusAtom';
+import {
+  getStoredGlassTransparency,
+  setStoredGlassTransparency,
+  GLASS_TRANSPARENCY_STORAGE_KEY,
+  DEFAULT_GLASS_TRANSPARENCY,
+} from './glassTransparency';
 
 import {
   BoundingBox2DType,
@@ -147,6 +153,22 @@ const performanceModeStorage = {
   },
 };
 export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v3', true, performanceModeStorage);
+const glassTransparencyStorage = {
+  getItem: (_key: string, initialValue: number) => {
+    return getStoredGlassTransparency() ?? initialValue;
+  },
+  setItem: (_key: string, value: number) => {
+    setStoredGlassTransparency(value);
+  },
+  removeItem: (key: string) => {
+    try { localStorage.removeItem(key); } catch {}
+  },
+};
+export const glassTransparencyAtom = atomWithStorage<number>(
+  GLASS_TRANSPARENCY_STORAGE_KEY,
+  DEFAULT_GLASS_TRANSPARENCY,
+  glassTransparencyStorage
+);
 export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
 // NOTE: atomWithStorage persists, so a browser that stored an older rate keeps it
 // until changed in Settings — this default only applies to fresh sessions. The key

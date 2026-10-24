@@ -33,6 +33,10 @@
  */
 
 export const esCatalog: Record<string, string> = {
+  'Glass Transparency': 'Transparencia de Vidrio',
+  'Full Glass': 'Vidrio Completo',
+  'High Opacity': 'Mayor Opacidad',
+  'Liquid density factor': 'Factor de densidad líquida',
   // Main top bar. 'Acciones' rather than 'Seleccionar': the key opens the
   // mode where rows are chosen and then acted on, and the Spanish noun
   // carries that better than the verb does.

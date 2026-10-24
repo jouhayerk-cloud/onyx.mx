@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { themeAtom, appStyleAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom, sharedToastAtom } from '../../lib/atoms';
+import { themeAtom, appStyleAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom, sharedToastAtom, glassTransparencyAtom } from '../../lib/atoms';
+import { applyGlassTransparency } from '../../lib/glassTransparency';
 import { resolveUserRole } from '../../lib/utils';
 import type { UserRole } from '../../lib/atoms';
 import { Login } from '../auth/Login';
@@ -31,6 +32,7 @@ export default function App() {
   const appStyle = useAtomValue(appStyleAtom);
   const performanceMode = useAtomValue(performanceModeAtom);
   const [language, setLanguage] = useAtom(languageAtom);
+  const glassTransparency = useAtomValue(glassTransparencyAtom);
   const [showWelcome, setShowWelcome] = useState(false);
   const [tagId, setTagId] = useAtom(tagIdAtom);
   const [sentTruckId, setSentTruckId] = useAtom(sentTruckIdAtom);
@@ -257,6 +259,8 @@ export default function App() {
     document.documentElement.classList.add('dark');
 
     // SVG refraction is an opt-in Liquid Glass test effect, not a default: localStorage lqRefraction = '1' turns it on.
+    applyGlassTransparency(glassTransparency);
+
     let refraction = false;
     try { refraction = localStorage.getItem('lqRefraction') === '1'; } catch { /* storage blocked */ }
     document.documentElement.classList.toggle('lq-refraction', refraction);

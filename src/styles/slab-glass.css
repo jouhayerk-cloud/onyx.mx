@@ -46,25 +46,32 @@
    kit reads these same glass levels through its --ui-* tokens (ui.css).
    ========================================================================== */
 
+:root {
+    --glass-opacity-factor: 1.0;
+    --glass-density-mult: var(--glass-opacity-factor, 1.0);
+}
+
 html.style-slab {
+    --glass-opacity-factor: 1.0;
+    --glass-density-mult: var(--glass-opacity-factor, 1.0);
     /* How much of the slab's own colour a glass surface keeps. Lower is more
        transparent. These sit deliberately low — the bevel does stop carrying
        the surface on its own down here, which is why --slab-glass-blur rose
        with them: below roughly 45% it is BLUR, not tint, that separates a
        panel from the list behind it. Do not lower one without raising the
        other or the chrome dissolves into whatever it is sitting on. */
-    --slab-glass-strength: 24%;
+    --slab-glass-strength: calc(24% * var(--glass-opacity-factor, 1));
     /* The bars are the LEAST opaque surface, not the most: the whole point is
        that the list keeps moving underneath them. Blur, not opacity, is what
        keeps their labels legible over whatever scrolls past. */
-    --slab-glass-strength-hi: 18%;
+    --slab-glass-strength-hi: calc(18% * var(--glass-opacity-factor, 1));
     --slab-glass-blur: 30px;
 
     /* The tinted glass itself. color-mix keeps this tied to the theme's slab,
        so Aqua and Talan each get their own glass with no second palette. */
     --slab-glass:    color-mix(in srgb, var(--slab) var(--slab-glass-strength), transparent);
     --slab-glass-hi: color-mix(in srgb, var(--slab) var(--slab-glass-strength-hi), transparent);
-    --slab-glass-lo: color-mix(in srgb, var(--slab) 14%, transparent);
+    --slab-glass-lo: color-mix(in srgb, var(--slab) calc(14% * var(--glass-opacity-factor, 1)), transparent);
 
     /* A rim, not a border. On glass the hairline has to be brighter than on
        an opaque surface or it disappears against whatever passes behind. */
@@ -78,18 +85,18 @@ html.style-slab {
        hardcoded color-mix literals — so turning on Reduce Transparency
        removed their blur and left them at 14-40% alpha, which is LESS legible
        than the default, the opposite of what the setting asks for. */
-    --slab-glass-band:      color-mix(in srgb, var(--slab) 24%, transparent);  /* top band, no lens */
-    --slab-glass-lens:      color-mix(in srgb, var(--slab) 20%, transparent);  /* top band under a live lens */
-    --slab-glass-well:      color-mix(in srgb, var(--slab) 38%, transparent);  /* inputs, readouts */
+    --slab-glass-band:      color-mix(in srgb, var(--slab) calc(24% * var(--glass-opacity-factor, 1)), transparent);  /* top band, no lens */
+    --slab-glass-lens:      color-mix(in srgb, var(--slab) calc(20% * var(--glass-opacity-factor, 1)), transparent);  /* top band under a live lens */
+    --slab-glass-well:      color-mix(in srgb, var(--slab) calc(38% * var(--glass-opacity-factor, 1)), transparent);  /* inputs, readouts */
     /* Owner 2026-10-17: translucent glass rows again (the dim look was the body::after wash over the app, fixed in index.css). */
-    --slab-glass-row:       color-mix(in srgb, var(--slab-hi) 10%, color-mix(in srgb, var(--slab) 22%, transparent));
-    --slab-glass-row-hover: color-mix(in srgb, var(--slab-hi) 30%, color-mix(in srgb, var(--slab) 60%, transparent));
-    --slab-glass-hover:     color-mix(in srgb, var(--slab-tint-hover) 52%, transparent);
+    --slab-glass-row:       color-mix(in srgb, var(--slab-hi) 10%, color-mix(in srgb, var(--slab) calc(22% * var(--glass-opacity-factor, 1)), transparent));
+    --slab-glass-row-hover: color-mix(in srgb, var(--slab-hi) 30%, color-mix(in srgb, var(--slab) min(88%, calc(60% * var(--glass-opacity-factor, 1))), transparent));
+    --slab-glass-hover:     color-mix(in srgb, var(--slab-tint-hover) min(88%, calc(52% * var(--glass-opacity-factor, 1))), transparent);
     --slab-glass-on:        color-mix(in srgb, var(--slab-tint-on) 64%, transparent);
-    --slab-glass-wash:      color-mix(in srgb, var(--slab) 40%, transparent);  /* over the mesh ground */
-    --slab-glass-modal:     color-mix(in srgb, var(--slab) 20%, transparent);  /* read ON, not through — the blur does the rest */
-    --slab-glass-sheet:     color-mix(in srgb, var(--slab) 78%, transparent);  /* child-built modal scrims */
-    --slab-glass-pop:       color-mix(in srgb, var(--slab) 56%, transparent);  /* toasts, tooltips, dropdowns over busy content */
+    --slab-glass-wash:      color-mix(in srgb, var(--slab) calc(40% * var(--glass-opacity-factor, 1)), transparent);  /* over the mesh ground */
+    --slab-glass-modal:     color-mix(in srgb, var(--slab) calc(20% * var(--glass-opacity-factor, 1)), transparent);  /* read ON, not through — the blur does the rest */
+    --slab-glass-sheet:     color-mix(in srgb, var(--slab) min(95%, calc(78% * var(--glass-opacity-factor, 1))), transparent);  /* child-built modal scrims */
+    --slab-glass-pop:       color-mix(in srgb, var(--slab) min(90%, calc(56% * var(--glass-opacity-factor, 1))), transparent);  /* toasts, tooltips, dropdowns over busy content */
 
     /* The sheens, made of light instead of stone (2026-09-30). slab.css builds
        every sheen by mixing into var(--slab), so each stop is OPAQUE — and it
@@ -117,8 +124,8 @@ html.style-slab {
 /* The dark slab has less tonal headroom, so its glass holds more of its own
    colour — at Aqua's 62% a dark surface over a light photograph goes muddy. */
 html.style-slab.theme-talan {
-    --slab-glass-strength: 30%;
-    --slab-glass-strength-hi: 24%;
+    --slab-glass-strength: calc(30% * var(--glass-opacity-factor, 1));
+    --slab-glass-strength-hi: calc(24% * var(--glass-opacity-factor, 1));
 }
 
 @supports not (backdrop-filter: blur(1px)) {
@@ -976,7 +983,7 @@ html.style-slab #threed .threed-ar-dock:has(.threed-ar--empty) {
    for a denser panel, lower it for a clearer one. Stated last so it outranks
    the glass sweeps above. */
 html.style-slab {
-    --inv-sheet-glass: 60%;
+    --inv-sheet-glass: min(90%, calc(60% * var(--glass-opacity-factor, 1)));
 }
 html.style-slab .inv-sheet-scrim {
     background-color: transparent !important;
@@ -1000,7 +1007,7 @@ html.style-slab .inv-sheet .inv-readout {
 /* Owner 2026-10-17: the expanded item details are one glass sheet across the whole row width, including the rail gutter
    under the selector (the body starts at grid column 3, so glass on the body left a clear strip on the left). */
 html.style-slab .inv-row + .inv-drawer {
-    background-color: color-mix(in srgb, var(--slab) 60%, transparent) !important;
+    background-color: color-mix(in srgb, var(--slab) min(90%, calc(60% * var(--glass-opacity-factor, 1))), transparent) !important;
     background-image: var(--lq-sheen) !important;
     -webkit-backdrop-filter: blur(32px) saturate(1.5) !important;
     backdrop-filter: blur(32px) saturate(1.5) !important;
@@ -1023,17 +1030,17 @@ html.style-slab .inv-row + .inv-drawer .inv-drawer-body {
     /* (1) Translucent glass tokens on touch / mobile: iOS handles backdrop-filter with ease */
     html.style-slab {
         --slab-glass-blur: 16px;
-        --slab-glass:          color-mix(in srgb, var(--slab) 52%, transparent);
-        --slab-glass-hi:       color-mix(in srgb, var(--slab) 58%, transparent);
-        --slab-glass-lo:       color-mix(in srgb, var(--slab) 28%, transparent);
-        --slab-glass-well:     color-mix(in srgb, var(--slab) 36%, transparent);
-        --slab-glass-row:      color-mix(in srgb, var(--slab-hi) 10%, color-mix(in srgb, var(--slab) 25%, transparent));
-        --slab-glass-row-hover: color-mix(in srgb, var(--slab-hi) 25%, color-mix(in srgb, var(--slab) 65%, transparent));
-        --slab-glass-hover:    color-mix(in srgb, var(--slab-tint-hover) 55%, transparent);
+        --slab-glass:          color-mix(in srgb, var(--slab) calc(52% * var(--glass-opacity-factor, 1)), transparent);
+        --slab-glass-hi:       color-mix(in srgb, var(--slab) calc(58% * var(--glass-opacity-factor, 1)), transparent);
+        --slab-glass-lo:       color-mix(in srgb, var(--slab) calc(28% * var(--glass-opacity-factor, 1)), transparent);
+        --slab-glass-well:     color-mix(in srgb, var(--slab) calc(36% * var(--glass-opacity-factor, 1)), transparent);
+        --slab-glass-row:      color-mix(in srgb, var(--slab-hi) 10%, color-mix(in srgb, var(--slab) calc(25% * var(--glass-opacity-factor, 1)), transparent));
+        --slab-glass-row-hover: color-mix(in srgb, var(--slab-hi) 25%, color-mix(in srgb, var(--slab) min(88%, calc(65% * var(--glass-opacity-factor, 1))), transparent));
+        --slab-glass-hover:    color-mix(in srgb, var(--slab-tint-hover) min(88%, calc(55% * var(--glass-opacity-factor, 1))), transparent);
         --slab-glass-on:       var(--slab-tint-on);
-        --slab-glass-modal:    color-mix(in srgb, var(--slab) 58%, transparent);
-        --slab-glass-sheet:    color-mix(in srgb, var(--slab) 62%, transparent);
-        --slab-glass-pop:      color-mix(in srgb, var(--slab) 52%, transparent);
+        --slab-glass-modal:    color-mix(in srgb, var(--slab) calc(58% * var(--glass-opacity-factor, 1)), transparent);
+        --slab-glass-sheet:    color-mix(in srgb, var(--slab) min(95%, calc(62% * var(--glass-opacity-factor, 1))), transparent);
+        --slab-glass-pop:      color-mix(in srgb, var(--slab) min(90%, calc(52% * var(--glass-opacity-factor, 1))), transparent);
     }
 
     /* (1) Remove backdrop-filter from low-priority micro-chips to protect GPU */

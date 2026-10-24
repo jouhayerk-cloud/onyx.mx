@@ -68,6 +68,9 @@ import { COLOR_PALETTE, ALLOWED_SHOPIFY_COLORS } from '../../lib/colorExtractor'
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, Truck, CreditCard, Link } from 'lucide-react';
 import { tr } from '../../lib/i18n';
 import { ItemDetailsModal } from './ItemDetailsModal';
+import { classifyGeometry } from '../../lib/geometry';
+import { canonicalType } from '../../lib/canonicalType';
+import { ShapeFigure } from '../entry/hairline/ShapeFigure';
 
 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -498,13 +501,24 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     // working-tree edit had moved these to description/detailedDescription to
     // match an Add Entry writer that was itself wrong — that showed the wrong
     // copy on every batch-processed item.)
+    const isContentExpanded = Boolean(isExpanded || viewMode === 'gallery');
+
+    const hairGeom = useMemo(() => classifyGeometry(norm.shape, norm.shortDescription || norm.type), [norm.shape, norm.shortDescription, norm.type]);
+    const hairCanonical = useMemo(() => canonicalType(norm.type || norm.shortDescription, norm.shape), [norm.type, norm.shortDescription, norm.shape]);
+    const hairDims = useMemo(() => {
+        const w = Number(norm.widthCm) || 0;
+        const h = Number(norm.heightCm) || 0;
+        const d = Number(norm.lengthCm) || 0;
+        return (w > 0 || h > 0 || d > 0) ? { w, h, d } : null;
+    }, [norm.widthCm, norm.heightCm, norm.lengthCm]);
+
     const aiTitle = String(norm.detailedDescription || '').trim();
-    const aiBodyText = useMemo(() => (isExpanded ? htmlToText(norm.generatedDescription || '') : ''), [isExpanded, norm.generatedDescription]);
+    const aiBodyText = useMemo(() => (isContentExpanded ? htmlToText(norm.generatedDescription || '') : ''), [isContentExpanded, norm.generatedDescription]);
     const aiColors = String(norm.generatedColor || '').split(',').map(c => c.trim()).filter(Boolean);
     const aiTypePath = String(norm.generatedType || '').split('>').map(p => p.trim()).filter(Boolean);
     const hasAiCopy = !!(aiTitle || aiBodyText);
     const hasAnyAi = hasAiCopy || aiColors.length > 0 || aiTypePath.length > 0;
-    const aiIssues = useMemo(() => (isExpanded && (aiTitle || aiBodyText))
+    const aiIssues = useMemo(() => (isContentExpanded && (aiTitle || aiBodyText))
         ? validateCopy(aiTitle, aiBodyText, {
             color: norm.color, material: norm.material,
             widthCm: norm.widthCm != null ? Number(norm.widthCm) : null,
@@ -512,7 +526,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             lengthCm: norm.lengthCm != null ? Number(norm.lengthCm) : null,
             quantity: Number(norm.quantity) || 1,
         })
-        : [], [isExpanded, aiTitle, aiBodyText, norm.color, norm.material, norm.widthCm, norm.heightCm, norm.lengthCm, norm.quantity]);
+        : [], [isContentExpanded, aiTitle, aiBodyText, norm.color, norm.material, norm.widthCm, norm.heightCm, norm.lengthCm, norm.quantity]);
     // What the panel reports: validateCopy's findings, plus the one fact it
     // does not check — a title the export will cut. Kept here rather than
     // added to validateCopy so the batch processor's retry rule is unchanged.
@@ -556,7 +570,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     };
 
     const itemPayments = useMemo(() => {
-        if (!isExpanded || !financeDocs) return [];
+        if (!isContentExpanded || !financeDocs) return [];
         return financeDocs.filter((d: any) => {
             const rel = d.related_ids || d.related_inventory_ids || '';
             let relArray: string[] = [];
@@ -564,7 +578,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             else if (typeof rel === 'string') relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
             return relArray.includes(String(item.data.id));
         }).sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-    }, [isExpanded, financeDocs, item.data.id]);
+    }, [isContentExpanded, financeDocs, item.data.id]);
 
     // Book 825 is prepaid by rule (getStatusClass, "Book 825 / Prepaid
     // Override"), so its items read GREEN with no payment record behind them.
@@ -685,8 +699,17 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             <section className="inv-cluster" aria-label={tr("Specs")}>
                 <h5 className="inv-cluster-t">{tr("Specs")}</h5>
                 <div className="inv-specs-body">
-                    <div className="inv-axo bg-black/40" title={tr("Proportions")} aria-hidden="true">
+                    <div className={`inv-axo bg-black/40${mediaUrls.length > 0 ? ' inv-axo--large' : ''}`} title={tr("Proportions")} aria-hidden="true">
                         <WireframeIcon item={norm} color={accentColor} />
+                    </div>
+                    <div className="inv-hairline-card" title={hairCanonical.label || norm.shape || tr("Hairline figure")} aria-hidden="true">
+                        <ShapeFigure
+                            family={hairGeom.geom}
+                            isMirror={hairGeom.isMirror}
+                            typeId={hairCanonical.id}
+                            holes={hairCanonical.holes}
+                            dims={hairDims}
+                        />
                     </div>
                     <div className="inv-measures" aria-label={tr("Size and weight")}>
                         <span className={`inv-fi inv-fi-size ${COL_TEXT.size}`}>{metricDimensionsStr || '—'}</span>
@@ -855,7 +878,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const cardRef = useRef<HTMLElement | null>(null);
     const sheetCloseRef = useRef<HTMLButtonElement | null>(null);
     const sheetTitleId = useId();
-    const sheetOpen = !!isExpanded && viewMode !== 'list';
+    const sheetOpen = !!isExpanded && viewMode === 'grid';
     // Focus moves into the sheet when it opens and back to its card when it
     // closes, so a keyboard user is never left on the page behind the scrim.
     useEffect(() => {
@@ -1205,7 +1228,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         <div className="inv-gal-strip" role="group" aria-label={tr("Photos")}>
             {mediaUrls.slice(0, STRIP_MAX).map((u, i) => {
                 const more = i === STRIP_MAX - 1 ? mediaUrls.length - STRIP_MAX : 0;
-                const pick = () => (more > 0 ? openViewer(i) : choose(i));
+                const pick = () => (more > 0 || i === current ? openViewer(i) : choose(i));
                 return (
                     <div key={i} role="button" tabIndex={0} className={`inv-gal-tile${i === current ? ' is-on' : ''}`}
                         aria-label={more > 0 ? `${more} ${tr("more photos")}` : `${tr("Photo")} ${i + 1}`} aria-current={i === current || undefined}
@@ -1294,15 +1317,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     if (viewMode === 'gallery') {
         return (
             <>
-                <article ref={cardRef as React.RefObject<HTMLElement>} className={`inv-card inv-card--xl${isExpanded ? ' is-open' : ''}`}
+                <article ref={cardRef as React.RefObject<HTMLElement>} className="inv-card inv-card--xl"
                     style={{ '--pay': payStatus ? col : 'transparent' } as React.CSSProperties}
-                    tabIndex={0} aria-haspopup="dialog" aria-label={`${calculated.bookBarcode} · ${cardName}`}
-                    onClick={() => onToggleExpand()} onKeyDown={openOnKey}>
+                    aria-label={`${calculated.bookBarcode} · ${cardName}`}>
                     {selectKey}
                     <div className="inv-card-layout">
                         <div className="inv-gal">
                             <div className={`inv-gal-hero${mediaUrls.length ? "" : " is-axo"}`} {...swipeHandlers}
-                                onClick={(e) => { e.stopPropagation(); if (mediaUrls.length) openViewer(heroIdx); else onToggleExpand(); }}>
+                                onClick={(e) => { e.stopPropagation(); if (mediaUrls.length) openViewer(heroIdx); }}>
                                 {heroMedia(heroIdx, 'inv-gal-img')}
                                 {heroKeys(heroIdx, stepPhoto, 18)}
                             </div>
@@ -1317,70 +1339,24 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     {payLed}
                                     {cardCodes(false)}
                                 </div>
-                                <div className="inv-xl-total">
-                                    <span className="inv-ro-l">{tr("Total MXN")}</span>
-                                    <span className={`inv-xl-total-v inv-num ${COL_TEXT.total}`}>{fmtMoney(itemTotalMXN)}</span>
+                                <div className="inv-actions inv-sheet-actions" role="toolbar" aria-label={tr("Item actions")}>
+                                    {actionButtons}
                                 </div>
                             </div>
 
-                            {nameEl('inv-card-name')}
-                            <p className={`inv-card-stone ${COL_TEXT.color}`} title={stone}>{stone || '—'}</p>
-                            {aiTitle && <p className="inv-xl-ai" title={aiTitle}>{aiTitle}</p>}
-                            {aiTypePath.length > 0 && (
-                                <p className="inv-xl-type" title={aiTypePath.join(' › ')}>
-                                    {aiTypePath.map((part, i) => (
-                                        <React.Fragment key={i}>
-                                            {i > 0 && <span className="inv-ai-crumb" aria-hidden="true">›</span>}
-                                            <span>{part}</span>
-                                        </React.Fragment>
-                                    ))}
-                                </p>
-                            )}
-
-                            <div className="inv-readout inv-readout--xl">
-                                <div className="inv-xl-specs">
-                                    <div className="inv-xl-axo" aria-hidden="true"><WireframeIcon item={norm} color={accentColor} /></div>
-                                    <div className="inv-xl-measure">
-                                        <span className={`inv-ro-v ${COL_TEXT.size}`}>{metricDimensionsStr || '—'}</span>
-                                        <span className="inv-xl-imp">{imperialDims || '—'}</span>
-                                    </div>
-                                    <div className="inv-xl-measure inv-r">
-                                        <span className={`inv-ro-v ${COL_TEXT.weight}`}>{metricWeightStr || '—'}</span>
-                                        <span className="inv-xl-imp">{imperialWeight || '—'}</span>
-                                    </div>
-                                </div>
-                                <div className="inv-xl-figs">
-                                    <span className="inv-ro"><span className="inv-ro-l">{tr("Price MXN")}</span><span className={`inv-ro-v ${COL_TEXT.price}`}>{fmtMoney(itemPriceMXN)}</span></span>
-                                    <span className="inv-ro"><span className="inv-ro-l">{tr("Landed USD")}</span><span className={`inv-ro-v ${COL_TEXT.landed}`}>{fmtMoney(calculated.bookLanded)}</span></span>
-                                    <span className="inv-ro"><span className="inv-ro-l">{tr("Retail USD")}</span><span className={`inv-ro-v ${COL_TEXT.retail}`}>{fmtMoney(calculated.bookRetail)}</span></span>
-                                </div>
+                            <div className="inv-xl-title-block">
+                                {nameEl('inv-card-name')}
+                                <p className={`inv-card-stone ${COL_TEXT.color}`} title={stone}>{stone || '—'}</p>
                             </div>
 
-                            <div className="inv-card-foot inv-xl-foot">
-                                {aiColors.length > 0 && (
-                                    <span className="inv-ai-chips" aria-label={tr("Colors")}>
-                                        {aiColors.map(c => (
-                                            <span key={c} className={`inv-ai-chip${SHOPIFY_COLOR_SET.has(c.toLowerCase()) ? '' : ' inv-ai-chip--off'}`}>
-                                                <span className="inv-ai-sw" style={{ background: swatchFor(c) }} aria-hidden="true" />{c}
-                                            </span>
-                                        ))}
-                                    </span>
-                                )}
-                                <span className="inv-xl-log">
-                                    {deployedInfo && (
-                                        <span className="inv-badge" data-tone="dep" title={deployedTitle}>
-                                            <Truck size={11} strokeWidth={2.5} aria-hidden="true" />{tr("Deployed")}
-                                        </span>
-                                    )}
-                                    {norm.packingStatus === 'Packed'
-                                        ? <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
-                                        : !deployedInfo && <span className={COL_TEXT.unpacked}>{tr("UNPACKED")}</span>}
-                                </span>
-                            </div>
+                            {clusters(true)}
+
+                            {aiSection}
+
+                            <div className="inv-panel-pay">{renderPaymentHistory()}</div>
                         </div>
                     </div>
                 </article>
-                {FullscreenModal}
                 {viewer}
                 <ItemDetailsModal
                     isOpen={isCutoutModalOpen}

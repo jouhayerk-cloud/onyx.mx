@@ -727,3 +727,82 @@ html .ss-scrim.ss-scrim {
   -webkit-backdrop-filter: blur(8px) saturate(1.3) !important;
   backdrop-filter: blur(8px) saturate(1.3) !important;
 }
+
+/* Glass Transparency Range Slider */
+.ss-glass-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 20px;
+  background: transparent !important;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+}
+
+.ss-glass-slider:focus {
+  outline: none;
+}
+
+.ss-glass-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ss-field);
+  border: 1px solid var(--ss-sep);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ss-glass-slider::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ss-field);
+  border: 1px solid var(--ss-sep);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ss-glass-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin-top: -6px;
+  background: var(--ss-fg);
+  border: 1.5px solid var(--ss-sep);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.ss-glass-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ss-fg);
+  border: 1.5px solid var(--ss-sep);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.ss-glass-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.08);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45), 0 0 0 3px color-mix(in srgb, var(--ss-accent) 25%, transparent);
+}
+
+.ss-glass-slider:active::-webkit-slider-thumb {
+  transform: scale(0.96);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 0 4px color-mix(in srgb, var(--ss-accent) 40%, transparent);
+}
+
+.ss-glass-slider:hover::-moz-range-thumb {
+  transform: scale(1.08);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45), 0 0 0 3px color-mix(in srgb, var(--ss-accent) 25%, transparent);
+}
+
+.ss-glass-slider:active::-moz-range-thumb {
+  transform: scale(0.96);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 0 4px color-mix(in srgb, var(--ss-accent) 40%, transparent);
+}

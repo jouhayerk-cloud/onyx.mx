@@ -7,6 +7,7 @@ import toast from './features/onyxIsland/notify/toast';
 import { tr } from './lib/i18n';
 import { hasUnsavedWork } from './lib/workGuard';
 import { lockZoom } from './lib/lockZoom';
+import { initGlassTransparency } from './lib/glassTransparency';
 
 if (import.meta.env.PROD) {
   console.log = () => { };
@@ -17,6 +18,7 @@ if (import.meta.env.PROD) {
 console.log("Onyx.mx entry script executing...");
 
 lockZoom();   // touch devices: no pinch-zoom, fixed-size app (see lib/lockZoom.ts)
+initGlassTransparency(); // early hydration of liquid glass transparency factor
 
 // Service worker updates (registered by vite-plugin-pwa, autoUpdate). A new
 // deploy installs in the background and takes over open pages, but the page

@@ -10,7 +10,9 @@ import {
     userAtom,
     languageAtom,
     isOfflineModeAtom,
+    glassTransparencyAtom,
 } from '../../lib/atoms';
+import { applyGlassTransparency } from '../../lib/glassTransparency';
 import type { AppStyle } from '../../lib/atoms';
 import { useSyncEngine } from '../../lib/syncEngine';
 import {
@@ -133,6 +135,7 @@ export const StudioSettingsPortal: React.FC = () => {
     const [user] = useAtom(userAtom);
     const [isOffline] = useAtom(isOfflineModeAtom);
     const [language, setLanguage] = useAtom(languageAtom);
+    const [transparency, setTransparency] = useAtom(glassTransparencyAtom);
 
     const { goOffline, goOnline } = useSyncEngine();
     const logout = useLogout();
@@ -654,6 +657,49 @@ export const StudioSettingsPortal: React.FC = () => {
                                                                     </div>
                                                                     <div className="sk-row-value">
                                                                         <span className="text-[12px] font-semibold text-(--ss-fg)">LiquidOnyx</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Glass Transparency Controller */}
+                                                                <div className="sk-row py-3 flex-col items-start gap-2.5">
+                                                                    <div className="flex items-center justify-between w-full">
+                                                                        <div className="sk-row-label">
+                                                                            <span className="sk-row-title">{tr("Glass Transparency")}</span>
+                                                                            <span className="sk-row-sub">
+                                                                                {transparency === 100
+                                                                                    ? tr("Full Glass")
+                                                                                    : transparency === 50
+                                                                                    ? tr("High Opacity")
+                                                                                    : tr("Liquid density factor")}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="sk-row-value">
+                                                                            <span className="text-[11.5px] font-mono font-semibold text-(--ss-fg) px-2 py-0.5 rounded-md bg-(--ss-field) border border-(--ss-sep) shadow-inner">
+                                                                                {transparency}%
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="w-full flex items-center gap-3">
+                                                                        <span className="text-[10px] font-mono uppercase tracking-wider text-(--ss-fg3) shrink-0 select-none">
+                                                                            50% ({tr("High Opacity")})
+                                                                        </span>
+                                                                        <input
+                                                                            type="range"
+                                                                            min={50}
+                                                                            max={100}
+                                                                            step={1}
+                                                                            value={transparency}
+                                                                            onChange={(e) => {
+                                                                                const val = Number(e.target.value);
+                                                                                setTransparency(val);
+                                                                                applyGlassTransparency(val);
+                                                                            }}
+                                                                            className="ss-glass-slider flex-1"
+                                                                            aria-label={tr("Glass Transparency")}
+                                                                        />
+                                                                        <span className="text-[10px] font-mono uppercase tracking-wider text-(--ss-fg3) shrink-0 select-none">
+                                                                            100% ({tr("Full Glass")})
+                                                                        </span>
                                                                     </div>
                                                                 </div>
 

@@ -417,6 +417,7 @@
 .inv-specs-body {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 12px;
     min-width: 0;
 }
@@ -431,6 +432,43 @@
     overflow: hidden;
     border-radius: 6px;
     border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
+}
+
+.inv-axo.inv-axo--large {
+    width: 130px;
+    height: 130px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--text-color) 4%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
+}
+
+@media (min-width: 768px) {
+    .inv-axo.inv-axo--large {
+        width: 140px;
+        height: 140px;
+    }
+}
+
+.inv-hairline-card {
+    flex: none;
+    width: 90px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
+    background: color-mix(in srgb, var(--text-color) 3%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+}
+
+.inv-hairline-card .sf-figure {
+    width: 100%;
+    height: 100%;
 }
 
 .inv-measures {
