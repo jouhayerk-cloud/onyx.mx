@@ -1071,9 +1071,11 @@ html.style-slab .inv-row + .inv-drawer .inv-drawer-body {
     html.style-slab .sidebar,
     html.style-slab .isb-panel,
     html.style-slab .smd-card,
+    html.style-slab .isb-toggle-circle,
     .sidebar,
     .isb-panel,
-    .smd-card {
+    .smd-card,
+    .isb-toggle-circle {
         -webkit-backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
         backdrop-filter: blur(18px) saturate(1.9) brightness(1.08) !important;
     }
