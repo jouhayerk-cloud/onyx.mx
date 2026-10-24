@@ -54,8 +54,14 @@ export const LiquidOnyxBackground: React.FC = () => {
             activePalette.c4
         ]);
         
-        // Stop default playing immediately to save resources
-        gradient.pause();
+        // The library's own init path is two requestAnimationFrame hops deep
+        // (connect() schedules one, which schedules the mesh/animate setup).
+        // Pausing synchronously here used to race that and always win --
+        // conf.playing started false and nothing ever flipped it true before
+        // the render loop checked it and gave up, so the canvas never painted
+        // a single frame on any platform or theme. Wait two frames so the
+        // first render actually lands, then stop the animation loop.
+        requestAnimationFrame(() => requestAnimationFrame(() => gradient.pause()));
 
         const handleClick = () => {
             if (typeof gradient.triggerBurst === 'function') {

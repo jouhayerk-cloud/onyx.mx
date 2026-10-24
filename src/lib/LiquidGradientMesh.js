@@ -405,7 +405,7 @@
             density: [.03, .08],
             zoom: 1,
             rotation: 0,
-            playing: false
+            playing: true
           },
           document.querySelectorAll("canvas").length < 1 ? console.log("DID NOT LOAD HERO STRIPE CANVAS") : (
 

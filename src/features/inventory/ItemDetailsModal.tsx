@@ -344,11 +344,11 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
             aria-label={tr('Item Details')}
         >
             <div
-                className="liquid-surface w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden bg-slate-900/90 text-slate-100 border border-white/15 rounded-3xl shadow-2xl relative"
+                className="liquid-surface w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden text-slate-100 shadow-2xl relative"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header Bar */}
-                <header className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-white/5 backdrop-blur-md">
+                <header className="liquid-panel !rounded-none flex items-center justify-between px-5 py-3.5 border-b border-white/10">
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="flex items-center gap-2">
                             <span className="px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold tracking-wider bg-white/10 text-sky-300 border border-white/10">
@@ -367,7 +367,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
 
                     <div className="flex items-center gap-2">
                         {/* Tab Toggle: Cutouts Gallery vs 3D Axo */}
-                        <div className="flex items-center p-1 rounded-xl bg-black/40 border border-white/10">
+                        <div className="liquid-panel flex items-center p-1">
                             <button
                                 type="button"
                                 onClick={() => setActiveTab('gallery')}
@@ -420,7 +420,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                     {activeTab === 'gallery' ? (
                         <>
                             {/* Hero Cutout Stage */}
-                            <div className="relative rounded-2xl bg-black/40 border border-white/10 overflow-hidden shadow-inner flex items-center justify-center min-h-[340px] sm:min-h-[420px] p-6 group">
+                            <div className="liquid-panel relative overflow-hidden shadow-inner flex items-center justify-center min-h-[340px] sm:min-h-[420px] p-6 group">
                                 {/* Precision Transparency Grid Backing */}
                                 <div
                                     className="absolute inset-0 opacity-20 pointer-events-none"
@@ -453,7 +453,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
 
                                 {/* Top Left Badge: Cutout indicator */}
                                 {cutouts.length > 0 && (
-                                    <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 text-xs text-slate-200">
+                                    <div className="liquid-panel !rounded-lg absolute top-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-200">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                         <span>
                                             {tr('Cutout')} {activeCutoutIdx + 1} / {cutouts.length}
@@ -467,7 +467,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                                         <button
                                             type="button"
                                             onClick={handleCopyUrl}
-                                            className="p-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 text-slate-300 hover:text-white hover:bg-white/15 transition-all"
+                                            className="liquid-panel !rounded-lg p-1.5 text-slate-300 hover:text-white hover:bg-white/15 transition-all"
                                             title={tr('Copy image link')}
                                         >
                                             {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
@@ -476,7 +476,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                                             href={activeCutoutUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="p-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 text-slate-300 hover:text-white hover:bg-white/15 transition-all"
+                                            className="liquid-panel !rounded-lg p-1.5 text-slate-300 hover:text-white hover:bg-white/15 transition-all"
                                             title={tr('Open in Fullscreen')}
                                         >
                                             <ExternalLink size={14} />
@@ -490,7 +490,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                                         <button
                                             type="button"
                                             onClick={(e) => { e.stopPropagation(); stepCutout(-1); }}
-                                            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-slate-300 hover:text-white hover:scale-110 active:scale-95 transition-all shadow-xl"
+                                            className="liquid-panel !rounded-full absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2.5 text-slate-300 hover:text-white hover:scale-110 active:scale-95 transition-all shadow-xl"
                                             aria-label={tr('Previous cutout')}
                                             title={`${tr('Previous cutout')} (←)`}
                                         >
@@ -499,7 +499,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                                         <button
                                             type="button"
                                             onClick={(e) => { e.stopPropagation(); stepCutout(1); }}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-slate-300 hover:text-white hover:scale-110 active:scale-95 transition-all shadow-xl"
+                                            className="liquid-panel !rounded-full absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2.5 text-slate-300 hover:text-white hover:scale-110 active:scale-95 transition-all shadow-xl"
                                             aria-label={tr('Next cutout')}
                                             title={`${tr('Next cutout')} (→)`}
                                         >
@@ -511,7 +511,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
 
                             {/* Sleek Thumbnail Strip */}
                             {cutouts.length > 1 && (
-                                <div className="rounded-2xl bg-black/30 backdrop-blur-md border border-white/10 p-2.5 flex items-center gap-2.5 overflow-x-auto scrollbar-thin">
+                                <div className="liquid-panel p-2.5 flex items-center gap-2.5 overflow-x-auto scrollbar-thin">
                                     {cutouts.map((url, idx) => {
                                         const isSelected = idx === activeCutoutIdx;
                                         return (
@@ -555,7 +555,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                         /* 3D Axonometric Projection with Hex Map Texture & 3D Bounding Cube */
                         <div className="flex flex-col md:flex-row gap-5 items-stretch">
                             {/* Axo Canvas Container */}
-                            <div className="flex-1 rounded-2xl bg-black/40 border border-white/10 p-5 flex flex-col items-center justify-center relative min-h-[360px] shadow-inner overflow-hidden">
+                            <div className="liquid-panel flex-1 p-5 flex flex-col items-center justify-center relative min-h-[360px] shadow-inner overflow-hidden">
                                 <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
                                     <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-400/30">
                                         {tr('3D Bounding Frame')}
@@ -584,7 +584,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                             </div>
 
                             {/* Stone Spec Sheet Card */}
-                            <div className="w-full md:w-72 rounded-2xl bg-white/5 border border-white/10 p-4 flex flex-col gap-3.5 backdrop-blur-md">
+                            <div className="liquid-panel w-full md:w-72 p-4 flex flex-col gap-3.5">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5 pb-2 border-b border-white/10">
                                     <Info size={14} className="text-sky-400" />
                                     <span>{tr('Stone Geometry')}</span>
@@ -645,7 +645,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                 </div>
 
                 {/* Footer Bar */}
-                <footer className="px-5 py-3 border-t border-white/10 bg-white/5 flex items-center justify-between text-xs text-slate-400">
+                <footer className="liquid-panel !rounded-none px-5 py-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
                     <div className="flex items-center gap-2">
                         <TagIcon size={13} className="text-slate-500" />
                         <span className="font-mono">{itemId}</span>
