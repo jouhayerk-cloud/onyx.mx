@@ -2443,7 +2443,15 @@ async function handleBatchPrint() {
         },
       });
 
-      const decodedLabel = state.transport?.getLastDecodedLabel?.();
+      // decodeRasterToDataUrl works straight off rasterData -- it's the same bytes
+      // every transport (BLE/USB/virtual) sends to the printer, not something only
+      // VirtualTransport can decode. getLastDecodedLabel() only existed on
+      // VirtualTransport, so physical prints always archived null and silently fell
+      // back to a re-render with default options instead of the real printed label.
+      let labelDataUrl = null;
+      try {
+        labelDataUrl = decodeRasterToDataUrl(rasterData.data, rasterData.widthBytes, rasterData.heightLines);
+      } catch (e) {}
       try {
         window.parent.postMessage({
           type: 'PRINT_RUN_LABEL_COMPLETE',
@@ -2455,7 +2463,7 @@ async function handleBatchPrint() {
             totalChunks,
             tagId: currentTagId,
             completedAt: Date.now(),
-            labelDataUrl: decodedLabel?.dataUrl || null,
+            labelDataUrl,
             isVirtual: state.connectionType === 'virtual',
           }
         }, window.location.origin);

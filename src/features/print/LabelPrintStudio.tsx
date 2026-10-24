@@ -46,6 +46,7 @@ import { tr } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 import { M110Driver, VirtualM110Driver, VirtualDecodedLabel, isWebBluetoothSupported, BarcodeScanlineCheckResult } from '../../utils/PhomemoM110';
 import { recordExport, trackDocumentJob, getRecentTracked, TrackedJob } from './jobTracking';
+import { archiveLabelPng } from './labelArchive';
 import { PdfPreview, PdfDocumentSource } from '../../components/PdfPreview';
 import { PreviewLabels, PixelLabelView, LABEL_WIDTH_50x30, LABEL_HEIGHT_50x30, LABEL_WIDTH_50x50, LABEL_HEIGHT_50x50, labelRasterCache } from '../../components/PreviewLabels';
 import { LocalQueueTabContent } from './PrintCenter';
@@ -258,6 +259,13 @@ export const LabelPrintStudio: React.FC = () => {
     } | null>(null);
     const labelSizeRef = useRef<string>(activeLabelSize);
     useEffect(() => { labelSizeRef.current = activeLabelSize; }, [activeLabelSize]);
+    const userRef = useRef(user);
+    useEffect(() => { userRef.current = user; }, [user]);
+    const logoVariantRef = useRef(logoVariant);
+    useEffect(() => { logoVariantRef.current = logoVariant; }, [logoVariant]);
+    const printerTypeRef = useRef(printerType);
+    useEffect(() => { printerTypeRef.current = printerType; }, [printerType]);
+    const archivedItemsInRunRef = useRef<Set<string>>(new Set());
 
     // Axonometric SVG Cache
     const [axoCache, setAxoCache] = useState<Record<string, string>>({});
@@ -787,8 +795,8 @@ export const LabelPrintStudio: React.FC = () => {
         const isVirtual = !!(detail?.isVirtual ?? (pendingPrintJobRef.current as any)?.isVirtual ?? (printerType === 'virtual'));
         const fallbackJobId = `${isVirtual ? 'VPJ' : 'PJ'}-${Date.now().toString(36).toUpperCase()}`;
         const job = pendingPrintJobRef.current || {
-            ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
-            tagById: Object.fromEntries(selectedItems.map((it: any) => [String(it.row ?? it.data?.id ?? it.id), String(it.codes?.bookBarcode || '')])),
+            ids: selectedItems.map((it: any) => it.row).filter(Boolean).map(String),
+            tagById: Object.fromEntries(selectedItems.map((it: any) => [String(it.row), String(it.codes?.bookBarcode || '')])),
             checksum: '',
             jobId: fallbackJobId,
             isReprint: false,
@@ -935,12 +943,12 @@ export const LabelPrintStudio: React.FC = () => {
 
             const tagById: Record<string, string> = {};
             selectedItems.forEach((it: any) => {
-                const id = it.row ?? it.data?.id ?? it.id;
+                const id = it.row;
                 if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
             });
             const isVirtual = printerType === 'virtual';
             pendingPrintJobRef.current = {
-                ids: selectedItems.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
+                ids: selectedItems.map((it: any) => it.row).filter(Boolean).map(String),
                 tagById,
                 checksum: await computeJobChecksum(batchProject),
                 jobId: `${isVirtual ? 'VPJ' : 'PJ'}-${Date.now().toString(36).toUpperCase()}`,
@@ -965,6 +973,7 @@ export const LabelPrintStudio: React.FC = () => {
             setDoneList([]);
             setFailedList([]);
             setCompletedDurations([]);
+            archivedItemsInRunRef.current.clear();
 
             setIsDesignerOpen(true);
 
@@ -1219,12 +1228,12 @@ export const LabelPrintStudio: React.FC = () => {
 
             const tagById: Record<string, string> = {};
             itemsToUse.forEach((it: any) => {
-                const id = it.row ?? it.data?.id ?? it.id;
+                const id = it.row;
                 if (id) tagById[String(id)] = String(it.codes?.bookBarcode || '');
             });
             const isVirtual = printerType === 'virtual';
             pendingPrintJobRef.current = {
-                ids: itemsToUse.map((it: any) => it.row ?? it.data?.id ?? it.id).filter(Boolean).map(String),
+                ids: itemsToUse.map((it: any) => it.row).filter(Boolean).map(String),
                 tagById,
                 checksum: await computeJobChecksum(batchProject),
                 jobId: `${isVirtual ? 'VPJ' : 'PJ'}-${Date.now().toString(36).toUpperCase()}`,
@@ -1339,6 +1348,7 @@ export const LabelPrintStudio: React.FC = () => {
                 setDoneList([]);
                 setFailedList([]);
                 setCompletedDurations([]);
+                archivedItemsInRunRef.current.clear();
             }
 
             if (event.data?.type === 'PRINT_RUN_LABEL_START') {
@@ -1367,6 +1377,29 @@ export const LabelPrintStudio: React.FC = () => {
                 const inst = insts[idx] || insts[0];
                 const tagId = p?.tagId || inst?.item.codes?.bookBarcode || '';
                 const shortChecksum = (pendingPrintJobRef.current?.checksum || 'dj1').slice(0, 6);
+
+                if (printerTypeRef.current !== 'virtual' && inst?.item) {
+                    const invId = inst.item.row;
+                    if (invId && tagId) {
+                        const itemKey = `${invId}_${labelSizeRef.current}`;
+                        if (!archivedItemsInRunRef.current.has(itemKey)) {
+                            archivedItemsInRunRef.current.add(itemKey);
+                            const activeTpl = labelSizeRef.current === '50x50' ? 'ONYX_MASTER_TEMPLATE_50x50' : 'lbl-item-template-v4';
+                            archiveLabelPng({
+                                inventoryId: String(invId),
+                                tagId,
+                                labelSize: labelSizeRef.current as ('50x30' | '50x50'),
+                                templateId: activeTpl,
+                                logoVariant: logoVariantRef.current,
+                                item: inst.item,
+                                user: userRef.current,
+                                dataUrl: p?.labelDataUrl,
+                            }).catch(err => {
+                                console.warn('[LabelPrintStudio] Label PNG archive notice:', err);
+                            });
+                        }
+                    }
+                }
 
                 if (p?.labelDataUrl) {
                     setVirtualTray(prev => [
