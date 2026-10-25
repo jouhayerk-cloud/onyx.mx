@@ -11,26 +11,39 @@ export interface StonePalette {
     gradientColors: string[];
 }
 
+// Palettes below marked "photo-extracted" come from real item photos: hue-weighted
+// k-means on the actual pixels (same technique as the vein-mask colour extraction),
+// per-photo background excluded, sorted by saturation so the stone's characteristic
+// hue leads the array. See swarm/artifacts/colorMap/stone_color_map.json and
+// extract_stone_colors.py for the method and the full shade lists (more than 6 per
+// colour in most cases -- gradientColors below keeps only the first 6).
 export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
-    aquaSerpentine: {
-        primary: '#2DD4BF',
-        secondary: '#B26C1B',
-        gradientColors: ['#2DD4BF', '#A2B599', '#FFF9C0', '#EDA954', '#B26C1B', '#9B6F42'],
+    aquaSerpentine: { // photo-extracted, 18 real shades sampled
+        primary: '#432a16',
+        secondary: '#332a17',
+        gradientColors: ['#432a16', '#332a17', '#664f33', '#907a53', '#564534', '#a28a67'],
     },
-    aqua: {
-        primary: '#2DD4BF',
-        secondary: '#0D9488',
-        gradientColors: ['#2DD4BF', '#0D9488', '#FBBF24', '#F97316', '#FB7185', '#F472B6'],
+    aqua: { // photo-extracted, 28 real shades sampled
+        primary: '#825f2f',
+        secondary: '#5b4424',
+        gradientColors: ['#825f2f', '#5b4424', '#0c0e19', '#d0b675', '#a1885e', '#67503d'],
     },
     zebra: {
         primary: '#0F172A',
         secondary: '#FFFFFF',
         gradientColors: ['#0F172A', '#334155', '#CBD5E1', '#FFFFFF', '#64748B', '#0F172A'],
     },
-    talan: {
-        primary: '#059669',
-        secondary: '#78350F',
-        gradientColors: ['#059669', '#10B981', '#D97706', '#78350F', '#B45309'],
+    talan: { // photo-extracted (Green Talan), 40 real shades sampled
+        primary: '#b55b29',
+        secondary: '#564f1d',
+        gradientColors: ['#b55b29', '#564f1d', '#211b0d', '#958b48', '#7a763c', '#533f29'],
+    },
+    cherryBlossom: { // photo-extracted, lit (backlit) state -- real blues AND rust/pink,
+                      // see Cherry Blossom.lit in stone_color_map.json for all 52 shades.
+                      // "Cherry Blue" and "Cherry Pink" are the same stone, not separate.
+        primary: '#7d3807',
+        secondary: '#a35c10',
+        gradientColors: ['#7d3807', '#a35c10', '#d2a135', '#6f361e', '#1d274e', '#191f3d'],
     },
     ice: {
         primary: '#BAE6FD',
@@ -47,50 +60,51 @@ export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
         secondary: '#A8A29E',
         gradientColors: ['#78350F', '#92400E', '#D6D3D1', '#A8A29E', '#78350F'],
     },
-    tehuacanGray: {
-        primary: '#94A3B8',
-        secondary: '#64748B',
-        gradientColors: ['#94A3B8', '#CBD5E1', '#FFFFFF', '#64748B'],
+    tehuacanGray: { // photo-extracted, 20 real shades sampled
+        primary: '#261b17',
+        secondary: '#867a6a',
+        gradientColors: ['#261b17', '#867a6a', '#362e2b', '#b4a995', '#a39987', '#756d64'],
     },
-    amber: {
-        primary: '#F59E0B',
-        secondary: '#EA580C',
-        gradientColors: ['#F59E0B', '#FDE047', '#EA580C', '#F59E0B'],
+    amber: { // photo-extracted, 32 real shades sampled
+        primary: '#3c1b08',
+        secondary: '#b6811e',
+        gradientColors: ['#3c1b08', '#b6811e', '#955b22', '#7e471e', '#845b23', '#9c6e34'],
     },
-    tehuacan: {
-        primary: '#FFFFFF',
-        secondary: '#10B981',
-        gradientColors: ['#FFFFFF', '#F8FAFC', '#34D399', '#10B981', '#F59E0B', '#FFFFFF'],
+    tehuacan: { // photo-extracted, 13 real shades sampled
+        primary: '#856d52',
+        secondary: '#9e8b6f',
+        gradientColors: ['#856d52', '#9e8b6f', '#534a3c', '#716654', '#b19f84', '#8b7d69'],
     },
     nacar: {
         primary: '#FFFFFF',
         secondary: '#FEF3C7',
         gradientColors: ['#FFFFFF', '#FEF3C7', '#E0F2FE', '#FCE7F3', '#FFFFFF'],
     },
-    pink: {
-        primary: '#F472B6',
-        secondary: '#334155',
-        gradientColors: ['#F472B6', '#FFFFFF', '#FDA4AF', '#334155'],
+    pink: { // photo-extracted (Pink Serpentine; plain "Pink" source photos were unreadable HEIC)
+        primary: '#0a0910',
+        secondary: '#1a1b24',
+        gradientColors: ['#0a0910', '#1a1b24', '#454958', '#af9892', '#6d6e7f', '#8e868b'],
     },
-    serpentine: {
-        primary: '#10B981',
-        secondary: '#78350F',
-        gradientColors: ['#10B981', '#059669', '#D97706', '#78350F'],
+    serpentine: { // photo-extracted (Green Talan), same real stone as talan above
+        primary: '#b55b29',
+        secondary: '#564f1d',
+        gradientColors: ['#b55b29', '#564f1d', '#211b0d', '#958b48', '#7a763c', '#533f29'],
     },
-    galaxy: {
-        primary: '#334155',
-        secondary: '#FFFFFF',
-        gradientColors: ['#334155', '#94A3B8', '#FFFFFF', '#334155'],
+    galaxy: { // photo-extracted, unlit/ambient state (lit backlit state is brighter gold --
+              // see Galaxy.lit in stone_color_map.json if a backlit variant is ever wired up)
+        primary: '#a57e52',
+        secondary: '#3b3124',
+        gradientColors: ['#a57e52', '#3b3124', '#5d4d39', '#796653', '#4e4436', '#a08b70'],
     },
-    red: {
-        primary: '#EF4444',
-        secondary: '#B45309',
-        gradientColors: ['#EF4444', '#B45309', '#F97316', '#EF4444'],
+    red: { // photo-extracted (Red Pyramid), 16 real shades sampled
+        primary: '#ce921a',
+        secondary: '#2e1e0e',
+        gradientColors: ['#ce921a', '#2e1e0e', '#1c120a', '#0b0804', '#77562c', '#d6c070'],
     },
-    multicolor: {
-        primary: '#EF4444',
-        secondary: '#8B5CF6',
-        gradientColors: ['#EF4444', '#F97316', '#FBBF24', '#10B981', '#3B82F6', '#8B5CF6'],
+    multicolor: { // photo-extracted (Rainbow), unlit/ambient state
+        primary: '#ab8c32',
+        secondary: '#9d7b3a',
+        gradientColors: ['#ab8c32', '#9d7b3a', '#6b5328', '#150d08', '#d0b750', '#4d331e'],
     },
     gold: {
         primary: '#FDE047',
@@ -102,10 +116,10 @@ export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
         secondary: '#94A3B8',
         gradientColors: ['#E2E8F0', '#CBD5E1', '#94A3B8', '#FFFFFF'],
     },
-    blue: {
-        primary: '#3B82F6',
-        secondary: '#1D4ED8',
-        gradientColors: ['#3B82F6', '#60A5FA', '#1D4ED8', '#93C5FD'],
+    blue: { // photo-extracted (Blue Argentina), 23 real shades sampled
+        primary: '#113b44',
+        secondary: '#2f1e0d',
+        gradientColors: ['#113b44', '#2f1e0d', '#462d1a', '#5f492e', '#20373a', '#69553e'],
     },
     purple: {
         primary: '#8B5CF6',
@@ -204,6 +218,13 @@ export function resolveStonePalette(itemOrText: any): StonePalette {
     // 0f. Talan / Queretaro (deep green & earthy brown)
     if (t.includes('talan') || t.includes('queretaro')) {
         return CANONICAL_STONE_PALETTES.talan;
+    }
+
+    // 0g. Cherry Blossom ("Cherry Blue" and "Cherry Pink" in the DB taxonomy are the same
+    // stone, not separate colours -- owner correction, 24 Oct 2026). Must come before the
+    // generic pink/blue checks below, which would otherwise catch "cherry pink"/"cherry blue".
+    if (t.includes('cherry')) {
+        return CANONICAL_STONE_PALETTES.cherryBlossom;
     }
 
     // 1. Aqua
