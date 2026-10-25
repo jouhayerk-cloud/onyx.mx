@@ -79,7 +79,7 @@ export const WireframeIcon = ({ item, color }: { item: any, color?: string }) =>
     }, [req]);
 
     if (!src) return <Package ref={hostRef} size={32} strokeWidth={1} />;
-    return <img ref={hostRef} src={src} className="w-[92%] h-[92%] object-contain opacity-80 drop-shadow-md mix-blend-screen" />;
+    return <img ref={hostRef} src={src} className="w-[92%] h-[92%] object-contain drop-shadow-md mix-blend-screen brightness-125 saturate-150 contrast-110" />;
 };
 
 export const InventoryArtifact = () => {
