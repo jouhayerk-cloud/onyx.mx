@@ -697,7 +697,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 <h5 className="inv-cluster-t">{tr("Specs")}</h5>
                 <div className="inv-specs-body">
                     {!hasAxoOverlay && (
-                        <div className="inv-axo bg-black/40" title={tr("Proportions")} aria-hidden="true">
+                        <div className="inv-axo" title={tr("Proportions")} aria-hidden="true">
                             <WireframeIcon item={norm} />
                         </div>
                     )}
