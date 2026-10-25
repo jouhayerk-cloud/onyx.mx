@@ -42,21 +42,29 @@ export function parseHexMapString(hexMapString?: string): string[] {
         .map(s => s.startsWith('#') ? s : `#${s}`);
 }
 
-/** Mean RGB brightness of a hex-map string's colors (0-255) -- used to pick the
- * "lights on" photo angle among several, since a backlit shot reads much
- * brighter than an ambient one and no explicit lit flag exists per photo. */
-function avgHexMapBrightness(hexMapString: string): number {
+/** Mean saturation of a hex-map string's STONE pixels (near-white backdrop cells
+ * excluded) -- used to pick the "lights on" photo angle among several, since no
+ * explicit lit flag exists per photo. Backlit shots read as vivid saturated
+ * ambers/oranges; ambient ones as desaturated gray-tan. Plain mean brightness
+ * doesn't work here: every angle's grid is 60-80% identical white backdrop
+ * padding, which swamps the difference between the stone pixels themselves. */
+function avgHexMapVividness(hexMapString: string): number {
     const colors = parseHexMapString(hexMapString.replace(/^\d+x\d+:/, ''));
-    if (colors.length === 0) return 0;
     let total = 0;
+    let stoneCount = 0;
     for (const c of colors) {
         const h = c.replace('#', '');
         const r = parseInt(h.slice(0, 2), 16) || 0;
         const g = parseInt(h.slice(2, 4), 16) || 0;
         const b = parseInt(h.slice(4, 6), 16) || 0;
-        total += (r + g + b) / 3;
+        if (r >= 240 && g >= 240 && b >= 240) continue; // backdrop, not stone
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const saturation = max > 0 ? (max - min) / max : 0;
+        total += saturation;
+        stoneCount++;
     }
-    return total / colors.length;
+    return stoneCount > 0 ? total / stoneCount : 0;
 }
 
 /**
@@ -357,11 +365,11 @@ export function extractItemHexMapString(item: any): string | undefined {
     if (it.hex_string && typeof it.hex_string === 'string') return it.hex_string;
     if (it.hexMap && typeof it.hexMap === 'object' && it.hexMap.hexString) return String(it.hexMap.hexString);
 
-    // 2. spatial_points -- the brightest entry wins (an array can hold multiple
-    // photo angles/states; a backlit "lights on" shot reads far brighter than an
-    // ambient one, which is the only lit/unlit signal this schema stores -- there
-    // is no explicit lit flag per photo). Single-entry items are unaffected.
-    // Entries are not blended.
+    // 2. spatial_points -- the most vivid (saturated) entry wins (an array can hold
+    // multiple photo angles/states; a backlit "lights on" shot reads as saturated
+    // ambers/oranges where an ambient one reads as desaturated gray-tan, which is
+    // the only lit/unlit signal this schema stores -- there is no explicit lit flag
+    // per photo). Single-entry items are unaffected. Entries are not blended.
     const sp = it.spatial_points || it.spatialPoints;
     if (sp) {
         let parsedSp = sp;
@@ -369,14 +377,14 @@ export function extractItemHexMapString(item: any): string | undefined {
             try { parsedSp = JSON.parse(parsedSp); } catch {}
         }
         if (Array.isArray(parsedSp)) {
-            let best: { hex: string; dims?: string; brightness: number } | undefined;
+            let best: { hex: string; dims?: string; vividness: number } | undefined;
             for (const p of parsedSp) {
                 if (p && (p.type === 'pixel_map' || p.hex_string || p.hexString || p.hex_map)) {
                     const hex = p.hex_string || p.hexString || p.hex_map || (Array.isArray(p.hexList) ? JSON.stringify(p.hexList) : undefined);
                     if (hex) {
                         const dims = (p.cols && p.rows) ? `${p.cols}x${p.rows}` : p.dimensions;
-                        const brightness = avgHexMapBrightness(hex);
-                        if (!best || brightness > best.brightness) best = { hex, dims, brightness };
+                        const vividness = avgHexMapVividness(hex);
+                        if (!best || vividness > best.vividness) best = { hex, dims, vividness };
                     }
                 }
             }
