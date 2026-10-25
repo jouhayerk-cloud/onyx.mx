@@ -72,12 +72,7 @@ import { COLOR_PALETTE, ALLOWED_SHOPIFY_COLORS } from '../../lib/colorExtractor'
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, Truck, CreditCard, Link } from 'lucide-react';
 import { tr } from '../../lib/i18n';
 import { ItemDetailsModal } from './ItemDetailsModal';
-import { classifyGeometry } from '../../lib/geometry';
-import { canonicalType } from '../../lib/canonicalType';
-import { ShapeFigure } from '../entry/hairline/ShapeFigure';
-import { resolveStonePalette } from '../../lib/canonicalColors';
 import { canonicalColor } from '../../lib/inventoryTaxonomy';
-import { lookupCanonicalColors } from '../../lib/colorVocabulary';
 
 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -511,39 +506,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     // copy on every batch-processed item.)
     const isContentExpanded = Boolean(isExpanded || viewMode === 'gallery');
 
-    const hairGeom = useMemo(() => classifyGeometry(norm.shape, norm.shortDescription || norm.type), [norm.shape, norm.shortDescription, norm.type]);
-    const hairCanonical = useMemo(() => canonicalType(norm.type || norm.shortDescription, norm.shape), [norm.type, norm.shortDescription, norm.shape]);
-    const hairDims = useMemo(() => {
-        const w = Number(norm.widthCm) || 0;
-        const h = Number(norm.heightCm) || 0;
-        const d = Number(norm.lengthCm) || 0;
-        return (w > 0 || h > 0 || d > 0) ? { w, h, d } : null;
-    }, [norm.widthCm, norm.heightCm, norm.lengthCm]);
-
     const aiTitle = String(norm.detailedDescription || '').trim();
     const aiBodyText = useMemo(() => (isContentExpanded ? htmlToText(norm.generatedDescription || '') : ''), [isContentExpanded, norm.generatedDescription]);
     const aiColors = String(norm.generatedColor || '').split(',').map(c => c.trim()).filter(Boolean);
     const aiTypePath = String(norm.generatedType || '').split('>').map(p => p.trim()).filter(Boolean);
 
-    const itemCanonicalColor = useMemo(() => {
-        const pal = resolveStonePalette(norm);
-        if (pal && pal.primary && pal.primary !== '#71717A') return pal.primary;
-        const raw = norm.color || (aiColors.length > 0 ? aiColors[0] : '');
-        if (!raw) return pal?.primary;
-        const canonName = canonicalColor(raw);
-        if (canonName) {
-            const sw = swatchFor(canonName);
-            if (sw && sw !== 'transparent' && !sw.startsWith('conic-gradient')) return sw;
-        }
-        const mapped = lookupCanonicalColors(raw);
-        if (mapped && mapped.length > 0) {
-            const sw = swatchFor(mapped[0]);
-            if (sw && sw !== 'transparent' && !sw.startsWith('conic-gradient')) return sw;
-        }
-        const directSw = swatchFor(raw);
-        if (directSw && directSw !== 'transparent' && !directSw.startsWith('conic-gradient')) return directSw;
-        return pal?.primary;
-    }, [norm, aiColors]);
     const hasAiCopy = !!(aiTitle || aiBodyText);
     const hasAnyAi = hasAiCopy || aiColors.length > 0 || aiTypePath.length > 0;
     const aiIssues = useMemo(() => (isContentExpanded && (aiTitle || aiBodyText))
@@ -734,16 +701,6 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             <WireframeIcon item={norm} />
                         </div>
                     )}
-                    <div className={`inv-hairline-card${hasAxoOverlay ? ' inv-hairline-card--prominent' : ''}`} title={hairCanonical.label || norm.shape || tr("Hairline figure")} aria-hidden="true">
-                        <ShapeFigure
-                            family={hairGeom.geom}
-                            isMirror={hairGeom.isMirror}
-                            typeId={hairCanonical.id}
-                            holes={hairCanonical.holes}
-                            dims={hairDims}
-                            color={itemCanonicalColor}
-                        />
-                    </div>
                     <div className="inv-measures" aria-label={tr("Size and weight")}>
                         <span className={`inv-fi inv-fi-size ${COL_TEXT.size}`}>{metricDimensionsStr || '—'}</span>
                         <span className={`inv-spec-wrap ${COL_TEXT.size}`} title={imperialDims}>{imperialDims || '—'}</span>
