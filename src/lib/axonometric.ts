@@ -445,12 +445,15 @@ export function draw3DBoundingDimensionFrame(
         cy: number;
         isDark?: boolean;
         wireframeColor?: string;
+        /** Canvas resolution relative to the 400px baseline this frame's pixel constants were tuned for. */
+        pxScale?: number;
     },
     options?: AxoBoundingBoxOptions,
     pass?: 'back' | 'front' | 'all'
 ): void {
     const { W, H, D } = geo;
     const { project, scale, cx, cy } = helpers;
+    const pxScale = helpers.pxScale ?? 1;
 
     const toCanvas = (x: number, y: number, z: number) => {
         const p = project(x, y, z);
@@ -481,8 +484,8 @@ export function draw3DBoundingDimensionFrame(
     // 1. Back / occluded edges (dashed hairline)
     if (pass === 'back' || pass === 'all' || !pass) {
         ctx.beginPath();
-        ctx.setLineDash([3, 3]);
-        ctx.lineWidth = 1.0;
+        ctx.setLineDash([3 * pxScale, 3 * pxScale]);
+        ctx.lineWidth = 1.0 * pxScale;
         ctx.strokeStyle = backColor;
 
         // b1 -> b2 -> b3
@@ -498,7 +501,7 @@ export function draw3DBoundingDimensionFrame(
     // 2. Front visible edges, hairline ticks, and dimension labels
     if (pass === 'front' || pass === 'all' || !pass) {
         ctx.setLineDash([]);
-        ctx.lineWidth = 2.0;
+        ctx.lineWidth = 2.0 * pxScale;
         ctx.strokeStyle = frontColor;
 
         // Bottom visible: b3 -> b0 -> b1
@@ -528,7 +531,7 @@ export function draw3DBoundingDimensionFrame(
         ctx.fillStyle = tickColor;
         for (const pt of corners) {
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 2.0, 0, 2 * Math.PI);
+            ctx.arc(pt.x, pt.y, 2.0 * pxScale, 0, 2 * Math.PI);
             ctx.fill();
         }
 
@@ -536,7 +539,7 @@ export function draw3DBoundingDimensionFrame(
         const showLabels = options?.showDimensionLabels !== false;
 
         if (showTicks) {
-            ctx.lineWidth = 1.6;
+            ctx.lineWidth = 1.6 * pxScale;
             ctx.strokeStyle = tickColor;
 
             const drawAxisTicks = (
@@ -549,7 +552,7 @@ export function draw3DBoundingDimensionFrame(
                 const dy = pEnd.y - pStart.y;
                 for (const f of fractions) {
                     const isMajor = f === 0 || f === 0.5 || f === 1;
-                    const len = isMajor ? 6.5 : 3.8;
+                    const len = (isMajor ? 6.5 : 3.8) * pxScale;
                     const px = pStart.x + f * dx;
                     const py = pStart.y + f * dy;
                     ctx.beginPath();
@@ -582,14 +585,17 @@ export function draw3DBoundingDimensionFrame(
         }
 
         if (showLabels) {
-            ctx.font = '700 13px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", monospace, system-ui, sans-serif';
+            // 22px at the 400px baseline (vs. the old 13px) -- readable at the small
+            // sizes these icons render at in cards, not just proportional to canvasSize.
+            const labelFontPx = Math.round(22 * pxScale);
+            ctx.font = `700 ${labelFontPx}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", monospace, system-ui, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
             const drawHaloText = (text: string, x: number, y: number) => {
                 ctx.save();
                 ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)';
-                ctx.lineWidth = 3.5;
+                ctx.lineWidth = 5 * pxScale;
                 ctx.lineJoin = 'round';
                 ctx.strokeText(text, x, y);
                 ctx.fillStyle = textColor;
@@ -606,7 +612,7 @@ export function draw3DBoundingDimensionFrame(
             let wNx = -wDy / wLen;
             let wNy = wDx / wLen;
             if (wNy < 0) { wNx = -wNx; wNy = -wNy; }
-            drawHaloText(`${Math.round(W)} ${unit}`, wMidX + wNx * 16, wMidY + wNy * 16);
+            drawHaloText(`${Math.round(W)} ${unit}`, wMidX + wNx * 20 * pxScale, wMidY + wNy * 20 * pxScale);
 
             // Depth label (b0 -> b3)
             const dMidX = (b0.x + b3.x) / 2;
@@ -617,12 +623,12 @@ export function draw3DBoundingDimensionFrame(
             let dNx = dDy / dLen;
             let dNy = -dDx / dLen;
             if (dNy < 0) { dNx = -dNx; dNy = -dNy; }
-            drawHaloText(`${Math.round(D)} ${unit}`, dMidX + dNx * 16, dMidY + dNy * 16);
+            drawHaloText(`${Math.round(D)} ${unit}`, dMidX + dNx * 20 * pxScale, dMidY + dNy * 20 * pxScale);
 
             // Height label (b1 -> t1)
             const hMidX = (b1.x + t1.x) / 2;
             const hMidY = (b1.y + t1.y) / 2;
-            drawHaloText(`${Math.round(H)} ${unit}`, hMidX + 18, hMidY);
+            drawHaloText(`${Math.round(H)} ${unit}`, hMidX + 22 * pxScale, hMidY);
         }
     }
 
@@ -764,8 +770,14 @@ export async function generateAxonometricDataUrl(
         const minU = Math.min(...uVals), maxU = Math.max(...uVals);
         const minV = Math.min(...vVals), maxV = Math.max(...vVals);
 
-        const padding = 60;
-        const canvasSize = 400;
+        // Canvas bumped from the old 400px baseline -- cards now show this icon
+        // free-floating at up to 210 CSS px (no frame to crop into), and at that
+        // size the old resolution went soft. pxScale keeps every hairline/tick/
+        // label pixel constant below proportional to the new size.
+        const BASE_CANVAS = 400;
+        const canvasSize = 640;
+        const pxScale = canvasSize / BASE_CANVAS;
+        const padding = 60 * pxScale;
         const scaleU = (canvasSize - padding * 2) / (maxU - minU || 1);
         const scaleV = (canvasSize - padding * 2) / (maxV - minV || 1);
         const scale = Math.min(scaleU, scaleV);
@@ -909,7 +921,7 @@ export async function generateAxonometricDataUrl(
             draw3DBoundingDimensionFrame(
                 ctx,
                 { W, H, D },
-                { project, scale, cx, cy, isDark: !asJpeg, wireframeColor },
+                { project, scale, cx, cy, isDark: !asJpeg, wireframeColor, pxScale },
                 bboxOpts,
                 'back'
             );
@@ -925,7 +937,7 @@ export async function generateAxonometricDataUrl(
                 draw3DBoundingDimensionFrame(
                     ctx,
                     { W, H, D },
-                    { project, scale, cx, cy, isDark: !asJpeg, wireframeColor },
+                    { project, scale, cx, cy, isDark: !asJpeg, wireframeColor, pxScale },
                     bboxOpts,
                     'front'
                 );
@@ -944,7 +956,7 @@ export async function generateAxonometricDataUrl(
                 draw3DBoundingDimensionFrame(
                     ctx,
                     { W, H, D },
-                    { project, scale, cx, cy, isDark: !asJpeg, wireframeColor },
+                    { project, scale, cx, cy, isDark: !asJpeg, wireframeColor, pxScale },
                     bboxOpts,
                     'front'
                 );
@@ -1903,7 +1915,7 @@ export async function generateAxonometricDataUrl(
             draw3DBoundingDimensionFrame(
                 ctx,
                 { W, H, D },
-                { project, scale, cx, cy, isDark: !asJpeg, wireframeColor },
+                { project, scale, cx, cy, isDark: !asJpeg, wireframeColor, pxScale },
                 bboxOpts,
                 'front'
             );
