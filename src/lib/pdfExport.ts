@@ -1747,7 +1747,7 @@ export function getItemImages(item: any): string[] {
  * Builds the canonical deterministic title including text quantity, attributes, and metric dimensions,
  * matching exactly across Grid, Portrait, and Compact catalog pages.
  */
-export function buildDeterministicTitle(norm: any, itemDataObj: any, preferImperial: boolean = false): string {
+export function buildDeterministicTitle(norm: any, itemDataObj: any, includeImperial: boolean = false): string {
     const qtyWord = formatQuantityText(norm.quantity || 1);
     const rawShape = (norm.shape || (itemDataObj ? itemDataObj.Shape : '') || '').trim();
     const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
@@ -1766,23 +1766,24 @@ export function buildDeterministicTitle(norm: any, itemDataObj: any, preferImper
     }
     const attrStr = Array.from(new Set(attrParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
 
-    if (preferImperial) {
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+
+    let dimsStr = dimsMetric;
+    if (includeImperial) {
         const dImp = cmToImperial(norm.lengthCm || norm.length_cm) || (norm.lengthInches ? `${norm.lengthInches}"` : '');
         const wImp = cmToImperial(norm.widthCm || norm.width_cm) || (norm.widthInches ? `${norm.widthInches}"` : '');
         const hImp = cmToImperial(norm.heightCm || norm.height_cm) || (norm.heightInches ? `${norm.heightInches}"` : '');
         const dimsImperial = [dImp, wImp, hImp].filter(Boolean).join(' × ').toUpperCase();
-        let mainTitleStr = `${qtyWord} • ${attrStr}`;
-        if (dimsImperial) {
-            mainTitleStr += ` • ${dimsImperial}`;
+        if (dimsMetric && dimsImperial) {
+            dimsStr = `${dimsMetric} (${dimsImperial})`;
+        } else if (dimsImperial) {
+            dimsStr = dimsImperial;
         }
-        return mainTitleStr;
     }
 
-    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
-
     let mainTitleStr = `${qtyWord} • ${attrStr}`;
-    if (dimsMetric) {
-        mainTitleStr += ` • ${dimsMetric}`;
+    if (dimsStr) {
+        mainTitleStr += ` • ${dimsStr}`;
     }
     return mainTitleStr;
 }
@@ -3397,14 +3398,14 @@ async function drawCatalogCompactPage(
         const infoX = axoSecX + axoSecW + 3.2;
         const infoW = blockX - infoX - 3.0; // ~95mm width
 
-        // Font Size 1 (Title): 8.5pt Bold Slate-900 with Imperial Dimensions (NO cm)
+        // Font Size 1 (Title): 8.5pt Bold Slate-900 with both Metric (cm) & Imperial Dimensions
         const mainTitleStr = buildDeterministicTitle(norm, itemDataObj, true);
         doc.setFontSize(8.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
         const splitTitle = doc.splitTextToSize(mainTitleStr, infoW);
-        const titleLines = splitTitle.slice(0, 2);
-        const titleY = rowY + 5.0;
+        const titleLines = splitTitle.slice(0, 3);
+        const titleY = rowY + 4.8;
         doc.text(titleLines, infoX, titleY);
         let currInfoY = titleY + (titleLines.length - 1) * 3.3 + 3.4;
 
