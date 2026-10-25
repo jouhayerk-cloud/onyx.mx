@@ -508,8 +508,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
     const shopifyTitle = String(norm.shopifyTitle || norm.shopify_title || item.shopify_title || item.shopifyTitle || item.data?.shopify_title || item.data?.shopifyTitle || '').trim();
     const invoiceTitle = String(norm.invoiceTitle || norm.invoice_title || item.invoice_title || item.invoiceTitle || item.data?.invoice_title || item.data?.invoiceTitle || '').trim();
-    const displayTitle = shopifyTitle || invoiceTitle;
-    const aiTitle = displayTitle || String(norm.detailedDescription || '').trim();
+    const cardName = [norm.shape || tr("OBJ"), norm.shortDescription].filter(Boolean).join(' ');
+    const aiTitle = shopifyTitle || invoiceTitle || String(norm.detailedDescription || '').trim();
     const aiBodyText = useMemo(() => (isContentExpanded ? htmlToText(norm.generatedDescription || '') : ''), [isContentExpanded, norm.generatedDescription]);
     const rawAiColors = String(norm.generatedColor || '').split(',').map(c => c.trim()).filter(Boolean);
     const isAquaOrTeal = String(norm.color || '').toLowerCase().includes('aqua') ||
@@ -1042,9 +1042,9 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         `title`, so a long value never wraps the row and is never
                         unreachable. */}
                     <div className="inv-c-item inv-cell text-[14px] uppercase tracking-tight text-(--text-color)"
-                        title={cardTitle || [norm.shape, norm.shortDescription].filter(Boolean).join(' ')}>
-                        <span className="font-black">{cardTitle ? cardTitle : (norm.shape || tr("OBJ"))}</span>
-                        {!cardTitle && norm.shortDescription && <> <span className="font-bold text-(--text-color)/75">{norm.shortDescription}</span></>}
+                        title={[norm.shape, norm.shortDescription].filter(Boolean).join(' ')}>
+                        <span className="font-black">{norm.shape || tr("OBJ")}</span>
+                        {norm.shortDescription && <> <span className="font-bold text-(--text-color)/75">{norm.shortDescription}</span></>}
                     </div>
                     <div className={`inv-c-color inv-cell ${COL_TEXT.color}`}
                         title={[norm.color, norm.material].filter(Boolean).join(' ')}>
@@ -1169,8 +1169,6 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const payTone = payStatus === 'GREEN' ? 'paid' : payStatus === 'YELLOW' ? 'req' : payStatus === 'RED' ? 'part' : 'new';
     const rowId = item.row ?? item.data?.id;
     const isSelected = selectedIds.includes(rowId);
-    const cardTitle = displayTitle;
-    const cardName = cardTitle || [norm.shape || tr("OBJ"), norm.shortDescription].filter(Boolean).join(' ');
     const sheetIdx = Math.min(modalIdx, Math.max(0, mediaUrls.length - 1));
     const heroIdx = Math.min(cardIdx, Math.max(0, mediaUrls.length - 1));
 
@@ -1211,14 +1209,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         </span>
     );
     const nameEl = (className: string, id?: string) => (
-        <h3 id={id} className={className} title={cardTitle ? `${cardTitle} (${[norm.shape, norm.shortDescription].filter(Boolean).join(' ')})` : cardName}>
-            {cardTitle ? (
-                <b>{cardTitle}</b>
-            ) : (
-                <>
-                    <b>{norm.shape || tr("OBJ")}</b>{norm.shortDescription && <> <span>{norm.shortDescription}</span></>}
-                </>
-            )}
+        <h3 id={id} className={className} title={cardName}>
+            <b>{norm.shape || tr("OBJ")}</b>{norm.shortDescription && <> <span>{norm.shortDescription}</span></>}
         </h3>
     );
     const selectKey = isSelectionMode && (
@@ -1406,9 +1398,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
                             <div className="inv-xl-title-block">
                                 {nameEl('inv-card-name')}
-                                <p className={`inv-card-stone ${COL_TEXT.color}`} title={stone}>
-                                    {cardTitle && [norm.shape, norm.shortDescription].filter(Boolean).length > 0 ? `${[norm.shape, norm.shortDescription].filter(Boolean).join(' ')} · ` : ''}{stone || '—'}
-                                </p>
+                                <p className={`inv-card-stone ${COL_TEXT.color}`} title={stone}>{stone || '—'}</p>
                             </div>
 
                             {clusters(true)}
