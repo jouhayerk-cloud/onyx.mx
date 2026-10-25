@@ -204,7 +204,7 @@ const DriveImage = ({ src, className, ...props }: any) => {
         if (!imgProps.decoding) imgProps.decoding = "async";
     }
 
-    return <img src={resolvedSrc} className={className} onError={() => setHasError(true)} {...imgProps} />;
+    return <img src={resolvedSrc} className={className} referrerPolicy="no-referrer" onError={() => setHasError(true)} {...imgProps} />;
 };
 
 const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
@@ -1310,12 +1310,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             onClick={() => { if (mediaUrls.length) openViewer(sheetIdx); }}>
                             {heroMedia(sheetIdx, 'inv-gal-img')}
                             {mediaUrls.length > 0 && (
-                                <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
-                                    <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
-                                        <WireframeIcon item={norm} />
+                                <>
+                                    <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
+                                        <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
+                                            <WireframeIcon item={norm} />
+                                        </div>
                                     </div>
-                                    {renderColorBubbles('inv-axo-bubbles-floating')}
-                                </div>
+                                    {renderColorBubbles('inv-hero-bubbles-centered')}
+                                </>
                             )}
                             {heroKeys(sheetIdx, stepSheet, 20)}
                         </div>
@@ -1353,12 +1355,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 onClick={(e) => { e.stopPropagation(); if (mediaUrls.length) openViewer(heroIdx); }}>
                                 {heroMedia(heroIdx, 'inv-gal-img')}
                                 {mediaUrls.length > 0 && (
-                                    <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
-                                        <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
-                                            <WireframeIcon item={norm} />
+                                    <>
+                                        <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
+                                            <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
+                                                <WireframeIcon item={norm} />
+                                            </div>
                                         </div>
-                                        {renderColorBubbles('inv-axo-bubbles-floating')}
-                                    </div>
+                                        {renderColorBubbles('inv-hero-bubbles-centered')}
+                                    </>
                                 )}
                                 {heroKeys(heroIdx, stepPhoto, 18)}
                             </div>
@@ -1420,12 +1424,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     onClick={(e) => { if (mediaUrls.length > 1) { e.stopPropagation(); stepPhoto(1); } }}>
                     {heroMedia(heroIdx, 'inv-card-img')}
                     {mediaUrls.length > 0 && (
-                        <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
-                            <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
-                                <WireframeIcon item={norm} />
+                        <>
+                            <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
+                                <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
+                                    <WireframeIcon item={norm} />
+                                </div>
                             </div>
-                            {renderColorBubbles('inv-axo-bubbles-floating')}
-                        </div>
+                            {renderColorBubbles('inv-hero-bubbles-centered')}
+                        </>
                     )}
                     {heroKeys(heroIdx, stepPhoto, 16)}
                 </div>
