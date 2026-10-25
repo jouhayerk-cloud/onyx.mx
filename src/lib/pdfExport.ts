@@ -671,32 +671,18 @@ async function getAdvancedAxoDataUrl(norm: any, itemData: any): Promise<string |
     const dVal = parseFloat(norm.lengthCm) || null;
     const shape = norm.shape || '';
     const shortDesc = norm.shortDescription || norm.description || '';
-    const typeId = norm.generatedType || norm.canonicalType || norm.type || shortDesc || shape;
+    const itemDataObj = itemData || norm;
+    const hexMap = extractItemHexString(itemDataObj) || extractItemHexString(norm);
+    const wireColor = resolveItemColor(itemDataObj);
 
-    // 1. Dedicated isometric hairline type figure
-    try {
-        const hairlineDataUrl = renderAxoIconDataUrl({
-            typeId,
-            shape,
-            w: wVal,
-            h: hVal,
-            l: dVal,
-            top: norm.topType || null,
-            holes: norm.holesCount || null,
-            color: '#18181b',
-            background: 'white'
-        });
-        if (hairlineDataUrl) return hairlineDataUrl;
-    } catch (e) {}
-
-    // 2. Fall back to 3D axonometric with hairline bounding box, ticks, and dimensions
+    // 3D axonometric with authentic stone hex map colors, mineral strata, bounding box, ticks, and dimensions
     try {
         return await generateAxonometricDataUrl(
             wVal || 20, hVal || 30, dVal || 20,
             shape, shortDesc,
-            resolveItemColor(itemData),
-            true,
-            undefined,
+            wireColor,
+            false,
+            hexMap,
             {
                 showBoundingBox: true,
                 showDimensionLabels: true,
@@ -706,6 +692,7 @@ async function getAdvancedAxoDataUrl(norm: any, itemData: any): Promise<string |
             }
         );
     } catch (e) {
+        console.error('[pdfExport] Failed to generate 3D axonometric with hex map:', e);
         return null;
     }
 }
