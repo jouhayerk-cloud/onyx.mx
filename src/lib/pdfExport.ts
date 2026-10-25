@@ -163,8 +163,16 @@ async function loadImgDataUncached(url: string, maxSize = 800, keepPng = true, b
             img = await loadExternalImageAsDataUrl(cleanUrl);
         }
 
-        const imgW = img.naturalWidth || img.width || 500;
-        const imgH = img.naturalHeight || img.height || 500;
+        if (img.decode) {
+            try { await img.decode(); } catch (e) {}
+        }
+        let imgW = img.naturalWidth || img.width || 0;
+        let imgH = img.naturalHeight || img.height || 0;
+        if (!imgW || !imgH) {
+            if (imgW > 0 && !imgH) imgH = imgW;
+            else if (imgH > 0 && !imgW) imgW = imgH;
+            else { imgW = 800; imgH = 800; }
+        }
 
         const scale = Math.min(maxSize / imgW, maxSize / imgH, 1);
         const w = Math.max(1, Math.round(imgW * scale));
@@ -364,6 +372,30 @@ function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number,
     const imgY = cy + (ch - dh) / 2;
     const format = img.dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
     doc.addImage(img.dataUrl, format, imgX, imgY, dw, dh);
+}
+
+/**
+ * Draws an axonometric wireframe data URL strictly aspect-contained (1:1 square)
+ * inside a container box of (cx, cy, cw, ch), with symmetric centering and zero deformation.
+ */
+function drawAxoContain(
+    doc: any,
+    axoDataUrl: string,
+    cx: number,
+    cy: number,
+    cw: number,
+    ch: number,
+    scale = 0.94
+) {
+    if (!axoDataUrl) return;
+    const pad = 1.0;
+    const availW = Math.max(1, cw - 2 * pad);
+    const availH = Math.max(1, ch - 2 * pad);
+    const size = Math.min(availW, availH) * scale;
+    const axoX = cx + pad + (availW - size) / 2;
+    const axoY = cy + pad + (availH - size) / 2;
+    const format = axoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+    doc.addImage(axoDataUrl, format, axoX, axoY, size, size, undefined, 'FAST');
 }
 
 const toImp = (val: any, type: 'in' | 'lbs' | 'ft' = 'in') => {
@@ -1695,17 +1727,19 @@ async function drawCatalogHubPagePortrait(
             if (cutoutImgData && cutoutImgData.dataUrl) {
                 const maxCutoutH = 30;
                 const maxCutoutW = 36;
-                cutoutH = maxCutoutH;
-                cutoutW = maxCutoutH;
                 if (cutoutImgData.w && cutoutImgData.h) {
                     const aspect = cutoutImgData.w / cutoutImgData.h;
-                    if (aspect >= 1) {
-                        cutoutW = Math.min(maxCutoutW, maxCutoutH * aspect);
-                        cutoutH = cutoutW / aspect;
+                    const boxAspect = maxCutoutW / maxCutoutH;
+                    if (aspect > boxAspect) {
+                        cutoutW = maxCutoutW;
+                        cutoutH = maxCutoutW / aspect;
                     } else {
                         cutoutH = maxCutoutH;
-                        cutoutW = Math.min(maxCutoutW, cutoutH * aspect);
+                        cutoutW = maxCutoutH * aspect;
                     }
+                } else {
+                    cutoutH = maxCutoutH;
+                    cutoutW = maxCutoutH;
                 }
             }
         } catch (e) {
@@ -2086,17 +2120,19 @@ async function drawCatalogHubPageLandscapeGrid(
             if (cutoutImgData && cutoutImgData.dataUrl) {
                 const maxCutoutH = 30;
                 const maxCutoutW = 36;
-                cutoutH = maxCutoutH;
-                cutoutW = maxCutoutH;
                 if (cutoutImgData.w && cutoutImgData.h) {
                     const aspect = cutoutImgData.w / cutoutImgData.h;
-                    if (aspect >= 1) {
-                        cutoutW = Math.min(maxCutoutW, maxCutoutH * aspect);
-                        cutoutH = cutoutW / aspect;
+                    const boxAspect = maxCutoutW / maxCutoutH;
+                    if (aspect > boxAspect) {
+                        cutoutW = maxCutoutW;
+                        cutoutH = maxCutoutW / aspect;
                     } else {
                         cutoutH = maxCutoutH;
-                        cutoutW = Math.min(maxCutoutW, cutoutH * aspect);
+                        cutoutW = maxCutoutH * aspect;
                     }
+                } else {
+                    cutoutH = maxCutoutH;
+                    cutoutW = maxCutoutH;
                 }
             }
         } catch (e) {
@@ -2247,12 +2283,11 @@ async function drawCatalogHubPageLandscapeGrid(
                 doc.roundedRect(M, contentY, leftW, contentH, 1, 1, 'S');
             }
         } else {
-            // Fallback for 0 images: hero wireframe
+            // Fallback for 0 images: hero wireframe strictly aspect-contained
             try {
                 const heroAxo = await getAdvancedAxoDataUrl(norm, item.data || item);
                 if (heroAxo) {
-                    const axoSize = Math.min(leftW * 0.85, contentH * 0.85, 110);
-                    doc.addImage(heroAxo, heroAxo.startsWith('data:image/png') ? 'PNG' : 'JPEG', M + (leftW - axoSize) / 2, contentY + (contentH - axoSize) / 2, axoSize, axoSize);
+                    drawAxoContain(doc, heroAxo, M, contentY, leftW, contentH, 0.88);
                 }
             } catch (e) {}
         }
@@ -2287,17 +2322,7 @@ async function drawCatalogHubPageLandscapeGrid(
             const axoX = rightX + eachMedW + medGap;
             const axoCardH = Math.min(midH * 0.58, 48);
             if (axoDataUrl) {
-                const pad = 1.0;
-                doc.addImage(
-                    axoDataUrl,
-                    axoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG',
-                    axoX + pad,
-                    midY + pad,
-                    eachMedW - 2 * pad,
-                    axoCardH - 2 * pad,
-                    undefined,
-                    'FAST'
-                );
+                drawAxoContain(doc, axoDataUrl, axoX, midY, eachMedW, axoCardH, 0.94);
             }
             doc.setDrawColor(241, 245, 249);
             doc.setLineWidth(0.2);
@@ -2314,17 +2339,7 @@ async function drawCatalogHubPageLandscapeGrid(
             const sizesW = rightW - gap - axoW;
 
             if (axoDataUrl) {
-                const pad = 1.0;
-                doc.addImage(
-                    axoDataUrl,
-                    axoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG',
-                    rightX + pad,
-                    midY + pad,
-                    axoW - 2 * pad,
-                    cardH - 2 * pad,
-                    undefined,
-                    'FAST'
-                );
+                drawAxoContain(doc, axoDataUrl, rightX, midY, axoW, cardH, 0.94);
             }
             doc.setDrawColor(241, 245, 249);
             doc.setLineWidth(0.2);
@@ -2454,17 +2469,7 @@ async function drawCatalogHubPageLandscapeGrid(
 
             const axoX = M + numThumbs * (colW + gap);
             if (axoDataUrl) {
-                const pad = 1.0;
-                doc.addImage(
-                    axoDataUrl,
-                    axoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG',
-                    axoX + pad,
-                    secPanelY + pad,
-                    axoW - 2 * pad,
-                    secPanelH - 2 * pad,
-                    undefined,
-                    'FAST'
-                );
+                drawAxoContain(doc, axoDataUrl, axoX, secPanelY, axoW, secPanelH, 0.94);
             }
             doc.setDrawColor(241, 245, 249);
             doc.setLineWidth(0.2);
@@ -2475,17 +2480,7 @@ async function drawCatalogHubPageLandscapeGrid(
         } else {
             const axoX = PW - M - fixedEndW;
             if (axoDataUrl) {
-                const pad = 1.0;
-                doc.addImage(
-                    axoDataUrl,
-                    axoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG',
-                    axoX + pad,
-                    secPanelY + pad,
-                    axoW - 2 * pad,
-                    secPanelH - 2 * pad,
-                    undefined,
-                    'FAST'
-                );
+                drawAxoContain(doc, axoDataUrl, axoX, secPanelY, axoW, secPanelH, 0.94);
             }
             doc.setDrawColor(241, 245, 249);
             doc.setLineWidth(0.2);
