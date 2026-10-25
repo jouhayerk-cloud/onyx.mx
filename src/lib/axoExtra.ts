@@ -901,7 +901,189 @@ function drawTable(
 /**
  * Panel: A thin slab with a frame edge and vertical grooves.
  */
+/**
+ * "Pair" in the shape/type text: two bookmatched slabs hung side by side. The
+ * record's width is per slab (invoice titles read "56 x 2 x 94 cm (each)").
+ */
+export function isPanelPair(text: string = ''): boolean {
+    return /\b(pairs?|par|pareja|diptych|diptico|book[\s-]?match(ed)?)\b/.test(norm(text));
+}
+
+/** Free-form / irregular-border slab: the natural rind is left on the outer edges. */
+export function isFreeFormPanel(text: string = ''): boolean {
+    return /free\s*-?\s*form|irregular|organic|forma libre|natural edge|live edge|raw edge|borde natural/.test(norm(text));
+}
+
+/** Seam gap between the two slabs of a pair, as a fraction of one slab's width. */
+export const PANEL_PAIR_GAP_RATIO = 0.04;
+
+/** Deterministic PRNG, so the same dimensions always rasterise the same outline (the icon cache keys on them). */
+function mulberry32(seed: number): () => number {
+    let a = seed >>> 0;
+    return () => {
+        a = (a + 0x6d2b79f5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+/**
+ * Counter-clockwise outline (x right, y up) of a natural-edge slab inside [0,w] x [0,h].
+ * Outer corners get large random tapers and the edges an inward-only wobble, so the
+ * outline never leaves the bounding box the dimension frame draws. With
+ * `straightRight` the right edge is the saw-cut seam of a pair and stays straight.
+ */
+export function freeFormOutline(w: number, h: number, straightRight: boolean): AxoPoint2D[] {
+    const rand = mulberry32(Math.round(w * 131 + h * 7919));
+    const m = Math.min(w, h);
+    const amp = m * 0.09;
+    const outerR = () => m * (0.18 + 0.24 * rand());
+    const seamR = m * 0.02;
+    // BL, BR, TR, TL — the arc sweeps of a rounded rectangle, CCW.
+    const corners = [
+        { x: 0, y: 0, r: outerR(), a0: Math.PI, seam: false },
+        { x: w, y: 0, r: straightRight ? seamR : outerR(), a0: 1.5 * Math.PI, seam: straightRight },
+        { x: w, y: h, r: straightRight ? seamR : outerR(), a0: 0, seam: straightRight },
+        { x: 0, y: h, r: outerR(), a0: 0.5 * Math.PI, seam: false },
+    ];
+    const pts: Array<AxoPoint2D & { fixed: boolean }> = [];
+    for (let i = 0; i < 4; i++) {
+        const c = corners[i];
+        const cx = c.x === 0 ? c.r : c.x - c.r;
+        const cy = c.y === 0 ? c.r : c.y - c.r;
+        for (let k = 0; k <= 6; k++) {
+            const a = c.a0 + (k / 6) * (Math.PI / 2);
+            pts.push({ x: cx + c.r * Math.cos(a), y: cy + c.r * Math.sin(a), fixed: c.seam });
+        }
+        const next = corners[(i + 1) % 4];
+        const start = pts[pts.length - 1];
+        const ncx = next.x === 0 ? next.r : next.x - next.r;
+        const ncy = next.y === 0 ? next.r : next.y - next.r;
+        const end = { x: ncx + next.r * Math.cos(next.a0), y: ncy + next.r * Math.sin(next.a0) };
+        const seamEdge = straightRight && i === 1; // BR -> TR is the right edge
+        for (let k = 1; k < 10; k++) {
+            const f = k / 10;
+            pts.push({ x: start.x + (end.x - start.x) * f, y: start.y + (end.y - start.y) * f, fixed: seamEdge });
+        }
+    }
+    const f1 = 3 + Math.floor(rand() * 3);
+    const f2 = 9 + Math.floor(rand() * 5);
+    const p1 = rand() * Math.PI * 2;
+    const p2 = rand() * Math.PI * 2;
+    return pts.map((p, i) => {
+        if (p.fixed) return { x: p.x, y: p.y };
+        const t = (i / pts.length) * Math.PI * 2;
+        const n = 0.5 + 0.35 * Math.sin(t * f1 + p1) + 0.15 * Math.sin(t * f2 + p2);
+        const d = amp * n * (0.7 + 0.3 * rand());
+        const vx = w / 2 - p.x;
+        const vy = h / 2 - p.y;
+        const len = Math.hypot(vx, vy) || 1;
+        return { x: p.x + (vx / len) * d, y: p.y + (vy / len) * d };
+    });
+}
+
+/** Fills (and optionally strokes) a polygon already in canvas pixels, with the same fill rules as drawPolygonFace. */
+function fillCanvasPolygon(
+    ctx: CanvasRenderingContext2D,
+    helpers: AxoDrawHelpers,
+    pts: AxoPoint2D[],
+    fillColor: string,
+    shadeOverlay: string | undefined,
+    stroke: boolean,
+): void {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.closePath();
+    if (!helpers.isWireframe) {
+        ctx.fillStyle = helpers.hexPattern ?? fillColor;
+        ctx.fill();
+        if (shadeOverlay) {
+            ctx.fillStyle = shadeOverlay;
+            ctx.fill();
+        }
+    }
+    if (stroke) ctx.stroke();
+}
+
+/**
+ * One slab extruded from its outline: the walls that face the viewer (-x / +y in
+ * this projection), then the front face (z = 0) on top, then the back silhouette.
+ */
+function drawSlabFromOutline(
+    ctx: CanvasRenderingContext2D,
+    helpers: AxoDrawHelpers,
+    outline: AxoPoint2D[],
+    x0: number,
+    depth: number,
+): void {
+    const P = (p: AxoPoint2D, z: number) => toCanvas(helpers, x0 + p.x, p.y, z);
+    const n = outline.length;
+    const visible: boolean[] = [];
+    for (let i = 0; i < n; i++) {
+        const a = outline[i];
+        const b = outline[(i + 1) % n];
+        const nx = b.y - a.y;      // outward normal of a CCW edge
+        const ny = -(b.x - a.x);
+        visible.push(-nx + ny > 0);
+        if (!visible[i]) continue;
+        const facesUp = ny > -nx;
+        fillCanvasPolygon(ctx, helpers, [P(a, 0), P(b, 0), P(b, depth), P(a, depth)],
+            facesUp ? helpers.colorTop : helpers.colorLeft,
+            facesUp ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.35)', false);
+    }
+    fillCanvasPolygon(ctx, helpers, outline.map(p => P(p, 0)), helpers.colorRight, 'rgba(255, 255, 255, 0.05)', true);
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+        if (!visible[i]) continue;
+        const a = outline[i];
+        const b = outline[(i + 1) % n];
+        const pa = P(a, depth);
+        const pb = P(b, depth);
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        // Connector where the silhouette turns from a visible wall to a hidden one.
+        if (!visible[(i - 1 + n) % n]) { const f = P(a, 0); ctx.moveTo(f.x, f.y); ctx.lineTo(pa.x, pa.y); }
+        if (!visible[(i + 1) % n]) { const f = P(b, 0); ctx.moveTo(f.x, f.y); ctx.lineTo(pb.x, pb.y); }
+    }
+    ctx.stroke();
+}
+
+/**
+ * Wall panel. A single rectangular panel keeps the framed, grooved drawing; a
+ * free-form / irregular-border slab gets a natural-edge outline, and a pair is
+ * two slabs side by side with a seam gap, the right one the mirror image of the
+ * left (bookmatched, as every pair photo shows) and the seam edges straight.
+ * resolveAxoGeometry has already widened W to the whole pair.
+ */
 function drawPanel(
+    ctx: CanvasRenderingContext2D,
+    geo: { W: number; H: number; D: number },
+    helpers: AxoDrawHelpers,
+): void {
+    const text = helpers.shapeText ?? lastClassifiedShapeText;
+    const pair = isPanelPair(text);
+    const free = isFreeFormPanel(text);
+    if (!pair && !free) {
+        drawFramedPanel(ctx, geo, helpers);
+        return;
+    }
+    const { W, H, D } = geo;
+    const slabD = Math.max(2, Math.min(D, 8));
+    const slabW = pair ? W / (2 + PANEL_PAIR_GAP_RATIO) : W;
+    const outline = free
+        ? freeFormOutline(slabW, H, pair)
+        : [{ x: 0, y: 0 }, { x: slabW, y: 0 }, { x: slabW, y: H }, { x: 0, y: H }];
+    if (pair) {
+        // The right slab is farther from the viewer, so it is painted first.
+        const mirrored = outline.map(p => ({ x: slabW - p.x, y: p.y })).reverse();
+        drawSlabFromOutline(ctx, helpers, mirrored, slabW * (1 + PANEL_PAIR_GAP_RATIO), slabD);
+    }
+    drawSlabFromOutline(ctx, helpers, outline, 0, slabD);
+}
+
+function drawFramedPanel(
     ctx: CanvasRenderingContext2D,
     geo: { W: number; H: number; D: number },
     helpers: AxoDrawHelpers,

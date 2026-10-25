@@ -81,7 +81,7 @@ export function describeAxoIcon(item: any, colorOverride?: string): AxoIconReque
     const hexMapString = extractItemHexMapString(item);
     const itemId = item?.id || item?.itemId || item?.row || item?.book_barcode || item?.bookBarcode || '';
     const texIdentity = hexMapString ? `hex:${itemId || hexMapString.slice(0, 32)}` : `c:${color}`;
-    const key = `${g.extra ? 'x:' + g.extra : g.geom}|${g.isMirror ? 'm' : ''}|${dims}|${texIdentity}`;
+    const key = `${g.extra ? 'x:' + g.extra + (g.panelVariant ? ':' + g.panelVariant : '') : g.geom}|${g.isMirror ? 'm' : ''}|${dims}|${texIdentity}`;
 
     return { key, w, h, d, shape, desc, color, hexMapString };
 }

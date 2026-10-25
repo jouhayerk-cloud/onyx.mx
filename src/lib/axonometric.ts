@@ -1,4 +1,4 @@
-import { classifyExtra, drawExtra, extractHolesCount } from './axoExtra';
+import { classifyExtra, drawExtra, extractHolesCount, isFreeFormPanel, isPanelPair, PANEL_PAIR_GAP_RATIO } from './axoExtra';
 import { classifyMirror, drawMirror } from './axoMirrors';
 import type { AxoMirrorClass } from './axoMirrors';
 import type { AxoExtraClass } from './axoExtra';
@@ -676,6 +676,8 @@ export interface ResolvedAxoGeometry {
     extra?: AxoExtraClass | null;
     /** One of the stone slab mirror classes drawn by axoMirrors.ts, else null. */
     mirrorClass?: AxoMirrorClass | null;
+    /** Wall panels only: single/pair and rect/free outline, which change the drawing at equal W/H/D. */
+    panelVariant?: string;
 }
 
 /**
@@ -756,10 +758,16 @@ export function resolveAxoGeometry(
     }
 
     const extra = isDiamondTable ? null : classifyExtra(shapeStr, descStr);
+    let panelVariant: string | undefined;
     if (extra === 'tube') {
         D = W;
     } else if (extra === 'panel') {
         D = Math.min(D, Math.min(W, H) * 0.15, 8);
+        const text = `${shapeStr} ${descStr}`;
+        const pair = isPanelPair(text);
+        // A pair's recorded width is per slab; the mesh and its frame cover both slabs and the seam.
+        if (pair) W = W * (2 + PANEL_PAIR_GAP_RATIO);
+        panelVariant = `${pair ? 'pair' : 'single'}-${isFreeFormPanel(text) ? 'free' : 'rect'}`;
     } else if (extra === 'hull') {
         W = Math.max(W, D * 2.5);
         H = Math.min(H, W * 0.25, 20);
@@ -767,7 +775,7 @@ export function resolveAxoGeometry(
         D = Math.min(D, 20);
     }
 
-    return { W, H, D, geom, isMirror, extra, mirrorClass };
+    return { W, H, D, geom, isMirror, extra, mirrorClass, panelVariant };
 }
 
 export async function generateAxonometricDataUrl(
@@ -985,6 +993,7 @@ export async function generateAxonometricDataUrl(
                 project, scale, cx, cy,
                 colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: strokeGradient,
                 lineWidth: 1.8, holes: extractHolesCount(shapeStr, descStr), isWireframe, hexPattern,
+                shapeText: `${shapeStr} ${descStr}`,
             });
             if (shouldDrawBoundingBox) {
                 draw3DBoundingDimensionFrame(
