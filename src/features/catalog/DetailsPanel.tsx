@@ -367,6 +367,12 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
         </div>
       )}
       {data.shortDescription && <DetailRow label={tr("Short")} value={data.shortDescription} />}
+      {(data.shopify_title || data.shopifyTitle) && (
+        <DetailRow label={tr("Shopify Title")} value={data.shopify_title || data.shopifyTitle} />
+      )}
+      {(data.invoice_title || data.invoiceTitle) && (
+        <DetailRow label={tr("Invoice Title")} value={data.invoice_title || data.invoiceTitle} />
+      )}
       {data.generatedDescription && <DetailRow label={tr("Points")} value={<div className="whitespace-pre-wrap">{data.generatedDescription}</div>} />}
       {data.detailedDescription && <DetailRow label={tr("Details")} value={<div className="prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: data.detailedDescription }}></div>} />}
       {data.spatialMasks && (
@@ -464,6 +470,8 @@ export function DetailsPanel() {
           material: formState.material,
           color: formState.color,
           description: formState.description,
+          shopify_title: formState.shopifyTitle ? formState.shopifyTitle.trim() : null,
+          invoice_title: formState.invoiceTitle ? formState.invoiceTitle.trim() : null,
           weight_kg: formState.weightKg ? Number(formState.weightKg) : null,
           height_cm: formState.heightCm ? Number(formState.heightCm) : null,
           width_cm: formState.widthCm ? Number(formState.widthCm) : null,
@@ -490,6 +498,8 @@ export function DetailsPanel() {
           color: formState.color,
           description: formState.description,
           short_description: formState.itemType,
+          shopify_title: formState.shopifyTitle ? formState.shopifyTitle.trim() : null,
+          invoice_title: formState.invoiceTitle ? formState.invoiceTitle.trim() : null,
           weight_kg: formState.weightKg ? Number(formState.weightKg) : null,
           width_cm: formState.widthCm ? Number(formState.widthCm) : null,
           height_cm: formState.heightCm ? Number(formState.heightCm) : null,

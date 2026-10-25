@@ -1,11 +1,18 @@
+import subprocess
 import json
 import os
 import re
 
-with open('scripts/v826_item_records.json', 'r', encoding='utf-8') as f:
-    records_data = json.load(f)
+# Query directly from Supabase
+query = "SELECT item_id, book_barcode, color, material, shape, short_description, width_cm, height_cm, length_cm, weight_kg, top_type, invoice_title, shopify_title, media_urls FROM inventory WHERE workbook = 'v826' ORDER BY item_id ASC;"
+res = subprocess.run(['supabase', 'db', 'query', '--linked', query], capture_output=True, text=True, encoding='utf-8')
+if res.returncode != 0:
+    print('Error:', res.stderr)
+    exit(1)
 
-rows = records_data['rows']
+data = json.loads(res.stdout)
+rows = data.get('rows', [])
+
 with open('scripts/v826_new_titles.json', 'r', encoding='utf-8') as f:
     titles_data = json.load(f)
 

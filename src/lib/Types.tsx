@@ -85,6 +85,10 @@ export interface InventoryItemData extends Partial<Omit<InventoryRow, 'quantity'
   short_description?: string;
   generated_description?: string;
   detailed_description?: string;
+  shopify_title?: string;
+  invoice_title?: string;
+  shopifyTitle?: string;
+  invoiceTitle?: string;
   item_id?: string;
   is_hidden?: boolean;
   hidden_reason?: string;

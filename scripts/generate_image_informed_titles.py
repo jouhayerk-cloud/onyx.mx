@@ -1,14 +1,45 @@
+import subprocess
 import json
 import os
 import re
 from PIL import Image
 import numpy as np
 
-with open('scripts/v826_item_records.json', 'r', encoding='utf-8') as f:
-    records_data = json.load(f)
+# Query directly from Supabase
+query = "SELECT item_id, book_barcode, color, material, shape, short_description, width_cm, height_cm, length_cm, weight_kg, top_type, invoice_title, shopify_title, media_urls FROM inventory WHERE workbook = 'v826' ORDER BY item_id ASC;"
+res = subprocess.run(['supabase', 'db', 'query', '--linked', query], capture_output=True, text=True, encoding='utf-8')
+if res.returncode != 0:
+    print('Error:', res.stderr)
+    exit(1)
 
-rows = records_data['rows']
-photos_map = records_data['photos']
+data = json.loads(res.stdout)
+rows = data.get('rows', [])
+
+em_dir = r'C:\Jouhayerk\Files\EM Sept 2026 photos'
+em_v826 = r'C:\Jouhayerk\Files\EM Sept 2026 photos\already in v826'
+ge_dir = r'C:\Jouhayerk\Files\ge'
+
+photos_map = {}
+for r in rows:
+    item_id = r['item_id']
+    p1 = os.path.join(em_dir, f'{item_id}.jpg')
+    p2 = os.path.join(em_v826, f'{item_id}.jpg')
+    if os.path.exists(p1):
+        photos_map[item_id] = p1
+    elif os.path.exists(p2):
+        photos_map[item_id] = p2
+    elif item_id.startswith('GE-'):
+        ge_files = [f for f in os.listdir(ge_dir) if f.endswith(('.jpg', '.jpeg', '.png'))]
+        h = str(int(float(r['height_cm']))) if r.get('height_cm') else ''
+        h_m = f"{float(h)/100:.2f}" if h else ''
+        for f in ge_files:
+            if h_m and h_m in f:
+                photos_map[item_id] = os.path.join(ge_dir, f)
+                break
+        if item_id not in photos_map and ge_files:
+            photos_map[item_id] = os.path.join(ge_dir, ge_files[0])
+    elif r.get('media_urls'):
+        photos_map[item_id] = r['media_urls'].split(',')[0].strip()
 
 # Banned checks
 BANNED_PHRASES = [
@@ -16,6 +47,9 @@ BANNED_PHRASES = [
     re.compile(r'ambient\s*pillar', re.I),
     re.compile(r'ambient\s*stone\s*towe', re.I),
     re.compile(r'stone\s*tower', re.I),
+    re.compile(r'handcrafted\s*accent', re.I),
+    re.compile(r'multi-strata', re.I),
+    re.compile(r'cerulean', re.I),
 ]
 SIZE_WORDS = [
     re.compile(r'\b(small|medium|large|mini)\b', re.I),
@@ -49,18 +83,17 @@ def analyze_photo(photo_path):
     except Exception:
         return None
 
+def String_clean(val):
+    if not val:
+        return ''
+    return str(val).strip()
+
 def get_pattern_descriptors(item, photo_stats):
     color = String_clean(item.get('color') or 'Onyx')
-    shape = String_clean(item.get('shape') or '')
-    type_noun = String_clean(item.get('short_description') or '')
-    
-    # Analyze image stats if available
     ratio = photo_stats['banding_ratio'] if photo_stats else 1.0
     contrast = photo_stats['contrast'] if photo_stats else 30.0
     
-    # Specific material/color pattern heuristics
     c_lower = color.lower()
-    
     if 'amber' in c_lower and 'white' in c_lower:
         if ratio > 1.2:
             return ('Banded', 'Honey Amber Cream')
@@ -83,10 +116,10 @@ def get_pattern_descriptors(item, photo_stats):
         return ('Veined', 'Teal Aqua Serpentine')
     elif 'blue' in c_lower:
         if 'cherry' in c_lower:
-            return ('Banded', 'Cerulean Cherry Blue')
+            return ('Banded', 'Cherry Blue')
         if 'argentina' in c_lower:
             return ('Striated', 'Sky Blue Argentina')
-        return ('Striated', 'Deep Cerulean Blue')
+        return ('Striated', 'Deep Blue')
     elif 'cherry pink' in c_lower:
         return ('Banded', 'Rose Cherry Pink')
     elif 'green-gray' in c_lower:
@@ -96,7 +129,7 @@ def get_pattern_descriptors(item, photo_stats):
     elif 'galaxy' in c_lower:
         return ('Nebula Swirled', 'Cosmic Galaxy')
     elif 'rainbow' in c_lower or 'arcoiris' in c_lower:
-        return ('Multi-Strata Banded', 'Rainbow Multi-Color')
+        return ('Banded', 'Rainbow Multi-Color')
     elif 'white-gray' in c_lower:
         return ('Striated', 'Silver White-Gray')
     elif 'white' in c_lower:
@@ -120,10 +153,71 @@ def get_pattern_descriptors(item, photo_stats):
             return ('Striated', f'{color}')
         return ('Veined', f'{color}')
 
-def String_clean(val):
-    if not val:
-        return ''
-    return str(val).strip()
+def is_valid_shopify_title(title):
+    if not (60 <= len(title) <= 70):
+        return False
+    if title.endswith('.'):
+        return False
+    if ARTICLES.search(title):
+        return False
+    for bp in BANNED_PHRASES:
+        if bp.search(title):
+            return False
+    for sw in SIZE_WORDS:
+        if sw.search(title):
+            return False
+    if '[Top: confirm]' in title:
+        return False
+    return True
+
+def fit_shopify_title(pattern, color_desc, base_color, material, shape, noun_options):
+    qualifiers = [
+        "Sculptural Decor",
+        "Natural Stone Decor",
+        "Polished Stone Decor",
+        "Display Piece",
+        "Natural Translucent Decor",
+        "Sculptural Display",
+        "Interior Decor",
+        "Polished Stone",
+        "Stone Decor",
+        "Art Slab",
+        "Decorative Vessel",
+        "Centerpiece",
+        "Stone Vessel",
+        "Home Decor",
+        "Luxury Decor",
+        "Decor",
+    ]
+    
+    for noun in noun_options:
+        bases = [
+            f"{pattern} {color_desc} {material} {shape} {noun}",
+            f"{pattern} {color_desc} {material} {noun}",
+            f"{pattern} {base_color} {material} {shape} {noun}",
+            f"{pattern} {base_color} {material} {noun}",
+            f"{color_desc} {material} {shape} {noun}",
+        ]
+        for base in bases:
+            clean_base = re.sub(r'\s+', ' ', base).strip()
+            if 60 <= len(clean_base) <= 70 and is_valid_shopify_title(clean_base):
+                return clean_base
+            for q in qualifiers:
+                cand = re.sub(r'\s+', ' ', f"{clean_base} {q}").strip()
+                if 60 <= len(cand) <= 70 and is_valid_shopify_title(cand):
+                    return cand
+
+    base = re.sub(r'\s+', ' ', f"{pattern} {base_color} {material} {shape} {noun_options[0]}").strip()
+    for q in qualifiers:
+        cand = f"{base} {q}"
+        if 60 <= len(cand) <= 70 and is_valid_shopify_title(cand):
+            return cand
+        if len(cand) > 70:
+            trimmed = cand[:70].rsplit(' ', 1)[0]
+            if 60 <= len(trimmed) <= 70 and is_valid_shopify_title(trimmed):
+                return trimmed
+
+    return base[:70]
 
 def build_titles(item, photo_stats):
     pattern_word, color_descriptor = get_pattern_descriptors(item, photo_stats)
@@ -131,12 +225,8 @@ def build_titles(item, photo_stats):
     raw_shape = String_clean(item.get('shape') or '')
     color = String_clean(item.get('color') or 'Onyx').replace('Aqua', 'Teal')
     material = String_clean(item.get('material') or 'Onyx')
-    if material.lower() == color.lower():
-        mat_str = 'Onyx'
-    else:
-        mat_str = f'{material}'
+    mat_str = 'Onyx' if material.lower() == color.lower() else material
 
-    # Shape mapping
     shape_norm = raw_shape
     if re.search(r'squared', shape_norm, re.I): shape_norm = 'Square'
     elif re.search(r'rectangular', shape_norm, re.I): shape_norm = 'Rectangular'
@@ -147,7 +237,6 @@ def build_titles(item, photo_stats):
     elif re.search(r'open\s*top', shape_norm, re.I): shape_norm = 'Open Top'
     elif shape_norm in ['Large', 'Medium', 'Small']: shape_norm = ''
 
-    # Dimensions string for invoice
     w = item.get('width_cm')
     h = item.get('height_cm')
     l = item.get('length_cm')
@@ -160,16 +249,11 @@ def build_titles(item, photo_stats):
     elif w and l and h:
         dim_str = f"{w} x {l} x {h} cm"
 
-    # Top flag (never emit [Top: confirm])
     top_val = String_clean(item.get('top_type') or item.get('top') or '').lower()
     top_str = 'Open Top' if top_val == 'open' else 'Closed Top' if top_val == 'closed' else ''
 
-    # Determine product family and names
-    # User rule: "use regular Tower, floor or table lamp"
-    # User rule: "Shopify Title should not to use sizes or use frases or words like Light Column, Ambient Pillar, Ambient Stone Towe, use regular Tower, floor or table lamp"
     if re.search(r'floor\s*lamp', raw_type, re.I):
         noun_invoice = 'Floor Lamp'
-        # Can alternate between Floor Lamp and Tower Lamp
         noun_shopify_options = ['Floor Lamp', 'Tower Lamp', 'Tower']
     elif re.search(r'table\s*lamp', raw_type, re.I):
         noun_invoice = 'Table Lamp'
@@ -199,126 +283,23 @@ def build_titles(item, photo_stats):
         noun_invoice = raw_type or 'Artifact'
         noun_shopify_options = [noun_invoice]
 
-    # --- 1. INVOICE TITLE ---
-    # Must include descriptive words of the onyx patterns and colors. NO [Top: confirm].
     inv_parts = [pattern_word, color, mat_str, shape_norm, noun_invoice]
     inv_title_base = " ".join([p for p in inv_parts if p]).strip()
     inv_meta = [top_str, dim_str]
     inv_meta_str = ", ".join([m for m in inv_meta if m]).strip()
-    if inv_meta_str:
-        invoice_title = f"{inv_title_base}, {inv_meta_str}"
-    else:
-        invoice_title = inv_title_base
-    # Clean up double spaces or commas
+    invoice_title = f"{inv_title_base}, {inv_meta_str}" if inv_meta_str else inv_title_base
     invoice_title = re.sub(r'\s+', ' ', invoice_title).replace(' ,', ',').strip()
 
-    # --- 2. SHOPIFY TITLE (strictly 60 to 70 chars, Title Case, no articles, no sizes, no banned phrases) ---
     shopify_title = fit_shopify_title(pattern_word, color_descriptor, color, mat_str, shape_norm, noun_shopify_options)
-
     return invoice_title, shopify_title
 
-def fit_shopify_title(pattern, color_desc, base_color, material, shape, noun_options):
-    qualifiers = [
-        "Handcrafted Accent",
-        "Sculptural Decor",
-        "Natural Stone Decor",
-        "Artisan Stone Accent",
-        "Polished Stone Decor",
-        "Natural Translucent Decor",
-        "Rare Earth Collection",
-        "Artisan Home Decor",
-        "Sculptural Accent",
-        "Display Piece",
-        "Polished Accent",
-        "Handmade Decor",
-        "Artisan Crafted",
-        "Interior Accent",
-        "Luxury Decor",
-        "Stone Accent",
-        "Home Decor",
-        "Artisan Decor",
-        "Stone Decor",
-        "Art Slab",
-        "Decor",
-    ]
-    
-    # Try combinations of pattern, color_desc, shape, noun, qualifier
-    best_candidate = None
-    
-    for noun in noun_options:
-        # Base templates
-        bases = [
-            f"{pattern} {color_desc} {material} {shape} {noun}",
-            f"{pattern} {color_desc} {material} {noun}",
-            f"{pattern} {base_color} {material} {shape} {noun}",
-            f"{pattern} {base_color} {material} {noun}",
-            f"{color_desc} {material} {shape} {noun}",
-        ]
-        for base in bases:
-            clean_base = re.sub(r'\s+', ' ', base).strip()
-            # If base alone fits
-            if 60 <= len(clean_base) <= 70 and is_valid_shopify_title(clean_base):
-                return clean_base
-            
-            # Combine with qualifiers
-            for q in qualifiers:
-                cand = f"{clean_base} {q}".strip()
-                cand = re.sub(r'\s+', ' ', cand)
-                if 60 <= len(cand) <= 70 and is_valid_shopify_title(cand):
-                    return cand
-
-    # Fallback padding/trimming algorithm
-    base = f"{pattern} {base_color} {material} {shape} {noun_options[0]}".strip()
-    base = re.sub(r'\s+', ' ', base)
-    for q in qualifiers:
-        cand = f"{base} {q}"
-        if 60 <= len(cand) <= 70 and is_valid_shopify_title(cand):
-            return cand
-        if len(cand) > 70:
-            trimmed = cand[:70].rsplit(' ', 1)[0]
-            if 60 <= len(trimmed) <= 70 and is_valid_shopify_title(trimmed):
-                return trimmed
-
-    return base[:70]
-
-def is_valid_shopify_title(title):
-    if not (60 <= len(title) <= 70):
-        return False
-    if title.endswith('.'):
-        return False
-    if ARTICLES.search(title):
-        return False
-    for bp in BANNED_PHRASES:
-        if bp.search(title):
-            return False
-    for sw in SIZE_WORDS:
-        if sw.search(title):
-            return False
-    if '[Top: confirm]' in title:
-        return False
-    return True
-
-print('Script loaded successfully.')
-
-
 results = {}
-invalid_count = 0
-
 for r in rows:
     item_id = r['item_id']
     photo = photos_map.get(item_id)
     stats = analyze_photo(photo)
     inv_title, shop_title = build_titles(r, stats)
-    
     valid = is_valid_shopify_title(shop_title)
-    if not valid:
-        invalid_count += 1
-        print(f"INVALID: {item_id} -> len={len(shop_title)} '{shop_title}'")
-    
-    # Check invoice title for [Top: confirm]
-    if '[Top: confirm]' in inv_title:
-        print(f"ERROR: [Top: confirm] in {item_id} invoice title: '{inv_title}'")
-
     results[item_id] = {
         'invoice_title': inv_title,
         'shopify_title': shop_title,
@@ -326,15 +307,8 @@ for r in rows:
         'length': len(shop_title)
     }
 
-print(f"\nProcessed {len(results)} items. Invalid count: {invalid_count}")
-
-# Print first 15 results
-for item_id in list(results.keys())[:15]:
-    res = results[item_id]
-    print(f"[{item_id}] (len {res['length']})")
-    print(f"  INV: {res['invoice_title']}")
-    print(f"  SHO: {res['shopify_title']}")
-
 with open('scripts/v826_new_titles.json', 'w', encoding='utf-8') as f:
     json.dump(results, f, indent=2)
-print("\nSaved to scripts/v826_new_titles.json")
+
+print(f"Generated {len(results)} titles. Invalid: {sum(1 for r in results.values() if not r['valid'])}")
+print(f"Contains 'Handcrafted Accent': {sum(1 for r in results.values() if 'Handcrafted Accent' in r['shopify_title'])}")

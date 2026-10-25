@@ -1,4 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { exportCatalogPdf } from '../../lib/pdfExport';
+import { ExportWizard } from '../../components/ExportWizard';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { 
     InventorySearchPanel,
@@ -59,7 +61,7 @@ import {
 import { isPackingPrintWizardOpenAtom } from '../../lib/atoms';
 import { 
     Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX,
-    Palette, Shapes, Printer, Nfc, Copy, FileSpreadsheet, Sparkles, Download
+    Palette, Shapes, Printer, Nfc, Copy, FileSpreadsheet, Sparkles, Download, BookOpen
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -442,6 +444,60 @@ export const UniversalToolsBar: React.FC = () => {
         setIsBatchWizardOpen(true);
     };
 
+    const [isCatalogExportOpen, setIsCatalogExportOpen] = useState(false);
+    const [catalogExportProgress, setCatalogExportProgress] = useState(0);
+    const [catalogExportStatus, setCatalogExportStatus] = useState('');
+
+    const handleExportCatalogPdf = () => {
+        const items = getSelectedItems();
+        if (items.length === 0) {
+            toast.error(tr("Please select items to export"));
+            return;
+        }
+        setIsCatalogExportOpen(true);
+    };
+
+    const handleStartCatalogExport = async (cfg: any) => {
+        try {
+            const selectedItems = getSelectedItems();
+            const currentRate = liveEx || fixedEx || 18.0;
+            const itemsToExport = selectedItems.map(item => {
+                const norm = normalizeInventoryData(item.data || item);
+                const rawImages = (norm.mediaUrls || []).filter(Boolean);
+                const main = norm.generatedPngUrl || (rawImages.length > 0 ? rawImages[0] : null);
+                const imgs = [main, ...rawImages.filter((u: string) => u !== main)].filter(Boolean);
+                const codes = calculateCodesAndPrices(item.data || item, currentRate, workbookPrefix || '1');
+                
+                return {
+                    data: norm,
+                    codes: {
+                        bookBarcode: codes.bookBarcode || norm.itemId || '',
+                        bookAqCode: codes.bookAqCode,
+                        bookLandCode: codes.bookLandCode,
+                        bookRetail: codes.bookRetail,
+                        primaryPriceLabel: 'USD RETAIL',
+                        primaryPriceValue: `$${codes.bookRetail} USD`
+                    },
+                    images: imgs,
+                    exportType: 'catalog'
+                };
+            });
+
+            await exportCatalogPdf(itemsToExport as any, {
+                title: cfg.title || "ONYX COLLECTION",
+                method: cfg.method || "grid",
+                exportType: 'catalog'
+            }, (p: number, s: string) => {
+                setCatalogExportProgress(p);
+                setCatalogExportStatus(s);
+            });
+            toast.success(tr("Catalog PDF exported successfully!"));
+        } catch (err: any) {
+            console.error("PDF Export error:", err);
+            toast.error(tr("Failed to export PDF catalog: ") + (err?.message || ''));
+        }
+    };
+
     const renderInvSelection = (className = "") => (
         <div className={`utb-row ${className}`}>
             <button onClick={handleSelectAll} className="utb-control" title={tr("Select All")} aria-label={tr("Select All")}>
@@ -498,6 +554,10 @@ export const UniversalToolsBar: React.FC = () => {
                 <button onClick={() => setExportSelectedXLSX(Date.now())} className="utb-control text-green-500" title={tr("Export XLSX")} aria-label={tr("Export XLSX")}>
                     <FileSpreadsheet size={18} strokeWidth={2} />
                     <span className="utb-label-desktop">{tr("EXPORT")}</span>
+                </button>
+                <button onClick={handleExportCatalogPdf} className="utb-control text-amber-400" title={tr("Export Catalog PDF")} aria-label={tr("Export Catalog PDF")}>
+                    <BookOpen size={18} strokeWidth={2} />
+                    <span className="utb-label-desktop">{tr("CATALOG")}</span>
                 </button>
                 <button onClick={handleOpenAIWizard} className="utb-control text-purple-400" title={tr("AI Batch Process")} aria-label={tr("AI Batch Process")}>
                     <Sparkles size={18} strokeWidth={2} />
@@ -674,6 +734,17 @@ export const UniversalToolsBar: React.FC = () => {
 
             {!islandEnabled && isInventory && isInvFiltersOpen && (
                 renderInvFilters()
+            )}
+
+            {isCatalogExportOpen && (
+                <ExportWizard
+                    isOpen={isCatalogExportOpen}
+                    onClose={() => { setIsCatalogExportOpen(false); setCatalogExportProgress(0); }}
+                    onStart={handleStartCatalogExport}
+                    progress={catalogExportProgress}
+                    status={catalogExportStatus}
+                    moduleName="Catalog"
+                />
             )}
 
         </div>

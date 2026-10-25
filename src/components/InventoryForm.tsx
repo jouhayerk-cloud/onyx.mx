@@ -26,6 +26,8 @@ export type FormState = {
   itemType: string;
   status: string;
   workbook: string;
+  shopifyTitle?: string;
+  invoiceTitle?: string;
 };
 
 interface InventoryFormProps {
@@ -58,6 +60,8 @@ const defaultFormState: FormState = {
   itemType: '',
   status: 'Catalog',
   workbook: 'v326',
+  shopifyTitle: '',
+  invoiceTitle: '',
 };
 
 const FormInput = ({
@@ -195,6 +199,8 @@ export function InventoryForm({
 
     const mappedInitialData: Partial<FormState> = {
       ...initialData,
+      shopifyTitle: initialData?.shopify_title || (initialData as any)?.shopifyTitle || '',
+      invoiceTitle: initialData?.invoice_title || (initialData as any)?.invoiceTitle || '',
       expires: initialData?.expires
         ? new Date(initialData.expires).toISOString().slice(0, 10)
         : new Date().toISOString().slice(0, 10),
@@ -289,6 +295,45 @@ export function InventoryForm({
           value={formState.description}
           onChange={handleInputChange}
         />
+
+        <div className="space-y-3 pt-3 pb-3 border-y border-(--border-color) bg-black/10 px-3 rounded-xl">
+          <div className="flex flex-col gap-1">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold uppercase text-(--text-color-secondary)">
+                {tr("Shopify Title")}
+              </label>
+              <span className={`text-[10px] font-mono font-bold ${
+                (formState.shopifyTitle || '').length >= 60 && (formState.shopifyTitle || '').length <= 70 
+                  ? 'text-emerald-400' 
+                  : (formState.shopifyTitle || '').length === 0 ? 'text-white/30' : 'text-amber-400'
+              }`}>
+                {(formState.shopifyTitle || '').length} / 60-70 chars
+              </span>
+            </div>
+            <input
+              name="shopifyTitle"
+              type="text"
+              value={formState.shopifyTitle || ''}
+              onChange={handleInputChange}
+              placeholder={tr("e.g. Banded Honey Amber Onyx Square Floor Lamp Display Piece")}
+              className="w-full text-xs font-mono px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold uppercase text-(--text-color-secondary)">
+              {tr("Invoice Title")}
+            </label>
+            <input
+              name="invoiceTitle"
+              type="text"
+              value={formState.invoiceTitle || ''}
+              onChange={handleInputChange}
+              placeholder={tr("e.g. Banded Amber Onyx Square Floor Lamp, 29 x 160 cm")}
+              className="w-full text-xs font-mono px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+            />
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <FormInput
             label={t.formWeight}
