@@ -1743,6 +1743,38 @@ export function getItemImages(item: any): string[] {
  * Renders an item in Vertical Portrait mode: Full width title on top, larger hero image,
  * smaller secondary grid, color bubbles, larger axo, and NO retail price.
  */
+/**
+ * Builds the canonical deterministic title including text quantity, attributes, and metric dimensions,
+ * matching exactly across Grid, Portrait, and Compact catalog pages.
+ */
+export function buildDeterministicTitle(norm: any, itemDataObj: any): string {
+    const qtyWord = formatQuantityText(norm.quantity || 1);
+    const rawShape = (norm.shape || (itemDataObj ? itemDataObj.Shape : '') || '').trim();
+    const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
+
+    let shape = rawShape;
+    if (!shape && norm.shortDescription && cleanType !== cleanSingleTypeName(norm.shortDescription)) {
+        shape = norm.shortDescription.trim();
+    }
+
+    const color = (norm.color || (itemDataObj ? itemDataObj.Color : '') || '').trim();
+    const material = (norm.material || (itemDataObj ? itemDataObj.Material : '') || 'Mexican Onyx').trim();
+
+    const attrParts = [shape, cleanType, color, material].filter(Boolean);
+    if (attrParts.length === 0) {
+        attrParts.push('SCULPTURAL FORM');
+    }
+    const attrStr = Array.from(new Set(attrParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
+
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+
+    let mainTitleStr = `${qtyWord} • ${attrStr}`;
+    if (dimsMetric) {
+        mainTitleStr += ` • ${dimsMetric}`;
+    }
+    return mainTitleStr;
+}
+
 async function drawCatalogHubPagePortrait(
     doc: any, 
     item: CatalogArtifact, 
@@ -2595,8 +2627,9 @@ export function endImageSession() {
 function catalogWantedImages(
     results: CatalogArtifact[],
     exportType: string,
-    method: 'grid' | 'single',
+    method: 'grid' | 'single' | 'compact',
 ): string[] {
+    if (method === 'compact') return [];
     return results.flatMap(r => {
         const list = getItemImages(r);
         if (exportType === 'catalog') {
@@ -3189,31 +3222,27 @@ async function drawCatalogCompactPage(
     const pageItems = items.slice(startIndex, startIndex + itemsPerPage);
     const totalItems = items.length;
 
-    // Header strip
+    // Header strip without subtitle
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(catalogTitle || 'ONYX COLLECTION CATALOGUE', M, 15.5);
-
-    doc.setFontSize(6.8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text('COMPACT SPECIFICATION CATALOGUE • SPECIFICATIONS & CODES', M, 19.5);
+    doc.text(catalogTitle || 'ONYX COLLECTION CATALOGUE', M, 16.0);
 
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
-    doc.text(`DATE: ${dateStr}`, PW - M, 15.5, { align: 'right' });
-    const endIdx = Math.min(startIndex + itemsPerPage, totalItems);
-    doc.text(`ITEMS ${startIndex + 1}–${endIdx} OF ${totalItems}`, PW - M, 19.5, { align: 'right' });
+    doc.setFontSize(7.0);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`DATE: ${dateStr}`, PW - M, 16.0, { align: 'right' });
 
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.2);
-    doc.line(M, 22.0, PW - M, 22.0);
+    doc.line(M, 19.5, PW - M, 19.5);
 
-    const startY = 25.0;
+    const startY = 22.5;
     const bottomLimit = PH - 18.0;
     const availH = bottomLimit - startY;
     const cardGap = 3.5;
-    const cardH = (availH - (itemsPerPage - 1) * cardGap) / itemsPerPage; // ~60.5mm
+    const cardH = (availH - (itemsPerPage - 1) * cardGap) / itemsPerPage; // ~61.0mm
     const cardW = PW - 2 * M; // 186mm
 
     for (let i = 0; i < pageItems.length; i++) {
@@ -3221,7 +3250,8 @@ async function drawCatalogCompactPage(
         const cardY = startY + i * (cardH + cardGap);
         const itemDataObj = item.data || item;
         const norm = normalizeInventoryData(itemDataObj);
-        const qty = parseInt(norm.quantity || itemDataObj.quantity || itemDataObj.Quantity || '1', 10) || 1;
+        const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, 18.5, '1') || {};
+        const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
         // Card Container Plate
         doc.setFillColor(254, 255, 256);
@@ -3230,13 +3260,13 @@ async function drawCatalogCompactPage(
         doc.setLineWidth(0.2);
         doc.roundedRect(M, cardY, cardW, cardH, 1.5, 1.5, 'S');
 
-        // SECTION 1: Cutout PNG(s) (Width 44mm)
-        const cutoutSecW = 44.0;
+        // SECTION 1: Cutout PNG(s) (Smaller: width 34mm, max height 38mm)
+        const cutoutSecW = 34.0;
         const cutoutSecX = M + 2.0;
         const cutoutUrls = getItemCutoutPngs(item);
         const loadedCutouts: { dataUrl: string; w: number; h: number }[] = [];
-        const maxEachCutW = cutoutUrls.length > 1 ? 20.0 : 40.0;
-        const maxCutH = cardH - 6.0;
+        const maxEachCutW = cutoutUrls.length > 1 ? 15.5 : 30.0;
+        const maxCutH = Math.min(38.0, cardH - 8.0);
 
         for (const u of cutoutUrls) {
             try {
@@ -3266,73 +3296,50 @@ async function drawCatalogCompactPage(
         }
 
         // Divider 1
-        const div1X = M + cutoutSecW + 4.0;
+        const div1X = M + cutoutSecW + 3.0;
         doc.setDrawColor(241, 245, 249);
         doc.setLineWidth(0.2);
         doc.line(div1X, cardY + 4, div1X, cardY + cardH - 4);
 
-        // SECTION 2: Axo Element (No sizes bar, strictly 1:1 aspect-contained)
+        // SECTION 2: Axo Element (Smaller: width 36mm, strictly 1:1, NO sizes bar)
         const axoSecX = div1X + 2.0;
-        const axoSecW = 46.0;
+        const axoSecW = 36.0;
         const axoSecH = cardH - 4.0;
         try {
             const axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
             if (axoDataUrl) {
-                drawAxoContain(doc, axoDataUrl, axoSecX, cardY + 2.0, axoSecW, axoSecH, 0.92);
+                drawAxoContain(doc, axoDataUrl, axoSecX, cardY + 2.0, axoSecW, axoSecH, 0.88);
             }
         } catch (e) {}
 
         // Divider 2
         const div2X = axoSecX + axoSecW + 2.0;
         doc.setDrawColor(241, 245, 249);
-        doc.setLineWidth(0.2);
         doc.line(div2X, cardY + 4, div2X, cardY + cardH - 4);
 
-        // SECTION 3: Item Specifications (No descriptions, no shopify titles, no classifications)
+        // SECTION 3: Exact Deterministic Title & Details (Same as Grid catalog)
         const infoX = div2X + 3.5;
-        const infoW = 46.0;
+        const div3X = PW - M - 48.0;
+        const infoW = div3X - infoX - 2.5;
 
-        // Title (Item clean title only)
-        const rawTitle = norm.title || norm.shortDescription || itemDataObj.title || norm.description || 'STONE PIECE';
-        const cleanTitle = normalizeBrandTerms(rawTitle).toUpperCase();
-        doc.setFontSize(7.5);
+        // Exact Deterministic Title matching Grid catalog:
+        const mainTitleStr = buildDeterministicTitle(norm, itemDataObj);
+        doc.setFontSize(7.2);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
-        const splitTitle = doc.splitTextToSize(cleanTitle, infoW);
+        const splitTitle = doc.splitTextToSize(mainTitleStr, infoW);
         const titleLines = splitTitle.slice(0, 3);
-        doc.text(titleLines, infoX, cardY + 6.0);
-        let currInfoY = cardY + 6.0 + (titleLines.length - 1) * 3.2 + 3.8;
+        doc.text(titleLines, infoX, cardY + 5.8);
+        let currInfoY = cardY + 5.8 + (titleLines.length - 1) * 3.2 + 3.8;
 
-        // Category & Type & Material
-        const rawShape = (norm.shape || itemDataObj.shape || itemDataObj.Shape || '').trim();
-        const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape) || 'STONE PIECE';
-        const cleanShape = normalizeSummaryShape(rawShape || norm.shortDescription || '');
-        const colorName = (norm.color || itemDataObj.color || itemDataObj.Color || norm.generatedColor || '').trim();
-        const matName = (norm.material || itemDataObj.material || itemDataObj.Material || 'Onyx').trim();
-        
-        let colorMat = 'NATURAL STONE';
-        if (colorName && matName) {
-            colorMat = colorName.toUpperCase().includes(matName.toUpperCase()) 
-                ? colorName.toUpperCase() 
-                : `${colorName.toUpperCase()} • ${matName.toUpperCase()}`;
-        } else if (colorName) {
-            colorMat = colorName.toUpperCase();
-        } else if (matName) {
-            colorMat = matName.toUpperCase();
+        // Color Glass Indicators
+        const extractedColors = getItemExtractedColors(norm, itemDataObj);
+        if (extractedColors.length > 0) {
+            drawColorBubbles(doc, extractedColors.slice(0, 3), infoX, currInfoY, infoW);
+            currInfoY += 5.2;
         }
 
-        doc.setFontSize(6.0);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(100, 116, 139);
-        doc.text(`${cleanType}  •  ${cleanShape}`.toUpperCase(), infoX, currInfoY);
-        currInfoY += 3.2;
-
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(71, 85, 105);
-        doc.text(colorMat, infoX, currInfoY);
-        currInfoY += 3.6;
-
-        // Dimensions (Metric & Imperial)
+        // Dimensions (Imperial & Metric)
         const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in');
         const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in');
         const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in');
@@ -3342,14 +3349,12 @@ async function drawCatalogCompactPage(
         doc.setFontSize(6.2);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(30, 41, 59);
-        if (metricDims) {
+        if (metricDims && impDims) {
+            doc.text(`${metricDims}  (${impDims})`, infoX, currInfoY);
+            currInfoY += 3.4;
+        } else if (metricDims) {
             doc.text(metricDims, infoX, currInfoY);
-            currInfoY += 3.0;
-        }
-        if (impDims) {
-            doc.setTextColor(100, 116, 139);
-            doc.text(`(${impDims})`, infoX, currInfoY);
-            currInfoY += 3.2;
+            currInfoY += 3.4;
         }
 
         // Weight
@@ -3360,85 +3365,58 @@ async function drawCatalogCompactPage(
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
             doc.text(`${Math.round(wtKg)} kg  •  ${Math.round(wtLbs)} lbs`, infoX, currInfoY);
-            currInfoY += 3.2;
-        }
-
-        // Quantity badge (if qty > 1)
-        if (qty > 1) {
-            doc.setFontSize(6.2);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(15, 23, 42);
-            doc.text(`QUANTITY: ${qty} PIECES`, infoX, cardY + cardH - 3.8);
+            currInfoY += 3.4;
         }
 
         // Divider 3
-        const div3X = infoX + infoW + 2.0;
         doc.setDrawColor(241, 245, 249);
         doc.setLineWidth(0.2);
         doc.line(div3X, cardY + 4, div3X, cardY + cardH - 4);
 
-        // SECTION 4: Barcode, Codes, QR Code & Retail Price
-        const codesX = div3X + 3.0;
-        const codesW = cardW - (codesX - M) - 2.5;
+        // SECTION 4: EXACT Barcode, QR Code & TagID-retailAcqCode as in Grid Catalog
+        const blockX = div3X + 2.5;
+        const barW = 34.0;
+        const barH = 7.5;
+        const qrSize = barH; // Same height as barcode
+        const codeGap = 2.0;
+        const totalCodesW = barW + codeGap + qrSize; // 43.5mm
+        const barX = blockX;
+        const qrX = blockX + barW + codeGap;
 
-        // Barcode
-        const codes = item.codes || calculateCodesAndPrices(itemDataObj, 18.5, '1');
-        const barVal = codes.bookBarcode || norm.itemId || '';
+        // Barcode (Code128)
         let barDataUrl: string | null = null;
         try {
-            barDataUrl = generateBarcodeDataUrl(barVal);
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 30, lineColor: '#141414' });
+            barDataUrl = canvas.toDataURL('image/png');
         } catch (e) {}
 
-        const barW = Math.min(codesW, 33.0);
-        const barH = 7.0;
         if (barDataUrl) {
-            doc.addImage(barDataUrl, 'PNG', codesX, cardY + 4.0, barW, barH);
+            doc.addImage(barDataUrl, 'PNG', barX, cardY + 5.0, barW, barH);
         }
 
-        // Tag ID / Item Code
-        const tagY = cardY + 4.0 + barH + 3.0;
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(15, 23, 42);
-        const tagLabel = norm.itemId ? `TAG: ${norm.itemId}` : (codes.bookBarcode ? `TAG: ${codes.bookBarcode}` : '');
-        doc.text(tagLabel, codesX, tagY);
-
-        // Acquisition & Land codes
-        doc.setFontSize(5.6);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 116, 139);
-        const codeLines = [
-            codes.bookAqCode ? `AQ: ${codes.bookAqCode}` : '',
-            codes.bookLandCode ? `LAND: ${codes.bookLandCode}` : ''
-        ].filter(Boolean).join('   ');
-        doc.text(codeLines, codesX, tagY + 3.5);
-
-        // QR Code & Retail Price
-        const qrSize = 10.0;
-        const qrY = tagY + 6.0;
-        let qrDataUrl: string | null = null;
+        // QR Code with vendor center dot
+        let qrDataUrl = '';
         try {
-            const publicUrl = `https://onyx.mx/tag/${norm.itemId || codes.bookBarcode || ''}`;
+            const publicUrl = `https://onyx.mx/tag/${encodeURIComponent(barcode)}`;
             qrDataUrl = await QRCode.toDataURL(publicUrl, { width: 140, margin: 0 });
         } catch (e) {}
 
         if (qrDataUrl) {
-            doc.addImage(qrDataUrl, 'PNG', codesX, qrY, qrSize, qrSize);
+            doc.addImage(qrDataUrl, 'PNG', qrX, cardY + 5.0, qrSize, qrSize);
+            const tagVColor = getVendorColor(barcode);
+            const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
+            const qrCenterX = qrX + qrSize / 2;
+            const qrCenterY = cardY + 5.0 + qrSize / 2;
+            doc.setFillColor(255, 255, 255);
+            doc.circle(qrCenterX, qrCenterY, 1.3, 'F');
+            doc.setFillColor(tagHexColor);
+            doc.circle(qrCenterX, qrCenterY, 0.9, 'F');
         }
 
-        // Retail Price block next to QR
-        const priceX = codesX + qrSize + 2.5;
-        doc.setFontSize(5.8);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(100, 116, 139);
-        doc.text('USD RETAIL', priceX, qrY + 3.2);
-
-        const retailVal = codes.bookRetail || norm.retailPrice || norm.retail || '';
-        const retailStr = retailVal ? (String(retailVal).startsWith('$') ? String(retailVal) : `$${retailVal} USD`) : '—';
-        doc.setFontSize(8.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(15, 23, 42);
-        doc.text(retailStr, priceX, qrY + 8.5);
+        // TagID + Retail + Acquisition Code line: EXACT same width as [ Barcode ] [ QR ], no raw retail label
+        const tagTextY = cardY + 5.0 + barH + 3.2;
+        drawFormattedTagCode(doc, codes, blockX, tagTextY, 8.5, false, itemDataObj, totalCodesW);
     }
 }
 
