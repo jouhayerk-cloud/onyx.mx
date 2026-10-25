@@ -53,7 +53,6 @@ import { getRoute } from './routing';
 import type { ProviderId } from './providers/types';
 import { AiCancelledError, AiKeyMissingError, AiTimeoutError, aiErrorMessage, type AiErrorCode } from './errors';
 import { toPipelineItem, type PipelineItem } from './item';
-import { blendHexMapStrings } from '../axonometric';
 
 /** Progress ticks reach the store at most this often. */
 const PROGRESS_MIN_GAP_MS = 100;
@@ -1016,9 +1015,13 @@ export function summarizeItem(item: RunItem): RunItem {
     const photoHexMaps = item.ops
         .filter(o => o.kind === 'photo' && o.op.result?.hexString)
         .map(o => o.op.result!.hexString!);
-    const blendedHex = photoHexMaps.length > 1 ? blendHexMapStrings(photoHexMaps) : (h.hexString || photoHexMaps[0]);
-    const hexMap: RunHexMap | undefined = blendedHex
-        ? { hexString: blendedHex, bitmapUrl: h.bitmapUrl, cols: h.cols || 20, rows: h.rows || 20 }
+    // Hero's own grid only -- blending averaged different angles' silhouettes
+    // cell-by-cell, which has no spatial meaning and corrupted the result
+    // (Chief review, 25 Oct 2026). cols/rows/bitmapUrl below already come
+    // from the hero, so this keeps the hexString paired with them.
+    const heroHex = h.hexString || photoHexMaps[0];
+    const hexMap: RunHexMap | undefined = heroHex
+        ? { hexString: heroHex, bitmapUrl: h.bitmapUrl, cols: h.cols || 20, rows: h.rows || 20 }
         : undefined;
     const axoIconUrl = item.ops.map(o => o.op.result?.axoIconUrl).filter(Boolean).pop() as string | undefined;
 

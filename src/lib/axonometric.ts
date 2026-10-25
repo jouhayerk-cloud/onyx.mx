@@ -317,24 +317,31 @@ export function blendHexMapStrings(mapStrings: string[]): string | undefined {
  * Extracts a hex map or texture string from an item across all known database fields:
  * spatial_points (with cols/rows), processed_media_urls._pixel_map_hex, item.hexMap,
  * item.hex_map, vein_svg_urls, or vein colors/palette.
- * When an item contains multiple images/states (e.g. lights on & off), extracts and
- * averages both hex maps into a blended master matrix.
+ *
+ * Returns the FIRST valid source found, in the priority order below -- it does not blend
+ * multiple photo angles or states together. Cell-wise averaging of different angles has no
+ * spatial meaning (different angles = different silhouettes and positions), and the
+ * per-angle processed_media_urls._pixel_map_hex_N strings carry no stored dimensions, so
+ * blending them with the correctly-dimensioned spatial_points grid silently reshaped and
+ * corrupted it for every non-square/portrait item (Chief review, 25 Oct 2026 -- this used
+ * to blend everything via blendHexMapStrings; reverted to first-found precedence, matching
+ * the comment on persist.ts's hero-grid write).
  */
 export function extractItemHexMapString(item: any): string | undefined {
     if (!item) return undefined;
     const it = item.data ? { ...item.data, ...item } : item;
-    const candidateHexMaps: string[] = [];
 
     // 1. Direct fields
-    if (it.hexMap && typeof it.hexMap === 'string') candidateHexMaps.push(it.hexMap);
-    if (it.hex_map && typeof it.hex_map === 'string') candidateHexMaps.push(it.hex_map);
-    if (Array.isArray(it.hexMap) && it.hexMap.length > 0) candidateHexMaps.push(JSON.stringify(it.hexMap));
-    if (Array.isArray(it.hex_map) && it.hex_map.length > 0) candidateHexMaps.push(JSON.stringify(it.hex_map));
-    if (it.hexString && typeof it.hexString === 'string') candidateHexMaps.push(it.hexString);
-    if (it.hex_string && typeof it.hex_string === 'string') candidateHexMaps.push(it.hex_string);
-    if (it.hexMap && typeof it.hexMap === 'object' && it.hexMap.hexString) candidateHexMaps.push(String(it.hexMap.hexString));
+    if (it.hexMap && typeof it.hexMap === 'string') return it.hexMap;
+    if (it.hex_map && typeof it.hex_map === 'string') return it.hex_map;
+    if (Array.isArray(it.hexMap) && it.hexMap.length > 0) return JSON.stringify(it.hexMap);
+    if (Array.isArray(it.hex_map) && it.hex_map.length > 0) return JSON.stringify(it.hex_map);
+    if (it.hexString && typeof it.hexString === 'string') return it.hexString;
+    if (it.hex_string && typeof it.hex_string === 'string') return it.hex_string;
+    if (it.hexMap && typeof it.hexMap === 'object' && it.hexMap.hexString) return String(it.hexMap.hexString);
 
-    // 2. spatial_points (may be an array of multiple photos: angle 0, angle 1, lights on, lights off)
+    // 2. spatial_points -- first entry with real cols/rows wins (an array can hold multiple
+    // angles/states, but only the first is used, not blended).
     const sp = it.spatial_points || it.spatialPoints;
     if (sp) {
         let parsedSp = sp;
@@ -347,7 +354,7 @@ export function extractItemHexMapString(item: any): string | undefined {
                     const hex = p.hex_string || p.hexString || p.hex_map || (Array.isArray(p.hexList) ? JSON.stringify(p.hexList) : undefined);
                     if (hex) {
                         const dims = (p.cols && p.rows) ? `${p.cols}x${p.rows}` : p.dimensions;
-                        candidateHexMaps.push(dims ? `${dims}:${hex}` : hex);
+                        return dims ? `${dims}:${hex}` : hex;
                     }
                 }
             }
@@ -355,12 +362,14 @@ export function extractItemHexMapString(item: any): string | undefined {
             if (parsedSp.hex_string || parsedSp.hexString || parsedSp.hex_map) {
                 const hex = parsedSp.hex_string || parsedSp.hexString || parsedSp.hex_map;
                 const dims = (parsedSp.cols && parsedSp.rows) ? `${parsedSp.cols}x${parsedSp.rows}` : parsedSp.dimensions;
-                candidateHexMaps.push(dims ? `${dims}:${hex}` : hex);
+                return dims ? `${dims}:${hex}` : hex;
             }
         }
     }
 
-    // 3. processed_media_urls (may contain _pixel_map_hex, _pixel_map_hex_0, _pixel_map_hex_1...)
+    // 3. processed_media_urls._pixel_map_hex -- the master/hero key only. The _pixel_map_hex_0,
+    // _pixel_map_hex_1... keys are raw per-angle duplicates of the same spatial_points data
+    // with no stored dimensions; they are kept in the DB as a record, not read here.
     const pmu = it.processed_media_urls || it.processedMediaUrls;
     let parsedPmu: any = pmu;
     if (pmu) {
@@ -368,37 +377,27 @@ export function extractItemHexMapString(item: any): string | undefined {
             try { parsedPmu = JSON.parse(parsedPmu); } catch {}
         }
         if (parsedPmu && typeof parsedPmu === 'object') {
-            for (const key of Object.keys(parsedPmu)) {
-                if (key.includes('pixel_map') || key.startsWith('_pixel_map_hex')) {
-                    const val = parsedPmu[key];
-                    if (typeof val === 'string' && val.length > 0) {
-                        const dims = parsedPmu.dimensions;
-                        candidateHexMaps.push(dims ? `${dims}:${val}` : val);
-                    }
-                }
+            const val = parsedPmu._pixel_map_hex || parsedPmu.pixel_map_hex;
+            if (typeof val === 'string' && val.length > 0) {
+                const dims = parsedPmu.dimensions;
+                return dims ? `${dims}:${val}` : val;
             }
         }
     }
 
-    // 4. media or photos array
+    // 4. media or photos array -- first hit wins
     const media = it.media || it.photos;
     if (Array.isArray(media)) {
         for (const m of media) {
             if (m && typeof m === 'object') {
                 const mHex = m.hex_string || m.hexString || m.hex_map || m.pixel_map_hex;
-                if (mHex && typeof mHex === 'string') {
-                    candidateHexMaps.push(mHex);
-                } else if (m.spatial_points) {
+                if (mHex && typeof mHex === 'string') return mHex;
+                if (m.spatial_points) {
                     const subHex = extractItemHexMapString(m);
-                    if (subHex) candidateHexMaps.push(subHex);
+                    if (subHex) return subHex;
                 }
             }
         }
-    }
-
-    // If multiple states (lights on/off, angles), blend them into an average
-    if (candidateHexMaps.length > 0) {
-        return blendHexMapStrings(candidateHexMaps);
     }
 
     // 5. vein_svg_urls / vein colors fallback
@@ -817,12 +816,12 @@ export async function generateAxonometricDataUrl(
             (typeof boundingBoxOptions === 'object' && boundingBoxOptions.showBoundingBox === false)
                 ? false
                 : true;
-        const bboxOpts: AxoBoundingBoxOptions = {
-            ...(typeof boundingBoxOptions === 'object' ? boundingBoxOptions : {}),
-            hairlineColor: (typeof boundingBoxOptions === 'object' && boundingBoxOptions.hairlineColor)
-                ? boundingBoxOptions.hairlineColor
-                : (palette.primary || '#00aeef'),
-        };
+        // Don't force a hairlineColor here -- an unset one lets drawBoundingBox's
+        // own isLight/dark fallback apply (dark slate in light theme, dimmer back
+        // edge for depth); forcing palette.primary unconditionally overrode that
+        // theme-awareness (Chief review, 25 Oct 2026).
+        const bboxOpts: AxoBoundingBoxOptions | undefined =
+            typeof boundingBoxOptions === 'object' ? boundingBoxOptions : undefined;
 
         let hexPattern: CanvasPattern | null = null;
         let parsedHexList: string[] = [];

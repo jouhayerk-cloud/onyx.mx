@@ -34,7 +34,6 @@ import { getDatabase } from '../database';
 import type { Database, Json } from '../database.types';
 import { getCleanImageUrl, getProductCategoryAndType } from '../utils';
 import { uploadCleanedImage } from '../bgReplace';
-import { blendHexMapStrings } from '../axonometric';
 import { saveSegmentation, type SegmentationResult } from '../segmentationStore';
 import type { CatalogProcess } from '../catalogHubProcesses';
 import type { BatchOp } from '../catalogHubPipeline';
@@ -353,8 +352,12 @@ export async function buildAiPatch(
 
         if (pixelMaps.length > 0) {
             columns.spatial_points = pixelMaps as unknown as Json;
-            const blended = blendHexMapStrings(photoHexMaps);
-            map._pixel_map_hex = blended || pixelMaps[0].hex_string;
+            // The hero (first) photo's own grid, not a cell-wise blend across angles --
+            // different angles have different silhouettes and positions, so averaging
+            // them cell-by-cell has no spatial meaning and corrupted icon textures for
+            // non-square items (Chief review, 25 Oct 2026). spatial_points above still
+            // keeps every angle's own correctly-dimensioned grid, just not averaged.
+            map._pixel_map_hex = pixelMaps[0].hex_string;
             if (pixelMaps[0].bitmap_url) map._bitmap_url = pixelMaps[0].bitmap_url;
         }
     }

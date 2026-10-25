@@ -219,9 +219,9 @@ export const ShapeFigure: React.FC<ShapeFigureProps> = ({
                         key={index}
                         className={`sf-${part.kind}`}
                         style={
-                            part.kind === 'plate' || part.kind === 'face'
+                            active && (part.kind === 'plate' || part.kind === 'face')
                                 ? { stroke: color }
-                                : (part.kind === 'mark' || part.kind === 'bright')
+                                : active && (part.kind === 'mark' || part.kind === 'bright')
                                   ? { fill: color, stroke: color, filter: part.kind === 'bright' ? `drop-shadow(0 0 6px ${color})` : undefined }
                                   : undefined
                         }
