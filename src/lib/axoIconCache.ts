@@ -57,7 +57,20 @@ export function describeAxoIcon(item: any, colorOverride?: string): AxoIconReque
     const d = parseFloat(item?.length_cm || item?.lengthCm) || parseFloat(item?.depth_cm || item?.depthCm) || w;
 
     const shape = item?.shape || '';
-    const desc = item?.shortDescription || item?.description || '';
+    const desc = [
+        item?.shortDescription,
+        item?.short_description,
+        item?.description,
+        item?.title,
+        item?.name,
+        item?.material,
+        item?.material_en,
+        item?.material_es,
+        item?.color,
+        item?.color_en,
+        item?.color_es,
+        item?.finish,
+    ].filter(Boolean).join(' ');
     const color = colorOverride || resolveItemColor(item || {});
 
     const g = resolveAxoGeometry(w, h, d, shape, desc);

@@ -34,6 +34,7 @@ import { getDatabase } from '../database';
 import type { Database, Json } from '../database.types';
 import { getCleanImageUrl, getProductCategoryAndType } from '../utils';
 import { uploadCleanedImage } from '../bgReplace';
+import { blendHexMapStrings } from '../axonometric';
 import { saveSegmentation, type SegmentationResult } from '../segmentationStore';
 import type { CatalogProcess } from '../catalogHubProcesses';
 import type { BatchOp } from '../catalogHubPipeline';
@@ -64,6 +65,10 @@ export interface AiPhotoResult {
     width?: number;
     height?: number;
     segmentation?: SegmentationResult;
+    hexString?: string;
+    bitmapUrl?: string;
+    cols?: number;
+    rows?: number;
 }
 
 /** One item's AI outputs, whichever screen produced them. */
@@ -173,6 +178,10 @@ export function aiResultFromOps(ops: readonly BatchOp[]): AiItemResult {
                     width: r.segmentation?.imageWidth,
                     height: r.segmentation?.imageHeight,
                     segmentation: r.segmentation,
+                    hexString: r.hexString,
+                    bitmapUrl: r.bitmapUrl,
+                    cols: r.cols,
+                    rows: r.rows,
                 };
             }),
         succeeded: anyStatus ? succeeded : undefined,
@@ -236,7 +245,7 @@ export async function buildAiPatch(
         marketing_desc: !!result.html,
         dominant_colors: !!result.colors?.length,
         product_type: !!result.genType,
-        hex_map: !!result.hexMap?.hexString,
+        hex_map: !!result.hexMap?.hexString || result.photos.some(p => !!p.hexString),
         img_clean: result.photos.some(p => !!p.cleanedUrl),
         image_segmentation: result.photos.some(p => !!(p.cutoutUrl || p.matteUrl || p.outlineSvg || p.segmentation)),
         video_proc: !!result.videoMap,
@@ -306,19 +315,48 @@ export async function buildAiPatch(
     }
 
     // ── hex map ──
-    if (want('hex_map') && result.hexMap) {
-        const { hexString, cols, rows } = result.hexMap;
-        const bitmapUrl = await ensureUploaded(result.hexMap.bitmapUrl, `bitmap_${rowId}.webp`, 'Bitmap');
-        columns.spatial_points = [{
-            type: 'pixel_map',
-            dimensions: `${cols}x${rows}`,
-            cols,
-            rows,
-            hex_string: hexString,
-            bitmap_url: bitmapUrl || null,
-        }] as unknown as Json;
-        map._pixel_map_hex = hexString;
-        if (bitmapUrl) map._bitmap_url = bitmapUrl;
+    if (want('hex_map')) {
+        const photoHexMaps: string[] = [];
+        const pixelMaps: any[] = [];
+
+        for (let idx = 0; idx < result.photos.length; idx++) {
+            const photo = result.photos[idx];
+            if (photo.hexString) {
+                photoHexMaps.push(photo.hexString);
+                const bUrl = photo.bitmapUrl ? await ensureUploaded(photo.bitmapUrl, `bitmap_${rowId}_a${photo.index ?? idx}.webp`, `Bitmap ${idx + 1}`) : null;
+                pixelMaps.push({
+                    type: 'pixel_map',
+                    index: photo.index ?? idx,
+                    dimensions: `${photo.cols || 20}x${photo.rows || 20}`,
+                    cols: photo.cols || 20,
+                    rows: photo.rows || 20,
+                    hex_string: photo.hexString,
+                    bitmap_url: bUrl || null,
+                });
+                map[`_pixel_map_hex_${photo.index ?? idx}`] = photo.hexString;
+            }
+        }
+
+        if (pixelMaps.length === 0 && result.hexMap) {
+            const { hexString, cols, rows } = result.hexMap;
+            const bitmapUrl = await ensureUploaded(result.hexMap.bitmapUrl, `bitmap_${rowId}.webp`, 'Bitmap');
+            pixelMaps.push({
+                type: 'pixel_map',
+                dimensions: `${cols}x${rows}`,
+                cols,
+                rows,
+                hex_string: hexString,
+                bitmap_url: bitmapUrl || null,
+            });
+            photoHexMaps.push(hexString);
+        }
+
+        if (pixelMaps.length > 0) {
+            columns.spatial_points = pixelMaps as unknown as Json;
+            const blended = blendHexMapStrings(photoHexMaps);
+            map._pixel_map_hex = blended || pixelMaps[0].hex_string;
+            if (pixelMaps[0].bitmap_url) map._bitmap_url = pixelMaps[0].bitmap_url;
+        }
     }
 
     // ── cleaned photos ──

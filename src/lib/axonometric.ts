@@ -69,15 +69,17 @@ export function normalizeHexMapTexture(
         return `#${clean}`;
     };
 
-    // If small palette (e.g. from vein colors/SVG or canonical palette), generate natural mineral banding grid
+    // If small palette (from vein colors or canonical stone palette fallback), generate natural mineral strata
     if (hexList.length < 16) {
         const palette = hexList.map(s => toOpaqueHex(s));
         const veined: string[] = [];
         for (let r = 0; r < targetRows; r++) {
             for (let c = 0; c < targetCols; c++) {
-                const param = ((r * 0.75 + c * 1.25) % targetRows) / targetRows;
-                const idx = Math.floor(param * palette.length);
-                veined.push(palette[idx % palette.length]);
+                const u = c / targetCols;
+                const v = r / targetRows;
+                const wave = Math.sin(v * Math.PI * 3.5 + Math.sin(u * Math.PI * 2.0) * 0.8) * 0.5 + 0.5;
+                const idx = Math.min(palette.length - 1, Math.floor(wave * palette.length));
+                veined.push(palette[idx]);
             }
         }
         return veined;
@@ -212,24 +214,127 @@ export function normalizeHexMapTexture(
 }
 
 /**
+ * Blends multiple hex map strings (e.g. from lights-on and lights-off states, or multiple photo angles)
+ * into a single unified average hex map matrix.
+ */
+export function blendHexMapStrings(mapStrings: string[]): string | undefined {
+    if (!mapStrings || mapStrings.length === 0) return undefined;
+    const valid = mapStrings.filter(s => s && typeof s === 'string' && s.trim().length > 0);
+    if (valid.length === 0) return undefined;
+    if (valid.length === 1) return valid[0];
+
+    interface ParsedMap {
+        cols: number;
+        rows: number;
+        list: string[];
+    }
+
+    const parsedMaps: ParsedMap[] = [];
+    for (const str of valid) {
+        let cols = 20, rows = 20;
+        let hexStr = str;
+        const dimMatch = str.match(/^(\d+)x(\d+):([\s\S]+)$/);
+        if (dimMatch) {
+            cols = parseInt(dimMatch[1], 10);
+            rows = parseInt(dimMatch[2], 10);
+            hexStr = dimMatch[3];
+        }
+        const list = parseHexMapString(hexStr);
+        if (list.length > 0) {
+            if (!dimMatch) {
+                if (list.length === 180) { cols = 9; rows = 20; }
+                else if (list.length === 300) { cols = 20; rows = 15; }
+                else if (list.length === 160) { cols = 20; rows = 8; }
+                else {
+                    cols = Math.max(1, Math.round(Math.sqrt(list.length)));
+                    rows = Math.ceil(list.length / cols);
+                }
+            }
+            parsedMaps.push({ cols, rows, list });
+        }
+    }
+
+    if (parsedMaps.length === 0) return undefined;
+    if (parsedMaps.length === 1) {
+        return `${parsedMaps[0].cols}x${parsedMaps[0].rows}:${parsedMaps[0].list.join(',')}`;
+    }
+
+    // Common target dimensions from first valid map
+    const targetCols = parsedMaps[0].cols;
+    const targetRows = parsedMaps[0].rows;
+    const totalCells = targetCols * targetRows;
+
+    const resampledMaps: string[][] = parsedMaps.map(m => {
+        if (m.cols === targetCols && m.rows === targetRows && m.list.length === totalCells) {
+            return m.list;
+        }
+        return normalizeHexMapTexture(m.list, m.cols, m.rows, targetCols, targetRows);
+    });
+
+    const parseRgb = (hex: string): { r: number; g: number; b: number } | null => {
+        let s = (hex || '').trim().replace(/^#/, '');
+        if (s.length === 3) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
+        if (s.length >= 6) {
+            const num = parseInt(s.slice(0, 6), 16);
+            if (!isNaN(num)) return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+        }
+        return null;
+    };
+    const isStone = (rgb: { r: number; g: number; b: number } | null) => {
+        if (!rgb) return false;
+        return !(rgb.r >= 248 && rgb.g >= 248 && rgb.b >= 248);
+    };
+
+    const blendedList: string[] = [];
+    for (let i = 0; i < totalCells; i++) {
+        let sumR = 0, sumG = 0, sumB = 0, count = 0;
+
+        for (const m of resampledMaps) {
+            const hex = m[i] || '';
+            const rgb = parseRgb(hex);
+            if (isStone(rgb)) {
+                sumR += rgb!.r;
+                sumG += rgb!.g;
+                sumB += rgb!.b;
+                count++;
+            }
+        }
+
+        if (count > 0) {
+            const r = Math.round(sumR / count).toString(16).padStart(2, '0');
+            const g = Math.round(sumG / count).toString(16).padStart(2, '0');
+            const b = Math.round(sumB / count).toString(16).padStart(2, '0');
+            blendedList.push(`#${r}${g}${b}`.toUpperCase());
+        } else {
+            blendedList.push('#FFFFFF');
+        }
+    }
+
+    return `${targetCols}x${targetRows}:${blendedList.join(',')}`;
+}
+
+/**
  * Extracts a hex map or texture string from an item across all known database fields:
  * spatial_points (with cols/rows), processed_media_urls._pixel_map_hex, item.hexMap,
  * item.hex_map, vein_svg_urls, or vein colors/palette.
+ * When an item contains multiple images/states (e.g. lights on & off), extracts and
+ * averages both hex maps into a blended master matrix.
  */
 export function extractItemHexMapString(item: any): string | undefined {
     if (!item) return undefined;
     const it = item.data ? { ...item.data, ...item } : item;
+    const candidateHexMaps: string[] = [];
 
     // 1. Direct fields
-    if (it.hexMap && typeof it.hexMap === 'string') return it.hexMap;
-    if (it.hex_map && typeof it.hex_map === 'string') return it.hex_map;
-    if (Array.isArray(it.hexMap) && it.hexMap.length > 0) return JSON.stringify(it.hexMap);
-    if (Array.isArray(it.hex_map) && it.hex_map.length > 0) return JSON.stringify(it.hex_map);
-    if (it.hexString && typeof it.hexString === 'string') return it.hexString;
-    if (it.hex_string && typeof it.hex_string === 'string') return it.hex_string;
-    if (it.hexMap && typeof it.hexMap === 'object' && it.hexMap.hexString) return String(it.hexMap.hexString);
+    if (it.hexMap && typeof it.hexMap === 'string') candidateHexMaps.push(it.hexMap);
+    if (it.hex_map && typeof it.hex_map === 'string') candidateHexMaps.push(it.hex_map);
+    if (Array.isArray(it.hexMap) && it.hexMap.length > 0) candidateHexMaps.push(JSON.stringify(it.hexMap));
+    if (Array.isArray(it.hex_map) && it.hex_map.length > 0) candidateHexMaps.push(JSON.stringify(it.hex_map));
+    if (it.hexString && typeof it.hexString === 'string') candidateHexMaps.push(it.hexString);
+    if (it.hex_string && typeof it.hex_string === 'string') candidateHexMaps.push(it.hex_string);
+    if (it.hexMap && typeof it.hexMap === 'object' && it.hexMap.hexString) candidateHexMaps.push(String(it.hexMap.hexString));
 
-    // 2. spatial_points (primary source of pixel_map from photo segmentation/hex map)
+    // 2. spatial_points (may be an array of multiple photos: angle 0, angle 1, lights on, lights off)
     const sp = it.spatial_points || it.spatialPoints;
     if (sp) {
         let parsedSp = sp;
@@ -237,30 +342,25 @@ export function extractItemHexMapString(item: any): string | undefined {
             try { parsedSp = JSON.parse(parsedSp); } catch {}
         }
         if (Array.isArray(parsedSp)) {
-            const pm = parsedSp.find((p: any) => p && (p.type === 'pixel_map' || p.hex_string || p.hexString || p.hex_map));
-            if (pm) {
-                const hex = pm.hex_string || pm.hexString || pm.hex_map || (Array.isArray(pm.hexList) ? JSON.stringify(pm.hexList) : undefined);
-                if (hex) {
-                    if (pm.cols && pm.rows) {
-                        return `${pm.cols}x${pm.rows}:${hex}`;
+            for (const p of parsedSp) {
+                if (p && (p.type === 'pixel_map' || p.hex_string || p.hexString || p.hex_map)) {
+                    const hex = p.hex_string || p.hexString || p.hex_map || (Array.isArray(p.hexList) ? JSON.stringify(p.hexList) : undefined);
+                    if (hex) {
+                        const dims = (p.cols && p.rows) ? `${p.cols}x${p.rows}` : p.dimensions;
+                        candidateHexMaps.push(dims ? `${dims}:${hex}` : hex);
                     }
-                    if (pm.dimensions) {
-                        return `${pm.dimensions}:${hex}`;
-                    }
-                    return hex;
                 }
             }
         } else if (parsedSp && typeof parsedSp === 'object') {
-            if (parsedSp.hex_string || parsedSp.hexString) {
-                const hex = parsedSp.hex_string || parsedSp.hexString;
-                if (parsedSp.cols && parsedSp.rows) return `${parsedSp.cols}x${parsedSp.rows}:${hex}`;
-                if (parsedSp.dimensions) return `${parsedSp.dimensions}:${hex}`;
-                return hex;
+            if (parsedSp.hex_string || parsedSp.hexString || parsedSp.hex_map) {
+                const hex = parsedSp.hex_string || parsedSp.hexString || parsedSp.hex_map;
+                const dims = (parsedSp.cols && parsedSp.rows) ? `${parsedSp.cols}x${parsedSp.rows}` : parsedSp.dimensions;
+                candidateHexMaps.push(dims ? `${dims}:${hex}` : hex);
             }
         }
     }
 
-    // 3. processed_media_urls._pixel_map_hex
+    // 3. processed_media_urls (may contain _pixel_map_hex, _pixel_map_hex_0, _pixel_map_hex_1...)
     const pmu = it.processed_media_urls || it.processedMediaUrls;
     let parsedPmu: any = pmu;
     if (pmu) {
@@ -268,15 +368,40 @@ export function extractItemHexMapString(item: any): string | undefined {
             try { parsedPmu = JSON.parse(parsedPmu); } catch {}
         }
         if (parsedPmu && typeof parsedPmu === 'object') {
-            const hex = parsedPmu._pixel_map_hex || parsedPmu.pixel_map_hex;
-            if (hex) {
-                if (parsedPmu.dimensions) return `${parsedPmu.dimensions}:${hex}`;
-                return String(hex);
+            for (const key of Object.keys(parsedPmu)) {
+                if (key.includes('pixel_map') || key.startsWith('_pixel_map_hex')) {
+                    const val = parsedPmu[key];
+                    if (typeof val === 'string' && val.length > 0) {
+                        const dims = parsedPmu.dimensions;
+                        candidateHexMaps.push(dims ? `${dims}:${val}` : val);
+                    }
+                }
             }
         }
     }
 
-    // 4. vein_svg_urls / vein colors
+    // 4. media or photos array
+    const media = it.media || it.photos;
+    if (Array.isArray(media)) {
+        for (const m of media) {
+            if (m && typeof m === 'object') {
+                const mHex = m.hex_string || m.hexString || m.hex_map || m.pixel_map_hex;
+                if (mHex && typeof mHex === 'string') {
+                    candidateHexMaps.push(mHex);
+                } else if (m.spatial_points) {
+                    const subHex = extractItemHexMapString(m);
+                    if (subHex) candidateHexMaps.push(subHex);
+                }
+            }
+        }
+    }
+
+    // If multiple states (lights on/off, angles), blend them into an average
+    if (candidateHexMaps.length > 0) {
+        return blendHexMapStrings(candidateHexMaps);
+    }
+
+    // 5. vein_svg_urls / vein colors fallback
     const vUrls = it.vein_svg_urls || it.veinSvgUrls || (parsedPmu && typeof parsedPmu === 'object' ? parsedPmu.vein_svg_urls : undefined);
     if (vUrls) {
         let parsedV = vUrls;
@@ -301,7 +426,7 @@ export function extractItemHexMapString(item: any): string | undefined {
         }
     }
 
-    // 5. Direct vein_colors or vein_palette
+    // 6. Direct vein_colors or vein_palette fallback
     const vc = it.vein_colors || it.veinColors || it.vein_palette || (parsedPmu && typeof parsedPmu === 'object' ? (parsedPmu.vein_colors || parsedPmu.vein_palette) : undefined);
     if (vc) {
         if (typeof vc === 'string') return vc;
@@ -692,8 +817,12 @@ export async function generateAxonometricDataUrl(
             (typeof boundingBoxOptions === 'object' && boundingBoxOptions.showBoundingBox === false)
                 ? false
                 : true;
-        const bboxOpts: AxoBoundingBoxOptions | undefined =
-            typeof boundingBoxOptions === 'object' ? boundingBoxOptions : undefined;
+        const bboxOpts: AxoBoundingBoxOptions = {
+            ...(typeof boundingBoxOptions === 'object' ? boundingBoxOptions : {}),
+            hairlineColor: (typeof boundingBoxOptions === 'object' && boundingBoxOptions.hairlineColor)
+                ? boundingBoxOptions.hairlineColor
+                : (palette.primary || '#00aeef'),
+        };
 
         let hexPattern: CanvasPattern | null = null;
         let parsedHexList: string[] = [];

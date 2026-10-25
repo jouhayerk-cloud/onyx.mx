@@ -26,13 +26,13 @@
 /* Material-Aware Color Shading with color-mix */
 .sf-plate {
   fill: color-mix(in srgb, var(--sf-c) 14%, var(--sf-plate-base, #101216));
-  stroke: color-mix(in srgb, var(--sf-c) 75%, #ffffff);
+  stroke: var(--sf-c);
   stroke-width: var(--sf-stroke);
 }
 
 .sf-face {
   fill: color-mix(in srgb, var(--sf-c) 26%, var(--sf-plate-base, #101216));
-  stroke: color-mix(in srgb, var(--sf-c) 75%, #ffffff);
+  stroke: var(--sf-c);
   stroke-width: var(--sf-stroke);
 }
 
@@ -44,7 +44,7 @@
 
 .sf-crease {
   fill: none !important;
-  stroke: color-mix(in srgb, var(--sf-c) 46%, var(--sf-plate-base, #101216));
+  stroke: color-mix(in srgb, var(--sf-c) 65%, var(--sf-plate-base, #101216));
   stroke-width: var(--sf-stroke);
 }
 
@@ -55,7 +55,7 @@
 
 .sf-bright {
   fill: color-mix(in srgb, var(--sf-c) 40%, #ffffff);
-  stroke: #ffffff;
+  stroke: var(--sf-c);
   stroke-width: var(--sf-stroke);
   filter: drop-shadow(0 0 6px var(--sf-c));
 }
@@ -63,25 +63,25 @@
 /* Hover State */
 .sf-figure:hover .sf-plate,
 .sf-figure.is-hovered .sf-plate {
-  stroke: color-mix(in srgb, var(--sf-c) 90%, #ffffff);
+  stroke: var(--sf-c);
   filter: drop-shadow(0 -3px 8px color-mix(in srgb, var(--sf-c) 35%, transparent));
 }
 
 .sf-figure:hover .sf-crease,
 .sf-figure.is-hovered .sf-crease {
-  stroke: color-mix(in srgb, var(--sf-c) 65%, var(--sf-plate-base, #101216));
+  stroke: color-mix(in srgb, var(--sf-c) 80%, var(--sf-plate-base, #101216));
 }
 
 /* Active State */
 .sf-figure.is-active .sf-plate {
-  stroke: #ffffff !important;
+  stroke: var(--sf-c) !important;
   stroke-width: calc(var(--sf-stroke) * 1.8) !important;
   fill: color-mix(in srgb, var(--sf-c) 22%, var(--sf-plate-base, #101216));
   filter: drop-shadow(0 -4px 10px color-mix(in srgb, var(--sf-c) 55%, transparent));
 }
 
 .sf-figure.is-active .sf-crease {
-  stroke: color-mix(in srgb, var(--sf-c) 75%, var(--sf-plate-base, #101216));
+  stroke: color-mix(in srgb, var(--sf-c) 85%, var(--sf-plate-base, #101216));
 }
 
 /* Aqua / Light Theme Overrides */
@@ -91,12 +91,12 @@ html.theme-aqua .sf-figure {
 
 html.theme-aqua .sf-plate {
   fill: color-mix(in srgb, var(--sf-c) 15%, #f8f4ec);
-  stroke: color-mix(in srgb, var(--sf-c) 80%, #071d24);
+  stroke: var(--sf-c);
 }
 
 html.theme-aqua .sf-face {
   fill: color-mix(in srgb, var(--sf-c) 28%, #f8f4ec);
-  stroke: color-mix(in srgb, var(--sf-c) 80%, #071d24);
+  stroke: var(--sf-c);
 }
 
 html.theme-aqua .sf-slot {
@@ -105,11 +105,11 @@ html.theme-aqua .sf-slot {
 }
 
 html.theme-aqua .sf-crease {
-  stroke: color-mix(in srgb, var(--sf-c) 55%, #718a94);
+  stroke: color-mix(in srgb, var(--sf-c) 70%, #718a94);
 }
 
 html.theme-aqua .sf-figure.is-active .sf-plate {
-  stroke: #071d24 !important;
+  stroke: var(--sf-c) !important;
   fill: color-mix(in srgb, var(--sf-c) 25%, #f8f4ec);
 }
 
