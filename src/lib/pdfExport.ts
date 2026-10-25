@@ -1747,7 +1747,7 @@ export function getItemImages(item: any): string[] {
  * Builds the canonical deterministic title including text quantity, attributes, and metric dimensions,
  * matching exactly across Grid, Portrait, and Compact catalog pages.
  */
-export function buildDeterministicTitle(norm: any, itemDataObj: any): string {
+export function buildDeterministicTitle(norm: any, itemDataObj: any, preferImperial: boolean = false): string {
     const qtyWord = formatQuantityText(norm.quantity || 1);
     const rawShape = (norm.shape || (itemDataObj ? itemDataObj.Shape : '') || '').trim();
     const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
@@ -1765,6 +1765,18 @@ export function buildDeterministicTitle(norm: any, itemDataObj: any): string {
         attrParts.push('SCULPTURAL FORM');
     }
     const attrStr = Array.from(new Set(attrParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
+
+    if (preferImperial) {
+        const dImp = cmToImperial(norm.lengthCm || norm.length_cm) || (norm.lengthInches ? `${norm.lengthInches}"` : '');
+        const wImp = cmToImperial(norm.widthCm || norm.width_cm) || (norm.widthInches ? `${norm.widthInches}"` : '');
+        const hImp = cmToImperial(norm.heightCm || norm.height_cm) || (norm.heightInches ? `${norm.heightInches}"` : '');
+        const dimsImperial = [dImp, wImp, hImp].filter(Boolean).join(' × ').toUpperCase();
+        let mainTitleStr = `${qtyWord} • ${attrStr}`;
+        if (dimsImperial) {
+            mainTitleStr += ` • ${dimsImperial}`;
+        }
+        return mainTitleStr;
+    }
 
     const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
 
@@ -3224,14 +3236,14 @@ function drawCompactColorBubbles(
 ): number {
     if (!colors || colors.length === 0) return 0;
     let curX = startX;
-    const bubbleR = 1.25;
+    const bubbleR = 1.7; // Larger bubble (diameter 3.4mm)
     const bubbleDiameter = bubbleR * 2;
-    doc.setFontSize(6.0);
+    doc.setFontSize(7.2); // Larger subtitle size
     doc.setFont('helvetica', 'bold');
 
     for (const c of colors) {
         const textW = doc.getTextWidth(c.name);
-        const itemW = bubbleDiameter + 1.2 + textW + 3.0;
+        const itemW = bubbleDiameter + 1.4 + textW + 3.5;
         if (curX + itemW - startX > maxW) break;
 
         const circleCenterX = curX + bubbleR;
@@ -3241,11 +3253,11 @@ function drawCompactColorBubbles(
         doc.circle(circleCenterX, circleCenterY, bubbleR, 'F');
 
         doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.15);
+        doc.setLineWidth(0.18);
         doc.circle(circleCenterX, circleCenterY, bubbleR, 'S');
 
         doc.setTextColor(51, 65, 85);
-        doc.text(c.name, circleCenterX + bubbleR + 1.2, startY + 0.85);
+        doc.text(c.name, circleCenterX + bubbleR + 1.4, startY + 1.0);
 
         curX += itemW;
     }
@@ -3264,11 +3276,11 @@ async function drawCatalogCompactPage(
 ) {
     const pageItems = items.slice(startIndex, startIndex + itemsPerPage);
 
-    // Clean frameless high-density layout: starts directly at top margin M without headers or titles
-    const startY = M + 1.0;
-    const bottomLimit = PH - 16.0; // Clear of footer
+    // Clean frameless high-density layout: 9 items per page, reduced margins since footer is removed
+    const startY = 9.0;
+    const bottomLimit = PH - 6.0; // Clear bottom edge (no footer on compact item pages)
     const availH = bottomLimit - startY;
-    const rowH = availH / itemsPerPage; // ~33.5mm for 8 items
+    const rowH = availH / itemsPerPage; // ~31.3mm for 9 items
 
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
@@ -3279,12 +3291,12 @@ async function drawCatalogCompactPage(
         const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
         // 1. GRAPHICS BLOCK (Left): Cutout PNG(s) + Axo (Frameless, tight spacing)
-        const cutoutSecW = 25.0;
+        const cutoutSecW = 24.0;
         const cutoutSecX = M;
         const cutoutUrls = getItemCutoutPngs(item);
         const loadedCutouts: { dataUrl: string; w: number; h: number }[] = [];
-        const maxEachCutW = cutoutUrls.length > 1 ? 12.0 : 25.0;
-        const maxCutH = Math.min(26.5, rowH - 4.0);
+        const maxEachCutW = cutoutUrls.length > 1 ? 11.5 : 24.0;
+        const maxCutH = Math.min(25.5, rowH - 3.5);
 
         for (const u of cutoutUrls) {
             try {
@@ -3313,10 +3325,10 @@ async function drawCatalogCompactPage(
             currCutX += c.w + 1.0;
         }
 
-        // Axo Element (Strictly 1:1, centered in 27mm slot)
-        const axoSecX = cutoutSecX + cutoutSecW + 2.0;
-        const axoSecW = 27.0;
-        const axoSecH = Math.min(27.0, rowH - 3.0);
+        // Axo Element (Strictly 1:1, centered in 25mm slot)
+        const axoSecX = cutoutSecX + cutoutSecW + 1.8;
+        const axoSecW = 25.0;
+        const axoSecH = Math.min(25.0, rowH - 3.0);
         const axoSecY = rowY + (rowH - axoSecH) / 2;
         try {
             const axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
@@ -3325,16 +3337,16 @@ async function drawCatalogCompactPage(
             }
         } catch (e) {}
 
-        // 2. CODES BLOCK (Far Right): Barcode (Code128) + QR with vendor dot + TagID-retailAcqCode
-        const totalCodesW = 34.5;
+        // 2. CODES BLOCK (Far Right): Barcode + QR + TagID + MADE IN MEXICO subtitle
+        const totalCodesW = 34.0;
         const blockX = PW - M - totalCodesW;
-        const barW = 27.0;
-        const barH = 5.8;
-        const qrSize = barH; // 5.8mm
-        const codeGap = 1.7;
+        const barW = 26.5;
+        const barH = 5.4;
+        const qrSize = barH; // 5.4mm
+        const codeGap = 1.6;
         const barX = blockX;
         const qrX = blockX + barW + codeGap;
-        const codesY = rowY + 5.5;
+        const codesY = rowY + 4.8;
 
         // Barcode (Code128)
         let barDataUrl: string | null = null;
@@ -3362,65 +3374,55 @@ async function drawCatalogCompactPage(
             const qrCenterX = qrX + qrSize / 2;
             const qrCenterY = codesY + qrSize / 2;
             doc.setFillColor(255, 255, 255);
-            doc.circle(qrCenterX, qrCenterY, 1.0, 'F');
+            doc.circle(qrCenterX, qrCenterY, 0.95, 'F');
             doc.setFillColor(tagHexColor);
-            doc.circle(qrCenterX, qrCenterY, 0.65, 'F');
+            doc.circle(qrCenterX, qrCenterY, 0.6, 'F');
         }
 
         // TagID + Retail + Acquisition Code line: EXACT same width as [ Barcode ] [ QR ], no raw retail label
-        const tagTextY = codesY + barH + 2.7;
-        drawFormattedTagCode(doc, codes, blockX, tagTextY, 7.5, false, itemDataObj, totalCodesW);
+        const tagTextY = codesY + barH + 2.5;
+        drawFormattedTagCode(doc, codes, blockX, tagTextY, 7.2, false, itemDataObj, totalCodesW);
 
-        // 3. MIDDLE INFORMATION BLOCK: High Readability, Few Font Sizes
-        const infoX = axoSecX + axoSecW + 3.5;
-        const infoW = blockX - infoX - 3.0; // ~92mm width
+        // MADE IN MEXICO small subtitle below tag text
+        const mimY = tagTextY + 2.6;
+        doc.setFontSize(5.2);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(148, 163, 184);
+        const mimText = 'MADE IN MEXICO';
+        const mimW = doc.getTextWidth(mimText);
+        const mimX = blockX + (totalCodesW - mimW) / 2;
+        doc.text(mimText, mimX, mimY);
 
-        // Font Size 1 (Title): 8.5pt Bold Slate-900 (High contrast & readability)
-        const mainTitleStr = buildDeterministicTitle(norm, itemDataObj);
+        // 3. MIDDLE INFORMATION BLOCK: High Readability, Deterministic Imperial Title & Weight
+        const infoX = axoSecX + axoSecW + 3.2;
+        const infoW = blockX - infoX - 3.0; // ~95mm width
+
+        // Font Size 1 (Title): 8.5pt Bold Slate-900 with Imperial Dimensions (NO cm)
+        const mainTitleStr = buildDeterministicTitle(norm, itemDataObj, true);
         doc.setFontSize(8.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
         const splitTitle = doc.splitTextToSize(mainTitleStr, infoW);
         const titleLines = splitTitle.slice(0, 2);
-        const titleY = rowY + 5.5;
+        const titleY = rowY + 5.0;
         doc.text(titleLines, infoX, titleY);
         let currInfoY = titleY + (titleLines.length - 1) * 3.3 + 3.4;
 
-        // Color Glass Indicators (Font 6.0pt bold)
+        // Color Glass Indicators (Font 7.2pt bold subtitle size, larger 3.4mm bubbles)
         const extractedColors = getItemExtractedColors(norm, itemDataObj);
         if (extractedColors.length > 0) {
             drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, currInfoY, infoW);
-            currInfoY += 3.8;
+            currInfoY += 4.0;
         }
 
-        // Font Size 2 (Details: Dimensions & Weight): Unified 6.4pt Normal Slate-700
-        const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in');
-        const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in');
-        const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in');
-        const metricDims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join(' × ') + (norm.lengthCm || norm.widthCm || norm.heightCm ? ' cm' : '');
-        const impDims = [dImp, wImp, hImp].filter(Boolean).join(' × ');
-
+        // Font Size 2 (Weight): Unified 6.4pt Normal Slate-700 (NO duplicate cm dimensions)
         const wtKg = parseFloat(norm.weightKg || '0');
-        const wtStr = wtKg > 0 ? `${Math.round(wtKg)} kg • ${Math.round(wtKg * 2.20462)} lbs` : '';
-
-        let dimsLine = '';
-        if (metricDims && impDims) {
-            dimsLine = `${metricDims}  (${impDims})`;
-        } else if (metricDims) {
-            dimsLine = metricDims;
-        }
-        if (dimsLine && wtStr) {
-            dimsLine += `   •   ${wtStr}`;
-        } else if (wtStr) {
-            dimsLine = wtStr;
-        }
-
-        if (dimsLine) {
+        if (wtKg > 0) {
+            const wtLbs = Math.round(wtKg * 2.20462);
             doc.setFontSize(6.4);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(51, 65, 85);
-            const splitDims = doc.splitTextToSize(dimsLine, infoW);
-            doc.text(splitDims.slice(0, 2), infoX, currInfoY);
+            doc.setTextColor(71, 85, 105);
+            doc.text(`${Math.round(wtKg)} kg  •  ${wtLbs} lbs`, infoX, currInfoY);
         }
 
         // Frameless Subtle Hairline Row Divider (Except after last item)
@@ -3447,6 +3449,35 @@ export async function exportCatalogPdf(
     }, async () => {
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
+
+    // Canonical ordering by vendor / type / shape for compact and grid catalogs
+    if (config.method === 'compact' || config.method === 'grid') {
+        results = [...results].sort((a, b) => {
+            const dA = a.data || a;
+            const dB = b.data || b;
+            const normA = normalizeInventoryData(dA);
+            const normB = normalizeInventoryData(dB);
+            const codesA: any = a.codes || {};
+            const codesB: any = b.codes || {};
+
+            const tagA = (codesA.bookBarcodeDisplay || codesA.bookBarcode || codesA.bookTagId || normA.itemId || normA.vendorId || '').trim().toUpperCase();
+            const tagB = (codesB.bookBarcodeDisplay || codesB.bookBarcode || codesB.bookTagId || normB.itemId || normB.vendorId || '').trim().toUpperCase();
+
+            const vA = (normA.vendorId || (tagA.includes('-') ? tagA.split('-')[0] : tagA.match(/^[A-Z]+/)?.[0]) || '').toUpperCase();
+            const vB = (normB.vendorId || (tagB.includes('-') ? tagB.split('-')[0] : tagB.match(/^[A-Z]+/)?.[0]) || '').toUpperCase();
+            if (vA !== vB) return vA.localeCompare(vB);
+
+            const typeA = (resolveCleanProductType(normA, dA, normA.shape) || 'STONE PIECE').toUpperCase();
+            const typeB = (resolveCleanProductType(normB, dB, normB.shape) || 'STONE PIECE').toUpperCase();
+            if (typeA !== typeB) return typeA.localeCompare(typeB);
+
+            const shapeA = (normA.shape || normA.shortDescription || '').toUpperCase();
+            const shapeB = (normB.shape || normB.shortDescription || '').toUpperCase();
+            if (shapeA !== shapeB) return shapeA.localeCompare(shapeB);
+
+            return tagA.localeCompare(tagB);
+        });
+    }
 
     // Warm every image before drawing. A grid page only ever draws the first
     // three of an item, so do not pay to decode the rest.
@@ -3488,7 +3519,7 @@ export async function exportCatalogPdf(
     }
     // Grid method triggers horizontal landscape layout with multiple images per page
     // Single method triggers vertical portrait layout with one single image per sheet
-    // Compact method triggers vertical portrait layout with 8 compact items per page
+    // Compact method triggers vertical portrait layout with 9 compact items per page
     const isCompactMode = config.method === 'compact';
     const isLandscape = config.method === 'grid';
     const PW = isLandscape ? 297 : 210;
@@ -3507,7 +3538,61 @@ export async function exportCatalogPdf(
     const footer = (doc: any) => { 
         globalPageNum++; 
         
-        if (config.method === 'single' || config.method === 'compact' || exportType === 'catalog') {
+        if (config.method === 'compact') {
+            // Only first summary page gets full footer with logos and page count; all item pages have NO footer
+            if (globalPageNum === 1) {
+                doc.setDrawColor(228, 228, 231);
+                doc.setLineWidth(0.2);
+                doc.line(M, PH - 16, PW - M, PH - 16);
+
+                const onyxTargetH = 9.5;
+                const onyxW = onyxLogo ? Math.min(26, onyxTargetH * onyxLogo.aspectRatio) : 12;
+                const onyxH = onyxLogo ? onyxW / onyxLogo.aspectRatio : onyxTargetH;
+                const yOnyx = PH - 8.5 - onyxH / 2;
+
+                if (onyxLogo) {
+                    doc.addImage(onyxLogo.dataUrl, 'PNG', M, yOnyx, onyxW, onyxH);
+                }
+
+                const mimTextX = M + (onyxLogo ? onyxW + 4 : 0);
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(30, 41, 59);
+                const mimText = 'MADE IN MEXICO';
+                doc.text(mimText, mimTextX, PH - 8.5);
+
+                doc.setFontSize(7.5);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(148, 163, 184);
+                doc.text(`·   Page ${globalPageNum}`, mimTextX + doc.getTextWidth(mimText) + 3, PH - 8.5);
+
+                const aodTargetH = 7.5;
+                const aodW = artOfDecorLogo ? Math.min(28, aodTargetH * artOfDecorLogo.aspectRatio) : 24;
+                const aodH = artOfDecorLogo ? aodW / artOfDecorLogo.aspectRatio : aodTargetH;
+
+                const regTargetH = 9.0;
+                const regW = rareEarthLogo ? Math.min(38, regTargetH * rareEarthLogo.aspectRatio) : 34;
+                const regH = rareEarthLogo ? regW / rareEarthLogo.aspectRatio : regTargetH;
+
+                let currX = PW - M;
+
+                if (artOfDecorLogo) {
+                    currX -= aodW;
+                    const aodY = PH - 8.5 - aodH / 2;
+                    doc.addImage(artOfDecorLogo.dataUrl, 'PNG', currX, aodY, aodW, aodH);
+                    currX -= 6;
+                }
+
+                if (rareEarthLogo) {
+                    currX -= regW;
+                    const regY = PH - 8.5 - regH / 2;
+                    doc.addImage(rareEarthLogo.dataUrl, 'PNG', currX, regY, regW, regH);
+                }
+            }
+            return;
+        }
+
+        if (config.method === 'single' || exportType === 'catalog') {
             // Hairline divider across footer
             doc.setDrawColor(228, 228, 231);
             doc.setLineWidth(0.2);
@@ -3580,8 +3665,8 @@ export async function exportCatalogPdf(
 
         // 2. Item Catalog Pages
         if (isCompactMode) {
-            // COMPACT CATALOG: High-density 8 items per sheet, clean frameless design
-            const itemsPerPage = 8;
+            // COMPACT CATALOG: High-density 9 items per sheet, clean frameless design
+            const itemsPerPage = 9;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
                 addPage();
@@ -3619,7 +3704,7 @@ export async function exportCatalogPdf(
     } else {
         // --- COMPACT OR ONE IMAGE PER PAGE ---
         if (isCompactMode) {
-            const itemsPerPage = 8;
+            const itemsPerPage = 9;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
                 addPage();

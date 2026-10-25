@@ -230,7 +230,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                                     ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
                                                     : 'bg-white/[0.03] border-white/[0.06] text-white/30'
                                             }`}>
-                                                8 Per Page
+                                                9 Per Page
                                             </span>
                                         </div>
                                         <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'compact' ? 'text-white' : 'text-white/70'}`}>{tr("Compact Catalog")}</p>
