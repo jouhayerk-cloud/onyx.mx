@@ -981,29 +981,38 @@
 }
 
 
-/* ── Hero image AXO overlay: free-floating PNG, no frame ─────────────────── */
+/* ── Hero image AXO overlay: compact free-floating axo with color bubbles ── */
 .inv-hero-axo-overlay {
     position: absolute;
-    top: 0;
-    right: 0;
+    top: 6px;
+    right: 6px;
     z-index: 5;
-    width: 160px;
-    height: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 3px;
+    overflow: visible;
+    pointer-events: auto;
+    cursor: default;
+}
+
+.inv-hero-axo-figure {
+    width: 150px;
+    height: 150px;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: visible;
-    pointer-events: auto;
-    cursor: default;
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.inv-hero-axo-overlay:hover {
-    transform: scale(1.16);
+.inv-hero-axo-figure:hover {
+    transform: scale(1.06);
 }
 
-.inv-hero-axo-overlay img,
-.inv-hero-axo-overlay svg {
+.inv-hero-axo-figure img,
+.inv-hero-axo-figure svg {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
@@ -1011,18 +1020,34 @@
 
 @media (min-width: 768px) {
     .inv-hero-axo-overlay {
-        top: 0;
-        right: 0;
-        width: 190px;
-        height: 190px;
+        top: 8px;
+        right: 8px;
+    }
+    .inv-hero-axo-figure {
+        width: 180px;
+        height: 180px;
     }
 }
 
 @media (min-width: 1200px) {
-    .inv-hero-axo-overlay {
-        width: 210px;
-        height: 210px;
+    .inv-hero-axo-figure {
+        width: 200px;
+        height: 200px;
     }
+}
+
+/* Free floating color bubbles directly below the axo: no extra container */
+.inv-axo-bubbles-floating {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    pointer-events: auto !important;
 }
 
 .inv-gal-hero .inv-card-zoom {

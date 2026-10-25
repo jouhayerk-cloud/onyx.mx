@@ -423,10 +423,19 @@
 }
 
 /* Free-floating PNG, no frame -- just the silhouette next to the measurements. */
+.inv-axo-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex: none;
+}
+
 .inv-axo {
     flex: none;
-    width: 110px;
-    height: 110px;
+    width: 140px;
+    height: 140px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -435,8 +444,8 @@
 
 @media (min-width: 768px) {
     .inv-axo {
-        width: 140px;
-        height: 140px;
+        width: 180px;
+        height: 180px;
     }
 }
 
@@ -779,72 +788,103 @@
     color: color-mix(in srgb, var(--text-color) 55%, transparent);
 }
 
-/* Compact tinted glass bubble indicator: no glow, pure glass refraction, hover scale */
+/* Opaque tinted glass bubble: grows on hover, transitions to translucent glass, reveals text label */
 .inv-ai-glass-bubble {
     position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 18px;
-    padding: 0 7px;
+    width: auto;
+    min-width: 17px;
+    height: 17px;
+    padding: 0;
     border-radius: 999px;
     cursor: pointer;
     overflow: hidden;
     user-select: none;
+    box-sizing: border-box;
     
-    /* Translucent tinted glass body */
-    background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(0, 0, 0, 0.15) 100%),
-        color-mix(in srgb, var(--bubble-color, var(--text-color)) 40%, transparent 60%);
-    -webkit-backdrop-filter: blur(8px) saturate(140%);
-    backdrop-filter: blur(8px) saturate(140%);
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    /* At rest (compacted): full opaque rich stone color with glass surface sheen */
+    background-color: color-mix(in srgb, var(--bubble-color, var(--text-color)) 95%, #050608);
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(0, 0, 0, 0.25) 100%);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.44);
     box-shadow:
-        inset 0 1px 0.5px rgba(255, 255, 255, 0.65),
-        inset 0 -1px 1px rgba(0, 0, 0, 0.25),
-        0 1px 2px rgba(0, 0, 0, 0.16);
+        inset 0 1px 0.8px rgba(255, 255, 255, 0.75),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.35),
+        0 1px 2px rgba(0, 0, 0, 0.2);
 
     transform-origin: center center;
-    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-                border-color 0.18s ease,
-                box-shadow 0.18s ease;
+    transition: transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+                padding 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+                height 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+                background-color 0.24s ease,
+                background-image 0.24s ease,
+                backdrop-filter 0.24s ease,
+                border-color 0.24s ease,
+                box-shadow 0.24s ease;
 }
 
 /* Glass specular curvature sheen */
 .inv-ai-glass-bubble__gloss {
     position: absolute;
     top: 1px;
-    left: 4px;
-    right: 4px;
-    height: 38%;
+    left: 2px;
+    right: 2px;
+    height: 44%;
     border-radius: 999px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.1) 70%, transparent 100%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.12) 75%, transparent 100%);
     pointer-events: none;
     z-index: 1;
 }
 
-/* Small, ultra-crisp typography inside the tinted glass bubble */
+/* Hidden text label at rest */
 .inv-ai-glass-bubble__text {
     position: relative;
     z-index: 2;
-    font-size: 8.5px;
-    font-weight: 750;
-    letter-spacing: 0.04em;
+    max-width: 0;
+    opacity: 0;
+    transform: scale(0.85);
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.95);
-    text-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.7);
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
     line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    pointer-events: none;
+    transition: max-width 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.2s ease 0.04s,
+                transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+                margin 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Mouse over size changing: smooth spring expansion with no glow halo */
+/* Deployed state (hover): grows/resizes, shifts to translucent liquid glass, reveals text label */
 .inv-ai-glass-bubble:hover {
-    transform: scale(1.18);
-    z-index: 15;
-    border-color: rgba(255, 255, 255, 0.65);
+    padding: 0 9px;
+    height: 20px;
+    transform: scale(1.15) translateY(-1px);
+    z-index: 20;
+    /* Deployed: translucent liquid glass allows photo background through */
+    background-color: color-mix(in srgb, var(--bubble-color, var(--text-color)) 38%, transparent);
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.18) 45%, rgba(0, 0, 0, 0.1) 100%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+    border-color: rgba(255, 255, 255, 0.88);
     box-shadow:
-        inset 0 1px 1px rgba(255, 255, 255, 0.8),
-        inset 0 -1px 1.5px rgba(0, 0, 0, 0.3),
-        0 2px 6px rgba(0, 0, 0, 0.22);
+        inset 0 1px 1.5px rgba(255, 255, 255, 0.95),
+        inset 0 -1.5px 2px rgba(0, 0, 0, 0.25),
+        0 4px 10px rgba(0, 0, 0, 0.22);
+}
+
+.inv-ai-glass-bubble:hover .inv-ai-glass-bubble__text {
+    max-width: 100px;
+    opacity: 1;
+    transform: scale(1);
+    margin: 0 3px;
 }
 
 .inv-ai-glass-bubble:active {
@@ -1370,29 +1410,38 @@ html.dark .inv-head-wrap {
 }
 
 
-/* ── Hero image AXO overlay: free-floating PNG, no frame ─────────────────── */
+/* ── Hero image AXO overlay: compact free-floating axo with color bubbles ── */
 .inv-hero-axo-overlay {
     position: absolute;
-    top: 0;
-    right: 0;
+    top: 6px;
+    right: 6px;
     z-index: 5;
-    width: 160px;
-    height: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 3px;
+    overflow: visible;
+    pointer-events: auto;
+    cursor: default;
+}
+
+.inv-hero-axo-figure {
+    width: 150px;
+    height: 150px;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: visible;
-    pointer-events: auto;
-    cursor: default;
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.inv-hero-axo-overlay:hover {
-    transform: scale(1.16);
+.inv-hero-axo-figure:hover {
+    transform: scale(1.06);
 }
 
-.inv-hero-axo-overlay img,
-.inv-hero-axo-overlay svg {
+.inv-hero-axo-figure img,
+.inv-hero-axo-figure svg {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
@@ -1400,18 +1449,34 @@ html.dark .inv-head-wrap {
 
 @media (min-width: 768px) {
     .inv-hero-axo-overlay {
-        top: 0;
-        right: 0;
-        width: 190px;
-        height: 190px;
+        top: 8px;
+        right: 8px;
+    }
+    .inv-hero-axo-figure {
+        width: 180px;
+        height: 180px;
     }
 }
 
 @media (min-width: 1200px) {
-    .inv-hero-axo-overlay {
-        width: 210px;
-        height: 210px;
+    .inv-hero-axo-figure {
+        width: 200px;
+        height: 200px;
     }
+}
+
+/* Free floating color bubbles directly below the axo: no extra container */
+.inv-axo-bubbles-floating {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    pointer-events: auto !important;
 }
 
 .inv-hairline-card.inv-hairline-card--prominent {

@@ -522,6 +522,37 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     });
     const aiTypePath = String(norm.generatedType || '').split('>').map(p => p.trim()).filter(Boolean);
 
+    const renderColorBubbles = (extraClass = '') => {
+        if (!aiColors.length) return null;
+        return (
+            <span className={`inv-ai-chips ${extraClass}`.trim()}>
+                {aiColors.map(c => {
+                    const lc = c.toLowerCase();
+                    const inStore = SHOPIFY_COLOR_SET.has(lc);
+                    const hint = !inStore
+                        ? tr("Not one of the store's colour names — the export resolves it through the stone table or leaves it out")
+                        : lc === 'turquoise/aqua' ? tr("Exports as Teal — the store has no Turquoise/Aqua value") : undefined;
+                    const sw = swatchFor(c);
+                    const isGrad = sw.includes('gradient');
+                    return (
+                        <span
+                            key={c}
+                            className={`inv-ai-glass-bubble${inStore ? '' : ' inv-ai-glass-bubble--off'}`}
+                            style={{
+                                ['--bubble-color' as any]: sw,
+                                ...(isGrad ? { background: `radial-gradient(ellipse at 35% 25%, rgba(255, 255, 255, 0.42) 0%, transparent 70%), ${sw}` } : {}),
+                            }}
+                            title={hint || c}
+                        >
+                            <span className="inv-ai-glass-bubble__gloss" aria-hidden="true" />
+                            <span className="inv-ai-glass-bubble__text">{c}</span>
+                        </span>
+                    );
+                })}
+            </span>
+        );
+    };
+
     const hasAiCopy = !!(aiTitle || aiBodyText);
     const hasAnyAi = hasAiCopy || aiColors.length > 0 || aiTypePath.length > 0;
     const aiIssues = useMemo(() => (isContentExpanded && (aiTitle || aiBodyText))
@@ -708,8 +739,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 <h5 className="inv-cluster-t">{tr("Specs")}</h5>
                 <div className="inv-specs-body">
                     {!hasAxoOverlay && (
-                        <div className="inv-axo" title={tr("Proportions")} aria-hidden="true">
-                            <WireframeIcon item={norm} />
+                        <div className="inv-axo-col">
+                            <div className="inv-axo" title={tr("Proportions")} aria-hidden="true">
+                                <WireframeIcon item={norm} />
+                            </div>
+                            {renderColorBubbles('inv-axo-bubbles-floating')}
                         </div>
                     )}
                     <div className="inv-measures" aria-label={tr("Size and weight")}>
@@ -798,33 +832,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             </span>
                         </SpecRow>
                         <SpecRow k="ai-colors" label={tr("Colors")}>
-                            {aiColors.length ? (
-                                <span className="inv-ai-chips">
-                                    {aiColors.map(c => {
-                                        const lc = c.toLowerCase();
-                                        const inStore = SHOPIFY_COLOR_SET.has(lc);
-                                        const hint = !inStore
-                                            ? tr("Not one of the store's colour names — the export resolves it through the stone table or leaves it out")
-                                            : lc === 'turquoise/aqua' ? tr("Exports as Teal — the store has no Turquoise/Aqua value") : undefined;
-                                        const sw = swatchFor(c);
-                                        const isGrad = sw.includes('gradient');
-                                        return (
-                                            <span
-                                                key={c}
-                                                className={`inv-ai-glass-bubble${inStore ? '' : ' inv-ai-glass-bubble--off'}`}
-                                                style={{
-                                                    ['--bubble-color' as any]: sw,
-                                                    ...(isGrad ? { background: `radial-gradient(ellipse at 35% 25%, rgba(255, 255, 255, 0.42) 0%, transparent 70%), ${sw}` } : {}),
-                                                }}
-                                                title={hint}
-                                            >
-                                                <span className="inv-ai-glass-bubble__gloss" aria-hidden="true" />
-                                                <span className="inv-ai-glass-bubble__text">{c}</span>
-                                            </span>
-                                        );
-                                    })}
-                                </span>
-                            ) : '—'}
+                            {renderColorBubbles() || "—"}
                         </SpecRow>
                     </dl>
                     <div className="inv-ai-bodywrap">
@@ -1305,8 +1313,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             onClick={() => { if (mediaUrls.length) openViewer(sheetIdx); }}>
                             {heroMedia(sheetIdx, 'inv-gal-img')}
                             {mediaUrls.length > 0 && (
-                                <div className="inv-hero-axo-overlay" title={tr("Proportions")} aria-hidden="true" onClick={(e) => { e.stopPropagation(); }}>
-                                    <WireframeIcon item={norm} />
+                                <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
+                                    <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
+                                        <WireframeIcon item={norm} />
+                                    </div>
+                                    {renderColorBubbles('inv-axo-bubbles-floating')}
                                 </div>
                             )}
                             {heroKeys(sheetIdx, stepSheet, 20)}
@@ -1345,8 +1356,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 onClick={(e) => { e.stopPropagation(); if (mediaUrls.length) openViewer(heroIdx); }}>
                                 {heroMedia(heroIdx, 'inv-gal-img')}
                                 {mediaUrls.length > 0 && (
-                                    <div className="inv-hero-axo-overlay" title={tr("Proportions")} aria-hidden="true" onClick={(e) => { e.stopPropagation(); }}>
-                                        <WireframeIcon item={norm} />
+                                    <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
+                                        <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
+                                            <WireframeIcon item={norm} />
+                                        </div>
+                                        {renderColorBubbles('inv-axo-bubbles-floating')}
                                     </div>
                                 )}
                                 {heroKeys(heroIdx, stepPhoto, 18)}
@@ -1408,6 +1422,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 <div className="inv-card-media" {...swipeHandlers}
                     onClick={(e) => { if (mediaUrls.length > 1) { e.stopPropagation(); stepPhoto(1); } }}>
                     {heroMedia(heroIdx, 'inv-card-img')}
+                    {mediaUrls.length > 0 && (
+                        <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
+                            <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
+                                <WireframeIcon item={norm} />
+                            </div>
+                            {renderColorBubbles('inv-axo-bubbles-floating')}
+                        </div>
+                    )}
                     {heroKeys(heroIdx, stepPhoto, 16)}
                 </div>
 
