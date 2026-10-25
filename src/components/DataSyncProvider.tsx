@@ -193,7 +193,7 @@ export const DataSyncProvider: React.FC = () => {
     // Debounced: waits 500ms after the last version bump before fetching.
     // Prevents waterfall fetches when the user makes rapid back-to-back changes.
     useEffect(() => {
-        if (!db || inventoryVersion === 0) return;
+        if (!db) return;
         
         const timer = setTimeout(async () => {
             console.log(`📡 [DataSync] Explicit sync triggered (v${inventoryVersion})`);

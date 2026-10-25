@@ -1539,6 +1539,10 @@ export const normalizeInventoryData = (data: any): any => {
     weightKg: d.weight_kg || d.weightKg || d.weight || d.wt,
     quantity: d.quantity ?? d.qty ?? 1,
     top: d.top || processedMap['top'] || processedMap['_top'] || '',
+    invoice_title: d.invoice_title || d.invoiceTitle || '',
+    shopify_title: d.shopify_title || d.shopifyTitle || '',
+    invoiceTitle: d.invoice_title || d.invoiceTitle || '',
+    shopifyTitle: d.shopify_title || d.shopifyTitle || '',
   };
 };
 
