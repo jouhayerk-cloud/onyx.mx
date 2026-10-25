@@ -873,6 +873,108 @@ function drawColorBubbles(
 /**
  * Renders a normalized hex map stretched to a square with no empty/white spaces.
  */
+/**
+ * Renders a normalized vein mask stretched to fill a square with no empty/white margins.
+ * Extracts vein mask / cutout URL (vein_svg_urls, spatial_masks, maskUrl, generatedPngUrl)
+ * and draws it stretched across a square canvas over the stone's base strata texture,
+ * falling back cleanly to continuous veined strata hex texture if no mask is available.
+ */
+export async function generateNormalizedVeinMaskSquareDataUrl(
+    itemData: any,
+    norm: any,
+    sizePx: number = 140
+): Promise<string | null> {
+    try {
+        const it = itemData || norm || {};
+        let maskUrl: string | null = null;
+
+        // 1. Check vein_svg_urls
+        const vUrls = it.vein_svg_urls || it.veinSvgUrls || (it.processed_media_urls && typeof it.processed_media_urls === 'object' ? it.processed_media_urls.vein_svg_urls : undefined);
+        if (vUrls) {
+            if (typeof vUrls === 'string') maskUrl = vUrls.split(',')[0].trim();
+            else if (Array.isArray(vUrls) && vUrls.length > 0) maskUrl = String(vUrls[0]);
+            else if (typeof vUrls === 'object') {
+                const vals = Object.values(vUrls);
+                if (vals.length > 0) maskUrl = String(vals[0]);
+            }
+        }
+
+        // 2. Check spatial_masks
+        if (!maskUrl) {
+            const spMasks = it.spatial_masks || it.spatialMasks || norm.spatialMasks || norm.spatial_masks;
+            if (spMasks) {
+                let mObj = spMasks;
+                if (typeof spMasks === 'string' && spMasks.trim().startsWith('{')) {
+                    try { mObj = JSON.parse(spMasks); } catch {}
+                }
+                if (typeof mObj === 'object' && mObj) {
+                    if (Array.isArray(mObj) && mObj.length > 0) {
+                        maskUrl = mObj[0].cutoutUrl || mObj[0].pngUrl || mObj[0].mask || null;
+                    } else {
+                        const angle0 = (mObj as any).angle_0 || Object.values(mObj)[0];
+                        if (angle0) {
+                            if (Array.isArray(angle0) && angle0.length > 0) {
+                                maskUrl = angle0[0].cutoutUrl || angle0[0].mask || angle0[0].pngUrl || null;
+                            } else if (typeof angle0 === 'string') {
+                                maskUrl = angle0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Check generated PNG cutout or mask_url
+        if (!maskUrl) {
+            maskUrl = it.generated_png_url || norm.generatedPngUrl || it.mask_url || norm.maskUrl || it.cutoutUrl || null;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = sizePx;
+        canvas.height = sizePx;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return generateNormalizedHexSquareDataUrl(itemData, norm, sizePx);
+
+        // First paint the base stone strata (no empty spaces)
+        const baseHexSquare = generateNormalizedHexSquareDataUrl(itemData, norm, sizePx);
+        if (baseHexSquare) {
+            const baseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+                const el = new Image();
+                el.onload = () => resolve(el);
+                el.onerror = () => reject();
+                el.src = baseHexSquare;
+            }).catch(() => null);
+            if (baseImg) {
+                ctx.drawImage(baseImg, 0, 0, sizePx, sizePx);
+            }
+        } else {
+            ctx.fillStyle = '#c8b69b';
+            ctx.fillRect(0, 0, sizePx, sizePx);
+        }
+
+        // If vein mask / cutout URL exists, load and stretch to fill square
+        if (maskUrl) {
+            const cleanUrl = getCleanImageUrl(maskUrl) || maskUrl;
+            const maskImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+                const el = new Image();
+                el.crossOrigin = 'anonymous';
+                el.onload = () => resolve(el);
+                el.onerror = () => reject();
+                el.src = cleanUrl;
+                setTimeout(() => reject(new Error('timeout')), 4000);
+            }).catch(() => null);
+
+            if (maskImg) {
+                ctx.drawImage(maskImg, 0, 0, sizePx, sizePx);
+            }
+        }
+
+        return canvas.toDataURL('image/png');
+    } catch {
+        return generateNormalizedHexSquareDataUrl(itemData, norm, sizePx);
+    }
+}
+
 export function generateNormalizedHexSquareDataUrl(
     itemData: any,
     norm: any,
@@ -1246,7 +1348,7 @@ async function drawCatalogHubPagePortrait(
     const sqSize = 13.5;
     const sqX = barHairlineX - sqSize - 4;
     const sqY = barZoneY + 0.7;
-    const sqDataUrl = generateNormalizedHexSquareDataUrl(itemDataObj, norm, 140);
+    const sqDataUrl = await generateNormalizedVeinMaskSquareDataUrl(itemDataObj, norm, 140);
     if (sqDataUrl) {
         doc.addImage(sqDataUrl, 'PNG', sqX, sqY, sqSize, sqSize);
         doc.setDrawColor(203, 213, 225);
@@ -1533,7 +1635,7 @@ async function drawCatalogHubPageLandscapeGrid(
     const sqSize = 13;
     const sqX = barHairlineX - sqSize - 4;
     const sqY = barZoneY + 0.6;
-    const sqDataUrl = generateNormalizedHexSquareDataUrl(itemDataObj, norm, 140);
+    const sqDataUrl = await generateNormalizedVeinMaskSquareDataUrl(itemDataObj, norm, 140);
     if (sqDataUrl) {
         doc.addImage(sqDataUrl, 'PNG', sqX, sqY, sqSize, sqSize);
         doc.setDrawColor(203, 213, 225);
@@ -1888,17 +1990,28 @@ async function drawCatalogSummaryPages(
     const specMap = new Map<string, SpecSummary>();
 
     for (const it of results) {
-        const norm = normalizeInventoryData(it.data || it);
+        const d = it.data || it;
+        const norm = normalizeInventoryData(d);
         const qty = parseInt(norm.quantity || '1', 10) || 1;
         const wt = parseFloat(norm.weightKg || '0') || 0;
 
-        const shape = (norm.shape || (it.data ? it.data.Shape : '') || '').trim();
-        const type = (norm.type || (it.data ? it.data.Type : '') || norm.category || '').trim();
-        const color = (norm.color || (it.data ? it.data.Color : '') || norm.generatedColor || '').trim();
-        const mat = (norm.material || (it.data ? it.data.Material : '') || 'Mexican Onyx').trim();
+        const rawShape = (norm.shape || d.shape || d.Shape || '').trim();
+        const rawType = (norm.shortDescription || norm.short_description || norm.generatedType || d.type || d.Type || d.category || '').trim();
+        const rawColor = (norm.color || d.color || d.Color || norm.generatedColor || '').trim();
+        const rawMat = (norm.material || d.material || d.Material || 'Mexican Onyx').trim();
 
-        const shapeType = [shape, type].filter(Boolean).map(s => s.trim().toUpperCase()).join(' · ') || (norm.shortDescription || 'SCULPTURAL FORM').toUpperCase();
-        const colorMaterial = [color, mat].filter(Boolean).map(s => s.trim().toUpperCase()).join(' · ') || 'NATURAL STONE';
+        let shapeType = '';
+        if (rawShape && rawType) {
+            if (rawShape.toUpperCase() === rawType.toUpperCase()) {
+                shapeType = rawShape.toUpperCase();
+            } else {
+                shapeType = `${rawShape.toUpperCase()} · ${rawType.toUpperCase()}`;
+            }
+        } else {
+            shapeType = (rawShape || rawType || 'SCULPTURAL FORM').toUpperCase();
+        }
+
+        const colorMaterial = [rawColor, rawMat].filter(Boolean).map(s => s.trim().toUpperCase()).join(' · ') || 'NATURAL STONE';
         const groupKey = `${shapeType}__${colorMaterial}`;
 
         grandTotalUnits += qty;
@@ -2058,8 +2171,30 @@ async function drawCatalogSummaryPages(
         doc.setTextColor(15, 23, 42);
 
         if (isLandscape) {
-            const splitShape = doc.splitTextToSize(group.shapeType, 78);
-            doc.text(splitShape[0] || group.shapeType, M + 4, rowY + 5);
+            // Hairline badge for SHAPE · TYPE
+            const badgeW = 76;
+            const badgeH = 5.2;
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(M + 3, rowY + 1.2, badgeW, badgeH, 0.8, 0.8, 'F');
+            doc.setDrawColor(218, 226, 237);
+            doc.setLineWidth(0.18);
+            doc.roundedRect(M + 3, rowY + 1.2, badgeW, badgeH, 0.8, 0.8, 'S');
+
+            // Cyan geometric accent indicator
+            doc.setFillColor(2, 132, 199);
+            doc.circle(M + 5.5, rowY + 1.2 + badgeH / 2, 0.65, 'F');
+
+            doc.setFontSize(6.8);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(15, 23, 42);
+            const splitShape = doc.splitTextToSize(group.shapeType, badgeW - 6);
+            doc.text(splitShape[0] || group.shapeType, M + 7.5, rowY + 4.7);
+
+            // Vertical hairline column dividers
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.15);
+            doc.line(M + 82, rowY, M + 82, rowY + rowH);
+            doc.line(M + 158, rowY, M + 158, rowY + rowH);
 
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
@@ -2075,8 +2210,30 @@ async function drawCatalogSummaryPages(
             doc.text(wtKgFmt, M + 242, rowY + 5, { align: 'right' });
             doc.text(wtLbsFmt, PW - M - 4, rowY + 5, { align: 'right' });
         } else {
-            const splitShape = doc.splitTextToSize(group.shapeType, 50);
-            doc.text(splitShape[0] || group.shapeType, M + 3, rowY + 5);
+            // Hairline badge for SHAPE · TYPE
+            const badgeW = 49;
+            const badgeH = 5.2;
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(M + 2, rowY + 1.2, badgeW, badgeH, 0.8, 0.8, 'F');
+            doc.setDrawColor(218, 226, 237);
+            doc.setLineWidth(0.18);
+            doc.roundedRect(M + 2, rowY + 1.2, badgeW, badgeH, 0.8, 0.8, 'S');
+
+            // Cyan geometric accent indicator
+            doc.setFillColor(2, 132, 199);
+            doc.circle(M + 4.2, rowY + 1.2 + badgeH / 2, 0.65, 'F');
+
+            doc.setFontSize(6.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(15, 23, 42);
+            const splitShape = doc.splitTextToSize(group.shapeType, badgeW - 5);
+            doc.text(splitShape[0] || group.shapeType, M + 6.0, rowY + 4.7);
+
+            // Vertical hairline column dividers
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.15);
+            doc.line(M + 53, rowY, M + 53, rowY + rowH);
+            doc.line(M + 98, rowY, M + 98, rowY + rowH);
 
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
@@ -2212,52 +2369,50 @@ export async function exportCatalogPdf(
             doc.setLineWidth(0.2);
             doc.line(M, PH - 16, PW - M, PH - 16);
 
-            // Left side: MADE IN MEXICO & Page Number
+            // Left side: Big Clean Onyx Logo on left edge + MADE IN MEXICO & Page Number
+            const onyxTargetH = 9.5;
+            const onyxW = onyxLogo ? Math.min(26, onyxTargetH * onyxLogo.aspectRatio) : 12;
+            const onyxH = onyxLogo ? onyxW / onyxLogo.aspectRatio : onyxTargetH;
+            const yOnyx = PH - 8.5 - onyxH / 2;
+
+            if (onyxLogo) {
+                doc.addImage(onyxLogo.dataUrl, 'PNG', M, yOnyx, onyxW, onyxH);
+            }
+
+            const mimTextX = M + (onyxLogo ? onyxW + 4 : 0);
             doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(30, 41, 59);
             const mimText = 'MADE IN MEXICO';
-            doc.text(mimText, M, PH - 8.5);
+            doc.text(mimText, mimTextX, PH - 8.5);
 
             doc.setFontSize(7.5);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(148, 163, 184);
-            doc.text(`·   Page ${globalPageNum}`, M + doc.getTextWidth(mimText) + 3, PH - 8.5);
+            doc.text(`·   Page ${globalPageNum}`, mimTextX + doc.getTextWidth(mimText) + 3, PH - 8.5);
 
-            // Right side: All three logos side-by-side (Onyx-mx, Art of Decor, Rare Earth)
-            const rightEdge = PW - M;
-            const targetH = 5.5;
-            const gap = 5;
+            // Right side: Rare Earth Gallery (bigger) and Art of Decor aligned to right edge
+            const aodTargetH = 7.5;
+            const aodW = artOfDecorLogo ? Math.min(28, aodTargetH * artOfDecorLogo.aspectRatio) : 24;
+            const aodH = artOfDecorLogo ? aodW / artOfDecorLogo.aspectRatio : aodTargetH;
 
-            const aodW = artOfDecorLogo ? Math.min(28, targetH * artOfDecorLogo.aspectRatio) : 24;
-            const aodH = artOfDecorLogo ? aodW / artOfDecorLogo.aspectRatio : targetH;
+            const regTargetH = 9.0;
+            const regW = rareEarthLogo ? Math.min(38, regTargetH * rareEarthLogo.aspectRatio) : 34;
+            const regH = rareEarthLogo ? regW / rareEarthLogo.aspectRatio : regTargetH;
 
-            const regW = rareEarthLogo ? Math.min(24, targetH * rareEarthLogo.aspectRatio) : 20;
-            const regH = rareEarthLogo ? regW / rareEarthLogo.aspectRatio : targetH;
-
-            const onyxW = onyxLogo ? Math.min(18, targetH * onyxLogo.aspectRatio) : 15;
-            const onyxH = onyxLogo ? onyxW / onyxLogo.aspectRatio : targetH;
-
-            let currX = rightEdge;
-
-            if (onyxLogo) {
-                currX -= onyxW;
-                const yPos = PH - 8.5 - onyxH / 2;
-                doc.addImage(onyxLogo.dataUrl, 'PNG', currX, yPos, onyxW, onyxH);
-                currX -= gap;
-            }
+            let currX = PW - M;
 
             if (artOfDecorLogo) {
                 currX -= aodW;
-                const yPos = PH - 8.5 - aodH / 2;
-                doc.addImage(artOfDecorLogo.dataUrl, 'PNG', currX, yPos, aodW, aodH);
-                currX -= gap;
+                const aodY = PH - 8.5 - aodH / 2;
+                doc.addImage(artOfDecorLogo.dataUrl, 'PNG', currX, aodY, aodW, aodH);
+                currX -= 6;
             }
 
             if (rareEarthLogo) {
                 currX -= regW;
-                const yPos = PH - 8.5 - regH / 2;
-                doc.addImage(rareEarthLogo.dataUrl, 'PNG', currX, yPos, regW, regH);
+                const regY = PH - 8.5 - regH / 2;
+                doc.addImage(rareEarthLogo.dataUrl, 'PNG', currX, regY, regW, regH);
             }
         }
     };
