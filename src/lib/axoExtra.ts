@@ -930,56 +930,50 @@ function mulberry32(seed: number): () => number {
 
 /**
  * Counter-clockwise outline (x right, y up) of a natural-edge slab inside [0,w] x [0,h].
- * Outer corners get large random tapers and the edges an inward-only wobble, so the
+ * Outer corners are chipped off at random and the edges get an inward-only wobble, so the
  * outline never leaves the bounding box the dimension frame draws. With
  * `straightRight` the right edge is the saw-cut seam of a pair and stays straight.
  */
 export function freeFormOutline(w: number, h: number, straightRight: boolean): AxoPoint2D[] {
     const rand = mulberry32(Math.round(w * 131 + h * 7919));
-    const m = Math.min(w, h);
-    const amp = m * 0.09;
-    const outerR = () => m * (0.18 + 0.24 * rand());
-    const seamR = m * 0.02;
-    // BL, BR, TR, TL — the arc sweeps of a rounded rectangle, CCW.
-    const corners = [
-        { x: 0, y: 0, r: outerR(), a0: Math.PI, seam: false },
-        { x: w, y: 0, r: straightRight ? seamR : outerR(), a0: 1.5 * Math.PI, seam: straightRight },
-        { x: w, y: h, r: straightRight ? seamR : outerR(), a0: 0, seam: straightRight },
-        { x: 0, y: h, r: outerR(), a0: 0.5 * Math.PI, seam: false },
-    ];
-    const pts: Array<AxoPoint2D & { fixed: boolean }> = [];
-    for (let i = 0; i < 4; i++) {
-        const c = corners[i];
-        const cx = c.x === 0 ? c.r : c.x - c.r;
-        const cy = c.y === 0 ? c.r : c.y - c.r;
-        for (let k = 0; k <= 6; k++) {
-            const a = c.a0 + (k / 6) * (Math.PI / 2);
-            pts.push({ x: cx + c.r * Math.cos(a), y: cy + c.r * Math.sin(a), fixed: c.seam });
+    // Outer corners are knocked off as uneven diagonal chips, like the slabs in the photos;
+    // the seam corners of a pair stay square.
+    const cut = (seam: boolean) => seam ? { x: 0, y: 0 } : { x: w * (0.1 + 0.25 * rand()), y: h * (0.05 + 0.14 * rand()) };
+    const seam = straightRight;
+    const cBL = cut(false), cBR = cut(seam), cTR = cut(seam), cTL = cut(false);
+    // Corner points CCW: each corner contributes its two cut ends.
+    const ring: Array<{ x: number; y: number; nx: number; ny: number; fixed: boolean }> = [];
+    const edge = (x0: number, y0: number, x1: number, y1: number, nx: number, ny: number, fixed: boolean, steps: number) => {
+        for (let k = 0; k < steps; k++) {
+            const f = k / steps;
+            ring.push({ x: x0 + (x1 - x0) * f, y: y0 + (y1 - y0) * f, nx, ny, fixed });
         }
-        const next = corners[(i + 1) % 4];
-        const start = pts[pts.length - 1];
-        const ncx = next.x === 0 ? next.r : next.x - next.r;
-        const ncy = next.y === 0 ? next.r : next.y - next.r;
-        const end = { x: ncx + next.r * Math.cos(next.a0), y: ncy + next.r * Math.sin(next.a0) };
-        const seamEdge = straightRight && i === 1; // BR -> TR is the right edge
-        for (let k = 1; k < 10; k++) {
-            const f = k / 10;
-            pts.push({ x: start.x + (end.x - start.x) * f, y: start.y + (end.y - start.y) * f, fixed: seamEdge });
-        }
-    }
-    const f1 = 3 + Math.floor(rand() * 3);
-    const f2 = 9 + Math.floor(rand() * 5);
+    };
+    const D = 0.7071;
+    edge(cBL.x, 0, w - cBR.x, 0, 0, 1, false, 24);                       // bottom
+    edge(w - cBR.x, 0, w, cBR.y, -D, D, seam, 6);                         // BR chip
+    edge(w, cBR.y, w, h - cTR.y, -1, 0, seam, 30);                         // right (seam of a pair)
+    edge(w, h - cTR.y, w - cTR.x, h, -D, -D, seam, 6);                     // TR chip
+    edge(w - cTR.x, h, cTL.x, h, 0, -1, false, 24);                       // top
+    edge(cTL.x, h, 0, h - cTL.y, D, -D, false, 6);                         // TL chip
+    edge(0, h - cTL.y, 0, cBL.y, 1, 0, false, 30);                         // left
+    edge(0, cBL.y, cBL.x, 0, D, D, false, 6);                              // BL chip
+    // Inward-only wobble: one or two broad lobes per side, a mid ripple, and small chips,
+    // so the slab narrows and swells along its length the way natural rind does.
+    const lobes = 1 + rand() * 1.5;
     const p1 = rand() * Math.PI * 2;
     const p2 = rand() * Math.PI * 2;
-    return pts.map((p, i) => {
+    const ampX = w * 0.16;
+    const ampY = Math.min(w * 0.12, h * 0.08);
+    const n = ring.length;
+    return ring.map((p, i) => {
         if (p.fixed) return { x: p.x, y: p.y };
-        const t = (i / pts.length) * Math.PI * 2;
-        const n = 0.5 + 0.35 * Math.sin(t * f1 + p1) + 0.15 * Math.sin(t * f2 + p2);
-        const d = amp * n * (0.7 + 0.3 * rand());
-        const vx = w / 2 - p.x;
-        const vy = h / 2 - p.y;
-        const len = Math.hypot(vx, vy) || 1;
-        return { x: p.x + (vx / len) * d, y: p.y + (vy / len) * d };
+        const s = i / n;
+        const broad = 0.5 + 0.5 * Math.sin(Math.PI * 2 * lobes * 4 * s + p1);
+        const ripple = 0.5 + 0.5 * Math.sin(Math.PI * 2 * 17 * s + p2);
+        const amp = Math.abs(p.nx) > Math.abs(p.ny) ? ampX : ampY;
+        const d = amp * (0.65 * broad + 0.2 * ripple + 0.15 * rand());
+        return { x: p.x + p.nx * d, y: p.y + p.ny * d };
     });
 }
 
