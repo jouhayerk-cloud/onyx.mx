@@ -984,8 +984,8 @@
 /* ── Hero image AXO overlay: free-floating PNG, no frame ─────────────────── */
 .inv-hero-axo-overlay {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: 0;
+    right: 0;
     z-index: 5;
     width: 160px;
     height: 160px;
@@ -995,11 +995,11 @@
     overflow: visible;
     pointer-events: auto;
     cursor: default;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .inv-hero-axo-overlay:hover {
-    transform: scale(1.04);
+    transform: scale(1.16);
 }
 
 .inv-hero-axo-overlay img,
@@ -1011,8 +1011,8 @@
 
 @media (min-width: 768px) {
     .inv-hero-axo-overlay {
-        top: 16px;
-        right: 16px;
+        top: 0;
+        right: 0;
         width: 190px;
         height: 190px;
     }

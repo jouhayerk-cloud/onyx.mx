@@ -42,6 +42,23 @@ export function parseHexMapString(hexMapString?: string): string[] {
         .map(s => s.startsWith('#') ? s : `#${s}`);
 }
 
+/** Mean RGB brightness of a hex-map string's colors (0-255) -- used to pick the
+ * "lights on" photo angle among several, since a backlit shot reads much
+ * brighter than an ambient one and no explicit lit flag exists per photo. */
+function avgHexMapBrightness(hexMapString: string): number {
+    const colors = parseHexMapString(hexMapString.replace(/^\d+x\d+:/, ''));
+    if (colors.length === 0) return 0;
+    let total = 0;
+    for (const c of colors) {
+        const h = c.replace('#', '');
+        const r = parseInt(h.slice(0, 2), 16) || 0;
+        const g = parseInt(h.slice(2, 4), 16) || 0;
+        const b = parseInt(h.slice(4, 6), 16) || 0;
+        total += (r + g + b) / 3;
+    }
+    return total / colors.length;
+}
+
 /**
  * Normalises a hex map matrix extracted from cutout images.
  * Detects empty/white background cells, computes the bounding box of genuine onyx stone pixels,
@@ -340,8 +357,11 @@ export function extractItemHexMapString(item: any): string | undefined {
     if (it.hex_string && typeof it.hex_string === 'string') return it.hex_string;
     if (it.hexMap && typeof it.hexMap === 'object' && it.hexMap.hexString) return String(it.hexMap.hexString);
 
-    // 2. spatial_points -- first entry with real cols/rows wins (an array can hold multiple
-    // angles/states, but only the first is used, not blended).
+    // 2. spatial_points -- the brightest entry wins (an array can hold multiple
+    // photo angles/states; a backlit "lights on" shot reads far brighter than an
+    // ambient one, which is the only lit/unlit signal this schema stores -- there
+    // is no explicit lit flag per photo). Single-entry items are unaffected.
+    // Entries are not blended.
     const sp = it.spatial_points || it.spatialPoints;
     if (sp) {
         let parsedSp = sp;
@@ -349,15 +369,18 @@ export function extractItemHexMapString(item: any): string | undefined {
             try { parsedSp = JSON.parse(parsedSp); } catch {}
         }
         if (Array.isArray(parsedSp)) {
+            let best: { hex: string; dims?: string; brightness: number } | undefined;
             for (const p of parsedSp) {
                 if (p && (p.type === 'pixel_map' || p.hex_string || p.hexString || p.hex_map)) {
                     const hex = p.hex_string || p.hexString || p.hex_map || (Array.isArray(p.hexList) ? JSON.stringify(p.hexList) : undefined);
                     if (hex) {
                         const dims = (p.cols && p.rows) ? `${p.cols}x${p.rows}` : p.dimensions;
-                        return dims ? `${dims}:${hex}` : hex;
+                        const brightness = avgHexMapBrightness(hex);
+                        if (!best || brightness > best.brightness) best = { hex, dims, brightness };
                     }
                 }
             }
+            if (best) return best.dims ? `${best.dims}:${best.hex}` : best.hex;
         } else if (parsedSp && typeof parsedSp === 'object') {
             if (parsedSp.hex_string || parsedSp.hexString || parsedSp.hex_map) {
                 const hex = parsedSp.hex_string || parsedSp.hexString || parsedSp.hex_map;
@@ -585,9 +608,9 @@ export function draw3DBoundingDimensionFrame(
         }
 
         if (showLabels) {
-            // 22px at the 400px baseline (vs. the old 13px) -- readable at the small
+            // 32px at the 400px baseline (vs. the old 13px) -- readable at the small
             // sizes these icons render at in cards, not just proportional to canvasSize.
-            const labelFontPx = Math.round(22 * pxScale);
+            const labelFontPx = Math.round(32 * pxScale);
             ctx.font = `700 ${labelFontPx}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", monospace, system-ui, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -595,7 +618,7 @@ export function draw3DBoundingDimensionFrame(
             const drawHaloText = (text: string, x: number, y: number) => {
                 ctx.save();
                 ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)';
-                ctx.lineWidth = 5 * pxScale;
+                ctx.lineWidth = 7 * pxScale;
                 ctx.lineJoin = 'round';
                 ctx.strokeText(text, x, y);
                 ctx.fillStyle = textColor;
@@ -612,7 +635,7 @@ export function draw3DBoundingDimensionFrame(
             let wNx = -wDy / wLen;
             let wNy = wDx / wLen;
             if (wNy < 0) { wNx = -wNx; wNy = -wNy; }
-            drawHaloText(`${Math.round(W)} ${unit}`, wMidX + wNx * 20 * pxScale, wMidY + wNy * 20 * pxScale);
+            drawHaloText(`${Math.round(W)} ${unit}`, wMidX + wNx * 26 * pxScale, wMidY + wNy * 26 * pxScale);
 
             // Depth label (b0 -> b3)
             const dMidX = (b0.x + b3.x) / 2;
@@ -623,12 +646,12 @@ export function draw3DBoundingDimensionFrame(
             let dNx = dDy / dLen;
             let dNy = -dDx / dLen;
             if (dNy < 0) { dNx = -dNx; dNy = -dNy; }
-            drawHaloText(`${Math.round(D)} ${unit}`, dMidX + dNx * 20 * pxScale, dMidY + dNy * 20 * pxScale);
+            drawHaloText(`${Math.round(D)} ${unit}`, dMidX + dNx * 26 * pxScale, dMidY + dNy * 26 * pxScale);
 
             // Height label (b1 -> t1)
             const hMidX = (b1.x + t1.x) / 2;
             const hMidY = (b1.y + t1.y) / 2;
-            drawHaloText(`${Math.round(H)} ${unit}`, hMidX + 22 * pxScale, hMidY);
+            drawHaloText(`${Math.round(H)} ${unit}`, hMidX + 30 * pxScale, hMidY);
         }
     }
 
