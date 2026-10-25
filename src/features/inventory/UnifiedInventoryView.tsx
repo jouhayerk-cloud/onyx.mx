@@ -1316,7 +1316,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                             <WireframeIcon item={norm} />
                                         </div>
                                     </div>
-                                    {renderColorBubbles('inv-hero-bubbles-centered')}
+                                    {renderColorBubbles('inv-hero-bubbles-bottom')}
                                 </>
                             )}
                             {heroKeys(sheetIdx, stepSheet, 20)}
@@ -1361,7 +1361,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                                 <WireframeIcon item={norm} />
                                             </div>
                                         </div>
-                                        {renderColorBubbles('inv-hero-bubbles-centered')}
+                                        {renderColorBubbles('inv-hero-bubbles-bottom')}
                                     </>
                                 )}
                                 {heroKeys(heroIdx, stepPhoto, 18)}
@@ -1430,7 +1430,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     <WireframeIcon item={norm} />
                                 </div>
                             </div>
-                            {renderColorBubbles('inv-hero-bubbles-centered')}
+                            {renderColorBubbles('inv-hero-bubbles-bottom')}
                         </>
                     )}
                     {heroKeys(heroIdx, stepPhoto, 16)}
