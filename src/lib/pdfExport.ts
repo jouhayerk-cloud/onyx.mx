@@ -517,6 +517,8 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
 
 import { ART_OF_DECOR_LOGO } from './artOfDecorLogo';
 import { RARE_EARTH_LOGO } from './rareEarthLogo';
+import { ONYX_MX_LOGO } from './onyxLogo';
+import { renderAxoIconDataUrl } from './axo/axoIcon';
 
 function renderStyledMarketingHtml(doc: any, html: string, x: number, y: number, width: number, maxH: number) {
     if (!html) return;
@@ -662,53 +664,119 @@ function cleanStillUrl(raw: any): string | null {
     return getCleanImageUrl(str) || null;
 }
 
+
+async function getAdvancedAxoDataUrl(norm: any, itemData: any): Promise<string | null> {
+    const wVal = parseFloat(norm.widthCm) || null;
+    const hVal = parseFloat(norm.heightCm) || null;
+    const dVal = parseFloat(norm.lengthCm) || null;
+    const shape = norm.shape || '';
+    const shortDesc = norm.shortDescription || norm.description || '';
+    const typeId = norm.generatedType || norm.canonicalType || norm.type || shortDesc || shape;
+
+    // 1. Dedicated isometric hairline type figure
+    try {
+        const hairlineDataUrl = renderAxoIconDataUrl({
+            typeId,
+            shape,
+            w: wVal,
+            h: hVal,
+            l: dVal,
+            top: norm.topType || null,
+            holes: norm.holesCount || null,
+            color: '#18181b',
+            background: 'white'
+        });
+        if (hairlineDataUrl) return hairlineDataUrl;
+    } catch (e) {}
+
+    // 2. Fall back to 3D axonometric with hairline bounding box, ticks, and dimensions
+    try {
+        return await generateAxonometricDataUrl(
+            wVal || 20, hVal || 30, dVal || 20,
+            shape, shortDesc,
+            resolveItemColor(itemData),
+            true,
+            extractItemHexString(itemData),
+            {
+                showBoundingBox: true,
+                showDimensionLabels: true,
+                showMeasurementTicks: true,
+                hairlineColor: '#334155',
+                unit: 'in'
+            }
+        );
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Resolves ONLY clean room images for the catalogue (background-removed cutouts & clean studio room photos).
+ * Raw warehouse/uploaded photos are strictly excluded whenever clean room images exist.
+ */
 function getItemImages(item: any): string[] {
     if (!item) return [];
 
-    // 1. Direct images array on CatalogArtifact
-    //
-    // collectExportImages already passes dropVideos, but this function is also
-    // reached from the store, viewer and batch wizard with raw arrays, and a
-    // video that survives here costs a full three-strategy timeout per page
-    // before it is drawn as a gap -- and, now that failures are counted, it
-    // would be reported to the user as a missing image when it is really a
-    // clip that never belonged in the catalogue.
-    if (Array.isArray(item.images) && item.images.length > 0) {
-        const cleaned = item.images.map(cleanStillUrl).filter(Boolean) as string[];
-        if (cleaned.length > 0) return cleaned;
-    }
-
-    // 2. Check item.data or direct item properties
     const norm = normalizeInventoryData(item.data || item);
-    const urls: string[] = [];
+    const cleanRoomUrls: string[] = [];
 
-    // 3. Check generated PNG / mask URL
+    // 1. Cutout clean room PNG (generated_png_url / mask_url)
     const genPng = cleanStillUrl(norm.generatedPngUrl || item.generated_png_url || item.generatedPngUrl || item.maskUrl || item.mask_url);
-    if (genPng) urls.push(genPng);
+    if (genPng) cleanRoomUrls.push(genPng);
 
-    // 4. Check primary image URL
-    const mainImg = cleanStillUrl(norm.imageUrl || item.image_url || item.imageUrl);
-    if (mainImg && !urls.includes(mainImg)) urls.push(mainImg);
-
-    // 5. Check media_urls
-    const rawMedia = norm.mediaUrls || item.media_urls || item.mediaUrls || (item.data ? (item.data.media_urls || item.data.mediaUrls) : null);
-    if (rawMedia && typeof rawMedia === 'string') {
-        const parts = rawMedia.split(',').map(cleanStillUrl).filter(Boolean) as string[];
-        for (const p of parts) {
-            if (!urls.includes(p)) urls.push(p);
+    // 2. Background-replaced clean room studio photos from processed_media_urls
+    const rawProcessed = norm.processedMediaUrls || norm.processed_media_urls;
+    if (rawProcessed) {
+        let processedMap: Record<string, any> = {};
+        if (typeof rawProcessed === 'object') {
+            processedMap = rawProcessed;
+        } else {
+            const str = String(rawProcessed).trim();
+            if (str.startsWith('{')) {
+                try { processedMap = JSON.parse(str) || {}; } catch (e) {}
+            }
+        }
+        for (const val of Object.values(processedMap)) {
+            if (typeof val === 'string' && /^https?:\/\//i.test(val)) {
+                const c = cleanStillUrl(val);
+                if (c && !cleanRoomUrls.includes(c)) cleanRoomUrls.push(c);
+            }
         }
     }
 
-    return urls;
+    // 3. If item.images was pre-filtered for clean room images, include any distinct clean entries
+    if (Array.isArray(item.images) && item.images.length > 0) {
+        const preCleaned = item.images.map(cleanStillUrl).filter(Boolean) as string[];
+        for (const u of preCleaned) {
+            // Only add if it's already a clean room image or we have no clean room images yet
+            if (u && !cleanRoomUrls.includes(u)) {
+                if (cleanRoomUrls.length === 0 || u.includes('mask') || u.includes('png') || u.includes('processed')) {
+                    cleanRoomUrls.push(u);
+                }
+            }
+        }
+    }
+
+    // If clean room images exist, return ONLY clean room images (NO raw warehouse photos)
+    if (cleanRoomUrls.length > 0) {
+        return cleanRoomUrls;
+    }
+
+    // Fallback ONLY when item has no clean room images whatsoever
+    const fallback = cleanStillUrl(norm.imageUrl || item.image_url || item.imageUrl);
+    return fallback ? [fallback] : [];
 }
 
-async function drawCatalogHubPage(
+
+/**
+ * Renders an item in Vertical Portrait mode: ONE single clean room image per sheet.
+ */
+async function drawCatalogHubPagePortrait(
     doc: any, 
     item: CatalogArtifact, 
     M: number, 
     PW: number, 
     PH: number, 
-    logoData: LogoData | null,
     pageInfo?: { current: number; total: number },
     imageIndex: number = 0
 ) {
@@ -716,19 +784,16 @@ async function drawCatalogHubPage(
     const codes: Partial<CatalogArtifact['codes']> = item.codes || {};
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
 
-    // 1. Top information panel: Brand Logo (direct vector/PNG without frame container)
+    // 1. Top information panel: Item collection badge (NO brand logo at top)
     const topY = M;
-    if (logoData) {
-        const maxLogoW = 55;
-        const maxLogoH = 16;
-        let logoW = maxLogoW;
-        let logoH = logoW / logoData.aspectRatio;
-        if (logoH > maxLogoH) {
-            logoH = maxLogoH;
-            logoW = logoH * logoData.aspectRatio;
-        }
-        doc.addImage(logoData.dataUrl, 'PNG', M, topY, logoW, logoH);
-    }
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 116, 139);
+    doc.text('ONYX COLLECTION EXHIBIT', M, topY + 5);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('AUTHENTIC NATURAL STONE · HANDCRAFTED', M, topY + 9.5);
 
     let qrDataUrl = '';
     try {
@@ -763,7 +828,6 @@ async function drawCatalogHubPage(
     if (barDataUrl) {
         const barX = currX - barW - 4;
         doc.addImage(barDataUrl, 'PNG', barX, topY, barW, barH);
-        
         drawFormattedTagCode(doc, codes, barX, topY + barH + 4.5, 9);
 
         const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
@@ -787,7 +851,6 @@ async function drawCatalogHubPage(
     const color = norm.color || (item.data ? item.data.Color : '') || '';
     const material = norm.material || (item.data ? item.data.Material : '') || 'Onyx';
     
-    // Main Title: Generated Title
     const itemDataObj = item.data || item;
     const mainDescStr = normalizeBrandTerms(itemDataObj.title || itemDataObj.generatedTitle || itemDataObj.generated_title || itemDataObj.description || itemDataObj.detailed_description || norm.description || norm.detailedDescription || `${shape} handcrafted from natural Mexican ${material}`);
     const titleStr = mainDescStr.replace(/\s+/g, ' ').trim().toUpperCase() + (itemDataObj.partSuffix ? ` ${itemDataObj.partSuffix.toUpperCase()}` : '');
@@ -807,7 +870,6 @@ async function drawCatalogHubPage(
 
     titleY += (splitTitle.length * 4.5) + 1.5;
 
-    // Subtitle 1: Shape Type Color Material
     const shapeTypeColorMat = [shape, shortDesc, color, material].filter(Boolean).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
     if (shapeTypeColorMat) {
         doc.setFontSize(9.5);
@@ -818,7 +880,6 @@ async function drawCatalogHubPage(
         titleY += (splitSub1.length * 4.5) + 1.5;
     }
 
-    // Subtitle 2: Category and GENERATED color
     const catAndTypeGrid = getProductCategoryAndType(norm);
     const genColorStr = norm.generatedColor || (Array.isArray(norm.dominantColors) ? norm.dominantColors.join(', ') : (norm.dominantColors || ''));
     
@@ -842,7 +903,7 @@ async function drawCatalogHubPage(
     doc.setLineWidth(0.2);
     doc.line(M, sep2Y, PW - M, sep2Y);
 
-    // 4. Stacked Content Zone (Horizontally stacked: Image on top, Body description below)
+    // 4. Content Zone: Single Clean Room Image on top, Marketing description below
     const contentY = sep2Y + 2;
     const contentH = PH - 47 - contentY;
     const fullW = PW - 2 * M;
@@ -852,42 +913,13 @@ async function drawCatalogHubPage(
     const currentImgUrl = imgs[imageIndex] || imgs[0];
 
     if (!currentImgUrl) {
-        let wCm = parseFloat(norm.widthCm) || 0;
-        let hCm = parseFloat(norm.heightCm) || 0;
-        let dCm = parseFloat(norm.lengthCm) || 0;
-        if (wCm || hCm || dCm) {
-            try {
-                const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shape, shortDesc, resolveItemColor(itemDataObj), true, extractItemHexString(itemDataObj));
-                if (axoDataUrl) {
-                    const axoSize = Math.min(fullW * 0.75, imgBoxH * 0.75, 80);
-                    doc.addImage(axoDataUrl, 'JPEG', M + (fullW - axoSize) / 2, contentY + (imgBoxH - axoSize) / 2, axoSize, axoSize);
-                }
-            } catch (e) {}
-        }
-    } else if (item.exportType === 'catalog-grid' && imgs.length > 1) {
-        const gridImages = imgs.slice(0, 3);
-        const gap = 4;
-        
-        if (gridImages.length === 3) {
-            const topH = (imgBoxH - gap) * 0.6;
-            const botH = (imgBoxH - gap) * 0.4;
-            const botW = (fullW - gap) / 2;
-            
-            const imgData0 = await loadImgData(gridImages[0], 800, false, '#FFFFFF', 6);
-            if (imgData0) drawContain(doc, imgData0, M, contentY, fullW, topH, 1.0);
-            
-            const imgData1 = await loadImgData(gridImages[1], 800, false, '#FFFFFF', 6);
-            if (imgData1) drawContain(doc, imgData1, M, contentY + topH + gap, botW, botH, 1.0);
-            
-            const imgData2 = await loadImgData(gridImages[2], 800, false, '#FFFFFF', 6);
-            if (imgData2) drawContain(doc, imgData2, M + botW + gap, contentY + topH + gap, botW, botH, 1.0);
-        } else {
-            const cellH = (imgBoxH - gap) / 2;
-            for (let idx = 0; idx < 2; idx++) {
-                const imgData = await loadImgData(gridImages[idx], 800, false, '#FFFFFF', 6);
-                if (imgData) drawContain(doc, imgData, M, contentY + idx * (cellH + gap), fullW, cellH, 1.0);
+        try {
+            const heroAxo = await getAdvancedAxoDataUrl(norm, itemDataObj);
+            if (heroAxo) {
+                const axoSize = Math.min(fullW * 0.75, imgBoxH * 0.85, 90);
+                doc.addImage(heroAxo, heroAxo.startsWith('data:image/png') ? 'PNG' : 'JPEG', M + (fullW - axoSize) / 2, contentY + (imgBoxH - axoSize) / 2, axoSize, axoSize);
             }
-        }
+        } catch (e) {}
     } else {
         const imgData = await loadImgData(currentImgUrl, 800, false, '#FFFFFF', 6);
         if (imgData) {
@@ -901,22 +933,18 @@ async function drawCatalogHubPage(
     const marketingHtml = normalizeBrandTerms(item.data.marketing_description || item.data.generatedDescription || item.data.generated_description || '');
     renderStyledMarketingHtml(doc, marketingHtml, M, descY, fullW, descH);
 
-    // 5. Large axonometric icon & ADD Dimensions Panel generated at the bottom left of the page
-    const wVal = parseFloat(norm.widthCm) || 20;
-    const hVal = parseFloat(norm.heightCm) || 30;
-    const dVal = parseFloat(norm.lengthCm) || 20;
+    // 5. Advanced axonometric icon & Dimensions Panel generated at bottom left
     const iconSize = 38;
     const bottomY = PH - 44;
     
     try {
-        const smallAxoUrl = await generateAxonometricDataUrl(wVal, hVal, dVal, shape, shortDesc, resolveItemColor(item.data), true, extractItemHexString(item.data));
+        const smallAxoUrl = await getAdvancedAxoDataUrl(norm, item.data || item);
         if (smallAxoUrl) {
-            doc.addImage(smallAxoUrl, 'JPEG', M, bottomY, iconSize, iconSize);
+            doc.addImage(smallAxoUrl, smallAxoUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG', M, bottomY, iconSize, iconSize);
         }
     } catch (e) {}
 
-    // Free floating, condensed, data-dense imperial dimensions (no borders, containers, titles, or shape)
-    const panelX = M + iconSize + 6; // 12 + 38 + 6 = 56
+    const panelX = M + iconSize + 6;
     const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in') || '—';
     const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in') || '—';
     const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in') || '—';
@@ -929,7 +957,6 @@ async function drawCatalogHubPage(
     let yPos = bottomY + 12;
     const rowGap = 6.5;
 
-    // Row 1: Width & Height
     doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
     doc.text('WIDTH:', col1X, yPos);
     doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
@@ -942,7 +969,6 @@ async function drawCatalogHubPage(
 
     yPos += rowGap;
 
-    // Row 2: Depth & Weight
     doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
     doc.text('DEPTH:', col1X, yPos);
     doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
@@ -955,7 +981,6 @@ async function drawCatalogHubPage(
 
     yPos += rowGap;
 
-    // Row 3: Overall Dims
     doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
     doc.text('OVERALL:', col1X, yPos);
     doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
@@ -963,38 +988,240 @@ async function drawCatalogHubPage(
 }
 
 /**
+ * Renders an item in Horizontal Landscape mode: MULTIPLE clean room images per sheet.
+ */
+async function drawCatalogHubPageLandscapeGrid(
+    doc: any, 
+    item: CatalogArtifact, 
+    M: number, 
+    PW: number, 
+    PH: number, 
+    pageInfo?: { current: number; total: number }
+) {
+    const norm = normalizeInventoryData(item.data || item); 
+    const codes: Partial<CatalogArtifact['codes']> = item.codes || {};
+    const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
+
+    // 1. Top Header Bar (NO brand logo at top)
+    const topY = M;
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 116, 139);
+    doc.text('ONYX COLLECTION EXHIBIT · MULTI-IMAGE GRID', M, topY + 4.5);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('AUTHENTIC NATURAL STONE · HANDCRAFTED', M, topY + 8.5);
+
+    let qrDataUrl = '';
+    try {
+        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { errorCorrectionLevel: 'H', margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
+    } catch (e) {}
+
+    let barDataUrl = '';
+    try {
+        const canvas = document.createElement('canvas');
+        JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 32, lineColor: '#141414' });
+        barDataUrl = canvas.toDataURL('image/png');
+    } catch (e) {}
+
+    const qrSize = 14;
+    const rightEdge = PW - M;
+    let currX = rightEdge - qrSize;
+
+    if (qrDataUrl) {
+        doc.addImage(qrDataUrl, 'PNG', currX, topY, qrSize, qrSize);
+        const tagVColor = getVendorColor(barcode);
+        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
+        const qrCenterX = currX + qrSize / 2;
+        const qrCenterY = topY + qrSize / 2;
+        doc.setFillColor(255, 255, 255);
+        doc.circle(qrCenterX, qrCenterY, 1.8, 'F');
+        doc.setFillColor(tagHexColor);
+        doc.circle(qrCenterX, qrCenterY, 1.3, 'F');
+    }
+
+    const barW = 40;
+    const barH = 9;
+    if (barDataUrl) {
+        const barX = currX - barW - 4;
+        doc.addImage(barDataUrl, 'PNG', barX, topY, barW, barH);
+        drawFormattedTagCode(doc, codes, barX, topY + barH + 4, 8.5);
+
+        const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
+        const wVal = norm.weightKg ? `${norm.weightKg}kg` : '—';
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text(`${dimsMetric || 'Custom Dims'} · ${wVal}`, barX, topY + barH + 7.5);
+    }
+
+    const sep1Y = topY + 18;
+    doc.setDrawColor(225, 225, 225);
+    doc.setLineWidth(0.3);
+    doc.line(M, sep1Y, PW - M, sep1Y);
+
+    // 2. Horizontal Two-Column Layout (Left: Images Grid, Right: Details & Axo)
+    const contentY = sep1Y + 3;
+    const contentH = PH - 22 - contentY; // Above footer line
+    const leftW = 158; // Images zone
+    const rightX = M + leftW + 8;
+    const rightW = PW - M - rightX;
+
+    // LEFT ZONE: MULTIPLE CLEAN ROOM IMAGES GRID
+    const imgs = getItemImages(item);
+    const gap = 3.5;
+
+    if (imgs.length === 0) {
+        try {
+            const heroAxo = await getAdvancedAxoDataUrl(norm, item.data || item);
+            if (heroAxo) {
+                const axoSize = Math.min(leftW * 0.8, contentH * 0.8, 110);
+                doc.addImage(heroAxo, heroAxo.startsWith('data:image/png') ? 'PNG' : 'JPEG', M + (leftW - axoSize) / 2, contentY + (contentH - axoSize) / 2, axoSize, axoSize);
+            }
+        } catch (e) {}
+    } else if (imgs.length === 1) {
+        const d0 = await loadImgData(imgs[0], 800, false, '#FFFFFF', 6);
+        if (d0) drawContain(doc, d0, M, contentY, leftW, contentH, 0.95);
+    } else if (imgs.length === 2) {
+        const colW = (leftW - gap) / 2;
+        const d0 = await loadImgData(imgs[0], 800, false, '#FFFFFF', 6);
+        const d1 = await loadImgData(imgs[1], 800, false, '#FFFFFF', 6);
+        if (d0) drawContain(doc, d0, M, contentY, colW, contentH, 0.95);
+        if (d1) drawContain(doc, d1, M + colW + gap, contentY, colW, contentH, 0.95);
+    } else if (imgs.length === 3) {
+        const mainW = leftW * 0.58;
+        const sideW = leftW - mainW - gap;
+        const sideH = (contentH - gap) / 2;
+        const d0 = await loadImgData(imgs[0], 800, false, '#FFFFFF', 6);
+        const d1 = await loadImgData(imgs[1], 800, false, '#FFFFFF', 6);
+        const d2 = await loadImgData(imgs[2], 800, false, '#FFFFFF', 6);
+        if (d0) drawContain(doc, d0, M, contentY, mainW, contentH, 0.95);
+        if (d1) drawContain(doc, d1, M + mainW + gap, contentY, sideW, sideH, 0.95);
+        if (d2) drawContain(doc, d2, M + mainW + gap, contentY + sideH + gap, sideW, sideH, 0.95);
+    } else {
+        // 4+ images: 2x2 grid
+        const colW = (leftW - gap) / 2;
+        const rowH = (contentH - gap) / 2;
+        for (let idx = 0; idx < Math.min(4, imgs.length); idx++) {
+            const gx = M + (idx % 2) * (colW + gap);
+            const gy = contentY + Math.floor(idx / 2) * (rowH + gap);
+            const d = await loadImgData(imgs[idx], 800, false, '#FFFFFF', 6);
+            if (d) drawContain(doc, d, gx, gy, colW, rowH, 0.95);
+        }
+    }
+
+    // Hairline Vertical Divider between Images and Specifications
+    doc.setDrawColor(235, 235, 235);
+    doc.setLineWidth(0.2);
+    doc.line(M + leftW + 4, contentY, M + leftW + 4, contentY + contentH);
+
+    // RIGHT ZONE: METADATA, MARKETING HTML, ADVANCED AXO & DIMENSIONS
+    const shape = norm.shape || 'Sculptural Form';
+    const shortDesc = norm.shortDescription || norm.description || 'Artisanal Piece';
+    const color = norm.color || (item.data ? item.data.Color : '') || '';
+    const material = norm.material || (item.data ? item.data.Material : '') || 'Onyx';
+
+    const itemDataObj = item.data || item;
+    const mainDescStr = normalizeBrandTerms(itemDataObj.title || itemDataObj.generatedTitle || itemDataObj.generated_title || itemDataObj.description || itemDataObj.detailed_description || norm.description || norm.detailedDescription || `${shape} handcrafted from natural Mexican ${material}`);
+    const titleStr = mainDescStr.replace(/\s+/g, ' ').trim().toUpperCase() + (itemDataObj.partSuffix ? ` ${itemDataObj.partSuffix.toUpperCase()}` : '');
+
+    let rY = contentY + 2;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    const splitTitle = doc.splitTextToSize(titleStr, rightW);
+    doc.text(splitTitle, rightX, rY);
+    rY += (splitTitle.length * 4.3) + 2;
+
+    const shapeTypeColorMat = [shape, shortDesc, color, material].filter(Boolean).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
+    if (shapeTypeColorMat) {
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        const splitSub = doc.splitTextToSize(shapeTypeColorMat, rightW);
+        doc.text(splitSub, rightX, rY);
+        rY += (splitSub.length * 3.8) + 2;
+    }
+
+    const catAndTypeGrid = getProductCategoryAndType(norm);
+    const genColorStr = norm.generatedColor || (Array.isArray(norm.dominantColors) ? norm.dominantColors.join(', ') : (norm.dominantColors || ''));
+    let sub2Parts = [catAndTypeGrid.category.toUpperCase(), catAndTypeGrid.type.toUpperCase()];
+    if (genColorStr) sub2Parts.push(genColorStr.toUpperCase());
+    
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 116, 139);
+    doc.text(sub2Parts.join('  |  '), rightX, rY);
+    rY += 5;
+
+    doc.setDrawColor(241, 245, 249);
+    doc.setLineWidth(0.2);
+    doc.line(rightX, rY, PW - M, rY);
+    rY += 3;
+
+    // Marketing description
+    const textZoneH = contentH - (rY - contentY) - 40; // reserve 40mm at bottom for axo + dims
+    const marketingHtml = normalizeBrandTerms(item.data.marketing_description || item.data.generatedDescription || item.data.generated_description || '');
+    renderStyledMarketingHtml(doc, marketingHtml, rightX, rY, rightW, textZoneH);
+
+    // Advanced Axo & Dimensions at bottom right
+    const axoY = contentY + contentH - 36;
+    const axoSize = 34;
+
+    try {
+        const smallAxoUrl = await getAdvancedAxoDataUrl(norm, item.data || item);
+        if (smallAxoUrl) {
+            doc.addImage(smallAxoUrl, smallAxoUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG', rightX, axoY, axoSize, axoSize);
+        }
+    } catch (e) {}
+
+    // Condensed Dimensions table next to axo
+    const panelX = rightX + axoSize + 4;
+    const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in') || '—';
+    const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in') || '—';
+    const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in') || '—';
+    const wtImp = toImp(norm.weightKg, 'lbs') || '—';
+
+    doc.setFontSize(7.5);
+    let dimY = axoY + 6;
+    const col2Offset = 36;
+
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('WIDTH:', panelX, dimY);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(wImp, panelX + 13, dimY);
+
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('HEIGHT:', panelX + col2Offset, dimY);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(hImp, panelX + col2Offset + 14, dimY);
+
+    dimY += 6;
+
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('DEPTH:', panelX, dimY);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(dImp, panelX + 13, dimY);
+
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('WEIGHT:', panelX + col2Offset, dimY);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
+    doc.text(wtImp, panelX + col2Offset + 15, dimY);
+
+    dimY += 6;
+
+    const retailVal = codes.bookRetail ? `$${codes.bookRetail} USD` : '—';
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
+    doc.text('RETAIL:', panelX, dimY);
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 23, 42);
+    doc.text(retailVal, panelX + 13, dimY);
+}
+/**
  * Decoded images, keyed by every argument that changes the result.
- *
- * Two jobs. It de-duplicates an image used more than once in a run, and --
- * the reason it exists -- it lets the whole set be warmed in parallel before
- * rendering starts. Every draw call in this file is a sequential await, so
- * without a warm-up fetchImageBatch's 50ms batching window never accumulates
- * more than one file id and a catalogue becomes one Apps Script round trip
- * per image, in series. Apps Script is slow per call, so that is where the
- * wait was coming from.
- *
- * Cleared at the start of each catalogue so repeated exports in one session
- * do not grow without bound.
  */
 const imgDataCache = new Map<string, Promise<ImgData | null>>();
 
-/**
- * How long the cache above is allowed to live.
- *
- * On its own each export clears the cache on the way in, which is right for a
- * single document but makes two documents in a row strictly sequential: the
- * second cannot be warmed until the first has finished drawing, because the
- * first's entry point would wipe whatever the warm-up had put there.
- *
- * A session lets a caller that is producing several documents say "these belong
- * together, keep one cache across them" and take responsibility for ending it.
- * Inside a session the per-export clear is skipped, so the second document's
- * images can be fetched while the first is still drawing -- fetching is network
- * bound and drawing is main-thread bound, so the two genuinely overlap.
- *
- * Nothing else has to opt in: with no session open, sessionDepth is 0 and the
- * clear happens exactly where it always did.
- */
 let sessionDepth = 0;
 
 export function beginImageSession() {
@@ -1007,13 +1234,6 @@ export function endImageSession() {
     if (sessionDepth === 0) imgDataCache.clear();
 }
 
-/**
- * The images a catalogue run will actually ask for.
- *
- * Shared by the export and the standalone warm-up below so the two cannot drift
- * -- a warm-up that computed a different set from the export it is warming
- * would silently do nothing useful.
- */
 function catalogWantedImages(
     results: CatalogArtifact[],
     exportType: string,
@@ -1146,6 +1366,260 @@ async function yieldToUi(force = false): Promise<void> {
     await paintYield();
 }
 
+
+async function drawCatalogSummaryPages(
+    doc: any,
+    results: CatalogArtifact[],
+    M: number,
+    PW: number,
+    PH: number,
+    addPage: () => void,
+    isLandscape: boolean,
+    catalogTitle?: string
+) {
+    const totalItems = results.length;
+    let totalQty = 0;
+    let totalWeightKg = 0;
+    let totalRetailUsd = 0;
+    const shapeCounts: Record<string, number> = {};
+
+    for (const it of results) {
+        const norm = normalizeInventoryData(it.data || it);
+        const qty = parseInt(norm.quantity || '1', 10) || 1;
+        totalQty += qty;
+        const wt = parseFloat(norm.weightKg || '0') || 0;
+        totalWeightKg += (wt * qty);
+        const retailStr = String(it.codes?.bookRetail || norm.bookRetail || '0').replace(/[^0-9.]/g, '');
+        const retail = parseFloat(retailStr) || 0;
+        totalRetailUsd += (retail * qty);
+        
+        const shape = (norm.shape || norm.shortDescription || 'Other').trim();
+        shapeCounts[shape] = (shapeCounts[shape] || 0) + qty;
+    }
+
+    const sortedShapes = Object.entries(shapeCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([s, c]) => `${s.toUpperCase()} (${c})`)
+        .join('  ·  ');
+
+    // Page 1 of Summary
+    addPage();
+
+    // Title & Header block
+    doc.setFontSize(isLandscape ? 16 : 18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(catalogTitle || 'ONYX COLLECTION CATALOGUE', M, isLandscape ? 20 : 24);
+
+    doc.setFontSize(isLandscape ? 8 : 8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 116, 139);
+    doc.text('EXECUTIVE INVENTORY SUMMARY & SPECIFICATION SHEET', M, isLandscape ? 25 : 30);
+
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`DATE: ${dateStr}`, PW - M, isLandscape ? 20 : 24, { align: 'right' });
+    doc.text(`${totalItems} ITEMS  ·  ${totalQty} UNITS`, PW - M, isLandscape ? 25 : 30, { align: 'right' });
+
+    // Hairline Header Divider
+    const divY = isLandscape ? 29 : 34;
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.line(M, divY, PW - M, divY);
+
+    // 4 KPI Summary Cards
+    const cardY = divY + 3.5;
+    const cardH = isLandscape ? 18 : 22;
+    const gap = 4;
+    const cardW = (PW - 2 * M - 3 * gap) / 4;
+
+    const kpis = [
+        { label: 'TOTAL ITEMS', val: `${totalItems}`, sub: 'CATALOG LINE ITEMS' },
+        { label: 'TOTAL QUANTITY', val: `${totalQty}`, sub: 'AGGREGATE PIECES' },
+        { label: 'ESTIMATED WEIGHT', val: `${Math.round(totalWeightKg)} kg`, sub: `${Math.round(totalWeightKg * 2.20462)} lbs` },
+        { label: 'TOTAL USD RETAIL', val: `$${Math.round(totalRetailUsd).toLocaleString('en-US')}`, sub: 'USD RETAIL' },
+    ];
+
+    kpis.forEach((kpi, idx) => {
+        const cx = M + idx * (cardW + gap);
+        doc.setFillColor(252, 253, 255);
+        doc.roundedRect(cx, cardY, cardW, cardH, 2, 2, 'F');
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(cx, cardY, cardW, cardH, 2, 2, 'S');
+
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text(kpi.label, cx + 4, cardY + 5.5);
+
+        doc.setFontSize(isLandscape ? 11.5 : 13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(kpi.val, cx + 4, cardY + (isLandscape ? 11.5 : 13.5));
+
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(148, 163, 184);
+        doc.text(kpi.sub, cx + 4, cardY + (isLandscape ? 15.5 : 18.5));
+    });
+
+    // Breakdown line
+    const breakY = cardY + cardH + 4;
+    if (sortedShapes) {
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(71, 85, 105);
+        doc.text(`CATEGORY BREAKDOWN:  ${sortedShapes}`, M, breakY);
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.2);
+        doc.line(M, breakY + 3, PW - M, breakY + 3);
+    }
+
+    // Table rendering
+    const drawTableHeader = (startY: number) => {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(M, startY, PW - 2 * M, 6.5, 'F');
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.25);
+        doc.line(M, startY, PW - M, startY);
+        doc.line(M, startY + 6.5, PW - M, startY + 6.5);
+
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(71, 85, 105);
+
+        if (isLandscape) {
+            doc.text('TAG / BARCODE', M + 2, startY + 4.5);
+            doc.text('TYPE / SHAPE', M + 34, startY + 4.5);
+            doc.text('COLOR & MATERIAL', M + 100, startY + 4.5);
+            doc.text('DIMENSIONS (W×H×D)', M + 160, startY + 4.5);
+            doc.text('QTY', M + 220, startY + 4.5, { align: 'right' });
+            doc.text('USD RETAIL', PW - M - 2, startY + 4.5, { align: 'right' });
+        } else {
+            doc.text('TAG / BARCODE', M + 2, startY + 4.5);
+            doc.text('TYPE / SHAPE', M + 28, startY + 4.5);
+            doc.text('COLOR & MATERIAL', M + 76, startY + 4.5);
+            doc.text('DIMENSIONS (W×H×D)', M + 114, startY + 4.5);
+            doc.text('QTY', M + 154, startY + 4.5, { align: 'right' });
+            doc.text('USD RETAIL', PW - M - 2, startY + 4.5, { align: 'right' });
+        }
+    };
+
+    let currentTableY = breakY + 5;
+    drawTableHeader(currentTableY);
+    let rowY = currentTableY + 6.5;
+    const rowH = 8;
+
+    for (let i = 0; i < results.length; i++) {
+        const it = results[i];
+        const norm = normalizeInventoryData(it.data || it);
+        const tag = it.codes?.bookBarcode || norm.itemId || `ITEM-${i + 1}`;
+        const shape = (norm.shape || norm.shortDescription || 'Onyx Piece').toUpperCase();
+        const color = [norm.color, norm.material].filter(Boolean).join(' · ') || 'Mexican Onyx';
+        const dims = [norm.widthCm, norm.heightCm, norm.lengthCm]
+            .filter(Boolean)
+            .map(v => cmToImperial(v))
+            .join(' × ') || '—';
+        const qty = parseInt(norm.quantity || '1', 10) || 1;
+        const retailStr = String(it.codes?.bookRetail || norm.bookRetail || '0').replace(/[^0-9.]/g, '');
+        const retail = parseFloat(retailStr) || 0;
+
+        if (rowY + rowH > PH - 24) {
+            addPage();
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(15, 23, 42);
+            doc.text('COLLECTION MANIFEST (CONTINUED)', M, isLandscape ? 16 : 20);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.2);
+            doc.line(M, isLandscape ? 19 : 24, PW - M, isLandscape ? 19 : 24);
+
+            currentTableY = isLandscape ? 22 : 27;
+            drawTableHeader(currentTableY);
+            rowY = currentTableY + 6.5;
+        }
+
+        if (i % 2 === 1) {
+            doc.setFillColor(253, 254, 255);
+            doc.rect(M, rowY, PW - 2 * M, rowH, 'F');
+        }
+
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+
+        if (isLandscape) {
+            doc.text(tag, M + 2, rowY + 5.2);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(30, 41, 59);
+            const splitShape = doc.splitTextToSize(shape, 62);
+            doc.text(splitShape[0] || shape, M + 34, rowY + 5.2);
+
+            const splitColor = doc.splitTextToSize(color, 56);
+            doc.text(splitColor[0] || color, M + 100, rowY + 5.2);
+
+            doc.text(dims, M + 160, rowY + 5.2);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${qty}`, M + 220, rowY + 5.2, { align: 'right' });
+
+            const retailFmt = retail > 0 ? `$${Math.round(retail).toLocaleString('en-US')}` : '—';
+            doc.text(retailFmt, PW - M - 2, rowY + 5.2, { align: 'right' });
+        } else {
+            doc.text(tag, M + 2, rowY + 5.2);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(30, 41, 59);
+            const splitShape = doc.splitTextToSize(shape, 46);
+            doc.text(splitShape[0] || shape, M + 28, rowY + 5.2);
+
+            const splitColor = doc.splitTextToSize(color, 36);
+            doc.text(splitColor[0] || color, M + 76, rowY + 5.2);
+
+            doc.text(dims, M + 114, rowY + 5.2);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${qty}`, M + 154, rowY + 5.2, { align: 'right' });
+
+            const retailFmt = retail > 0 ? `$${Math.round(retail).toLocaleString('en-US')}` : '—';
+            doc.text(retailFmt, PW - M - 2, rowY + 5.2, { align: 'right' });
+        }
+
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.15);
+        doc.line(M, rowY + rowH, PW - M, rowY + rowH);
+
+        rowY += rowH;
+    }
+
+    // Totals row at bottom of table
+    if (rowY + 8.5 > PH - 24) {
+        addPage();
+        rowY = isLandscape ? 20 : 24;
+    }
+
+    doc.setFillColor(248, 250, 252);
+    doc.rect(M, rowY, PW - 2 * M, 8.5, 'F');
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.25);
+    doc.line(M, rowY, PW - M, rowY);
+    doc.line(M, rowY + 8.5, PW - M, rowY + 8.5);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`GRAND TOTALS  (${totalItems} ITEMS)`, M + 2, rowY + 5.8);
+    if (isLandscape) {
+        doc.text(`${totalQty}`, M + 220, rowY + 5.8, { align: 'right' });
+    } else {
+        doc.text(`${totalQty}`, M + 154, rowY + 5.8, { align: 'right' });
+    }
+    doc.text(`$${Math.round(totalRetailUsd).toLocaleString('en-US')} USD`, PW - M - 2, rowY + 5.8, { align: 'right' });
+}
+
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single'; logo?: string; exportType?: 'regular' | 'catalog' },
@@ -1200,50 +1674,78 @@ export async function exportCatalogPdf(
             `and a single PDF tops out near 300MB. Try batches of about ${fits} items.`
         );
     }
-    const PW = 210, PH = 297, M = 12;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    // Grid method triggers horizontal landscape layout with multiple images per page
+    // Single method triggers vertical portrait layout with one single image per sheet
+    const isLandscape = config.method === 'grid';
+    const PW = isLandscape ? 297 : 210;
+    const PH = isLandscape ? 210 : 297;
+    const M = 12;
+    const doc = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
     
-    let logoData: LogoData | null = null;
-    if (config.method === 'single' || exportType === 'catalog') {
-        const logoStr = config.logo === 'RareEarth' ? RARE_EARTH_LOGO : ART_OF_DECOR_LOGO;
-        logoData = await loadLogoData(logoStr);
-    }
+    let [artOfDecorLogo, rareEarthLogo, onyxLogo] = await Promise.all([
+        loadLogoData(ART_OF_DECOR_LOGO),
+        loadLogoData(RARE_EARTH_LOGO),
+        loadLogoData(ONYX_MX_LOGO)
+    ]);
+    let logoData = artOfDecorLogo;
     
     let globalPageNum = 0;
     const footer = (doc: any) => { 
         globalPageNum++; 
         
         if (config.method === 'single' || exportType === 'catalog') {
-            doc.setFontSize(10);
-            const madeText = 'Made in Mexico for';
-            doc.setTextColor(20, 20, 20);
-            const tw = doc.getTextWidth(madeText);
-            
+            // Hairline divider across footer
+            doc.setDrawColor(228, 228, 231);
+            doc.setLineWidth(0.2);
+            doc.line(M, PH - 16, PW - M, PH - 16);
+
+            // Left side: MADE IN MEXICO & Page Number
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 41, 59);
+            const mimText = 'MADE IN MEXICO';
+            doc.text(mimText, M, PH - 8.5);
+
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(148, 163, 184);
+            doc.text(`·   Page ${globalPageNum}`, M + doc.getTextWidth(mimText) + 3, PH - 8.5);
+
+            // Right side: All three logos side-by-side (Onyx-mx, Art of Decor, Rare Earth)
             const rightEdge = PW - M;
-            let logoX = rightEdge - 50;
-            let logoY = PH - 20;
+            const targetH = 5.5;
+            const gap = 5;
 
-            if (logoData) {
-                const isRareEarth = config.logo === 'RareEarth';
-                let logoW = isRareEarth ? 42 : 52;
-                let logoH = logoW / logoData.aspectRatio;
-                if (isRareEarth && logoH > 14) {
-                    logoH = 14;
-                    logoW = logoH * logoData.aspectRatio;
-                } else if (!isRareEarth && logoH > 8) {
-                    logoH = 8;
-                    logoW = logoH * logoData.aspectRatio;
-                }
+            const aodW = artOfDecorLogo ? Math.min(28, targetH * artOfDecorLogo.aspectRatio) : 24;
+            const aodH = artOfDecorLogo ? aodW / artOfDecorLogo.aspectRatio : targetH;
 
-                logoY = isRareEarth ? (PH - 24) : (PH - 20);
-                logoX = rightEdge - logoW;
+            const regW = rareEarthLogo ? Math.min(24, targetH * rareEarthLogo.aspectRatio) : 20;
+            const regH = rareEarthLogo ? regW / rareEarthLogo.aspectRatio : targetH;
 
-                doc.addImage(logoData.dataUrl, 'PNG', logoX, logoY, logoW, logoH);
+            const onyxW = onyxLogo ? Math.min(18, targetH * onyxLogo.aspectRatio) : 15;
+            const onyxH = onyxLogo ? onyxW / onyxLogo.aspectRatio : targetH;
+
+            let currX = rightEdge;
+
+            if (onyxLogo) {
+                currX -= onyxW;
+                const yPos = PH - 8.5 - onyxH / 2;
+                doc.addImage(onyxLogo.dataUrl, 'PNG', currX, yPos, onyxW, onyxH);
+                currX -= gap;
             }
-            
-            const textY = logoData ? logoY - 1.5 : PH - 23;
-            const textX = rightEdge - tw;
-            doc.text(madeText, textX, textY);
+
+            if (artOfDecorLogo) {
+                currX -= aodW;
+                const yPos = PH - 8.5 - aodH / 2;
+                doc.addImage(artOfDecorLogo.dataUrl, 'PNG', currX, yPos, aodW, aodH);
+                currX -= gap;
+            }
+
+            if (rareEarthLogo) {
+                currX -= regW;
+                const yPos = PH - 8.5 - regH / 2;
+                doc.addImage(rareEarthLogo.dataUrl, 'PNG', currX, yPos, regW, regH);
+            }
         }
     };
 
@@ -1258,29 +1760,32 @@ export async function exportCatalogPdf(
     let processedCount = 0;
 
     if (exportType === 'catalog') {
-        // --- METHOD: CATALOG HUB EXPORT (ONE IMAGE PER PAGE WITH STYLED MARKETING DESC) ---
+        // 1. Executive Summary & Specification Sheets (Hairline metrics & manifest)
+        onProgress?.(5, 'Generating Executive Summary...');
+        await drawCatalogSummaryPages(doc, results, M, PW, PH, addPage, isLandscape, config.title);
+
+        // 2. Item Catalog Pages
         for (let i = 0; i < results.length; i++) {
             const item = results[i];
             const imgs = getItemImages(item);
-            if (item.exportType === 'catalog-grid' && imgs.length > 1) {
-                processedCount++;
-                onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
-                await yieldToUi();
+            processedCount++;
+            onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+            await yieldToUi();
+
+            if (isLandscape) {
+                // HORIZONTAL PAGE: MULTIPLE CLEAN ROOM IMAGES PER PAGE
                 addPage();
-                await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, 0);
-            } else if (imgs.length <= 1) {
-                processedCount++;
-                onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
-                await yieldToUi();
-                addPage();
-                await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, 0);
+                await drawCatalogHubPageLandscapeGrid(doc, item, M, PW, PH, { current: i + 1, total: totalItems });
             } else {
-                for (let j = 0; j < imgs.length; j++) {
-                    processedCount++;
-                    onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${i + 1} (Image ${j + 1}/${imgs.length})...`);
-                    await yieldToUi();
+                // VERTICAL PAGE: ONE SINGLE CLEAN ROOM IMAGE PER SHEET
+                if (imgs.length <= 1) {
                     addPage();
-                    await drawCatalogHubPage(doc, item, M, PW, PH, logoData, { current: i + 1, total: totalItems }, j);
+                    await drawCatalogHubPagePortrait(doc, item, M, PW, PH, { current: i + 1, total: totalItems }, 0);
+                } else {
+                    for (let j = 0; j < imgs.length; j++) {
+                        addPage();
+                        await drawCatalogHubPagePortrait(doc, item, M, PW, PH, { current: i + 1, total: totalItems }, j);
+                    }
                 }
             }
         }

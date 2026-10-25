@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Loader2, Check, Download, FileText, LayoutGrid, Tag, Share2, X, ChevronRight, AlertCircle } from 'lucide-react';
+import { Loader2, Check, Download, FileText, LayoutGrid, X, ChevronRight, ExternalLink, Sparkles } from 'lucide-react';
 import { tr } from '../lib/i18n';
 
-interface ExportConfig {
+export interface ExportConfig {
     title: string;
     method: 'grid' | 'single' | 'list';
     includeImages: boolean;
     notes: string;
     bruteWeight?: string;
-    branding?: 'ArtOfDecor' | 'RareEarth';
+    branding?: 'MultiBrand' | 'ArtOfDecor' | 'RareEarth';
 }
 
-interface ExportWizardProps {
+export interface ExportWizardProps {
     isOpen: boolean;
     onClose: () => void;
     onStart: (config: ExportConfig) => void;
@@ -21,6 +21,7 @@ interface ExportWizardProps {
     moduleName: string;
     showBruteWeight?: boolean;
     initialBruteWeight?: string;
+    pdfBlobUrl?: string | null;
 }
 
 export const ExportWizard: React.FC<ExportWizardProps> = ({
@@ -31,19 +32,19 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
     status,
     moduleName,
     showBruteWeight = false,
-    initialBruteWeight = ''
+    initialBruteWeight = '',
+    pdfBlobUrl = null
 }) => {
     const [step, setStep] = useState<'config' | 'progress' | 'complete'>('config');
     const [config, setConfig] = useState<ExportConfig>({
-        title: `${moduleName} Export`,
+        title: `${moduleName} Catalog`,
         method: 'grid',
         includeImages: true,
         notes: '',
         bruteWeight: initialBruteWeight,
-        branding: 'ArtOfDecor'
+        branding: 'MultiBrand'
     });
 
-    // Reset step when opened
     React.useEffect(() => {
         if (isOpen) {
             setStep('config');
@@ -51,220 +52,272 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
         }
     }, [isOpen, initialBruteWeight]);
 
-    // Transition to progress step when start is called
     const handleStart = () => {
         setStep('progress');
         onStart(config);
     };
 
-    // Transition to complete when progress hits 100
     React.useEffect(() => {
-        if (progress === 100) {
-            setTimeout(() => setStep('complete'), 500);
+        if (progress === 100 || pdfBlobUrl) {
+            setTimeout(() => setStep('complete'), 400);
         }
-    }, [progress]);
+    }, [progress, pdfBlobUrl]);
 
     if (!isOpen) return null;
 
+    const handleDownload = () => {
+        if (!pdfBlobUrl) return;
+        const a = document.createElement('a');
+        a.href = pdfBlobUrl;
+        const safeName = (config.title || 'Onyx_Catalog').replace(/[^a-zA-Z0-9_-]/g, '_');
+        a.download = `${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+
     return createPortal(
-        <div className="fixed inset-0 z-[20000] flex items-center justify-center bg-black/80 backdrop-blur-2xl animate-in fade-in duration-300">
-            <div className="w-[520px] max-h-[90vh] overflow-hidden rounded-[48px] bg-white/[0.03] border border-white/10 flex flex-col shadow-2xl relative">
-                {/* Top accent line */}
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-(--main-color) to-transparent shadow-[0_0_15px_rgba(var(--main-color),0.3)]" />
+        <div className="fixed inset-0 z-[20000] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-2xl animate-in fade-in duration-300">
+            {/* Liquid Onyx Glass Modal Container */}
+            <div className={`w-[min(96vw,860px)] ${step === 'complete' && pdfBlobUrl ? 'h-[92vh]' : 'max-h-[92vh]'} rounded-[36px] bg-[rgba(12,16,26,0.80)] backdrop-blur-3xl border border-white/[0.14] shadow-[0_32px_100px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.22)] flex flex-col relative overflow-hidden text-white transition-all duration-300`}>
                 
-                {/* Header */}
-                <div className="p-10 pb-6 flex justify-between items-start shrink-0">
-                    <div className="flex flex-col gap-2">
-                        <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                            {step === 'config' ? tr("Export Configuration") : step === 'progress' ? tr("Generating PDF") : tr("Export Complete")}
-                        </h2>
-                        <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">
-                            {step === 'config' ? `Preparing ${moduleName} Manifest` : step === 'progress' ? status : tr("Process finished successfully")}
-                        </p>
+                {/* Specular Liquid Edge Line */}
+                <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-(--main-color)/70 to-transparent shadow-[0_0_20px_rgba(var(--main-color),0.5)] pointer-events-none" />
+
+                {/* Top Action Bar: Free-Floating Brand Icons & Close Button (NO heavy titles) */}
+                <div className="pt-5 px-7 pb-3 flex items-center justify-between shrink-0">
+                    {/* Embedded free-floating brand icons */}
+                    <div className="flex items-center gap-5 sm:gap-6">
+                        <img 
+                            src={`${import.meta.env.BASE_URL}REG_Logo.png`} 
+                            alt="Rare Earth Gallery" 
+                            className="h-6.5 object-contain opacity-75 hover:opacity-100 transition-opacity filter drop-shadow-[0_2px_10px_rgba(255,255,255,0.12)]" 
+                        />
+                        <div className="w-[1px] h-3.5 bg-white/15" />
+                        <img 
+                            src={`${import.meta.env.BASE_URL}ArtOfDecorLogo.png`} 
+                            alt="Art Of Decor" 
+                            className="h-6 object-contain opacity-75 hover:opacity-100 transition-opacity filter drop-shadow-[0_2px_10px_rgba(255,255,255,0.12)]" 
+                        />
+                        <div className="w-[1px] h-3.5 bg-white/15" />
+                        <img 
+                            src={`${import.meta.env.BASE_URL}OnyxLogo.png`} 
+                            alt="Onyx-mx" 
+                            className="h-5.5 object-contain opacity-75 hover:opacity-100 transition-opacity filter drop-shadow-[0_2px_10px_rgba(255,255,255,0.12)]" 
+                        />
                     </div>
-                    {step !== 'progress' && (
-                        <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all">
-                            <X size={20} />
-                        </button>
-                    )}
+
+                    <div className="flex items-center gap-2">
+                        {step === 'complete' && pdfBlobUrl && (
+                            <button
+                                onClick={handleDownload}
+                                className="h-9 px-4 rounded-full bg-white/[0.08] hover:bg-white/[0.15] border border-white/[0.12] text-xs font-bold text-white flex items-center gap-2 transition-all active:scale-95 shadow-md"
+                            >
+                                <Download size={14} /> {tr("Download PDF")}
+                            </button>
+                        )}
+                        {step !== 'progress' && (
+                            <button 
+                                onClick={onClose} 
+                                className="w-9 h-9 rounded-full bg-white/[0.05] hover:bg-white/[0.14] border border-white/[0.1] flex items-center justify-center text-white/50 hover:text-white transition-all backdrop-blur-md active:scale-95"
+                                aria-label={tr("Close")}
+                            >
+                                <X size={17} />
+                            </button>
+                        )}
+                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-10 pb-10 custom-scrollbar">
+                {/* Modal Body */}
+                <div className="flex-1 overflow-y-auto px-7 pb-7 custom-scrollbar flex flex-col">
                     {step === 'config' && (
-                        <div className="flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-500">
-                            {/* Title Input */}
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Export Title")}</label>
+                        <div className="flex flex-col gap-5 animate-in slide-in-from-bottom-3 duration-400">
+                            
+                            {/* Export Title Input */}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] ml-1">{tr("Export Title")}</label>
                                 <input 
                                     autoFocus
                                     type="text" 
                                     value={config.title} 
                                     onChange={e => setConfig({ ...config, title: e.target.value })}
-                                    className="w-full h-14 px-6 bg-white/[0.04] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-(--main-color)/30 focus:bg-white/5 transition-all"
+                                    className="w-full h-13 px-5 bg-white/[0.04] backdrop-blur-xl border border-white/[0.1] rounded-2xl text-sm font-semibold text-white outline-none focus:border-(--main-color)/60 focus:bg-white/[0.08] focus:shadow-[0_0_20px_rgba(var(--main-color),0.15)] transition-all placeholder:text-white/20"
+                                    placeholder={tr("Enter catalog title...")}
                                 />
                             </div>
 
-                            {/* Method Selection */}
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Layout Methodology")}</label>
-                                <div className="grid grid-cols-2 gap-3">
+                            {/* Layout Methodology (Glass Cards) */}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] ml-1">{tr("Layout Format")}</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                     <button 
+                                        type="button"
                                         onClick={() => setConfig({ ...config, method: 'grid' })}
-                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left ${config.method === 'grid' ? 'bg-(--main-color)/10 border-(--main-color)/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                        className={`group relative flex flex-col p-4.5 rounded-2xl border transition-all text-left backdrop-blur-xl ${
+                                            config.method === 'grid' 
+                                                ? 'bg-(--main-color)/14 border-(--main-color)/50 shadow-[0_0_30px_rgba(var(--main-color),0.22),inset_0_1px_1px_rgba(255,255,255,0.22)]' 
+                                                : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.06]'
+                                        }`}
                                     >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${config.method === 'grid' ? 'bg-(--main-color)/20 border-(--main-color)/30' : 'bg-white/5 border-white/10'}`}>
-                                            <LayoutGrid size={20} className={config.method === 'grid' ? 'text-(--main-color)' : 'text-white/40'} />
+                                        <div className="flex items-center justify-between mb-2.5">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors ${
+                                                config.method === 'grid' 
+                                                    ? 'bg-(--main-color)/25 border-(--main-color)/40 text-(--main-color)' 
+                                                    : 'bg-white/[0.04] border-white/[0.08] text-white/40'
+                                            }`}>
+                                                <LayoutGrid size={18} />
+                                            </div>
+                                            <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                                                config.method === 'grid'
+                                                    ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
+                                                    : 'bg-white/[0.03] border-white/[0.06] text-white/30'
+                                            }`}>
+                                                Horizontal A4
+                                            </span>
                                         </div>
-                                        <div>
-                                            <p className={`text-xs font-black uppercase tracking-widest ${config.method === 'grid' ? 'text-white' : 'text-white/40'}`}>{tr("Catalog Grid")}</p>
-                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">{tr("Multi-image rows")}</p>
-                                        </div>
+                                        <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'grid' ? 'text-white' : 'text-white/70'}`}>{tr("Catalog Grid")}</p>
+                                        <p className="text-[10px] font-medium text-white/35 mt-0.5">{tr("Horizontal landscape · Multiple clean room images per sheet")}</p>
                                     </button>
+
                                     <button 
+                                        type="button"
                                         onClick={() => setConfig({ ...config, method: 'single' })}
-                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left ${config.method === 'single' ? 'bg-(--main-color)/10 border-(--main-color)/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                        className={`group relative flex flex-col p-4.5 rounded-2xl border transition-all text-left backdrop-blur-xl ${
+                                            config.method === 'single' 
+                                                ? 'bg-(--main-color)/14 border-(--main-color)/50 shadow-[0_0_30px_rgba(var(--main-color),0.22),inset_0_1px_1px_rgba(255,255,255,0.22)]' 
+                                                : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.06]'
+                                        }`}
                                     >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${config.method === 'single' ? 'bg-(--main-color)/20 border-(--main-color)/30' : 'bg-white/5 border-white/10'}`}>
-                                            <FileText size={20} className={config.method === 'single' ? 'text-(--main-color)' : 'text-white/40'} />
+                                        <div className="flex items-center justify-between mb-2.5">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors ${
+                                                config.method === 'single' 
+                                                    ? 'bg-(--main-color)/25 border-(--main-color)/40 text-(--main-color)' 
+                                                    : 'bg-white/[0.04] border-white/[0.08] text-white/40'
+                                            }`}>
+                                                <FileText size={18} />
+                                            </div>
+                                            <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                                                config.method === 'single'
+                                                    ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
+                                                    : 'bg-white/[0.03] border-white/[0.06] text-white/30'
+                                            }`}>
+                                                Vertical A4
+                                            </span>
                                         </div>
-                                        <div>
-                                            <p className={`text-xs font-black uppercase tracking-widest ${config.method === 'single' ? 'text-white' : 'text-white/40'}`}>{tr("Per Image")}</p>
-                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">{tr("High fidelity cards")}</p>
-                                        </div>
+                                        <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'single' ? 'text-white' : 'text-white/70'}`}>{tr("Per Image")}</p>
+                                        <p className="text-[10px] font-medium text-white/35 mt-0.5">{tr("Vertical portrait · One single clean room image per sheet")}</p>
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Branding Selection */}
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Document Branding")}</label>
-                                <div className="flex gap-3 h-16">
-                                    <button 
-                                        onClick={() => setConfig({ ...config, branding: 'ArtOfDecor' })}
-                                        className={`flex-1 flex items-center justify-center rounded-2xl transition-all duration-300 ${config.branding === 'ArtOfDecor' ? 'bg-white/[0.08] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]' : 'bg-transparent hover:bg-white/[0.04]'}`}
-                                    >
-                                        <img src={`${import.meta.env.BASE_URL}ArtOfDecorLogo.png`} alt={tr("Art Of Decor")} className={`h-8 object-contain transition-all duration-300 ${config.branding === 'ArtOfDecor' ? 'opacity-100 scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-100'}`} />
-                                    </button>
-                                    <button 
-                                        onClick={() => setConfig({ ...config, branding: 'RareEarth' })}
-                                        className={`flex-1 flex items-center justify-center rounded-2xl transition-all duration-300 ${config.branding === 'RareEarth' ? 'bg-white/[0.08] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]' : 'bg-transparent hover:bg-white/[0.04]'}`}
-                                    >
-                                        <img src={`${import.meta.env.BASE_URL}REG_Logo.png`} alt={tr("Rare Earth Gallery")} className={`h-8 object-contain transition-all duration-300 ${config.branding === 'RareEarth' ? 'opacity-100 scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'opacity-40 grayscale hover:opacity-70 hover:scale-100'}`} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Additional Fields */}
-                            <div className="grid grid-cols-2 gap-8">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Notes")}</label>
+                            {/* Additional Options */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] ml-1">{tr("Manifest Notes")}</label>
                                     <textarea 
                                         value={config.notes} 
                                         onChange={e => setConfig({ ...config, notes: e.target.value })}
-                                        className="w-full h-28 p-5 bg-white/[0.04] border border-white/10 rounded-2xl text-xs font-bold text-white outline-none focus:border-(--main-color)/30 focus:bg-white/5 transition-all resize-none"
-                                        placeholder={tr("Add manifest notes...")}
+                                        className="w-full h-20 p-3.5 bg-white/[0.04] backdrop-blur-xl border border-white/[0.1] rounded-2xl text-xs font-medium text-white outline-none focus:border-(--main-color)/50 focus:bg-white/[0.07] transition-all resize-none placeholder:text-white/20"
+                                        placeholder={tr("Optional catalogue notes...")}
                                     />
                                 </div>
-                                <div className="flex flex-col gap-8">
+
+                                <div className="flex flex-col justify-between gap-2.5">
                                     {showBruteWeight && (
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">{tr("Brute Weight (KG)")}</label>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] ml-1">{tr("Brute Weight (KG)")}</label>
                                             <input 
                                                 type="text" 
                                                 value={config.bruteWeight} 
                                                 onChange={e => setConfig({ ...config, bruteWeight: e.target.value })}
-                                                placeholder={tr("Total cargo mass...")}
-                                                className="w-full h-14 px-6 bg-white/[0.04] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-(--main-color)/30 focus:bg-white/5 transition-all"
+                                                placeholder={tr("Cargo mass...")}
+                                                className="w-full h-10 px-4 bg-white/[0.04] border border-white/[0.1] rounded-xl text-xs font-medium text-white outline-none focus:border-(--main-color)/50 transition-all"
                                             />
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-4 p-5 rounded-3xl bg-white/2 border border-white/5">
+
+                                    <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-all">
                                         <input 
                                             type="checkbox" 
                                             id="includeImages"
                                             checked={config.includeImages}
                                             onChange={e => setConfig({ ...config, includeImages: e.target.checked })}
-                                            className="w-5 h-5 rounded-lg border-2 border-white/20 bg-transparent checked:bg-(--main-color) checked:border-(--main-color) transition-all cursor-pointer"
+                                            className="w-4 h-4 rounded border border-white/20 bg-white/5 checked:bg-(--main-color) checked:border-(--main-color) transition-all cursor-pointer accent-(--main-color)"
                                         />
-                                        <label htmlFor="includeImages" className="text-xs font-black uppercase tracking-widest text-white/60 cursor-pointer">{tr("Include Images")}</label>
+                                        <label htmlFor="includeImages" className="text-xs font-semibold text-white/70 cursor-pointer select-none">
+                                            {tr("Export Clean Room Images Only")}
+                                        </label>
                                     </div>
                                 </div>
                             </div>
 
+                            {/* Action Button */}
                             <button 
+                                type="button"
                                 onClick={handleStart}
-                                className="w-full h-16 rounded-[24px] bg-(--main-color) text-black text-sm font-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl flex items-center justify-center gap-4"
+                                className="w-full h-14 mt-1 rounded-2xl bg-gradient-to-r from-(--main-color) to-[#60d5f8] text-[#04161e] text-xs font-black uppercase tracking-[0.25em] hover:brightness-110 active:scale-[0.99] transition-all shadow-[0_8px_30px_rgba(var(--main-color),0.35)] flex items-center justify-center gap-3"
                             >
-                                {tr("Start Generation")} <ChevronRight size={20} />
+                                <Sparkles size={16} /> {tr("Generate PDF Catalog")} <ChevronRight size={18} />
                             </button>
                         </div>
                     )}
 
                     {step === 'progress' && (
-                        <div className="flex flex-col gap-10 py-10 animate-in fade-in duration-500 items-center">
-                            <div className="relative">
-                                <div className="w-24 h-24 rounded-[32px] bg-(--main-color)/10 flex items-center justify-center border border-(--main-color)/20">
-                                    <Loader2 size={40} className="text-(--main-color) animate-spin" />
+                        <div className="flex-1 flex flex-col justify-center items-center py-12 gap-8 animate-in fade-in duration-500">
+                            {/* Larger Progress Visual */}
+                            <div className="relative flex items-center justify-center">
+                                <div className="w-32 h-32 rounded-full bg-(--main-color)/10 border border-(--main-color)/30 flex items-center justify-center shadow-[0_0_50px_rgba(var(--main-color),0.25)] animate-pulse">
+                                    <Loader2 size={54} className="text-(--main-color) animate-spin" />
                                 </div>
+                                <div className="absolute inset-0 rounded-full border-2 border-(--main-color)/20 animate-ping duration-[2500ms]" />
                             </div>
 
-                            <div className="w-full space-y-4">
-                                <div className="flex justify-between items-end">
-                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em]">{tr("Processing Assets")}</span>
-                                    <span className="text-2xl font-black text-white font-mono">{Math.round(progress)}%</span>
+                            <div className="w-full max-w-md space-y-3 text-center">
+                                <div className="flex justify-between items-baseline px-1">
+                                    <span className="text-xs font-black text-(--main-color) uppercase tracking-[0.25em]">{tr("Generating Catalog")}</span>
+                                    <span className="text-3xl font-black text-white font-mono">{Math.round(progress)}%</span>
                                 </div>
-                                <div className="h-2 w-full bg-white/5 rounded-full p-1 border border-white/5 relative overflow-hidden">
+                                <div className="h-2.5 w-full bg-white/[0.04] rounded-full p-0.5 border border-white/[0.08] relative overflow-hidden">
                                     <div 
-                                        className="h-full rounded-full bg-gradient-to-r from-(--main-color) to-[#AEE6F5] transition-all duration-300 shadow-[0_0_15px_rgba(var(--main-color),0.4)]"
+                                        className="h-full rounded-full bg-gradient-to-r from-(--main-color) to-[#9ce4f9] transition-all duration-300 shadow-[0_0_20px_rgba(var(--main-color),0.5)]"
                                         style={{ width: `${progress}%` }}
                                     />
                                 </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 px-8 py-6 rounded-[32px] bg-white/2 border border-white/5 w-full">
-                                <div className="p-3 rounded-xl bg-(--main-color)/10 text-(--main-color)">
-                                    <AlertCircle size={20} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">
-                                        {tr("High-Res Assembly")}
-                                    </span>
-                                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">
-                                        {tr("Optimizing vector layouts and image layers...")}
-                                    </span>
-                                </div>
+                                <p className="text-xs font-medium text-white/50 pt-1">
+                                    {status || tr("Warming clean room images and building vector layout...")}
+                                </p>
                             </div>
                         </div>
                     )}
 
                     {step === 'complete' && (
-                        <div className="flex flex-col gap-10 py-10 animate-in zoom-in duration-500 items-center text-center">
-                            <div className="relative">
-                                <div className="w-24 h-24 rounded-[32px] bg-green-500/10 flex items-center justify-center border border-green-500/20">
-                                    <Check size={40} className="text-green-500" />
+                        <div className="flex-1 flex flex-col gap-4 animate-in zoom-in duration-300">
+                            {pdfBlobUrl ? (
+                                /* Embedded PDF Viewer */
+                                <div className="flex-1 flex flex-col min-h-[460px] relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black/40">
+                                    <iframe 
+                                        src={`${pdfBlobUrl}#toolbar=0&navpanes=0`} 
+                                        className="w-full h-full min-h-[480px] rounded-2xl border-0" 
+                                        title={config.title || "Catalog PDF"} 
+                                    />
                                 </div>
-                                <div className="absolute -inset-4 rounded-[48px] border border-green-500/20 animate-ping duration-[3000ms]" />
-                            </div>
-
-                            <div className="flex flex-col gap-2">
-                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">{tr("Manifest Ready")}</h3>
-                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">{tr("Your export has been successfully generated")}</p>
-                            </div>
-
-                            <div className="w-full flex gap-4 pt-4">
-                                <button 
-                                    onClick={onClose}
-                                    className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
-                                >
-                                    {tr("Dismiss")}
-                                </button>
-                                <button 
-                                    onClick={onClose}
-                                    className="flex-[2] h-14 rounded-full bg-white text-black text-[10px] font-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    <Download size={16} /> {tr("Open Document")}
-                                </button>
-                            </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center py-10 gap-6 text-center">
+                                    <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                                        <Check size={40} className="text-emerald-400" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h3 className="text-lg font-black text-white uppercase tracking-wider">{tr("Catalog Ready")}</h3>
+                                        <p className="text-xs text-white/40">{tr("The document was compiled and downloaded successfully.")}</p>
+                                    </div>
+                                    <button 
+                                        onClick={onClose}
+                                        className="h-12 px-8 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/[0.1] text-xs font-black uppercase tracking-widest text-white transition-all"
+                                    >
+                                        {tr("Dismiss")}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

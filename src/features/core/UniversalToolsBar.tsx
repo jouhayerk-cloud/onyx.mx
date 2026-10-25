@@ -69,7 +69,7 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 const CompactDockCard = React.lazy(() => import('../logistics/TruckingModule').then(m => ({ default: m.CompactDockCard })));
 const DeployedTrailerCard = React.lazy(() => import('../logistics/TruckingModule').then(m => ({ default: m.DeployedTrailerCard })));
 import toast from '../onyxIsland/notify/toast';
-import { normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
+import { normalizeInventoryData, calculateCodesAndPrices, collectAllImages, collectExportImages, getCleanImageUrl } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -447,6 +447,7 @@ export const UniversalToolsBar: React.FC = () => {
     const [isCatalogExportOpen, setIsCatalogExportOpen] = useState(false);
     const [catalogExportProgress, setCatalogExportProgress] = useState(0);
     const [catalogExportStatus, setCatalogExportStatus] = useState('');
+    const [catalogPdfBlobUrl, setCatalogPdfBlobUrl] = useState<string | null>(null);
 
     const handleExportCatalogPdf = () => {
         const items = getSelectedItems();
@@ -463,9 +464,12 @@ export const UniversalToolsBar: React.FC = () => {
             const currentRate = liveEx || fixedEx || 18.0;
             const itemsToExport = selectedItems.map(item => {
                 const norm = normalizeInventoryData(item.data || item);
-                const rawImages = (norm.mediaUrls || []).filter(Boolean);
-                const main = norm.generatedPngUrl || (rawImages.length > 0 ? rawImages[0] : null);
-                const imgs = [main, ...rawImages.filter((u: string) => u !== main)].filter(Boolean);
+                const rawCleanPng = norm.generatedPngUrl || norm.generated_png_url || norm.maskUrl;
+                const cleanPng = rawCleanPng ? getCleanImageUrl(rawCleanPng) : null;
+                const exportImgs = collectExportImages(norm);
+                const allStills = collectAllImages(norm, { dropVideos: true });
+                const combined = [cleanPng, ...exportImgs, ...allStills].filter(Boolean) as string[];
+                const imgs = Array.from(new Set(combined));
                 const codes = calculateCodesAndPrices(item.data || item, currentRate, workbookPrefix || '1');
                 
                 return {
@@ -483,15 +487,20 @@ export const UniversalToolsBar: React.FC = () => {
                 };
             });
 
-            await exportCatalogPdf(itemsToExport as any, {
+            const blob = await exportCatalogPdf(itemsToExport as any, {
                 title: cfg.title || "ONYX COLLECTION",
                 method: cfg.method || "grid",
                 exportType: 'catalog'
             }, (p: number, s: string) => {
                 setCatalogExportProgress(p);
                 setCatalogExportStatus(s);
-            });
-            toast.success(tr("Catalog PDF exported successfully!"));
+            }, 'blob');
+
+            if (blob instanceof Blob) {
+                const url = URL.createObjectURL(blob);
+                setCatalogPdfBlobUrl(url);
+            }
+            toast.success(tr("Catalog PDF generated successfully!"));
         } catch (err: any) {
             console.error("PDF Export error:", err);
             toast.error(tr("Failed to export PDF catalog: ") + (err?.message || ''));
@@ -739,11 +748,19 @@ export const UniversalToolsBar: React.FC = () => {
             {isCatalogExportOpen && (
                 <ExportWizard
                     isOpen={isCatalogExportOpen}
-                    onClose={() => { setIsCatalogExportOpen(false); setCatalogExportProgress(0); }}
+                    onClose={() => {
+                        setIsCatalogExportOpen(false);
+                        setCatalogExportProgress(0);
+                        if (catalogPdfBlobUrl) {
+                            URL.revokeObjectURL(catalogPdfBlobUrl);
+                            setCatalogPdfBlobUrl(null);
+                        }
+                    }}
                     onStart={handleStartCatalogExport}
                     progress={catalogExportProgress}
                     status={catalogExportStatus}
                     moduleName="Catalog"
+                    pdfBlobUrl={catalogPdfBlobUrl}
                 />
             )}
 
