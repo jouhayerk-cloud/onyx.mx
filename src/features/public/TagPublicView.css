@@ -1,311 +1,302 @@
 /* ==========================================================================
-   TAG PUBLIC VIEW — Redesigned Hero Gallery & Digital Authenticity Certificate
-   Liquid Onyx Glass & Apple HIG Translucent Slab Aesthetics
+   TAG PUBLIC VIEW — Redesigned Luxury Catalog Export Sheet Format
+   Liquid Onyx Glass & Apple HIG Translucent Architecture Aesthetics
    ========================================================================== */
 
 #tagview {
     --tv-slab-bg: rgba(255, 255, 255, 0.04);
     --tv-slab-border: rgba(255, 255, 255, 0.12);
     --tv-slab-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.02) 60%);
-    --tv-gold-seal: #d4af37;
-    --tv-gold-seal-glow: rgba(212, 175, 55, 0.25);
     --tv-neon-cyan: #00e5ff;
     --tv-neon-emerald: #10b981;
 }
 
-/* ── Hero Gallery Stage ───────────────────────────────────────────────────── */
-.tv-hero-stage {
+/* ── Overriding the 2-column logistics grid into a luxury catalog sheet ── */
+#tagview .tv-main.tv-catalog-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: 980px !important;
+    margin: 0 auto !important;
+    padding: clamp(16px, 3vw, 36px) clamp(12px, 3vw, 24px) 56px !important;
+}
+
+/* ── The Architectural Luxury Catalog Sheet ───────────────────────────────── */
+.tv-catalog-sheet {
     position: relative;
     width: 100%;
-    aspect-ratio: 1 / 1;
-    max-height: 540px;
     border-radius: 28px;
-    overflow: hidden;
-    background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.07) 0%, rgba(8, 12, 20, 0.85) 100%);
-    border: 1px solid var(--tv-slab-border);
-    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-}
-
-.tv-hero-stage--pedestal {
-    background-image: 
-        radial-gradient(ellipse 65% 20% at 50% 85%, rgba(0, 229, 255, 0.12) 0%, transparent 70%),
-        radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.06) 0%, rgba(6, 9, 15, 0.92) 100%);
-}
-
-.tv-hero-stage--checker {
-    background-color: #0c0f17;
-    background-image: 
-        linear-gradient(45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%),
-        linear-gradient(-45deg, rgba(255, 255, 255, 0.03) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.03) 75%),
-        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.03) 75%);
-    background-size: 24px 24px;
-    background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
-}
-
-/* ── Floating Asset Selector Dock ────────────────────────────────────────── */
-.tv-asset-dock {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px;
-    border-radius: 9999px;
-    background: rgba(18, 24, 38, 0.65);
+    background: linear-gradient(175deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.025) 40%, rgba(10, 14, 22, 0.78) 100%);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    overflow-x: auto;
-    max-width: 100%;
+    box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    padding: clamp(20px, 4vw, 42px);
+    overflow: hidden;
 }
 
-.tv-asset-tab {
+/* ── Title & Classification Block ─────────────────────────────────────────── */
+.tv-catalog-title-block {
     display: flex;
+    flex-direction: column;
+}
+
+.tv-catalog-main-title {
+    font-family: var(--tv-display);
+    font-size: clamp(19px, 2.6vw, 26px);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    line-height: 1.25;
+    color: #ffffff;
+    text-transform: uppercase;
+}
+
+.tv-catalog-qty-badge {
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-radius: 9999px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: rgba(255, 255, 255, 0.6);
-    background: transparent;
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    font-family: var(--tv-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #cbd5e1;
     white-space: nowrap;
 }
 
-.tv-asset-tab:hover {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.08);
+.tv-catalog-classification {
+    font-family: var(--tv-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: #94a3b8;
+    text-transform: uppercase;
 }
 
-.tv-asset-tab.is-active {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.16);
-    border-color: rgba(255, 255, 255, 0.25);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+/* ── Subtle Hairline Divider ─────────────────────────────────────────────── */
+.tv-hairline {
+    width: 100%;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
 }
 
-/* ── SVG Vector Cutfile Viewer ───────────────────────────────────────────── */
-.tv-svg-box {
-    width: 88%;
-    height: 88%;
+/* ── Header Specs Bar ────────────────────────────────────────────────────── */
+.tv-header-specs-bar {
+    width: 100%;
+}
+
+/* ── Large Hero Clean Room Studio Stage ──────────────────────────────────── */
+.tv-hero-clean-room {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    min-height: 320px;
+    max-height: 520px;
+    border-radius: 20px;
+    background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.06) 0%, rgba(8, 12, 20, 0.92) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 20px 40px -10px rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    padding: 24px;
+    overflow: hidden;
 }
 
-.tv-svg-box img,
-.tv-svg-box svg {
+.tv-hero-clean-img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
-    filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.35));
+    filter: drop-shadow(0 18px 32px rgba(0, 0, 0, 0.75));
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.tv-vector-grid-overlay {
+.tv-hero-clean-img:hover {
+    transform: scale(1.02);
+}
+
+.tv-hero-zoom-btn {
     position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background-image: 
-        linear-gradient(to right, rgba(0, 229, 255, 0.05) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
-    background-size: 20px 20px;
-    border: 1px dashed rgba(0, 229, 255, 0.2);
-    border-radius: 16px;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 5;
 }
 
-/* ── Axonometric Dimension Frame ─────────────────────────────────────────── */
-.tv-axo-frame {
-    position: relative;
-    width: 88%;
-    height: 88%;
+.tv-hero-zoom-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffffff;
+    transform: scale(1.05);
+}
+
+/* ── Secondary Smaller Hairline Grid ─────────────────────────────────────── */
+.tv-secondary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+.tv-secondary-thumb {
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.tv-dim-indicator {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-family: var(--tv-mono);
-    font-weight: 700;
-    background: rgba(12, 16, 26, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+.tv-secondary-thumb:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(0, 229, 255, 0.45);
+    transform: translateY(-2px);
+}
+
+.tv-secondary-thumb.is-active {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #00e5ff;
+    box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
+}
+
+/* ── Subtitle & Marketing HTML Description ───────────────────────────────── */
+.tv-catalog-subtitle {
+    font-family: var(--tv-display);
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: #f1f5f9;
+    text-transform: uppercase;
+}
+
+.tv-marketing-html {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #cbd5e1;
+}
+
+.tv-marketing-html p {
+    margin-bottom: 0.75rem;
+}
+
+.tv-marketing-html p:last-child {
+    margin-bottom: 0;
+}
+
+.tv-marketing-html strong {
     color: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    pointer-events: none;
+    font-weight: 700;
 }
 
-/* ── Hex Color Map Mosaic ────────────────────────────────────────────────── */
-.tv-hexmap-wrap {
-    width: 86%;
-    max-width: 380px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
+.tv-marketing-html ul,
+.tv-marketing-html ol {
+    margin-left: 1.25rem;
+    margin-bottom: 0.75rem;
 }
 
-.tv-hexmap-grid {
+.tv-marketing-html li {
+    margin-bottom: 0.25rem;
+}
+
+/* ── Bottom Specifications Grid (3D Axonometric & Dims Table) ─────────────── */
+.tv-bottom-specs-grid {
     display: grid;
-    gap: 2px;
-    padding: 10px;
-    border-radius: 18px;
-    background: rgba(10, 14, 24, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-.tv-hexmap-tile {
+    grid-template-columns: 1fr;
+    gap: 20px;
     width: 100%;
-    aspect-ratio: 1 / 1;
-    border-radius: 3px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    cursor: pointer;
 }
 
-.tv-hexmap-tile:hover {
-    transform: scale(1.6);
-    z-index: 10;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-    border: 1px solid #ffffff;
-}
-
-/* ── Digital Certificate of Authenticity Slab ────────────────────────────── */
-.tv-cert-slab {
-    position: relative;
-    border-radius: 32px;
-    background: linear-gradient(175deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 40%, rgba(14, 18, 28, 0.4) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
-    padding: 32px 28px;
-    overflow: hidden;
-}
-
-@media (min-width: 640px) {
-    .tv-cert-slab {
-        padding: 44px 40px;
+@media (min-width: 768px) {
+    .tv-bottom-specs-grid {
+        grid-template-columns: 1.15fr 1fr;
+        gap: 24px;
+        align-items: stretch;
     }
 }
 
-.tv-cert-watermark {
-    position: absolute;
-    right: -5%;
-    top: 15%;
-    font-family: var(--tv-mono);
-    font-weight: 900;
-    font-size: clamp(60px, 12vw, 130px);
-    line-height: 1;
-    color: rgba(255, 255, 255, 0.025);
-    letter-spacing: 0.18em;
-    transform: rotate(-10deg);
-    pointer-events: none;
-    user-select: none;
-    white-space: nowrap;
-    z-index: 0;
-}
-
-/* ── Authenticity Seal Medallion ─────────────────────────────────────────── */
-.tv-seal-medallion {
-    position: relative;
-    width: 76px;
-    height: 76px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(212, 175, 55, 0.2) 0%, rgba(20, 24, 34, 0.95) 75%);
-    border: 2px solid rgba(212, 175, 55, 0.6);
-    box-shadow: 0 0 24px rgba(212, 175, 55, 0.25), inset 0 0 14px rgba(212, 175, 55, 0.2);
+.tv-bottom-axo-container {
+    border-radius: 20px;
+    background: rgba(10, 14, 24, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 16px;
     display: flex;
     flex-direction: column;
+}
+
+.tv-bottom-axo-view {
+    flex: 1;
+    display: flex;
     align-items: center;
     justify-content: center;
-    color: #d4af37;
-    flex-shrink: 0;
+    min-height: 220px;
 }
 
-.tv-seal-ring {
-    position: absolute;
-    inset: 3px;
-    border-radius: 50%;
-    border: 1px dashed rgba(212, 175, 55, 0.4);
-    animation: tv-spin-slow 40s linear infinite;
+.tv-dimensions-panel {
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 20px;
 }
 
-@keyframes tv-spin-slow {
-    100% { transform: rotate(360deg); }
-}
-
-/* ── Dimension Badge ─────────────────────────────────────────────────────── */
-.tv-dim-badge {
+.tv-spec-cell {
     display: flex;
     flex-direction: column;
-    padding: 12px 14px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    transition: all 0.2s ease;
+    gap: 2px;
 }
 
-.tv-dim-badge:hover {
-    background: rgba(255, 255, 255, 0.07);
-    border-color: rgba(255, 255, 255, 0.18);
-    transform: translateY(-1px);
-}
-
-.tv-dim-badge-label {
+.tv-spec-label {
     font-size: 10px;
+    font-family: var(--tv-mono);
     font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(255, 255, 255, 0.45);
-    margin-bottom: 4px;
 }
 
-.tv-dim-badge-primary {
-    font-size: 16px;
-    font-weight: 800;
+.tv-spec-value-imp {
+    font-size: 15px;
     font-family: var(--tv-mono);
-    color: #ffffff;
+    font-weight: 800;
+    color: #f8fafc;
     line-height: 1.2;
 }
 
-.tv-dim-badge-secondary {
-    font-size: 12px;
+.tv-spec-value-metric {
+    font-size: 11px;
+    font-family: var(--tv-mono);
     font-weight: 500;
-    font-family: var(--tv-mono);
-    color: rgba(255, 255, 255, 0.5);
-    margin-top: 2px;
+    color: #94a3b8;
 }
 
-/* ── Cryptographic Acquisition Cypher Badge ──────────────────────────────── */
-.tv-cipher-slab {
-    border-radius: 20px;
-    background: linear-gradient(145deg, rgba(0, 229, 255, 0.06) 0%, rgba(14, 18, 28, 0.6) 100%);
-    border: 1px solid rgba(0, 229, 255, 0.22);
-    box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(0, 229, 255, 0.3);
-    padding: 16px 20px;
+/* ── Footer: MADE IN MEXICO & Logos ───────────────────────────────────────── */
+.tv-catalog-footer {
+    width: 100%;
 }
 
-.tv-cipher-code {
-    font-family: var(--tv-mono);
-    font-size: 13px;
+.tv-catalog-mim {
+    font-family: var(--tv-display);
+    font-size: 12px;
     font-weight: 800;
-    letter-spacing: 0.08em;
-    color: #00e5ff;
-    text-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+    letter-spacing: 0.15em;
+    color: #f1f5f9;
+    text-transform: uppercase;
 }

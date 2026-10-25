@@ -467,8 +467,7 @@ export const UniversalToolsBar: React.FC = () => {
                 const rawCleanPng = norm.generatedPngUrl || norm.generated_png_url || norm.maskUrl;
                 const cleanPng = rawCleanPng ? getCleanImageUrl(rawCleanPng) : null;
                 const exportImgs = collectExportImages(norm);
-                const allStills = collectAllImages(norm, { dropVideos: true });
-                const combined = [cleanPng, ...exportImgs, ...allStills].filter(Boolean) as string[];
+                const combined = [cleanPng, ...exportImgs].filter(Boolean) as string[];
                 const imgs = Array.from(new Set(combined));
                 const codes = calculateCodesAndPrices(item.data || item, currentRate, workbookPrefix || '1');
                 

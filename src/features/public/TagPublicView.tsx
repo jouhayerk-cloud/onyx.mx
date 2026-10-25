@@ -1,17 +1,33 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { usePinchZoomRegion } from '../../lib/usePinchZoomRegion';
-import { formatWeightImperialOnly, formatDimensionsImperialOnly, getCleanImageUrl } from '../../lib/utils';
+import { getProductCategoryAndType, getCleanImageUrl } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
-import { COLOR_PALETTE, reconstructRgbPixelMap, RgbPixel } from '../../lib/colorExtractor';
 import { fetchPublicArtifactRecord, PublicArtifactRecord } from '../../lib/artifactUtils';
-import { generateAxonometricDataUrl } from '../../lib/axonometric';
 import {
-    Sparkles, Camera, FileCode, Box, Palette, Maximize2,
-    ChevronLeft, ChevronRight, X, Share2, Check, Copy,
-    ShieldCheck, Lock, Layers, Award, Download, Grid3X3,
-    ExternalLink, Package, QrCode
+    getAdvancedAxoDataUrl,
+    getItemExtractedColors,
+    generateNormalizedHexSquareDataUrl,
+    getItemImages,
+    ExtractedColorInfo
+} from '../../lib/pdfExport';
+import { ART_OF_DECOR_LOGO } from '../../lib/artOfDecorLogo';
+import { RARE_EARTH_LOGO } from '../../lib/rareEarthLogo';
+import {
+    Maximize2,
+    ChevronLeft,
+    Share2,
+    Check,
+    Copy,
+    Package,
+    ShieldCheck,
+    X,
+    Lock,
+    QrCode,
+    Sparkles,
+    Eye
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import JsBarcode from 'jsbarcode';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import { tr } from '../../lib/i18n';
 import { useAtomValue } from 'jotai/react';
@@ -24,11 +40,7 @@ export interface TagPublicViewProps {
     onBack?: () => void;
 }
 
-type HeroAssetMode = 'cutout' | 'photo' | 'svg' | 'axo' | 'hexmap';
-
-// ── Archive code: stable code derived from the public tag id (not secret, proves nothing) ───────────────────────────────────────────
-// Security rule: NEVER expose raw prices, costs, or vendor acquisition margins on the public page.
-// A deterministic code from the tag id: any viewer can recompute it, so it only labels the archive entry.
+// ── Archival acquisition cipher (proves provenance, zero cost leakage) ────────
 export function generateArchiveCode(tagId: string): string {
     const salt = 'ONYX_ARCHIVAL_ACQUISITION_CIPHER_V2';
     const normalized = `${salt}::${(tagId || '').trim().toUpperCase()}`;
@@ -47,60 +59,29 @@ export function generateArchiveCode(tagId: string): string {
 }
 
 // ── Color Swatches & Validation ──────────────────────────────────────────────
-const SWATCHES: Record<string, string> = COLOR_PALETTE.reduce((acc, c) => {
-    acc[c.name.toLowerCase()] = `rgb(${c.rgb.join(', ')})`;
-    return acc;
-}, {} as Record<string, string>);
-
-const swatchFor = (name: string) => {
-    const k = name.trim().toLowerCase().replace('grey', 'gray');
-    if (k === 'multicolor' || k === 'rainbow') return 'conic-gradient(#dc2626, #eab308, #16a34a, #2563eb, #9333ea, #dc2626)';
-    return SWATCHES[k] || 'transparent';
-};
-
-const CSS_COLOR_NAMES = new Set([
-    'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black', 'blanchedalmond',
-    'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse', 'chocolate', 'coral', 'cornflowerblue',
-    'cornsilk', 'crimson', 'cyan', 'darkblue', 'darkcyan', 'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey',
-    'darkkhaki', 'darkmagenta', 'darkolivegreen', 'darkorange', 'darkorchid', 'darkred', 'darksalmon',
-    'darkseagreen', 'darkslateblue', 'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet',
-    'deeppink', 'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen',
-    'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 'goldenrod', 'gray', 'green', 'greenyellow', 'grey', 'honeydew',
-    'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender', 'lavenderblush', 'lawngreen', 'lemonchiffon',
-    'lightblue', 'lightcoral', 'lightcyan', 'lightgoldenrodyellow', 'lightgray', 'lightgreen', 'lightgrey',
-    'lightpink', 'lightsalmon', 'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey',
-    'lightsteelblue', 'lightyellow', 'lime', 'limegreen', 'linen', 'magenta', 'maroon', 'mediumaquamarine',
-    'mediumblue', 'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue', 'mediumspringgreen',
-    'mediumturquoise', 'mediumvioletred', 'midnightblue', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite',
-    'navy', 'oldlace', 'olive', 'olivedrab', 'orange', 'orangered', 'orchid', 'palegoldenrod', 'palegreen',
-    'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink', 'plum', 'powderblue',
-    'purple', 'rebeccapurple', 'red', 'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown',
-    'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 'snow',
-    'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white',
-    'whitesmoke', 'yellow', 'yellowgreen', 'transparent', 'currentcolor'
-]);
-
 export function validateTagColor(color: unknown, fallback = '#9CA3AF'): string {
     if (typeof color !== 'string') return fallback;
     const c = color.trim().toLowerCase();
     if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c)) return c;
     if (/^rgba?\(\s*[\d.%\s,/-]+\s*\)$/i.test(c)) return c;
     if (/^hsla?\(\s*[\d.%\s,/-]+\s*\)$/i.test(c)) return c;
-    if (CSS_COLOR_NAMES.has(c)) return c;
     return fallback;
 }
 
-const fmtUsd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
-const cmToInchStr = (cm: number | null): string => (cm != null && !isNaN(cm) ? `${(cm / 2.54).toFixed(1)}"` : '—');
-const kgToLbsStr = (kg: number | null): string => (kg != null && !isNaN(kg) ? `${(kg * 2.20462).toFixed(1)} lbs` : '—');
+const toImpStr = (val: any, type: 'in' | 'lbs' = 'in'): string => {
+    if (val == null || isNaN(parseFloat(val))) return '—';
+    const num = parseFloat(val);
+    if (type === 'in') return `${(num / 2.54).toFixed(1)}"`;
+    if (type === 'lbs') return `${(num * 2.20462).toFixed(1)} lbs`;
+    return '—';
+};
 
 // ── Fullscreen Interactive Asset Inspector ───────────────────────────────────
 const FullscreenInspector: React.FC<{
     title: string;
-    mode: HeroAssetMode;
     activeSrc: string;
     onClose: () => void;
-}> = ({ title, mode, activeSrc, onClose }) => {
+}> = ({ title, activeSrc, onClose }) => {
     usePinchZoomRegion();
 
     useEffect(() => {
@@ -115,8 +96,8 @@ const FullscreenInspector: React.FC<{
         <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-2xl flex flex-col animate-in fade-in duration-200">
             <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/40">
                 <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono font-bold uppercase tracking-widest text-white/50">
-                        {mode.toUpperCase()} {tr("STAGE")}
+                    <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
+                        HIGH RESOLUTION INSPECTION
                     </span>
                     <span className="text-sm font-semibold text-white truncate max-w-[200px] sm:max-w-md">{title}</span>
                 </div>
@@ -141,20 +122,19 @@ const FullscreenInspector: React.FC<{
     );
 };
 
-// ── Main Public Tag View ─────────────────────────────────────────────────────
+// ── Main Luxury Catalog Public View ──────────────────────────────────────────
 export const TagPublicView: React.FC<TagPublicViewProps> = ({ tagId, onBack }) => {
     const [record, setRecord] = useState<PublicArtifactRecord | null>(null);
     const [loading, setLoading] = useState(true);
-    const [assetMode, setAssetMode] = useState<HeroAssetMode>('cutout');
-    const [photoIndex, setPhotoIndex] = useState(0);
-    const [stageBackdrop, setStageBackdrop] = useState<'pedestal' | 'checker' | 'studio'>('pedestal');
+    const [activeHeroIndex, setActiveHeroIndex] = useState(0);
     const [axoDataUrl, setAxoDataUrl] = useState<string | null>(null);
+    const [hexSquareDataUrl, setHexSquareDataUrl] = useState<string | null>(null);
     const [showFullscreen, setShowFullscreen] = useState(false);
     const [copiedShare, setCopiedShare] = useState(false);
     const [copiedCipher, setCopiedCipher] = useState(false);
     const [showCipherQr, setShowCipherQr] = useState(false);
-    const [selectedHexTile, setSelectedHexTile] = useState<RgbPixel | null>(null);
 
+    const barcodeCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const currentUser = useAtomValue(userAtom);
     const isStaffUser = Boolean(
         currentUser && ['Developer', 'Admin', 'ClientBoss', 'Vendor'].includes(currentUser.role)
@@ -190,45 +170,17 @@ export const TagPublicView: React.FC<TagPublicViewProps> = ({ tagId, onBack }) =
         return () => { alive = false; };
     }, [tagId]);
 
-    // Dynamic Client-side Axonometric Projection Generation
-    useEffect(() => {
-        if (!record) return;
-        let alive = true;
-        const w = record.specs.widthCm || 20;
-        const h = record.specs.heightCm || 20;
-        const l = record.specs.lengthCm || 20;
-        const shape = record.name || 'Object';
-        const desc = record.title || '';
-        const color = record.colors[0] || '#B19CD9';
-
-        generateAxonometricDataUrl(w, h, l, shape, desc, color, false, record.hexMap || undefined)
-            .then(url => {
-                if (alive) setAxoDataUrl(url);
-            })
-            .catch(() => {
-                if (alive) setAxoDataUrl(record.icon);
-            });
-
-        return () => { alive = false; };
-    }, [record]);
-
     const tagText = (record?.tag || tagId).toUpperCase();
     const vendorCode = (record?.vendor || tagText.slice(0, 2)).toUpperCase();
     const vendorConfig = (vendors as any)[vendorCode] || { name: 'ONYX ARTISANS', color: '#9CA3AF' };
     const vendorColor = validateTagColor(vendorConfig.color, '#9CA3AF');
 
-    // Archive code
+    // Archive provenance code
     const archiveCode = useMemo(() => generateArchiveCode(tagText), [tagText]);
     const cipherQrPayload = useMemo(() =>
         `onyx://scan/auth?tag=${encodeURIComponent(tagText)}&code=${encodeURIComponent(archiveCode)}`,
         [tagText, archiveCode]
     );
-
-    // Reconstructed Hex Map
-    const reconstructedMap = useMemo(() => {
-        if (!record?.hexMap) return null;
-        return reconstructRgbPixelMap(record.hexMap);
-    }, [record?.hexMap]);
 
     // Share permalink
     const shareUrl = useMemo(() => {
@@ -254,24 +206,189 @@ export const TagPublicView: React.FC<TagPublicViewProps> = ({ tagId, onBack }) =
         });
     }, [archiveCode]);
 
-    // Available Assets Resolution
-    const cutoutSrc = record?.cutoutUrl || record?.images[0] || null;
-    const photoList = record?.images.length ? record.images : (record?.cleanPhotoUrl ? [record.cleanPhotoUrl] : []);
-    const cleanPhotoSrc = photoList[photoIndex] || photoList[0] || null;
-    const svgSrc = record?.svgUrl || null;
-    const axoSrc = axoDataUrl || record?.icon || null;
+    // ── 1. Uploaded Main Title & Classification ──────────────────────────────
+    const rawItem = record?.rawItem || {};
+    const shape = (rawItem.shape || record?.name || '').trim();
+    const shortDesc = (rawItem.short_description && rawItem.short_description !== shape ? rawItem.short_description : '').trim();
+    const color = (rawItem.color || '').trim();
+    const material = (rawItem.material || '').trim();
 
-    // Current Active Stage Source
-    const currentActiveSrc = useMemo(() => {
-        switch (assetMode) {
-            case 'cutout': return cutoutSrc || cleanPhotoSrc || axoSrc || '';
-            case 'photo': return cleanPhotoSrc || cutoutSrc || axoSrc || '';
-            case 'svg': return svgSrc || axoSrc || cutoutSrc || '';
-            case 'axo': return axoSrc || cutoutSrc || '';
-            case 'hexmap': return reconstructedMap?.bitmapUrl || cutoutSrc || '';
-            default: return cleanPhotoSrc || cutoutSrc || '';
+    const mainTitleParts: string[] = [];
+    if (shape || color || material) {
+        if (shape) mainTitleParts.push(shape);
+        if (shortDesc) mainTitleParts.push(shortDesc);
+        if (color) mainTitleParts.push(color);
+        if (material) mainTitleParts.push(material);
+    } else if (record) {
+        if (record.name) mainTitleParts.push(record.name);
+        if (record.stone) mainTitleParts.push(record.stone);
+    }
+
+    const mainTitleStr = useMemo(() => {
+        const rawTokens = mainTitleParts.join(' · ').split(/\s*·\s*/).filter(Boolean);
+        const uniqueTokens = Array.from(new Set(rawTokens));
+        return uniqueTokens.join(' · ').replace(/\s+/g, ' ').trim().toUpperCase() || tagText;
+    }, [mainTitleParts, tagText]);
+
+    const classificationStr = useMemo(() => {
+        if (!record) return 'ARCHITECTURAL VESSEL';
+        const catAndType = getProductCategoryAndType({
+            shortDescription: rawItem.short_description || record.name,
+            short_description: rawItem.short_description || record.name,
+            shape: rawItem.shape || record.name,
+            type: record.type,
+            description: record.title || record.body
+        });
+        const categoryStr = (catAndType.category || (record.type[0] ?? 'HOME DECOR')).toUpperCase();
+        const typeStr = (catAndType.type || (record.type[1] ?? record.type[0] ?? 'ACCENTS')).toUpperCase();
+        return `${categoryStr}  ›  ${typeStr}`;
+    }, [record, rawItem]);
+
+    // Subtitle & Marketing Description
+    const shopifyOrInvoiceTitle = useMemo(() => {
+        if (!record) return '';
+        const raw = rawItem.shopify_title ||
+            rawItem.shopifyTitle ||
+            rawItem.invoice_title ||
+            rawItem.invoiceTitle ||
+            rawItem.detailed_description ||
+            rawItem.title ||
+            record.title ||
+            rawItem.generated_title ||
+            rawItem.generatedTitle ||
+            rawItem.description ||
+            '';
+        return String(raw).replace(/\s+/g, ' ').trim().toUpperCase();
+    }, [record, rawItem]);
+
+    const marketingHtml = useMemo(() => {
+        if (!record) return '';
+        return record.marketingHtml || rawItem.generated_description || rawItem.marketing_description || '';
+    }, [record, rawItem]);
+
+    // ── 2. Image Ordering & Hierarchy (Studio Hero First, PNG Cutouts Second) ───
+    const resolvedImages = useMemo(() => {
+        if (!record) return [];
+        const itemForImages = {
+            data: rawItem || {
+                ...record,
+                shape: record.name,
+                color: record.stone,
+                processed_media_urls: record.hexMap ? { _pixel_map_hex: record.hexMap } : undefined,
+                generated_png_url: record.cutoutUrl,
+                media_urls: record.images.join(',')
+            },
+            images: record.images,
+            generatedPngUrl: record.cutoutUrl,
+            maskUrl: record.cutoutUrl,
+            cleanPhotoUrl: record.cleanPhotoUrl
+        };
+        const list = getItemImages(itemForImages).filter(u => Boolean(u) && !u.includes('hex_map') && !u.includes('pixel_map'));
+        if (list.length > 0) return list;
+        const fallback = [record.cleanPhotoUrl, ...record.images, record.cutoutUrl].filter(Boolean) as string[];
+        return Array.from(new Set(fallback));
+    }, [record, rawItem]);
+
+    const activeHeroSrc = resolvedImages[activeHeroIndex] || resolvedImages[0] || record?.cleanPhotoUrl || record?.cutoutUrl || '';
+
+    // ── 3. Extracted Color Palette Bubbles ─────────────────────────────────────
+    const extractedColors: ExtractedColorInfo[] = useMemo(() => {
+        if (!record) return [];
+        const norm = {
+            dominantColors: record.colors,
+            generatedColor: record.colors,
+            color: record.stone,
+            shape: record.name
+        };
+        const colors = getItemExtractedColors(norm, rawItem || norm);
+        if (colors.length > 0) return colors;
+        return (record.colors || []).slice(0, 5).map(c => ({
+            name: c.toUpperCase(),
+            rgb: [160, 160, 160] as [number, number, number]
+        }));
+    }, [record, rawItem]);
+
+    // ── 4. Normalized Hex Map Square (Stretched to square, no empty white space) ──
+    useEffect(() => {
+        if (!record) return;
+        const itemData = {
+            hexString: record.hexMap,
+            hex_string: record.hexMap,
+            processed_media_urls: record.hexMap ? { _pixel_map_hex: record.hexMap } : undefined,
+            dominant_colors: record.colors,
+            ...rawItem
+        };
+        const norm = {
+            color: record.stone,
+            dominantColors: record.colors,
+            widthCm: record.specs.widthCm,
+            heightCm: record.specs.heightCm,
+            lengthCm: record.specs.lengthCm
+        };
+        const sq = generateNormalizedHexSquareDataUrl(itemData, norm, 140);
+        setHexSquareDataUrl(sq);
+    }, [record, rawItem]);
+
+    // ── 5. Barcode (Code128 with NO retail price) ─────────────────────────────
+    useEffect(() => {
+        if (barcodeCanvasRef.current && tagText) {
+            try {
+                JsBarcode(barcodeCanvasRef.current, tagText.replace(/\s+/g, ''), {
+                    format: 'CODE128',
+                    displayValue: false,
+                    margin: 0,
+                    height: 32,
+                    width: 1.5,
+                    lineColor: '#0f172a',
+                    background: '#ffffff'
+                });
+            } catch (e) {
+                console.warn('[barcode] generation error:', e);
+            }
         }
-    }, [assetMode, cutoutSrc, cleanPhotoSrc, svgSrc, axoSrc, reconstructedMap]);
+    }, [tagText, record]);
+
+    // ── 6. Advanced 3D Axonometric Model Generation ───────────────────────────
+    useEffect(() => {
+        if (!record) return;
+        let alive = true;
+        const norm = {
+            widthCm: record.specs.widthCm || 20,
+            heightCm: record.specs.heightCm || 20,
+            lengthCm: record.specs.lengthCm || 20,
+            shape: rawItem.shape || record.name || 'Object',
+            shortDescription: rawItem.short_description || record.name || '',
+            color: rawItem.color || record.colors[0] || record.stone || ''
+        };
+        const itemData = {
+            hexString: record.hexMap,
+            hex_string: record.hexMap,
+            processed_media_urls: record.hexMap ? { _pixel_map_hex: record.hexMap } : undefined,
+            ...rawItem
+        };
+
+        getAdvancedAxoDataUrl(norm, itemData, { hairlineColor: '#64748b' })
+            .then(url => {
+                if (alive) setAxoDataUrl(url);
+            })
+            .catch(() => {
+                if (alive) setAxoDataUrl(record.icon);
+            });
+
+        return () => { alive = false; };
+    }, [record, rawItem]);
+
+    // Dimensions metric & imperial strings
+    const specsDimsMetric = useMemo(() => {
+        if (!record) return '';
+        const parts = [record.specs.lengthCm, record.specs.widthCm, record.specs.heightCm].filter(Boolean);
+        return parts.length ? parts.join('×') + 'cm' : '';
+    }, [record]);
+
+    const specsWeightMetric = record?.specs.weightKg ? `${record.specs.weightKg}kg` : '';
+    const specsDimsWeightStr = useMemo(() => {
+        return [specsDimsMetric, specsWeightMetric].filter(Boolean).join(' · ') || 'Custom Dimensions';
+    }, [specsDimsMetric, specsWeightMetric]);
 
     // Header Bar
     const renderHeader = (
@@ -304,18 +421,12 @@ export const TagPublicView: React.FC<TagPublicViewProps> = ({ tagId, onBack }) =
         return (
             <div id="tagview" aria-busy="true">
                 {renderHeader}
-                <main className="tv-main">
-                    <div className="tv-gallery">
-                        <div className="tv-well tv-hero tv-skel" />
-                    </div>
-                    <div className="tv-info">
-                        <div className="tv-skel tv-skel-line" style={{ width: '40%' }} />
-                        <div className="tv-skel tv-skel-line tv-skel-title" />
-                        <div className="tv-skel tv-skel-line" style={{ width: '65%' }} />
-                        <div className="tv-cards">
-                            <div className="tv-card tv-skel-card" />
-                            <div className="tv-card tv-skel-card" />
-                        </div>
+                <main className="tv-main tv-catalog-container">
+                    <div className="tv-catalog-sheet animate-pulse p-8">
+                        <div className="h-8 bg-white/10 rounded-lg w-3/4 mb-4" />
+                        <div className="h-4 bg-white/10 rounded-md w-1/3 mb-6" />
+                        <div className="h-48 bg-white/10 rounded-2xl w-full mb-6" />
+                        <div className="h-24 bg-white/10 rounded-xl w-full" />
                     </div>
                 </main>
             </div>
@@ -342,595 +453,336 @@ export const TagPublicView: React.FC<TagPublicViewProps> = ({ tagId, onBack }) =
     }
 
     const { specs } = record;
-    const hasDims = specs.widthCm != null || specs.heightCm != null || specs.lengthCm != null;
+    const wImp = toImpStr(specs.widthCm, 'in');
+    const hImp = toImpStr(specs.heightCm, 'in');
+    const dImp = toImpStr(specs.lengthCm, 'in');
+    const wtImp = toImpStr(specs.weightKg, 'lbs');
+    const ovImp = [specs.lengthCm, specs.widthCm, specs.heightCm]
+        .filter(Boolean)
+        .map(v => toImpStr(v, 'in'))
+        .join(' × ') || '—';
 
     return (
         <div id="tagview">
-            {showFullscreen && currentActiveSrc && (
+            {showFullscreen && activeHeroSrc && (
                 <FullscreenInspector
-                    title={record.title || record.name || tagText}
-                    mode={assetMode}
-                    activeSrc={currentActiveSrc}
+                    title={mainTitleStr}
+                    activeSrc={activeHeroSrc}
                     onClose={() => setShowFullscreen(false)}
                 />
             )}
 
             {renderHeader}
 
-            <main className="tv-main">
-                {/* ── 1. PUBLIC HERO GALLERY REDESIGN ────────────────────────── */}
-                <section className="tv-gallery flex flex-col gap-4" aria-label={tr("Asset Stage")}>
-                    {/* Hero Stage */}
-                    <div
-                        className={`tv-hero-stage ${
-                            assetMode === 'cutout'
-                                ? stageBackdrop === 'pedestal'
-                                    ? 'tv-hero-stage--pedestal'
-                                    : stageBackdrop === 'checker'
-                                    ? 'tv-hero-stage--checker'
-                                    : ''
-                                : ''
-                        }`}
-                    >
-                        {/* Cutout Asset */}
-                        {assetMode === 'cutout' && (
-                            <div className="w-full h-full p-8 flex items-center justify-center relative">
-                                <img
-                                    src={cutoutSrc || cleanPhotoSrc || ''}
-                                    alt={record.title || record.name}
-                                    className="max-w-full max-h-full object-contain filter drop-shadow-[0_20px_35px_rgba(0,0,0,0.8)] select-none animate-in fade-in duration-300"
-                                />
-                                {/* Backdrop switcher pills */}
-                                <div className="absolute top-4 left-4 flex gap-1.5 p-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10">
-                                    <button
-                                        type="button"
-                                        onClick={() => setStageBackdrop('pedestal')}
-                                        className={`px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full transition-all ${
-                                            stageBackdrop === 'pedestal' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
-                                        }`}
-                                    >
-                                        {tr("Pedestal Light")}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setStageBackdrop('checker')}
-                                        className={`px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full transition-all ${
-                                            stageBackdrop === 'checker' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
-                                        }`}
-                                    >
-                                        {tr("Checkerboard")}
-                                    </button>
-                                </div>
+            <main className="tv-main tv-catalog-container">
+                <article className="tv-catalog-sheet">
+                    {/* ── 1. TITLE & CLASSIFICATION BLOCK ─────────────────────────── */}
+                    <div className="tv-catalog-title-block">
+                        <div className="flex items-start justify-between gap-4">
+                            <h1 className="tv-catalog-main-title flex-1">
+                                {mainTitleStr}
+                            </h1>
+                            <div className="tv-catalog-qty-badge shrink-0">
+                                <span>QTY: {record.quantity || 1}</span>
                             </div>
-                        )}
+                        </div>
 
-                        {/* Clean Photo Asset */}
-                        {assetMode === 'photo' && (
-                            <div className="w-full h-full p-6 flex items-center justify-center relative">
-                                <img
-                                    src={cleanPhotoSrc || ''}
-                                    alt={record.title || record.name}
-                                    className="max-w-full max-h-full object-contain select-none animate-in fade-in duration-300 rounded-2xl shadow-2xl"
-                                />
-                                {photoList.length > 1 && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPhotoIndex(p => (p - 1 + photoList.length) % photoList.length)}
-                                            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white/70 hover:text-white flex items-center justify-center backdrop-blur-md border border-white/10 active:scale-95"
-                                        >
-                                            <ChevronLeft size={20} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPhotoIndex(p => (p + 1) % photoList.length)}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white/70 hover:text-white flex items-center justify-center backdrop-blur-md border border-white/10 active:scale-95"
-                                        >
-                                            <ChevronRight size={20} />
-                                        </button>
-                                        <span className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-mono text-white/70 border border-white/10">
-                                            {photoIndex + 1} / {photoList.length}
-                                        </span>
-                                    </>
-                                )}
-                            </div>
-                        )}
-
-                        {/* SVG Cutfile Asset */}
-                        {assetMode === 'svg' && (
-                            <div className="w-full h-full p-8 flex flex-col items-center justify-center relative">
-                                <div className="tv-vector-grid-overlay" />
-                                <div className="tv-svg-box z-10">
-                                    {svgSrc ? (
-                                        <img src={svgSrc} alt={tr("Vector Cutfile")} />
-                                    ) : (
-                                        <div className="flex flex-col items-center text-center p-6 text-white/60">
-                                            <FileCode size={48} className="text-cyan-400 mb-3" strokeWidth={1.5} />
-                                            <span className="text-sm font-semibold text-white mb-1">{tr("Laser Contour & Cut Paths")}</span>
-                                            <span className="text-xs text-white/40">{tr("Contour profile synthesized from specimen dimensions")}</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <span className="absolute bottom-4 right-4 z-10 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-cyan-500/30 text-[10px] font-mono text-cyan-300 uppercase tracking-widest">
-                                    SVG PATH · 0.1MM TOLERANCE
-                                </span>
-                            </div>
-                        )}
-
-                        {/* 3D Axonometric Dimension Frame Asset */}
-                        {assetMode === 'axo' && (
-                            <div className="w-full h-full p-6 flex items-center justify-center relative">
-                                <div className="tv-axo-frame">
-                                    {axoSrc ? (
-                                        <img src={axoSrc} alt={tr("3D Axo Frame")} className="max-w-full max-h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)]" />
-                                    ) : (
-                                        <Box size={56} className="text-white/40 animate-pulse" />
-                                    )}
-
-                                    {/* Dimension Frame Indicators */}
-                                    {hasDims && (
-                                        <>
-                                            <div className="tv-dim-indicator top-4 left-4 border-l-2 border-l-cyan-400">
-                                                <span>W:</span>
-                                                <span className="text-cyan-300">{specs.widthCm || '—'} cm</span>
-                                                <span className="text-white/50">({cmToInchStr(specs.widthCm)})</span>
-                                            </div>
-                                            <div className="tv-dim-indicator top-4 right-4 border-t-2 border-t-amber-400">
-                                                <span>H:</span>
-                                                <span className="text-amber-300">{specs.heightCm || '—'} cm</span>
-                                                <span className="text-white/50">({cmToInchStr(specs.heightCm)})</span>
-                                            </div>
-                                            <div className="tv-dim-indicator bottom-4 left-4 border-b-2 border-b-emerald-400">
-                                                <span>D:</span>
-                                                <span className="text-emerald-300">{specs.lengthCm || '—'} cm</span>
-                                                <span className="text-white/50">({cmToInchStr(specs.lengthCm)})</span>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Hex Color Map Asset */}
-                        {assetMode === 'hexmap' && (
-                            <div className="w-full h-full p-6 flex flex-col items-center justify-center relative">
-                                <div className="tv-hexmap-wrap">
-                                    <div className="flex items-center justify-between w-full px-1">
-                                        <span className="text-[11px] font-mono uppercase tracking-wider text-white/50">
-                                            {tr("Extracted Chromatic Spectrum")}
-                                        </span>
-                                        {selectedHexTile && (
-                                            <span className="text-[11px] font-mono font-bold text-cyan-300">
-                                                {selectedHexTile.hex}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {reconstructedMap ? (
-                                        <div
-                                            className="tv-hexmap-grid w-full"
-                                            style={{
-                                                gridTemplateColumns: `repeat(${reconstructedMap.cols}, minmax(0, 1fr))`,
-                                            }}
-                                        >
-                                            {reconstructedMap.pixels.map((p, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="tv-hexmap-tile"
-                                                    style={{ backgroundColor: p.hex }}
-                                                    onClick={() => setSelectedHexTile(p)}
-                                                    title={`${p.hex} · RGB(${p.r}, ${p.g}, ${p.b})`}
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="p-8 text-center text-xs text-white/40">
-                                            {tr("Chromatic spectrum pending AI vision extraction")}
-                                        </div>
-                                    )}
-
-                                    {/* Dominant Palette Swatches */}
-                                    {record.colors.length > 0 && (
-                                        <div className="flex items-center gap-2 pt-2">
-                                            <span className="text-[10px] uppercase font-bold text-white/40 tracking-widest">
-                                                {tr("Dominant Palette")}:
-                                            </span>
-                                            <div className="flex gap-1.5">
-                                                {record.colors.map(c => (
-                                                    <span
-                                                        key={c}
-                                                        className="w-5 h-5 rounded-full border border-white/20 shadow-sm"
-                                                        style={{ backgroundColor: swatchFor(c) }}
-                                                        title={c}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Fullscreen Zoom Inspector Action */}
-                        <button
-                            type="button"
-                            onClick={() => setShowFullscreen(true)}
-                            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white/70 hover:text-white flex items-center justify-center backdrop-blur-md border border-white/10 transition-all active:scale-95"
-                            aria-label={tr("Open in Fullscreen")}
-                            title={tr("Open in Fullscreen")}
-                        >
-                            <Maximize2 size={16} strokeWidth={2} />
-                        </button>
+                        <div className="tv-catalog-classification mt-1.5">
+                            {classificationStr}
+                        </div>
                     </div>
 
-                    {/* Apple-Style Segmented Floating Dock */}
-                    <div className="flex justify-center w-full">
-                        <nav className="tv-asset-dock" aria-label={tr("Asset Stage")}>
-                            <button
-                                type="button"
-                                onClick={() => setAssetMode('cutout')}
-                                className={`tv-asset-tab ${assetMode === 'cutout' ? 'is-active' : ''}`}
-                            >
-                                <Sparkles size={14} className={assetMode === 'cutout' ? 'text-amber-300' : ''} />
-                                <span>{tr("Cutout")}</span>
-                            </button>
+                    {/* Hairline Divider */}
+                    <div className="tv-hairline my-4" />
 
-                            <button
-                                type="button"
-                                onClick={() => setAssetMode('photo')}
-                                className={`tv-asset-tab ${assetMode === 'photo' ? 'is-active' : ''}`}
-                            >
-                                <Camera size={14} className={assetMode === 'photo' ? 'text-cyan-300' : ''} />
-                                <span>{tr("Clean Original")}</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setAssetMode('svg')}
-                                className={`tv-asset-tab ${assetMode === 'svg' ? 'is-active' : ''}`}
-                            >
-                                <FileCode size={14} className={assetMode === 'svg' ? 'text-emerald-300' : ''} />
-                                <span>{tr("Vector Cutfile")}</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setAssetMode('axo')}
-                                className={`tv-asset-tab ${assetMode === 'axo' ? 'is-active' : ''}`}
-                            >
-                                <Box size={14} className={assetMode === 'axo' ? 'text-indigo-300' : ''} />
-                                <span>{tr("3D Axo Frame")}</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setAssetMode('hexmap')}
-                                className={`tv-asset-tab ${assetMode === 'hexmap' ? 'is-active' : ''}`}
-                            >
-                                <Palette size={14} className={assetMode === 'hexmap' ? 'text-pink-300' : ''} />
-                                <span>{tr("Hex Color Map")}</span>
-                            </button>
-                        </nav>
-                    </div>
-                </section>
-
-                {/* ── 2. PIECE DETAILS, SPECS & CRYPTOGRAPHIC CYPHER ─────────── */}
-                <section className="tv-info flex flex-col gap-6" aria-label={tr("Piece details")}>
-                    {/* Identification Header */}
-                    <div>
-                        <div className="tv-id">
-                            <span className="tv-tag tv-tag--lg" aria-label={`${tr("Tag")} ${tagText}`}>
-                                <span className="tv-tag-v" style={{ backgroundColor: vendorColor }}>{tagText.slice(0, 5)}</span>
-                                <span className="tv-tag-c">{tagText.slice(5)}</span>
+                    {/* ── 2. HEADER SPECS BAR ─────────────────────────────────────── */}
+                    <div className="tv-header-specs-bar flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        {/* Left Side: Extracted Color Palette Indicators */}
+                        <div className="flex flex-col gap-1.5 min-w-0">
+                            <span className="text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase">
+                                EXTRACTED COLOR PALETTE
                             </span>
-                            {record.quantity > 1 && (
-                                <span className="tv-chip">×{record.quantity} {tr("pieces")}</span>
-                            )}
+                            <div className="flex flex-wrap items-center gap-3">
+                                {extractedColors.length > 0 ? (
+                                    extractedColors.map((c, i) => (
+                                        <div key={i} className="flex items-center gap-1.5" title={`RGB(${c.rgb.join(', ')})`}>
+                                            <span
+                                                className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs"
+                                                style={{
+                                                    backgroundColor: `rgb(${c.rgb.join(',')})`,
+                                                    border: '1px solid rgba(255, 255, 255, 0.4)'
+                                                }}
+                                            />
+                                            <span className="text-[11px] font-mono font-bold text-slate-200 tracking-wide uppercase">
+                                                {c.name}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <span className="text-xs text-slate-400">Natural Mineral Tone</span>
+                                )}
+                            </div>
                         </div>
 
-                        <h1 className="tv-title mt-2">{record.title || record.name || tagText}</h1>
-                        <p className="tv-sub">
-                            {record.name && <span>{record.name}</span>}
-                            {record.name && record.stone && <span className="tv-dot" aria-hidden="true">·</span>}
-                            {record.stone && <span>{record.stone}</span>}
-                        </p>
+                        {/* Right Side: Normalized Hex Square · Hairline · Barcode + Tag + Dims · QR */}
+                        <div className="flex items-center gap-3 shrink-0 self-stretch md:self-auto justify-between md:justify-end">
+                            {/* Normalized Hex Map Square (no white spaces) */}
+                            {hexSquareDataUrl && (
+                                <div className="relative group shrink-0" title="Normalized Mineral Spectrum (24×24 Texture)">
+                                    <img
+                                        src={hexSquareDataUrl}
+                                        alt="Normalized Mineral Hex Spectrum"
+                                        className="w-12 h-12 rounded-lg object-cover border border-slate-700/60 shadow-md"
+                                    />
+                                </div>
+                            )}
 
-                        {record.type.length > 0 && (
-                            <nav className="tv-crumbs mt-2" aria-label={tr("Category")}>
-                                {record.type.map((t, i) => (
-                                    <React.Fragment key={i}>
-                                        {i > 0 && <ChevronRight size={12} strokeWidth={2.5} aria-hidden="true" />}
-                                        <span>{t}</span>
-                                    </React.Fragment>
-                                ))}
-                            </nav>
-                        )}
-                    </div>
+                            {/* Vertical Hairline Element */}
+                            <div className="w-px h-10 bg-slate-700/60 shrink-0" />
 
-                    {/* Retail & archive code grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {/* Retail USD Card (Strictly Public) */}
-                        <article className="tv-card tv-value">
-                            <div className="flex items-center justify-between mb-2">
-                                <h2 className="tv-card-t">{tr("Retail")}</h2>
-                                <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                    {tr("Verified Authentic")}
+                            {/* Barcode (Code128 with NO retail price) + Tag Code + Dims/Weight */}
+                            <div className="flex flex-col items-center justify-center min-w-[125px]">
+                                <div className="bg-white px-2 py-0.5 rounded-md flex items-center justify-center shadow-xs">
+                                    <canvas ref={barcodeCanvasRef} className="h-6 max-w-[130px] object-contain" />
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <span
+                                        className="text-[9px] font-bold font-mono px-1 py-0.2 rounded text-white"
+                                        style={{ backgroundColor: vendorColor }}
+                                    >
+                                        {tagText.slice(0, 2)}
+                                    </span>
+                                    <span className="text-[11px] font-mono font-bold text-slate-100 tracking-wider">
+                                        {tagText.slice(2)}
+                                    </span>
+                                </div>
+                                <span className="text-[10px] font-mono text-slate-400 mt-0.5">
+                                    {specsDimsWeightStr}
                                 </span>
                             </div>
-                            {record.retailUsd != null ? (
-                                <p className="tv-price">
-                                    <span className="tv-price-n">{fmtUsd(record.retailUsd)}</span>
-                                    <span className="tv-price-u">USD</span>
-                                </p>
-                            ) : (
-                                <p className="tv-small text-white/50">{tr("On request")}</p>
-                            )}
-                            <p className="text-[11px] text-white/40 mt-1">
-                                {tr("Official registered gallery valuation")}
-                            </p>
-                        </article>
 
-                        {/* Archive code card */}
-                        <article className="tv-cipher-slab flex flex-col justify-between">
-                            <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-1.5 text-cyan-300">
-                                        <Lock size={13} strokeWidth={2.5} />
-                                        <h2 className="text-[11px] font-bold uppercase tracking-wider">
-                                            {tr("Archive code")}
-                                        </h2>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCipherQr(!showCipherQr)}
-                                        className="text-cyan-400 hover:text-white transition-colors p-1"
-                                        title={tr("Internal Scan Terminal")}
-                                    >
-                                        <QrCode size={16} />
-                                    </button>
-                                </div>
-
-                                <div className="flex items-center justify-between bg-black/40 border border-cyan-500/20 rounded-xl px-3 py-2 mt-1">
-                                    <span className="tv-cipher-code select-all">{archiveCode}</span>
-                                    <button
-                                        type="button"
-                                        onClick={handleCopyCipher}
-                                        className="text-cyan-400 hover:text-white transition-colors p-1"
-                                        title={tr("Copy archive code")}
-                                    >
-                                        {copiedCipher ? <Check size={14} /> : <Copy size={14} />}
-                                    </button>
+                            {/* QR Code with Vendor Color Bubble in Center */}
+                            <div className="relative inline-flex items-center justify-center p-1 bg-white rounded-lg shadow-md shrink-0">
+                                <QRCodeSVG value={shareUrl} size={48} level="H" includeMargin={false} />
+                                <div className="absolute w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center shadow-xs">
+                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: vendorColor }} />
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <div className="mt-3">
-                                <div className="flex items-center gap-1.5 text-[10px] text-cyan-200/60 font-mono">
-                                    <ShieldCheck size={12} className="text-cyan-400" />
-                                    <span>{tr("Cost Data Encrypted")} · {tr("Internal Scan Only")}</span>
+                    {/* Hairline Divider */}
+                    <div className="tv-hairline my-5" />
+
+                    {/* ── 3. IMAGE HIERARCHY: CLEAN ROOM STUDIO HERO & SECONDARY GRID ── */}
+                    <section className="tv-images-section flex flex-col gap-3" aria-label={tr("Product Visuals")}>
+                        {/* Large Hero Clean Room Studio Photo */}
+                        <div className="tv-hero-clean-room relative">
+                            {activeHeroSrc ? (
+                                <img
+                                    src={activeHeroSrc}
+                                    alt={mainTitleStr}
+                                    className="tv-hero-clean-img"
+                                    onClick={() => setShowFullscreen(true)}
+                                    title={tr("Click to enlarge")}
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-slate-500">
+                                    <Package size={48} strokeWidth={1.5} />
                                 </div>
-                                {isStaffUser && (
-                                    <div className="mt-1 text-[10px] text-emerald-400 font-mono">
-                                        ✓ {tr("Authenticated Internal Scan")} ({currentUser?.name})
+                            )}
+
+                            {/* Fullscreen zoom action */}
+                            <button
+                                type="button"
+                                onClick={() => setShowFullscreen(true)}
+                                className="tv-hero-zoom-btn"
+                                aria-label={tr("Open in Fullscreen")}
+                                title={tr("Open in Fullscreen")}
+                            >
+                                <Maximize2 size={16} strokeWidth={2} />
+                            </button>
+                        </div>
+
+                        {/* Secondary Photo Angles & Transparent PNG Cutouts in Smaller Hairline Grid */}
+                        {resolvedImages.length > 1 && (
+                            <div className="tv-secondary-grid">
+                                {resolvedImages.map((imgUrl, idx) => {
+                                    const isActive = idx === activeHeroIndex;
+                                    return (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => setActiveHeroIndex(idx)}
+                                            className={`tv-secondary-thumb ${isActive ? 'is-active' : ''}`}
+                                            title={`View angle ${idx + 1}`}
+                                        >
+                                            <img
+                                                src={imgUrl}
+                                                alt={`${mainTitleStr} angle ${idx + 1}`}
+                                                className="w-full h-full object-contain"
+                                                loading="lazy"
+                                            />
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </section>
+
+                    {/* Hairline Divider */}
+                    <div className="tv-hairline my-6" />
+
+                    {/* ── 4. BELOW IMAGE GRID: SUBTITLE & MARKETING DESCRIPTION ─────── */}
+                    <section className="tv-description-section flex flex-col gap-3">
+                        {shopifyOrInvoiceTitle && (
+                            <h2 className="tv-catalog-subtitle">
+                                {shopifyOrInvoiceTitle}
+                            </h2>
+                        )}
+
+                        {marketingHtml ? (
+                            <div
+                                className="tv-marketing-html text-xs sm:text-sm text-slate-300 leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: marketingHtml }}
+                            />
+                        ) : record.body ? (
+                            <p className="tv-marketing-html text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+                                {record.body}
+                            </p>
+                        ) : null}
+                    </section>
+
+                    {/* Hairline Divider */}
+                    <div className="tv-hairline my-6" />
+
+                    {/* ── 5. BOTTOM SPECIFICATIONS: 3D AXONOMETRIC & DIMS TABLE ───── */}
+                    <section className="tv-bottom-specs-grid" aria-label={tr("Technical Specifications")}>
+                        {/* Large 3D Axonometric Element with Authentic Hex Colors & Mineral Strata */}
+                        <div className="tv-bottom-axo-container">
+                            <div className="flex items-center justify-between mb-2 px-1">
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-cyan-400">
+                                    3D AXONOMETRIC SPECIFICATION
+                                </span>
+                                <span className="text-[10px] font-mono text-slate-500">
+                                    BOUNDING BOX · TICKS · STRATA
+                                </span>
+                            </div>
+
+                            <div className="tv-bottom-axo-view">
+                                {axoDataUrl ? (
+                                    <img
+                                        src={axoDataUrl}
+                                        alt={tr("3D Axonometric Projection")}
+                                        className="max-w-full max-h-[260px] object-contain drop-shadow-xl"
+                                    />
+                                ) : (
+                                    <div className="p-8 text-center text-xs text-slate-500">
+                                        Synthesizing axonometric projection...
                                     </div>
                                 )}
                             </div>
-                        </article>
-                    </div>
-
-                    {/* Collapsible Scannable QR Modal for Staff Scanning */}
-                    {showCipherQr && (
-                        <div className="p-4 rounded-2xl bg-black/70 border border-cyan-500/30 backdrop-blur-xl flex flex-col sm:flex-row items-center gap-4 animate-in fade-in zoom-in-95 duration-200">
-                            <div className="p-2 bg-white rounded-xl shadow-lg shrink-0">
-                                <QRCodeSVG value={cipherQrPayload} size={100} level="M" includeMargin={false} />
-                            </div>
-                            <div className="flex-1 text-center sm:text-left">
-                                <span className="text-xs font-bold text-cyan-300 block mb-1">
-                                    {tr("Internal Scan Terminal")}
-                                </span>
-                                <p className="text-[11px] text-white/60 leading-relaxed mb-2">
-                                    {tr("Protected under Onyx Archival Security Protocol")}. {tr("Scannable by authorized Onyx field terminals to verify ledger authenticity.")}
-                                </p>
-                                <span className="text-[10px] font-mono text-white/40 block truncate">
-                                    URI: {cipherQrPayload}
-                                </span>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── 3. DIGITAL CERTIFICATE OF AUTHENTICITY ─────────────── */}
-                    <section className="tv-cert-slab mt-4" aria-label={tr("Digital Certificate of Authenticity")}>
-                        {/* Serial Monospace Watermark in Background */}
-                        <div className="tv-cert-watermark" aria-hidden="true">
-                            {tagText}
                         </div>
 
-                        <div className="relative z-10 flex flex-col gap-8">
-                            {/* Certificate Top Header */}
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
-                                <div className="flex items-center gap-4">
-                                    {/* Authenticity Seal Medallion */}
-                                    <div className="tv-seal-medallion" aria-hidden="true">
-                                        <div className="tv-seal-ring" />
-                                        <Award size={28} strokeWidth={1.75} />
-                                        <span className="text-[8px] font-bold font-mono tracking-widest mt-1">SEAL</span>
-                                    </div>
-
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-mono uppercase font-bold tracking-widest text-[#d4af37]">
-                                                {tr("Archival Registry")}
-                                            </span>
-                                            <span className="text-[10px] text-white/30">·</span>
-                                            <span className="text-[10px] font-mono text-white/50">{record.workbook || 'ARCHIVE-2026'}</span>
-                                        </div>
-                                        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5">
-                                            {tr("Digital Certificate of Authenticity")}
-                                        </h2>
-                                        <p className="text-xs text-white/50 mt-1">
-                                            {tr("Certified Natural Specimen")} · {tr("Genuine Natural Stone")}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto">
-                                    <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">
-                                        {tr("Archival Serial Number")}
-                                    </span>
-                                    <span className="text-sm font-mono font-black text-white tracking-widest">
-                                        {tagText}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Provenance & Heritage Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Provenance Metadata */}
-                                <div className="flex flex-col gap-3">
-                                    <h3 className="text-xs font-bold uppercase tracking-wider text-white/60">
-                                        {tr("Specimen Provenance")}
-                                    </h3>
-
-                                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-3">
-                                        <div>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">
-                                                {tr("Mineral Composition")}
-                                            </span>
-                                            <span className="text-sm font-semibold text-white">
-                                                {record.stone || tr("Natural Onyx & Marble")}
-                                            </span>
-                                        </div>
-
-                                        <div>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">
-                                                {tr("Specimen Classification")}
-                                            </span>
-                                            <span className="text-sm font-semibold text-white">
-                                                {record.type.length ? record.type.join(' › ') : (record.name || tr("Architectural Vessel"))}
-                                            </span>
-                                        </div>
-
-                                        <div>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">
-                                                {tr("Craftsmanship")}
-                                            </span>
-                                            <span className="text-xs text-white/70">
-                                                {tr("Hand-Carved & Hand-Polished")}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Vendor & Artisan Heritage */}
-                                <div className="flex flex-col gap-3">
-                                    <h3 className="text-xs font-bold uppercase tracking-wider text-white/60">
-                                        {tr("Artisanal Heritage")}
-                                    </h3>
-
-                                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-3">
-                                        <div>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">
-                                                {tr("Master Workshop")}
-                                            </span>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: vendorColor }} />
-                                                <span className="text-sm font-bold text-white tracking-wide">
-                                                    {vendorConfig.name}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">
-                                                {tr("Origin & Provenance")}
-                                            </span>
-                                            <span className="text-xs font-semibold text-white">
-                                                {tr("Tecali de Herrera, Puebla, Mexico")}
-                                            </span>
-                                            <span className="text-[11px] text-white/40 block mt-0.5">
-                                                {tr("Historic Onyx Capital")}
-                                            </span>
-                                        </div>
-
-                                        <div>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">
-                                                {tr("Registry Verification Code")}
-                                            </span>
-                                            <span className="text-[11px] font-mono text-cyan-300">
-                                                {archiveCode}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Dimension Badges (Dual Metric & Imperial) */}
+                        {/* Dimensions & Specifications Table (NO RETAIL PRICE) */}
+                        <div className="tv-dimensions-panel flex flex-col justify-between">
                             <div>
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-white/60 mb-3">
-                                    {tr("Dimensions & Weight")}
+                                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 mb-4 pb-2 border-b border-white/10">
+                                    DIMENSIONS & PHYSICAL ATTRIBUTES
                                 </h3>
 
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                    <div className="tv-dim-badge">
-                                        <span className="tv-dim-badge-label">{tr("Width")}</span>
-                                        <span className="tv-dim-badge-primary">{specs.widthCm != null ? `${specs.widthCm} cm` : '—'}</span>
-                                        <span className="tv-dim-badge-secondary">{cmToInchStr(specs.widthCm)}</span>
+                                <div className="grid grid-cols-2 gap-3.5">
+                                    <div className="tv-spec-cell">
+                                        <span className="tv-spec-label">WIDTH</span>
+                                        <span className="tv-spec-value-imp">{wImp}</span>
+                                        <span className="tv-spec-value-metric">{specs.widthCm != null ? `${specs.widthCm} cm` : '—'}</span>
                                     </div>
 
-                                    <div className="tv-dim-badge">
-                                        <span className="tv-dim-badge-label">{tr("Height")}</span>
-                                        <span className="tv-dim-badge-primary">{specs.heightCm != null ? `${specs.heightCm} cm` : '—'}</span>
-                                        <span className="tv-dim-badge-secondary">{cmToInchStr(specs.heightCm)}</span>
+                                    <div className="tv-spec-cell">
+                                        <span className="tv-spec-label">HEIGHT</span>
+                                        <span className="tv-spec-value-imp">{hImp}</span>
+                                        <span className="tv-spec-value-metric">{specs.heightCm != null ? `${specs.heightCm} cm` : '—'}</span>
                                     </div>
 
-                                    <div className="tv-dim-badge">
-                                        <span className="tv-dim-badge-label">{tr("Depth")}</span>
-                                        <span className="tv-dim-badge-primary">{specs.lengthCm != null ? `${specs.lengthCm} cm` : '—'}</span>
-                                        <span className="tv-dim-badge-secondary">{cmToInchStr(specs.lengthCm)}</span>
+                                    <div className="tv-spec-cell">
+                                        <span className="tv-spec-label">DEPTH</span>
+                                        <span className="tv-spec-value-imp">{dImp}</span>
+                                        <span className="tv-spec-value-metric">{specs.lengthCm != null ? `${specs.lengthCm} cm` : '—'}</span>
                                     </div>
 
-                                    <div className="tv-dim-badge">
-                                        <span className="tv-dim-badge-label">{tr("Weight")}</span>
-                                        <span className="tv-dim-badge-primary">{specs.weightKg != null ? `${specs.weightKg} kg` : '—'}</span>
-                                        <span className="tv-dim-badge-secondary">{kgToLbsStr(specs.weightKg)}</span>
+                                    <div className="tv-spec-cell">
+                                        <span className="tv-spec-label">WEIGHT</span>
+                                        <span className="tv-spec-value-imp">{wtImp}</span>
+                                        <span className="tv-spec-value-metric">{specs.weightKg != null ? `${specs.weightKg} kg` : '—'}</span>
                                     </div>
+                                </div>
+
+                                <div className="tv-spec-cell mt-3.5">
+                                    <span className="tv-spec-label">OVERALL DIMENSIONS</span>
+                                    <span className="tv-spec-value-imp text-sm sm:text-base">{ovImp}</span>
                                 </div>
                             </div>
 
-                            {/* Certificate Footer Stamp */}
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10 text-xs text-white/40">
-                                <div className="flex items-center gap-2">
-                                    <ShieldCheck size={16} className="text-[#d4af37]" />
-                                    <span>{tr("Official Heritage Register")} · {tr("Verified Signature")}</span>
+                            {/* Provenance Cipher Bar */}
+                            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                                <div className="flex items-center gap-1.5 text-cyan-300">
+                                    <Lock size={12} strokeWidth={2} />
+                                    <span>{archiveCode}</span>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleCopyShare}
-                                    className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs transition-all active:scale-95 flex items-center gap-2"
-                                >
-                                    {copiedShare ? <Check size={14} /> : <Share2 size={14} />}
-                                    <span>{copiedShare ? tr("Certificate Link Copied") : tr("Share Certificate")}</span>
-                                </button>
+                                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                                    VERIFIED PROVENANCE
+                                </span>
                             </div>
                         </div>
                     </section>
 
-                    {/* About this Piece Editorial */}
-                    {record.body && (
-                        <article className="tv-card tv-desc">
-                            <h2 className="tv-card-t">{tr("About this piece")}</h2>
-                            <p className="leading-relaxed">{record.body}</p>
-                        </article>
-                    )}
-                </section>
-            </main>
+                    {/* Hairline Divider Across Footer */}
+                    <div className="tv-hairline mt-8 mb-5" />
 
-            {/* Official Watermark Footer */}
-            <footer className="tv-foot">
-                <OnyxLogo width={16} height={16} />
-                <span className="tv-mono">{tagText}</span>
-                <span className="text-white/20">·</span>
-                <span>{tr("Verified Archive")}</span>
-            </footer>
+                    {/* ── 6. FOOTER: MADE IN MEXICO & ALL THREE LOGOS ─────────────── */}
+                    <footer className="tv-catalog-footer flex flex-col sm:flex-row items-center justify-between gap-4">
+                        {/* Left Side: MADE IN MEXICO */}
+                        <div className="flex items-center gap-2">
+                            <span className="tv-catalog-mim">MADE IN MEXICO</span>
+                            <span className="text-white/20">·</span>
+                            <span className="text-[11px] font-mono text-slate-400">HISTORIC ONYX CAPITAL</span>
+                        </div>
+
+                        {/* Right Side: Rare Earth Gallery · Art of Decor · Onyx Icon */}
+                        <div className="flex items-center gap-5 shrink-0">
+                            {/* Rare Earth Gallery */}
+                            <img
+                                src={RARE_EARTH_LOGO}
+                                alt="Rare Earth Gallery"
+                                className="h-5 sm:h-6 object-contain opacity-80 hover:opacity-100 transition-opacity"
+                                onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                }}
+                            />
+
+                            {/* Art of Decor */}
+                            <img
+                                src={ART_OF_DECOR_LOGO}
+                                alt="Art of Decor"
+                                className="h-5 sm:h-6 object-contain opacity-80 hover:opacity-100 transition-opacity"
+                                onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                }}
+                            />
+
+                            {/* Onyx Icon / Favicon */}
+                            <img
+                                src="/favicon.png"
+                                alt="Onyx"
+                                className="h-5 sm:h-6 w-auto object-contain opacity-85 hover:opacity-100 transition-opacity"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/onyxmini.webp';
+                                }}
+                            />
+                        </div>
+                    </footer>
+                </article>
+            </main>
         </div>
     );
 };

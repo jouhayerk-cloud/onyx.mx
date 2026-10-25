@@ -636,14 +636,31 @@ async function loadLogoData(logoBase64Url: string): Promise<LogoData | null> {
         });
         const w = img.naturalWidth || img.width || 400;
         const h = img.naturalHeight || img.height || 100;
+
+        let finalDataUrl = logoBase64Url;
+        if (logoBase64Url.startsWith('data:image/svg+xml') || logoBase64Url.includes('<svg')) {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.min(1024, Math.max(w * 2, 512));
+                canvas.height = Math.round(canvas.width / ((w && h) ? (w / h) : 1));
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    finalDataUrl = canvas.toDataURL('image/png');
+                }
+            } catch (canvasErr) {
+                console.warn('Canvas rasterization failed for SVG logo:', canvasErr);
+            }
+        }
+
         return {
-            dataUrl: logoBase64Url,
+            dataUrl: finalDataUrl,
             w,
             h,
             aspectRatio: (w && h) ? (w / h) : 3.5
         };
     } catch (e) {
-        console.error("Failed to load logo data:", e);
+        console.error('Failed to load logo data:', e);
         return null;
     }
 }
@@ -665,7 +682,7 @@ function cleanStillUrl(raw: any): string | null {
 }
 
 
-async function getAdvancedAxoDataUrl(norm: any, itemData: any): Promise<string | null> {
+export async function getAdvancedAxoDataUrl(norm: any, itemData: any, customOptions?: any): Promise<string | null> {
     const wVal = parseFloat(norm.widthCm) || null;
     const hVal = parseFloat(norm.heightCm) || null;
     const dVal = parseFloat(norm.lengthCm) || null;
@@ -688,7 +705,8 @@ async function getAdvancedAxoDataUrl(norm: any, itemData: any): Promise<string |
                 showDimensionLabels: true,
                 showMeasurementTicks: true,
                 hairlineColor: '#334155',
-                unit: 'in'
+                unit: 'in',
+                ...customOptions
             }
         );
     } catch (e) {
@@ -710,7 +728,7 @@ function isHexMapUrl(url?: string): boolean {
            lower.includes('spatial_points');
 }
 
-interface ExtractedColorInfo {
+export interface ExtractedColorInfo {
     name: string;
     rgb: [number, number, number];
 }
@@ -749,7 +767,7 @@ const STONE_COLOR_PALETTE_MAP: Record<string, [number, number, number]> = {
     multicolor: [180, 120, 80],
 };
 
-function getItemExtractedColors(norm: any, itemData: any): ExtractedColorInfo[] {
+export function getItemExtractedColors(norm: any, itemData: any): ExtractedColorInfo[] {
     const rawList: string[] = [];
     
     if (Array.isArray(norm.dominantColors)) {
@@ -855,7 +873,7 @@ function drawColorBubbles(
 /**
  * Renders a normalized hex map stretched to a square with no empty/white spaces.
  */
-function generateNormalizedHexSquareDataUrl(
+export function generateNormalizedHexSquareDataUrl(
     itemData: any,
     norm: any,
     sizePx: number = 140
@@ -929,6 +947,15 @@ function generateNormalizedHexSquareDataUrl(
 }
 
 /**
+ * Checks if a URL represents an SVG vector rather than a bitmap photo.
+ */
+function isSvgUrl(url?: string): boolean {
+    if (!url || typeof url !== 'string') return false;
+    const lower = url.toLowerCase();
+    return lower.includes('.svg') || lower.endsWith('.svg') || lower.includes('image/svg');
+}
+
+/**
  * Checks if a URL represents a transparent cutout mask PNG rather than a studio room photo.
  */
 function isPngCutoutUrl(url?: string): boolean {
@@ -944,12 +971,14 @@ function isPngCutoutUrl(url?: string): boolean {
 /**
  * Resolves images for catalogue export:
  * - Clean room studio photos are prioritized as the large HERO image.
+ * - Raw uploaded warehouse photos and SVG vectors are STRICTLY EXCLUDED.
  * - For lamps: if 2+ photos exist, photo 2 (lights on) is normalized as Hero.
  * - For bowls: photo 1 is side view (Hero), photo 2 is top view.
  * - For mirrors/panels: photo 1 is front view lights on (Hero).
  * - Transparent PNG cutouts are placed AFTER studio photos to render as smaller secondary grid images.
+ * - Deduplicates by file ID so the same cutout is never rendered twice.
  */
-function getItemImages(item: any): string[] {
+export function getItemImages(item: any): string[] {
     if (!item) return [];
 
     const norm = normalizeInventoryData(item.data || item);
@@ -959,79 +988,88 @@ function getItemImages(item: any): string[] {
         if (!u || typeof u !== 'string') return false;
         if (isHexMapUrl(u)) return false;
         if (isVideoFile(u)) return false;
+        if (isSvgUrl(u)) return false;
         return /^https?:\/\//i.test(u);
     };
 
-    // 1. Collect clean room studio photos (excluding transparent mask PNGs)
-    const studioPhotos: string[] = [];
-
-    // Check collectExportImages which maps source stills to their clean room studio replacements
-    const exportImgs = collectExportImages(norm);
-    for (const u of exportImgs) {
-        const c = cleanStillUrl(u);
-        if (c && isClean(c) && !isPngCutoutUrl(c) && !studioPhotos.includes(c)) {
-            studioPhotos.push(c);
-        }
-    }
-
-    // Also inspect processed_media_urls directly for studio photos
+    // 1. Parse processed_media_urls to get true clean room studio replacements
+    let processedMap: Record<string, any> = {};
     const rawProcessed = norm.processedMediaUrls || norm.processed_media_urls || itemDataObj.processed_media_urls || itemDataObj.processedMediaUrls;
     if (rawProcessed) {
-        let processedMap: Record<string, any> = {};
         if (typeof rawProcessed === 'object') {
-            processedMap = rawProcessed;
+            processedMap = rawProcessed as Record<string, any>;
         } else {
             const str = String(rawProcessed).trim();
             if (str.startsWith('{')) {
                 try { processedMap = JSON.parse(str) || {}; } catch (e) {}
             }
         }
-        for (const [key, val] of Object.entries(processedMap)) {
-            if (key.startsWith('_') || isHexMapUrl(key)) continue;
-            if (isClean(val)) {
-                const c = cleanStillUrl(val);
-                if (c && !isPngCutoutUrl(c) && !studioPhotos.includes(c)) {
-                    studioPhotos.push(c);
-                }
-            }
-        }
     }
 
-    // Also check item.images if pre-passed
-    if (Array.isArray(item.images) && item.images.length > 0) {
-        for (const u of item.images) {
-            const c = cleanStillUrl(u);
-            if (c && isClean(c) && !isPngCutoutUrl(c) && !studioPhotos.includes(c)) {
-                studioPhotos.push(c);
-            }
-        }
+    // Set of known raw source warehouse photos that must NOT be exported unless substituted
+    const rawSourceStills = new Set<string>();
+    const allRaw = collectAllImages(norm, { dropVideos: true });
+    for (const r of allRaw) {
+        const c = cleanStillUrl(r);
+        if (c) rawSourceStills.add(c);
+        const fid = extractFileId(r);
+        if (fid) rawSourceStills.add(fid);
     }
 
-    // 2. Collect transparent PNG cutouts (to be rendered in the smaller secondary grid)
-    const pngCutouts: string[] = [];
-    const rawPngList = [
-        norm.generatedPngUrl,
-        item.generated_png_url,
-        item.generatedPngUrl,
-        itemDataObj.generated_png_url,
-        itemDataObj.generatedPngUrl,
-        norm.maskUrl,
-        item.maskUrl,
-        itemDataObj.mask_url
-    ];
-    for (const raw of rawPngList) {
-        const c = cleanStillUrl(raw);
-        if (c && isClean(c) && !pngCutouts.includes(c)) {
-            pngCutouts.push(c);
-        }
-    }
+    // Clean room studio photos collected
+    const studioPhotos: string[] = [];
+    const seenFileIds = new Set<string>();
 
-    for (const u of (item.images || []).concat(exportImgs)) {
+    const addStudioPhoto = (u: string) => {
         const c = cleanStillUrl(u);
-        if (c && isClean(c) && isPngCutoutUrl(c) && !pngCutouts.includes(c)) {
-            pngCutouts.push(c);
+        if (!c || !isClean(c) || isPngCutoutUrl(c)) return;
+        const fid = extractFileId(c) || c;
+        if (seenFileIds.has(fid)) return;
+        seenFileIds.add(fid);
+        studioPhotos.push(c);
+    };
+
+    // A) ProcessedMap substitutions: for each source still, if there is a clean room replacement, use the replacement!
+    for (const rawUrl of allRaw) {
+        const hit = processedMap[rawUrl];
+        if (typeof hit === 'string' && isClean(hit)) {
+            addStudioPhoto(hit);
         }
     }
+
+    // B) Any other non-metadata value in processedMap that is a clean room photo
+    for (const [key, val] of Object.entries(processedMap)) {
+        if (key.startsWith('_') || isHexMapUrl(key)) continue;
+        if (typeof val === 'string' && isClean(val)) {
+            addStudioPhoto(val);
+        }
+    }
+
+    // 2. Collect transparent PNG cutouts (rendered in smaller secondary grid, never raw warehouse photos)
+    const pngCutouts: string[] = [];
+    const addPngCutout = (u?: string) => {
+        if (!u) return;
+        const c = cleanStillUrl(u);
+        if (!c || !isClean(c)) return;
+        const fid = extractFileId(c) || c;
+        if (seenFileIds.has(fid)) return;
+        // Strict guard: if this URL is an un-cleaned raw warehouse photo, do NOT treat it as a clean PNG!
+        if (rawSourceStills.has(fid) || rawSourceStills.has(c)) {
+            return;
+        }
+        seenFileIds.add(fid);
+        pngCutouts.push(c);
+    };
+
+    // Add explicit generated cutout PNGs
+    addPngCutout(norm.generatedPngUrl);
+    addPngCutout(item.generated_png_url);
+    addPngCutout(item.generatedPngUrl);
+    addPngCutout(itemDataObj.generated_png_url);
+    addPngCutout(itemDataObj.generatedPngUrl);
+    addPngCutout(norm.maskUrl);
+    addPngCutout(item.maskUrl);
+    addPngCutout(itemDataObj.mask_url);
 
     // 3. Normalize ordering of Clean Room Studio Photos based on product shape / type rules:
     const shapeStr = (norm.shape || norm.shortDescription || itemDataObj.Shape || '').toLowerCase();
@@ -1048,45 +1086,35 @@ function getItemImages(item: any): string[] {
     let orderedStudioPhotos = [...studioPhotos];
 
     if (isLamp && orderedStudioPhotos.length >= 2) {
-        // For lamps: photo 1 is lights off, photo 2 is lights on.
-        // Use the second photo (lights on) as hero!
-        // If 4 photos (two lamps: lamp 1 off, lamp 1 on, lamp 2 off, lamp 2 on):
-        // Hero is lamp 1 on (index 1), then lamp 1 off (index 0), then lamp 2 on (index 3), then lamp 2 off (index 2)
         if (orderedStudioPhotos.length === 2) {
             orderedStudioPhotos = [orderedStudioPhotos[1], orderedStudioPhotos[0]];
         } else if (orderedStudioPhotos.length >= 4) {
             orderedStudioPhotos = [
-                orderedStudioPhotos[1], // Lamp 1 on (Hero)
-                orderedStudioPhotos[0], // Lamp 1 off
-                orderedStudioPhotos[3], // Lamp 2 on
-                orderedStudioPhotos[2], // Lamp 2 off
+                orderedStudioPhotos[1],
+                orderedStudioPhotos[0],
+                orderedStudioPhotos[3],
+                orderedStudioPhotos[2],
                 ...orderedStudioPhotos.slice(4)
             ];
         } else if (orderedStudioPhotos.length === 3) {
             orderedStudioPhotos = [orderedStudioPhotos[1], orderedStudioPhotos[0], orderedStudioPhotos[2]];
         }
     } else if (isBowl && orderedStudioPhotos.length >= 2) {
-        // Bowls normalized to: first photo side view (Hero), second photo top view
-        // Keep in natural order: [photo0 (side view), photo1 (top view), ...]
+        // Natural order: photo0 side view (Hero), photo1 top view
     } else if (isMirrorOrPanel && orderedStudioPhotos.length >= 2) {
-        // Mirrors and panels: first photo front view lights on (Hero)
-        // Keep in natural order: [photo0 (front view lights on), ...]
+        // Natural order: photo0 front view lights on (Hero)
     }
 
-    // 4. Combine: Clean room studio photos first (hero is orderedStudioPhotos[0]),
-    // and clean transparent PNGs as smaller secondary images in the smaller grid!
+    // 4. Combine: Clean room studio photos first, then transparent PNG cutouts in smaller secondary grid
     if (orderedStudioPhotos.length > 0) {
         return [...orderedStudioPhotos, ...pngCutouts];
     }
 
-    // Fallback: If no studio photos exist, use transparent PNG cutouts
     if (pngCutouts.length > 0) {
         return pngCutouts;
     }
 
-    // Last resort fallback
-    const fallback = cleanStillUrl(norm.imageUrl || item.image_url || item.imageUrl);
-    return (fallback && isClean(fallback)) ? [fallback] : [];
+    return [];
 }
 
 /**
@@ -1849,46 +1877,57 @@ async function drawCatalogSummaryPages(
     let grandTotalUnits = 0;
     let grandTotalWeightKg = 0;
 
-    interface ShapeSummary {
-        shape: string;
+    interface SpecSummary {
+        shapeType: string;
+        colorMaterial: string;
         itemCount: number;
         totalUnits: number;
         totalWeightKg: number;
-        materials: Set<string>;
     }
 
-    const shapeMap = new Map<string, ShapeSummary>();
+    const specMap = new Map<string, SpecSummary>();
 
     for (const it of results) {
         const norm = normalizeInventoryData(it.data || it);
         const qty = parseInt(norm.quantity || '1', 10) || 1;
         const wt = parseFloat(norm.weightKg || '0') || 0;
-        const shapeKey = (norm.shape || norm.shortDescription || 'Sculptural Form').trim().toUpperCase();
+
+        const shape = (norm.shape || (it.data ? it.data.Shape : '') || '').trim();
+        const type = (norm.type || (it.data ? it.data.Type : '') || norm.category || '').trim();
+        const color = (norm.color || (it.data ? it.data.Color : '') || norm.generatedColor || '').trim();
         const mat = (norm.material || (it.data ? it.data.Material : '') || 'Mexican Onyx').trim();
+
+        const shapeType = [shape, type].filter(Boolean).map(s => s.trim().toUpperCase()).join(' · ') || (norm.shortDescription || 'SCULPTURAL FORM').toUpperCase();
+        const colorMaterial = [color, mat].filter(Boolean).map(s => s.trim().toUpperCase()).join(' · ') || 'NATURAL STONE';
+        const groupKey = `${shapeType}__${colorMaterial}`;
 
         grandTotalUnits += qty;
         grandTotalWeightKg += (wt * qty);
 
-        let group = shapeMap.get(shapeKey);
+        let group = specMap.get(groupKey);
         if (!group) {
             group = {
-                shape: shapeKey,
+                shapeType,
+                colorMaterial,
                 itemCount: 0,
                 totalUnits: 0,
                 totalWeightKg: 0,
-                materials: new Set<string>()
             };
-            shapeMap.set(shapeKey, group);
+            specMap.set(groupKey, group);
         }
         group.itemCount += 1;
         group.totalUnits += qty;
         group.totalWeightKg += (wt * qty);
-        if (mat) group.materials.add(mat);
     }
 
-    const sortedGroups = Array.from(shapeMap.values()).sort((a, b) => b.totalUnits - a.totalUnits);
+    // Sort primarily by shapeType, then by totalUnits descending
+    const sortedGroups = Array.from(specMap.values()).sort((a, b) => {
+        const c = a.shapeType.localeCompare(b.shapeType);
+        if (c !== 0) return c;
+        return b.totalUnits - a.totalUnits;
+    });
     const grandTotalWeightLbs = grandTotalWeightKg * 2.20462;
-    const grandTotalShapes = sortedGroups.length;
+    const grandTotalGroups = sortedGroups.length;
 
     // Page 1 of Summary
     addPage();
@@ -1902,14 +1941,14 @@ async function drawCatalogSummaryPages(
     doc.setFontSize(isLandscape ? 7.5 : 8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
-    doc.text('EXECUTIVE SPECIFICATION & SHAPE TOTALS MANIFEST', M, isLandscape ? 23 : 28);
+    doc.text('EXECUTIVE SPECIFICATION MANIFEST · SHAPE+TYPE & COLOR+MATERIAL', M, isLandscape ? 23 : 28);
 
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
     doc.text(`DATE: ${dateStr}`, PW - M, isLandscape ? 18 : 22, { align: 'right' });
-    doc.text(`${totalItems} ITEMS  ·  ${grandTotalUnits} UNITS  ·  ${grandTotalShapes} SHAPES`, PW - M, isLandscape ? 23 : 28, { align: 'right' });
+    doc.text(`${totalItems} ITEMS  ·  ${grandTotalUnits} UNITS  ·  ${grandTotalGroups} SPECIFICATIONS`, PW - M, isLandscape ? 23 : 28, { align: 'right' });
 
     // Hairline Header Divider
     const divY = isLandscape ? 27 : 32;
@@ -1927,7 +1966,7 @@ async function drawCatalogSummaryPages(
         { label: 'TOTAL ITEMS', val: `${totalItems}`, sub: 'CATALOG LINE ITEMS' },
         { label: 'TOTAL QUANTITY', val: `${grandTotalUnits}`, sub: 'AGGREGATE PIECES' },
         { label: 'TOTAL ESTIMATED WEIGHT', val: `${Math.round(grandTotalWeightKg).toLocaleString()} kg`, sub: `${Math.round(grandTotalWeightLbs).toLocaleString()} lbs` },
-        { label: 'SHAPE VARIETIES', val: `${grandTotalShapes}`, sub: 'DISTINCT FORM TYPES' },
+        { label: 'SPECIFICATION GROUPS', val: `${grandTotalGroups}`, sub: 'SHAPE+TYPE & COLOR+MAT' },
     ];
 
     kpis.forEach((kpi, idx) => {
@@ -1954,7 +1993,7 @@ async function drawCatalogSummaryPages(
         doc.text(kpi.sub, cx + 3.5, cardY + (isLandscape ? 14 : 17));
     });
 
-    // Hairline Grid Table of Totals Grouped by Shapes / Types (NO INDIVIDUAL ITEMS)
+    // Hairline Grid Table of Totals Grouped by SHAPE+TYPE and COLOR+MATERIAL (NO INDIVIDUAL ITEMS)
     const drawTableHeader = (startY: number) => {
         doc.setFillColor(248, 250, 252);
         doc.rect(M, startY, PW - 2 * M, 7, 'F');
@@ -1968,17 +2007,17 @@ async function drawCatalogSummaryPages(
         doc.setTextColor(71, 85, 105);
 
         if (isLandscape) {
-            doc.text('SHAPE / FORM TYPE', M + 4, startY + 4.8);
-            doc.text('STONE MATERIAL', M + 75, startY + 4.8);
-            doc.text('CATALOG ITEMS', M + 165, startY + 4.8, { align: 'right' });
-            doc.text('TOTAL UNITS', M + 205, startY + 4.8, { align: 'right' });
+            doc.text('SHAPE · TYPE', M + 4, startY + 4.8);
+            doc.text('COLOR · MATERIAL', M + 85, startY + 4.8);
+            doc.text('CATALOG ITEMS', M + 175, startY + 4.8, { align: 'right' });
+            doc.text('TOTAL UNITS', M + 210, startY + 4.8, { align: 'right' });
             doc.text('WEIGHT (KG)', M + 242, startY + 4.8, { align: 'right' });
             doc.text('WEIGHT (LBS)', PW - M - 4, startY + 4.8, { align: 'right' });
         } else {
-            doc.text('SHAPE / FORM TYPE', M + 3, startY + 4.8);
-            doc.text('STONE MATERIAL', M + 55, startY + 4.8);
-            doc.text('ITEMS', M + 108, startY + 4.8, { align: 'right' });
-            doc.text('UNITS', M + 132, startY + 4.8, { align: 'right' });
+            doc.text('SHAPE · TYPE', M + 3, startY + 4.8);
+            doc.text('COLOR · MATERIAL', M + 55, startY + 4.8);
+            doc.text('ITEMS', M + 112, startY + 4.8, { align: 'right' });
+            doc.text('UNITS', M + 134, startY + 4.8, { align: 'right' });
             doc.text('WEIGHT (KG)', M + 160, startY + 4.8, { align: 'right' });
             doc.text('WEIGHT (LBS)', PW - M - 3, startY + 4.8, { align: 'right' });
         }
@@ -1991,7 +2030,6 @@ async function drawCatalogSummaryPages(
 
     for (let i = 0; i < sortedGroups.length; i++) {
         const group = sortedGroups[i];
-        const matStr = Array.from(group.materials).slice(0, 3).join(', ') || 'Natural Stone';
         const wtKgFmt = `${Math.round(group.totalWeightKg).toLocaleString()} kg`;
         const wtLbsFmt = `${Math.round(group.totalWeightKg * 2.20462).toLocaleString()} lbs`;
 
@@ -2000,7 +2038,7 @@ async function drawCatalogSummaryPages(
             doc.setFontSize(10.5);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(15, 23, 42);
-            doc.text('SHAPE TOTALS MANIFEST (CONTINUED)', M, isLandscape ? 16 : 20);
+            doc.text('SPECIFICATION TOTALS MANIFEST (CONTINUED)', M, isLandscape ? 16 : 20);
             doc.setDrawColor(226, 232, 240);
             doc.setLineWidth(0.2);
             doc.line(M, isLandscape ? 19 : 24, PW - M, isLandscape ? 19 : 24);
@@ -2020,31 +2058,35 @@ async function drawCatalogSummaryPages(
         doc.setTextColor(15, 23, 42);
 
         if (isLandscape) {
-            doc.text(group.shape, M + 4, rowY + 5);
+            const splitShape = doc.splitTextToSize(group.shapeType, 78);
+            doc.text(splitShape[0] || group.shapeType, M + 4, rowY + 5);
+
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
-            const splitMat = doc.splitTextToSize(matStr, 75);
-            doc.text(splitMat[0] || matStr, M + 75, rowY + 5);
+            const splitColMat = doc.splitTextToSize(group.colorMaterial, 85);
+            doc.text(splitColMat[0] || group.colorMaterial, M + 85, rowY + 5);
 
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(30, 41, 59);
-            doc.text(`${group.itemCount}`, M + 165, rowY + 5, { align: 'right' });
-            doc.text(`${group.totalUnits}`, M + 205, rowY + 5, { align: 'right' });
+            doc.text(`${group.itemCount}`, M + 175, rowY + 5, { align: 'right' });
+            doc.text(`${group.totalUnits}`, M + 210, rowY + 5, { align: 'right' });
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
             doc.text(wtKgFmt, M + 242, rowY + 5, { align: 'right' });
             doc.text(wtLbsFmt, PW - M - 4, rowY + 5, { align: 'right' });
         } else {
-            doc.text(group.shape, M + 3, rowY + 5);
+            const splitShape = doc.splitTextToSize(group.shapeType, 50);
+            doc.text(splitShape[0] || group.shapeType, M + 3, rowY + 5);
+
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
-            const splitMat = doc.splitTextToSize(matStr, 48);
-            doc.text(splitMat[0] || matStr, M + 55, rowY + 5);
+            const splitColMat = doc.splitTextToSize(group.colorMaterial, 54);
+            doc.text(splitColMat[0] || group.colorMaterial, M + 55, rowY + 5);
 
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(30, 41, 59);
-            doc.text(`${group.itemCount}`, M + 108, rowY + 5, { align: 'right' });
-            doc.text(`${group.totalUnits}`, M + 132, rowY + 5, { align: 'right' });
+            doc.text(`${group.itemCount}`, M + 112, rowY + 5, { align: 'right' });
+            doc.text(`${group.totalUnits}`, M + 134, rowY + 5, { align: 'right' });
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
             doc.text(wtKgFmt, M + 160, rowY + 5, { align: 'right' });
@@ -2077,15 +2119,15 @@ async function drawCatalogSummaryPages(
     doc.setTextColor(15, 23, 42);
 
     if (isLandscape) {
-        doc.text(`GRAND TOTALS  (${grandTotalShapes} SHAPE CATEGORIES)`, M + 4, rowY + 5.3);
-        doc.text(`${totalItems}`, M + 165, rowY + 5.3, { align: 'right' });
-        doc.text(`${grandTotalUnits}`, M + 205, rowY + 5.3, { align: 'right' });
+        doc.text(`GRAND TOTALS  (${grandTotalGroups} SPECIFICATIONS)`, M + 4, rowY + 5.3);
+        doc.text(`${totalItems}`, M + 175, rowY + 5.3, { align: 'right' });
+        doc.text(`${grandTotalUnits}`, M + 210, rowY + 5.3, { align: 'right' });
         doc.text(`${Math.round(grandTotalWeightKg).toLocaleString()} kg`, M + 242, rowY + 5.3, { align: 'right' });
         doc.text(`${Math.round(grandTotalWeightLbs).toLocaleString()} lbs`, PW - M - 4, rowY + 5.3, { align: 'right' });
     } else {
-        doc.text(`GRAND TOTALS  (${grandTotalShapes} SHAPES)`, M + 3, rowY + 5.3);
-        doc.text(`${totalItems}`, M + 108, rowY + 5.3, { align: 'right' });
-        doc.text(`${grandTotalUnits}`, M + 132, rowY + 5.3, { align: 'right' });
+        doc.text(`GRAND TOTALS  (${grandTotalGroups} SPECIFICATIONS)`, M + 3, rowY + 5.3);
+        doc.text(`${totalItems}`, M + 112, rowY + 5.3, { align: 'right' });
+        doc.text(`${grandTotalUnits}`, M + 134, rowY + 5.3, { align: 'right' });
         doc.text(`${Math.round(grandTotalWeightKg).toLocaleString()} kg`, M + 160, rowY + 5.3, { align: 'right' });
         doc.text(`${Math.round(grandTotalWeightLbs).toLocaleString()} lbs`, PW - M - 3, rowY + 5.3, { align: 'right' });
     }

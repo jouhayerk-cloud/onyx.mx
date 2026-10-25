@@ -66,6 +66,8 @@ export interface PublicArtifactRecord {
     cleanPhotoUrl?: string | null;
     svgUrl?: string | null;
     hexMap?: string | null;
+    marketingHtml?: string | null;
+    rawItem?: any;
 }
 
 export async function fetchPublicArtifactRecord(tagId: string): Promise<PublicArtifactRecord | null> {
@@ -83,11 +85,71 @@ export async function fetchPublicArtifactRecord(tagId: string): Promise<PublicAr
             const first = String(data.media_urls).split(/[,;]/)[0]?.trim();
             if (first) artifact.cleanPhotoUrl = getCleanImageUrl(first);
         }
+        artifact.marketingHtml = data.generated_description || null;
+        artifact.rawItem = data;
         return artifact;
     } catch (err) {
         console.error('[artifact] public record lookup failed:', err);
-        return null;
     }
+
+    try {
+        const resolved = await resolveArtifact(tagId);
+        if (resolved?.data) {
+            const d = resolved.data;
+            const tag = (d.book_barcode || d.item_id || tagId).toUpperCase();
+            const wCm = parseFloat(d.width_cm || d.widthCm) || null;
+            const hCm = parseFloat(d.height_cm || d.heightCm) || null;
+            const lCm = parseFloat(d.length_cm || d.lengthCm) || null;
+            const wtKg = parseFloat(d.weight_kg || d.weightKg) || null;
+            const shape = d.shape || d.Shape || '';
+            const shortDesc = d.short_description || d.shortDescription || '';
+            const color = d.color || d.Color || '';
+            const material = d.material || d.Material || '';
+            const genColor = d.generated_color || d.generatedColor || '';
+            const genType = d.generated_type || d.generatedType || '';
+            const detailedDesc = d.detailed_description || d.detailedDescription || d.title || d.Title || '';
+            const genDesc = d.generated_description || d.generatedDescription || d.marketing_description || '';
+
+            let hexMapStr: string | null = null;
+            const rawProc = d.processed_media_urls || d.processedMediaUrls;
+            if (rawProc) {
+                let map: any = rawProc;
+                if (typeof map === 'string' && map.trim().startsWith('{')) {
+                    try { map = JSON.parse(map); } catch (e) {}
+                }
+                if (typeof map === 'object' && map && map['_pixel_map_hex']) {
+                    hexMapStr = String(map['_pixel_map_hex']);
+                }
+            }
+
+            return {
+                tag,
+                vendor: (d.vendor || tag.slice(0, 2)).toUpperCase(),
+                workbook: String(d.workbook || ''),
+                quantity: Number(d.quantity) || 1,
+                name: [shape, shortDesc].filter(Boolean).join(' '),
+                stone: [color, material].filter(Boolean).join(' '),
+                title: detailedDesc || null,
+                body: genDesc || null,
+                type: String(genType).split('>').map((p: string) => p.trim()).filter(Boolean),
+                colors: String(genColor).split(',').map((c: string) => c.trim()).filter(Boolean),
+                specs: { widthCm: wCm, heightCm: hCm, lengthCm: lCm, weightKg: wtKg },
+                codes: { aq: d.book_aq_code || null, ld: d.book_land_code || null },
+                retailUsd: resolved.codes?.bookRetail || null,
+                images: resolved.images || [],
+                icon: d.axo_icon_url || null,
+                cutoutUrl: d.generated_png_url || d.generatedPngUrl || null,
+                cleanPhotoUrl: resolved.images?.[0] || null,
+                svgUrl: d.generated_svg_url || d.generatedSvgUrl || null,
+                hexMap: hexMapStr,
+                marketingHtml: genDesc || null,
+                rawItem: d,
+            };
+        }
+    } catch (e) {
+        console.error('[artifact] fallback resolve failed:', e);
+    }
+    return null;
 }
 
 export async function resolveArtifact(tagId: string, options: { exchangeRate?: number; workbookPrefix?: string } = {}): Promise<ResolvedArtifact | null> {
