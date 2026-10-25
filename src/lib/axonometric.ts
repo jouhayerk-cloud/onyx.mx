@@ -18,6 +18,7 @@ export interface AxoBoundingBoxOptions {
     showMeasurementTicks?: boolean;
     hairlineColor?: string;
     unit?: string;
+    rawDimensions?: { w?: number; h?: number; d?: number };
 }
 
 export function parseHexMapString(hexMapString?: string): string[] {
@@ -507,6 +508,20 @@ export function draw3DBoundingDimensionFrame(
     const tickColor = isLight ? 'rgba(15, 23, 42, 0.90)' : 'rgba(255, 255, 255, 0.92)';
     const textColor = isLight ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)';
     const unit = options?.unit || 'cm';
+    const isInch = unit === 'in' || unit === '"' || unit === 'inch';
+    const rawW = options?.rawDimensions?.w !== undefined && options.rawDimensions.w !== null ? options.rawDimensions.w : W;
+    const rawH = options?.rawDimensions?.h !== undefined && options.rawDimensions.h !== null ? options.rawDimensions.h : H;
+    const rawD = options?.rawDimensions?.d !== undefined && options.rawDimensions.d !== null ? options.rawDimensions.d : D;
+
+    const formatDim = (cmVal: number) => {
+        if (!cmVal || isNaN(cmVal)) return `0 ${unit}`;
+        if (isInch) {
+            const inVal = cmVal / 2.54;
+            const rounded = Math.round(inVal * 10) / 10;
+            return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)} ${unit}`;
+        }
+        return `${Math.round(cmVal)} ${unit}`;
+    };
 
     ctx.save();
     ctx.lineCap = 'round';
@@ -643,7 +658,7 @@ export function draw3DBoundingDimensionFrame(
             let wNx = -wDy / wLen;
             let wNy = wDx / wLen;
             if (wNy < 0) { wNx = -wNx; wNy = -wNy; }
-            drawHaloText(`${Math.round(W)} ${unit}`, wMidX + wNx * 26 * pxScale, wMidY + wNy * 26 * pxScale);
+            drawHaloText(formatDim(rawW), wMidX + wNx * 26 * pxScale, wMidY + wNy * 26 * pxScale);
 
             // Depth label (b0 -> b3)
             const dMidX = (b0.x + b3.x) / 2;
@@ -654,12 +669,12 @@ export function draw3DBoundingDimensionFrame(
             let dNx = dDy / dLen;
             let dNy = -dDx / dLen;
             if (dNy < 0) { dNx = -dNx; dNy = -dNy; }
-            drawHaloText(`${Math.round(D)} ${unit}`, dMidX + dNx * 26 * pxScale, dMidY + dNy * 26 * pxScale);
+            drawHaloText(formatDim(rawD), dMidX + dNx * 26 * pxScale, dMidY + dNy * 26 * pxScale);
 
             // Height label (b1 -> t1)
             const hMidX = (b1.x + t1.x) / 2;
             const hMidY = (b1.y + t1.y) / 2;
-            drawHaloText(`${Math.round(H)} ${unit}`, hMidX + 30 * pxScale, hMidY);
+            drawHaloText(formatDim(rawH), hMidX + 30 * pxScale, hMidY);
         }
     }
 
@@ -872,7 +887,9 @@ export async function generateAxonometricDataUrl(
         // edge for depth); forcing palette.primary unconditionally overrode that
         // theme-awareness (Chief review, 25 Oct 2026).
         const bboxOpts: AxoBoundingBoxOptions | undefined =
-            typeof boundingBoxOptions === 'object' ? boundingBoxOptions : undefined;
+            typeof boundingBoxOptions === 'object'
+                ? { rawDimensions: { w: w_cm, h: h_cm, d: d_cm }, ...boundingBoxOptions }
+                : (boundingBoxOptions ? { rawDimensions: { w: w_cm, h: h_cm, d: d_cm } } : undefined);
 
         let hexPattern: CanvasPattern | null = null;
         let parsedHexList: string[] = [];

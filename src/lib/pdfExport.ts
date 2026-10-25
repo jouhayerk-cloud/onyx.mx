@@ -29,43 +29,94 @@ export interface CatalogArtifact {
     exportType?: 'regular' | 'catalog' | 'catalog-grid';
 }
 
-function drawFormattedTagCode(doc: jsPDF, codes: any, x: number, y: number, fontSize: number = 9, hideRetail: boolean = false) {
-    const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '';
-    const parts = barcode.trim().split(/\s+/);
-    const sec1 = parts[0] || '';
-    const sec2 = parts.slice(1).join(' ') || '';
-    const sec3 = codes.bookAqCode && codes.bookAqCode !== '-' ? codes.bookAqCode : '';
-    const sec4 = (!hideRetail && codes.bookRetail && codes.bookRetail !== '-') ? codes.bookRetail.toString().replace(/[^0-9.]/g, '') : '';
+function formatQuantityText(qty: any): string {
+    const n = parseInt(qty) || 1;
+    const words: Record<number, string> = {
+        1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE',
+        6: 'SIX', 7: 'SEVEN', 8: 'EIGHT', 9: 'NINE', 10: 'TEN',
+        11: 'ELEVEN', 12: 'TWELVE', 13: 'THIRTEEN', 14: 'FOURTEEN', 15: 'FIFTEEN',
+        16: 'SIXTEEN', 17: 'SEVENTEEN', 18: 'EIGHTEEN', 19: 'NINETEEN', 20: 'TWENTY',
+        24: 'TWENTY-FOUR', 25: 'TWENTY-FIVE', 30: 'THIRTY', 50: 'FIFTY', 100: 'ONE HUNDRED'
+    };
+    return words[n] || String(n);
+}
 
-    doc.setFontSize(fontSize);
+function drawFormattedTagCode(
+    doc: jsPDF, 
+    codes: any, 
+    x: number, 
+    y: number, 
+    fontSize: number = 9, 
+    hideRetail: boolean = false, 
+    fallbackData?: any,
+    targetWidth?: number
+) {
+    let barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || fallbackData?.bookBarcode || '').trim();
+    const acqCode = (codes.bookAqCode && codes.bookAqCode !== '-') ? codes.bookAqCode.trim() : (fallbackData?.bookAqCode && fallbackData.bookAqCode !== '-' ? fallbackData.bookAqCode.trim() : '');
+    
+    let rawRetail = (!hideRetail && codes.bookRetail && codes.bookRetail !== '-') ? codes.bookRetail : '';
+    if (!rawRetail && !hideRetail && fallbackData) {
+        rawRetail = fallbackData.bookRetail || fallbackData.retailPrice || fallbackData.Retail || fallbackData['Retail USD'] || '';
+    }
+    const secRetail = rawRetail ? String(rawRetail).replace(/[^0-9.]/g, '') : '';
+    const num = parseFloat(secRetail);
+    const cleanRetail = !isNaN(num) && num > 0 ? (num % 1 === 0 ? Math.round(num).toString() : num.toFixed(2)) : '';
+
+    // If barcode contains acqCode at the end (e.g. "GE82611HNN-XEF"), strip it to format TAGID-retailAcqCode
+    if (acqCode && barcode.endsWith('-' + acqCode)) {
+        barcode = barcode.slice(0, -(acqCode.length + 1)).trim();
+    } else if (acqCode && barcode.endsWith(' ' + acqCode)) {
+        barcode = barcode.slice(0, -(acqCode.length + 1)).trim();
+    }
+
+    // Format: TAGID + retail + Acq Code -> e.g. GE82611HNN-5989XEF
+    let retailAndAcq = '';
+    if (cleanRetail && acqCode) {
+        retailAndAcq = `${cleanRetail}${acqCode}`;
+    } else if (cleanRetail) {
+        retailAndAcq = cleanRetail;
+    } else if (acqCode) {
+        retailAndAcq = acqCode;
+    }
+
+    const suffix = retailAndAcq ? (barcode ? '-' : '') + retailAndAcq : '';
+    const fullStr = barcode + suffix;
+    if (!fullStr) return;
+
+    let activeFontSize = fontSize;
+    if (targetWidth && targetWidth > 0) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        const testW = doc.getTextWidth(fullStr);
+        if (testW > 0) {
+            const scaled = 10 * (targetWidth / testW);
+            activeFontSize = Math.max(7.0, Math.min(11.5, scaled));
+        }
+    }
+
+    doc.setFontSize(activeFontSize);
     doc.setTextColor(20, 20, 20);
 
-    let currX = x;
-    
-    // 1. First section: Vendor Code and Bookv (regular text)
-    if (sec1) {
-        doc.setFont('helvetica', 'normal');
-        doc.text(sec1, currX, y);
-        currX += doc.getTextWidth(sec1);
+    doc.setFont('helvetica', 'normal');
+    const wBarcode = doc.getTextWidth(barcode);
+    doc.setFont('helvetica', 'bold');
+    const wSuffix = suffix ? doc.getTextWidth(suffix) : 0;
+    const totalMeasured = wBarcode + wSuffix;
+
+    let startX = x;
+    if (targetWidth && targetWidth > totalMeasured) {
+        startX = x + (targetWidth - totalMeasured) / 2;
     }
-    
-    // 2. Middle section: item vendor index, landed code, and acquisition code (bold text)
-    let middleParts = [];
-    if (sec2) middleParts.push(sec2);
-    if (sec3) middleParts.push(sec3);
-    if (middleParts.length > 0) {
-        const middleStr = (sec1 ? '-' : '') + middleParts.join('-');
+
+    let currX = startX;
+    if (barcode) {
+        doc.setFont('helvetica', 'normal');
+        doc.text(barcode, currX, y);
+        currX += wBarcode;
+    }
+    if (suffix) {
         doc.setFont('helvetica', 'bold');
-        doc.text(middleStr, currX, y);
-        currX += doc.getTextWidth(middleStr);
-    }
-    
-    // 3. Last section: Retail USD (regular text)
-    if (sec4) {
-        const lastStr = (sec1 || middleParts.length > 0 ? '-' : '') + sec4;
-        doc.setFont('helvetica', 'normal');
-        doc.text(lastStr, currX, y);
-        currX += doc.getTextWidth(lastStr);
+        doc.text(suffix, currX, y);
     }
 }
 
@@ -518,7 +569,127 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
 import { ART_OF_DECOR_LOGO } from './artOfDecorLogo';
 import { RARE_EARTH_LOGO } from './rareEarthLogo';
 import { ONYX_MX_LOGO } from './onyxLogo';
-import { renderAxoIconDataUrl } from './axo/axoIcon';
+import { buildTypeFigure } from '../features/entry/hairline/typeFigures';
+import { buildMotifFigure } from '../features/entry/hairline/figures/motifFigures';
+import { buildFamilyFigure } from '../features/entry/hairline/figures/familyFigures';
+import type { FigurePart } from '../features/entry/hairline/types';
+import { classifyGeometry } from './geometry';
+import { motifFor } from './shapeTypeLibrary';
+import { canonicalType } from './canonicalType';
+
+const hairlineIconCache = new Map<string, string>();
+
+/**
+ * Renders canonical Add Entry hairline figures (archetypal, un-scaled by dimensions)
+ * into a crisp PNG Data URL for the Executive Summary manifest headers and rows.
+ */
+export function getHairlineIconDataUrl(
+    typeId?: string | null,
+    shape?: string | null,
+    strokeColor: string = '#1E293B',
+    bgColor: string = 'transparent'
+): string | null {
+    if (typeof document === 'undefined') return null;
+
+    const s = (shape ?? '').trim();
+    const t = (typeId ?? '').trim();
+    const cacheKey = `${t}|${s}|${strokeColor}|${bgColor}`;
+    const cached = hairlineIconCache.get(cacheKey);
+    if (cached) return cached;
+
+    // 1. Resolve canonical type
+    const canon = canonicalType(t, s);
+    const resolvedTypeId = canon.id ?? (t ? t.toLowerCase().replace(/\s+/g, '-') : null);
+
+    // 2. Resolve geometry & motif
+    const { motif, holes } = motifFor(s, t);
+    const { geom, isMirror } = classifyGeometry(s, t);
+
+    // 3. Obtain figure parts in standard Add Entry priority order
+    let parts: FigurePart[] | null = null;
+    if (resolvedTypeId) {
+        parts = buildTypeFigure(resolvedTypeId, null, holes, s || null, null);
+    }
+    if (!parts && motif) {
+        parts = buildMotifFigure(motif, null, holes);
+    }
+    if (!parts) {
+        parts = buildFamilyFigure(geom, isMirror, null);
+    }
+
+    if (!parts || parts.length === 0) return null;
+
+    const size = 260;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    if (bgColor !== 'transparent') {
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, size, size);
+    }
+
+    // Scale and center FIGURE_VB = { w: 400, h: 320 } inside the canvas
+    const scale = (size * 0.94) / 400;
+    const offsetX = (size - 400 * scale) / 2;
+    const offsetY = (size - 320 * scale) / 2;
+
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    const COLOR_PLATE = strokeColor === '#1E293B' ? '#F8FAFC' : '#F1F5F9';
+    const COLOR_FACE = strokeColor === '#1E293B' ? '#EDF2F7' : '#E2E8F0';
+    const COLOR_SLOT = '#0F172A';
+    const COLOR_CREASE = '#64748B';
+
+    for (const part of parts) {
+        try {
+            const p = new Path2D(part.d);
+            switch (part.kind) {
+                case 'plate':
+                    ctx.fillStyle = COLOR_PLATE;
+                    ctx.fill(p);
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = 2.8;
+                    ctx.stroke(p);
+                    break;
+                case 'face':
+                    ctx.fillStyle = COLOR_FACE;
+                    ctx.fill(p);
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = 2.8;
+                    ctx.stroke(p);
+                    break;
+                case 'crease':
+                    ctx.strokeStyle = COLOR_CREASE;
+                    ctx.lineWidth = 1.8;
+                    ctx.stroke(p);
+                    break;
+                case 'slot':
+                    ctx.fillStyle = COLOR_SLOT;
+                    ctx.fill(p);
+                    break;
+                case 'mark':
+                case 'bright':
+                    ctx.fillStyle = strokeColor;
+                    ctx.fill(p);
+                    break;
+            }
+        } catch {
+            // Path2D error fallback
+        }
+    }
+    ctx.restore();
+
+    const dataUrl = canvas.toDataURL('image/png');
+    hairlineIconCache.set(cacheKey, dataUrl);
+    return dataUrl;
+}
 
 function renderStyledMarketingHtml(doc: any, html: string, x: number, y: number, width: number, maxH: number) {
     if (!html) return;
@@ -871,6 +1042,56 @@ function drawColorBubbles(
 }
 
 /**
+ * Draws liquid glass color bubble indicators stacked vertically under the classification subtitle.
+ * Follows Apple HIG Simplicity & Craft: specular highlight reflection, subtle rim, crisp uppercase typography.
+ */
+function drawVerticalColorBubbles(
+    doc: any,
+    colors: ExtractedColorInfo[],
+    startX: number,
+    startY: number,
+    maxCount: number = 4
+): number {
+    if (!colors || colors.length === 0) return startY;
+    
+    let curY = startY;
+    const bubbleR = 1.6;
+    const rowH = 3.6;
+    const toRender = colors.slice(0, maxCount);
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'bold');
+
+    for (const c of toRender) {
+        const [r, g, b] = c.rgb;
+        const cy = curY + 1.2;
+        const cx = startX + bubbleR + 0.2;
+
+        // Glass sphere / bubble: base fill
+        doc.setFillColor(r, g, b);
+        doc.circle(cx, cy, bubbleR, 'F');
+
+        // Specular highlight (glass reflection on upper-left)
+        doc.setFillColor(255, 255, 255);
+        doc.circle(cx - 0.45, cy - 0.45, 0.5, 'F');
+
+        // Subtle hairline rim
+        const isLight = (r * 299 + g * 587 + b * 114) / 1000 > 210;
+        doc.setDrawColor(isLight ? 200 : r, isLight ? 200 : g, isLight ? 200 : b);
+        doc.setLineWidth(0.18);
+        doc.circle(cx, cy, bubbleR, 'S');
+
+        // Color name label next to bubble
+        doc.setTextColor(71, 85, 105);
+        doc.text(c.name.toUpperCase(), cx + bubbleR + 2.2, curY + 2.4);
+
+        curY += rowH;
+    }
+
+    return curY;
+}
+
+/**
  * Renders a normalized hex map stretched to a square with no empty/white spaces.
  */
 /**
@@ -1071,6 +1292,196 @@ function isPngCutoutUrl(url?: string): boolean {
 }
 
 /**
+ * Resolves the Shopify/product title to display as a subtitle directly under the deterministic title.
+ */
+function getShopifyTitleSubtitle(norm: any, itemDataObj: any, mainTitleStr: string): string {
+    const raw = (
+        itemDataObj?.shopifyTitle || 
+        itemDataObj?.shopify_title || 
+        norm?.shopifyTitle ||
+        itemDataObj?.invoiceTitle || 
+        itemDataObj?.invoice_title || 
+        itemDataObj?.generatedTitle || 
+        itemDataObj?.generated_title ||
+        itemDataObj?.title ||
+        ''
+    );
+    if (!raw) return '';
+    const clean = normalizeBrandTerms(String(raw)).replace(/\s+/g, ' ').trim().toUpperCase();
+    if (clean === mainTitleStr.toUpperCase() || clean === 'SCULPTURAL FORM' || clean === 'STONE PIECE') {
+        return '';
+    }
+    return clean;
+}
+
+/**
+ * Normalizes and cleans single product types from category paths or plurals (e.g. "HOME DECOR > DECORATIVE BOWLS" -> "BOWL").
+ */
+function cleanSingleTypeName(t: string): string {
+    if (!t) return '';
+    let res = t.trim();
+    // Remove leading "Decorative "
+    res = res.replace(/^decorative\s+/i, '');
+    
+    // Map common plurals or specific categories to standard clean product types
+    const upper = res.toUpperCase();
+    const map: Record<string, string> = {
+        'BOWLS': 'BOWL',
+        'DECORATIVE BOWLS': 'BOWL',
+        'FLOOR LAMPS': 'FLOOR LAMP',
+        'TOWER LAMPS': 'TOWER LAMP',
+        'TABLE LAMPS': 'TABLE LAMP',
+        'DESK LAMPS': 'DESK LAMP',
+        'LAMPS': 'LAMP',
+        'PENDANT LIGHTS': 'PENDANT LIGHT',
+        'WALL PANELS': 'WALL PANEL',
+        'PLATES': 'PLATE',
+        'DECORATIVE PLATES': 'PLATE',
+        'TRAYS': 'TRAY',
+        'DECORATIVE TRAYS': 'TRAY',
+        'SINKS': 'SINK',
+        'WASHBASINS': 'SINK',
+        'SCULPTURES': 'SCULPTURE',
+        'SCULPTURES & STATUES': 'SCULPTURE',
+        'STATUES': 'SCULPTURE',
+        'VASES': 'VASE',
+        'TABLES': 'TABLE',
+        'PEDESTALS': 'PEDESTAL',
+        'STANDS': 'STAND',
+        'BATHTUBS': 'BATHTUB',
+        'FOUNTAINS': 'FOUNTAIN',
+        'MIRRORS': 'MIRROR',
+        'COASTERS': 'COASTER',
+        'CANDLEHOLDERS': 'CANDLEHOLDER',
+        'CANDLES': 'CANDLEHOLDER',
+        'WINE RACKS': 'WINE RACK',
+        'WINE STOPPERS': 'WINE STOPPER',
+        'CHESS SETS': 'CHESS SET',
+    };
+
+    if (map[upper]) {
+        return map[upper];
+    }
+
+    if (upper.endsWith('S') && !upper.endsWith('SS')) {
+        return upper.slice(0, -1);
+    }
+
+    return upper;
+}
+
+/**
+ * Resolves clean product type (e.g. "BOWL", "FLOOR LAMP", "TOWER LAMP") eliminating taxonomy paths like "HOME DECOR > ...".
+ */
+function resolveCleanProductType(norm: any, itemDataObj: any, shapeStr?: string): string {
+    // 1. Staff ground truth shortDescription if distinct from shape and not containing hierarchy
+    const sd = (norm?.shortDescription || itemDataObj?.short_description || itemDataObj?.shortDescription || '').trim();
+    if (sd && !sd.includes('>') && !sd.includes('›')) {
+        const cleanSd = cleanSingleTypeName(sd);
+        if (!shapeStr || cleanSd.toLowerCase() !== shapeStr.toLowerCase()) {
+            return cleanSd;
+        }
+    }
+
+    // 2. Raw type or generated type
+    let raw = (
+        norm?.generatedType || 
+        itemDataObj?.generated_type || 
+        itemDataObj?.generatedType || 
+        norm?.canonicalType || 
+        norm?.type || 
+        itemDataObj?.type || 
+        itemDataObj?.Type || 
+        ''
+    ).trim();
+
+    if (raw.includes('>') || raw.includes('›')) {
+        raw = raw.split(/[>›]/).pop()?.trim() || '';
+    }
+
+    if (raw) {
+        const cleanRaw = cleanSingleTypeName(raw);
+        if (!shapeStr || cleanRaw.toLowerCase() !== shapeStr.toLowerCase()) {
+            return cleanRaw;
+        }
+    }
+
+    // 3. Fallback to shortDescription if it had hierarchy
+    if (sd) {
+        let t = sd;
+        if (t.includes('>') || t.includes('›')) {
+            t = t.split(/[>›]/).pop()?.trim() || '';
+        }
+        const cleanSd = cleanSingleTypeName(t);
+        if (cleanSd) return cleanSd;
+    }
+
+    return '';
+}
+
+/**
+ * Resolves the transparent cutout PNG for an item to float in the title bar.
+ */
+export function getItemCutoutPng(item: any): string | null {
+    if (!item) return null;
+    const it = item.data || item;
+    const norm = normalizeInventoryData(it);
+
+    const candidates = [
+        norm.generatedPngUrl,
+        it.generated_png_url,
+        it.generatedPngUrl,
+        norm.maskUrl,
+        it.maskUrl,
+        it.mask_url,
+        it.cutoutUrl
+    ];
+
+    for (const c of candidates) {
+        if (c && typeof c === 'string' && !isHexMapUrl(c) && !isVideoFile(c)) {
+            return getCleanImageUrl(c) || c;
+        }
+    }
+
+    // Check spatial_masks
+    const spMasks = it.spatial_masks || it.spatialMasks || norm.spatialMasks || norm.spatial_masks;
+    if (spMasks) {
+        let mObj = spMasks;
+        if (typeof mObj === 'string') {
+            try { mObj = JSON.parse(mObj); } catch (e) {}
+        }
+        if (typeof mObj === 'object' && mObj) {
+            if (Array.isArray(mObj) && mObj.length > 0) {
+                const u = mObj[0].cutoutUrl || mObj[0].pngUrl || mObj[0].mask;
+                if (u && typeof u === 'string') return getCleanImageUrl(u) || u;
+            } else {
+                const angle0 = (mObj as any).angle_0 || Object.values(mObj)[0];
+                if (angle0) {
+                    if (Array.isArray(angle0) && angle0.length > 0) {
+                        const u = angle0[0].cutoutUrl || angle0[0].mask || angle0[0].pngUrl;
+                        if (u && typeof u === 'string') return getCleanImageUrl(u) || u;
+                    } else if (typeof angle0 === 'string') {
+                        return getCleanImageUrl(angle0) || angle0;
+                    }
+                }
+            }
+        }
+    }
+
+    // Check images array for any transparent PNG cutout
+    const imgs = item.images || it.images;
+    if (Array.isArray(imgs)) {
+        for (const u of imgs) {
+            if (typeof u === 'string' && isPngCutoutUrl(u) && !isHexMapUrl(u) && !isVideoFile(u)) {
+                return getCleanImageUrl(u) || u;
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
  * Resolves images for catalogue export:
  * - Clean room studio photos are prioritized as the large HERO image.
  * - Raw uploaded warehouse photos and SVG vectors are STRICTLY EXCLUDED.
@@ -1207,11 +1618,12 @@ export function getItemImages(item: any): string[] {
         // Natural order: photo0 front view lights on (Hero)
     }
 
-    // 4. Combine: Clean room studio photos first, then transparent PNG cutouts in smaller secondary grid
+    // User requirement: Gallery images must show authentic clean room photos only, NO PNG or SVG cutouts in gallery
     if (orderedStudioPhotos.length > 0) {
-        return [...orderedStudioPhotos, ...pngCutouts];
+        return orderedStudioPhotos;
     }
 
+    // Fallback if no clean room photos exist at all
     if (pngCutouts.length > 0) {
         return pngCutouts;
     }
@@ -1238,60 +1650,80 @@ async function drawCatalogHubPagePortrait(
     const itemDataObj = item.data || item;
     const fullW = PW - 2 * M;
 
-    // 1. Uploaded shape, type, color, material attributes for main title
-    const shape = (norm.shape || norm.shortDescription || 'Sculptural Form').trim();
-    const shortDesc = (norm.shortDescription && norm.shortDescription !== shape ? norm.shortDescription : '').trim();
+    // 1. Uploaded quantity, shape, type, color, material, sizes attributes for main title
+    const qtyWord = formatQuantityText(norm.quantity || 1);
+    const rawShape = (norm.shape || (item.data ? item.data.Shape : '') || '').trim();
+    const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
+
+    let shape = rawShape;
+    if (!shape && norm.shortDescription && cleanType !== cleanSingleTypeName(norm.shortDescription)) {
+        shape = norm.shortDescription.trim();
+    }
+
     const color = (norm.color || (item.data ? item.data.Color : '') || '').trim();
     const material = (norm.material || (item.data ? item.data.Material : '') || 'Mexican Onyx').trim();
 
-    const mainTitleParts = [shape, shortDesc, color, material].filter(Boolean);
-    const mainTitleStr = Array.from(new Set(mainTitleParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
+    const attrParts = [shape, cleanType, color, material].filter(Boolean);
+    if (attrParts.length === 0) {
+        attrParts.push('SCULPTURAL FORM');
+    }
+    const attrStr = Array.from(new Set(attrParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
+
+    // Metric dimensions: e.g. 30×30×220cm
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+
+    // Full title: TWO • SQUARED · FLOOR LAMP · GALAXY · ONYX • 30×30×220cm
+    let mainTitleStr = `${qtyWord} • ${attrStr}`;
+    if (dimsMetric) {
+        mainTitleStr += ` • ${dimsMetric}`;
+    }
 
     // Classification below main title
     const catAndTypeGrid = getProductCategoryAndType(norm);
     const classificationStr = [catAndTypeGrid.category, catAndTypeGrid.type].filter(Boolean).join('  ›  ').toUpperCase();
 
-    // 2. Full Width Main Title on Top
+    // Resolve cutout PNG to place to the left of the title
     const topY = M;
-    doc.setFontSize(12.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    const splitTitle = doc.splitTextToSize(mainTitleStr, fullW - 24);
-    doc.text(splitTitle, M, topY + 4.5);
+    const cutoutUrl = getItemCutoutPng(item);
+    let cutoutImgData: any = null;
+    let cutoutW = 0;
+    let cutoutH = 0;
 
-    doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(50, 50, 50);
-    const qtyStr = `QTY: ${norm.quantity || 1}`;
-    doc.text(qtyStr, PW - M - doc.getTextWidth(qtyStr), topY + 4.5);
-
-    let subY = topY + 5.0 + (splitTitle.length * 4.3);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(100, 116, 139);
-    doc.text(classificationStr, M, subY);
-    subY += 4.5;
-
-    // Hairline divider below title block
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.2);
-    doc.line(M, subY, PW - M, subY);
-
-    // 3. Header Specs Bar: Color Bubbles on left, Barcode + Hairline + Hex Square + QR on right
-    const barZoneY = subY + 2.5;
-    const barZoneH = 15;
-
-    // Extracted color bubbles on left
-    const extractedColors = getItemExtractedColors(norm, itemDataObj);
-    if (extractedColors.length > 0) {
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(100, 116, 139);
-        doc.text('EXTRACTED COLOR PALETTE', M, barZoneY + 3.8);
-        drawColorBubbles(doc, extractedColors, M, barZoneY + 9.5, 85);
+    if (cutoutUrl) {
+        try {
+            cutoutImgData = await loadImgData(cutoutUrl, 400, true);
+            if (cutoutImgData && cutoutImgData.dataUrl) {
+                const maxCutoutH = 30;
+                const maxCutoutW = 36;
+                cutoutH = maxCutoutH;
+                cutoutW = maxCutoutH;
+                if (cutoutImgData.w && cutoutImgData.h) {
+                    const aspect = cutoutImgData.w / cutoutImgData.h;
+                    if (aspect >= 1) {
+                        cutoutW = Math.min(maxCutoutW, maxCutoutH * aspect);
+                        cutoutH = cutoutW / aspect;
+                    } else {
+                        cutoutH = maxCutoutH;
+                        cutoutW = Math.min(maxCutoutW, cutoutH * aspect);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[pdfExport] Failed to load cutout PNG for title:', e);
+        }
     }
 
-    // Right elements: QR, Barcode, Hairline, Normalized Hex Map Square
+    // Top Right Corner Block: Barcode + Small QR Code (same height as barcode) + TagID/Retail/Acq matching width
+    const barW = 38;
+    const barH = 8.0;
+    const qrSize = barH; // small QR code same height as barcode
+    const codeGap = 2.0;
+    const totalCodesW = barW + codeGap + qrSize; // 48.0mm
+    const rightEdge = PW - M;
+    const blockX = rightEdge - totalCodesW;
+    const barX = blockX;
+    const qrX = blockX + barW + codeGap;
+
     let qrDataUrl = '';
     try {
         qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { errorCorrectionLevel: 'H', margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
@@ -1300,69 +1732,85 @@ async function drawCatalogHubPagePortrait(
     let barDataUrl = '';
     try {
         const canvas = document.createElement('canvas');
-        JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 32, lineColor: '#141414' });
+        JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 30, lineColor: '#141414' });
         barDataUrl = canvas.toDataURL('image/png');
     } catch (e) {}
 
-    const qrSize = 14;
-    const rightEdge = PW - M;
-    const currX = rightEdge - qrSize;
+    if (barDataUrl) {
+        doc.addImage(barDataUrl, 'PNG', barX, topY, barW, barH);
+    }
 
     if (qrDataUrl) {
-        doc.addImage(qrDataUrl, 'PNG', currX, barZoneY + 0.5, qrSize, qrSize);
+        doc.addImage(qrDataUrl, 'PNG', qrX, topY, qrSize, qrSize);
         const tagVColor = getVendorColor(barcode);
         const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
-        const qrCenterX = currX + qrSize / 2;
-        const qrCenterY = barZoneY + 0.5 + qrSize / 2;
+        const qrCenterX = qrX + qrSize / 2;
+        const qrCenterY = topY + qrSize / 2;
         doc.setFillColor(255, 255, 255);
-        doc.circle(qrCenterX, qrCenterY, 1.8, 'F');
+        doc.circle(qrCenterX, qrCenterY, 1.4, 'F');
         doc.setFillColor(tagHexColor);
-        doc.circle(qrCenterX, qrCenterY, 1.3, 'F');
+        doc.circle(qrCenterX, qrCenterY, 0.95, 'F');
     }
 
-    const barW = 40;
-    const barH = 8.5;
-    const barX = currX - barW - 4;
+    // TAGID + Retail + Acquisition Code line: EXACT same width as [ Barcode ] [ QR ]
+    const tagTextY = topY + barH + 3.2;
+    drawFormattedTagCode(doc, codes, blockX, tagTextY, 9, false, itemDataObj, totalCodesW);
 
-    if (barDataUrl) {
-        doc.addImage(barDataUrl, 'PNG', barX, barZoneY, barW, barH);
-        drawFormattedTagCode(doc, codes, barX, barZoneY + barH + 3.5, 8.5, true);
+    const titleGap = cutoutW > 0 ? 3.5 : 0;
+    const titleX = M + cutoutW + titleGap;
+    const titleW = blockX - titleX - 4.0;
 
-        const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
-        const wVal = norm.weightKg ? `${norm.weightKg}kg` : '—';
-        const infoStr = `${dimsMetric || 'Custom Dims'} · ${wVal}`;
-        
+    // 2. Main Title, Shopify Subtitle, and Classification
+    const shopifySubTitle = getShopifyTitleSubtitle(norm, itemDataObj, mainTitleStr);
+
+    doc.setFontSize(12.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    const splitTitle = doc.splitTextToSize(mainTitleStr, titleW);
+    doc.text(splitTitle, titleX, topY + 4.5);
+
+    let currTitleY = topY + 4.5 + (splitTitle.length > 1 ? (splitTitle.length - 1) * 4.3 : 0);
+
+    // Shopify Title as Subtitle directly under deterministic title
+    if (shopifySubTitle) {
+        currTitleY += 4.3;
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(51, 65, 85);
+        const splitShopify = doc.splitTextToSize(shopifySubTitle, titleW);
+        doc.text(splitShopify, titleX, currTitleY);
+        currTitleY += (splitShopify.length > 1 ? (splitShopify.length - 1) * 3.8 : 0);
+    }
+
+    // Classification line
+    if (classificationStr) {
+        currTitleY += 4.2;
         doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(80, 80, 80);
-        doc.text(infoStr, barX, barZoneY + barH + 6.8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text(classificationStr, titleX, currTitleY);
     }
 
-    // Small hairline element to the left of the barcode
-    const barHairlineX = barX - 4.5;
-    doc.setDrawColor(218, 222, 229);
-    doc.setLineWidth(0.25);
-    doc.line(barHairlineX, barZoneY, barHairlineX, barZoneY + barZoneH);
-
-    // Colored square of normalized hex map stretched to square (no empty spaces)
-    const sqSize = 13.5;
-    const sqX = barHairlineX - sqSize - 4;
-    const sqY = barZoneY + 0.7;
-    const sqDataUrl = await generateNormalizedVeinMaskSquareDataUrl(itemDataObj, norm, 140);
-    if (sqDataUrl) {
-        doc.addImage(sqDataUrl, 'PNG', sqX, sqY, sqSize, sqSize);
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.2);
-        doc.roundedRect(sqX, sqY, sqSize, sqSize, 0.8, 0.8, 'S');
+    // Color glass bubble indicators stacked vertically under the classification subtitle
+    const extractedColors = getItemExtractedColors(norm, itemDataObj);
+    let afterBubblesY = currTitleY + 2.0;
+    if (extractedColors.length > 0) {
+        afterBubblesY = drawVerticalColorBubbles(doc, extractedColors, titleX, currTitleY + 2.0, 4);
     }
 
-    const sep2Y = barZoneY + barZoneH + 3;
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.2);
-    doc.line(M, sep2Y, PW - M, sep2Y);
+    let subY = afterBubblesY + 1.5;
 
-    // 4. Content Zone: First image larger, secondary images/PNGs in smaller grid
-    const contentY = sep2Y + 2;
+    // Draw cutout PNG to the left of the title block
+    if (cutoutImgData && cutoutImgData.dataUrl) {
+        const titleBlockTotalH = Math.max(cutoutH, subY - topY);
+        const pngY = topY + Math.max(0, (titleBlockTotalH - cutoutH) / 2);
+        doc.addImage(cutoutImgData.dataUrl, 'PNG', M, pngY, cutoutW, cutoutH);
+    }
+
+    const headerBottomY = Math.max(topY + cutoutH, subY, tagTextY + 2.0);
+
+    // 4. Content Zone
+    const contentY = headerBottomY + 3.5;
     const contentH = PH - 58 - contentY;
     const imgs = getItemImages(item).filter(u => !isHexMapUrl(u));
 
@@ -1391,14 +1839,8 @@ async function drawCatalogHubPagePortrait(
 
         const descY = contentY + contentH * 0.55;
         const descH = contentH * 0.45;
-        if (shopifyOrInvoiceTitle) {
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 41, 59);
-            doc.text(shopifyOrInvoiceTitle, M, descY - 2);
-        }
         const marketingHtml = normalizeBrandTerms(item.data?.marketing_description || item.data?.generatedDescription || item.data?.generated_description || '');
-        renderStyledMarketingHtml(doc, marketingHtml, M, descY + 2, fullW, descH - 4);
+        renderStyledMarketingHtml(doc, marketingHtml, M, descY, fullW, descH);
     } else if (imgs.length === 1) {
         const imgBoxH = contentH * 0.58;
         const currentImgUrl = imgs[0];
@@ -1408,14 +1850,8 @@ async function drawCatalogHubPagePortrait(
         }
         const descY = contentY + imgBoxH + 4;
         const descH = contentH - imgBoxH - 4;
-        if (shopifyOrInvoiceTitle) {
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 41, 59);
-            doc.text(shopifyOrInvoiceTitle, M, descY);
-        }
         const marketingHtml = normalizeBrandTerms(item.data?.marketing_description || item.data?.generatedDescription || item.data?.generated_description || '');
-        renderStyledMarketingHtml(doc, marketingHtml, M, descY + 3.5, fullW, descH - 5);
+        renderStyledMarketingHtml(doc, marketingHtml, M, descY, fullW, descH);
     } else {
         // Multiple clean room images: FIRST IMAGE LARGER, SECONDARY IMAGES & PNGS SMALLER GRID
         const heroH = contentH * 0.44;
@@ -1425,7 +1861,7 @@ async function drawCatalogHubPagePortrait(
         }
 
         const secY = contentY + heroH + 2.5;
-        const secH = contentH * 0.17;
+        const secH = contentH * 0.22;
         const secImgs = imgs.slice(1, 5);
         const gap = 3;
         const colW = (fullW - (secImgs.length - 1) * gap) / secImgs.length;
@@ -1443,68 +1879,148 @@ async function drawCatalogHubPagePortrait(
 
         const descY = secY + secH + 4;
         const descH = contentH - (descY - contentY);
-        if (shopifyOrInvoiceTitle) {
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 41, 59);
-            doc.text(shopifyOrInvoiceTitle, M, descY);
-        }
         const marketingHtml = normalizeBrandTerms(item.data?.marketing_description || item.data?.generatedDescription || item.data?.generated_description || '');
-        renderStyledMarketingHtml(doc, marketingHtml, M, descY + 3.5, fullW, descH - 5);
+        renderStyledMarketingHtml(doc, marketingHtml, M, descY, fullW, descH);
     }
 
-    // 5. LARGER Advanced Axonometric icon & Dimensions Panel at bottom
-    const iconSize = 48;
-    const bottomY = PH - 52;
+    // 5. Advanced Axonometric icon & Horizontal Dimensions Panel at bottom
+    const iconSize = 44;
+    const bottomY = PH - 48;
+    const axoX = M + (fullW - iconSize) / 2;
     
     try {
         const smallAxoUrl = await getAdvancedAxoDataUrl(norm, item.data || item);
         if (smallAxoUrl) {
-            doc.addImage(smallAxoUrl, smallAxoUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG', M, bottomY, iconSize, iconSize);
+            doc.addImage(smallAxoUrl, smallAxoUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG', axoX, bottomY - 6, iconSize, iconSize);
         }
     } catch (e) {}
 
-    const panelX = M + iconSize + 8;
     const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in') || '—';
     const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in') || '—';
     const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in') || '—';
     const wtImp = toImp(norm.weightKg, 'lbs') || '—';
     const ovImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ') || '—';
 
-    doc.setFontSize(8);
-    const col1X = panelX;
-    const col2X = panelX + 50;
-    let yPos = bottomY + 14;
-    const rowGap = 7;
+    // Horizontal imperial sizes panel underneath the Axo
+    const specCols = [
+        { label: 'WIDTH', val: wImp },
+        { label: 'HEIGHT', val: hImp },
+        { label: 'DEPTH', val: dImp },
+        { label: 'WEIGHT', val: wtImp },
+    ];
+    const colGap = 3.5;
+    const cellW = (fullW - (specCols.length - 1) * colGap) / specCols.length;
+    const cellH = 8.5;
+    const sizesY = bottomY - 6 + iconSize + 2.5;
 
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
-    doc.text('WIDTH:', col1X, yPos);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(wImp, col1X + 14, yPos);
+    specCols.forEach((col, idx) => {
+        const cx = M + idx * (cellW + colGap);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(cx, sizesY, cellW, cellH, 0.8, 0.8, 'F');
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.18);
+        doc.roundedRect(cx, sizesY, cellW, cellH, 0.8, 0.8, 'S');
 
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
-    doc.text('HEIGHT:', col2X, yPos);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(hImp, col2X + 15, yPos);
+        doc.setFontSize(6.2);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text(col.label, cx + cellW / 2, sizesY + 3.0, { align: 'center' });
 
-    yPos += rowGap;
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(col.val, cx + cellW / 2, sizesY + 6.8, { align: 'center' });
+    });
 
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
-    doc.text('DEPTH:', col1X, yPos);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(dImp, col1X + 14, yPos);
+    // Overall line eliminated per design guidelines
+}
 
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
-    doc.text('WEIGHT:', col2X, yPos);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(wtImp, col2X + 15, yPos);
+/**
+ * Draws vertically stacked imperial sizes card (WIDTH, HEIGHT, DEPTH, WEIGHT)
+ * designed with Apple HIG precision to sit next to the Axo in the bottom carousel.
+ * Redundant 'OVERALL' text eliminated.
+ */
+function drawVerticalImperialSizesCard(
+    doc: any,
+    norm: any,
+    x: number,
+    y: number,
+    w: number,
+    h: number
+) {
+    const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in') || '—';
+    const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in') || '—';
+    const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in') || '—';
+    const wtImp = toImp(norm.weightKg, 'lbs') || '—';
 
-    yPos += rowGap;
+    // Outer card container
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(x, y, w, h, 1.0, 1.0, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(x, y, w, h, 1.0, 1.0, 'S');
 
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
-    doc.text('OVERALL:', col1X, yPos);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(ovImp, col1X + 18, yPos);
+    const specs = [
+        { label: 'WIDTH', val: wImp },
+        { label: 'HEIGHT', val: hImp },
+        { label: 'DEPTH', val: dImp },
+        { label: 'WEIGHT', val: wtImp },
+    ];
+
+    const rowH = h / specs.length;
+
+    specs.forEach((spec, idx) => {
+        const rowY = y + idx * rowH;
+
+        // Subtle row hairline divider between rows
+        if (idx > 0) {
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.18);
+            doc.line(x + 2, rowY, x + w - 2, rowY);
+        }
+
+        // Label on left
+        doc.setFontSize(5.2);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text(spec.label, x + 3.0, rowY + rowH / 2 + 1.2);
+
+        // Value on right
+        doc.setFontSize(6.8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(spec.val, x + w - 3.0, rowY + rowH / 2 + 1.2, { align: 'right' });
+    });
+}
+
+/**
+ * Detects whether an item is a tower lamp / floor lamp with tall monolithic form factor.
+ */
+function isTowerLamp(norm: any, itemDataObj: any, cleanType?: string): boolean {
+    const text = [
+        cleanType || '',
+        norm?.shortDescription || '',
+        itemDataObj?.short_description || '',
+        itemDataObj?.shortDescription || '',
+        norm?.type || '',
+        itemDataObj?.type || '',
+        itemDataObj?.Type || '',
+        norm?.canonicalType || '',
+        norm?.generatedType || '',
+        itemDataObj?.generated_type || '',
+        itemDataObj?.generatedType || '',
+        norm?.shape || '',
+        itemDataObj?.Shape || ''
+    ].join(' ').toLowerCase();
+
+    return text.includes('tower lamp') || 
+           text.includes('floor lamp') || 
+           text.includes('lampara torre') || 
+           text.includes('lampara de torre') || 
+           text.includes('lamp tower') || 
+           text.includes('pillar') ||
+           cleanType === 'TOWER LAMP' || 
+           cleanType === 'FLOOR LAMP';
 }
 
 /**
@@ -1525,60 +2041,80 @@ async function drawCatalogHubPageLandscapeGrid(
     const itemDataObj = item.data || item;
     const fullW = PW - 2 * M;
 
-    // 1. Uploaded shape, type, color, material attributes for main title
-    const shape = (norm.shape || norm.shortDescription || 'Sculptural Form').trim();
-    const shortDesc = (norm.shortDescription && norm.shortDescription !== shape ? norm.shortDescription : '').trim();
+    // 1. Uploaded quantity, shape, type, color, material, sizes attributes for main title
+    const qtyWord = formatQuantityText(norm.quantity || 1);
+    const rawShape = (norm.shape || (item.data ? item.data.Shape : '') || '').trim();
+    const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
+
+    let shape = rawShape;
+    if (!shape && norm.shortDescription && cleanType !== cleanSingleTypeName(norm.shortDescription)) {
+        shape = norm.shortDescription.trim();
+    }
+
     const color = (norm.color || (item.data ? item.data.Color : '') || '').trim();
     const material = (norm.material || (item.data ? item.data.Material : '') || 'Mexican Onyx').trim();
 
-    const mainTitleParts = [shape, shortDesc, color, material].filter(Boolean);
-    const mainTitleStr = Array.from(new Set(mainTitleParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
+    const attrParts = [shape, cleanType, color, material].filter(Boolean);
+    if (attrParts.length === 0) {
+        attrParts.push('SCULPTURAL FORM');
+    }
+    const attrStr = Array.from(new Set(attrParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
+
+    // Metric dimensions: e.g. 30×30×220cm
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+
+    // Full title: TWO • SQUARED · FLOOR LAMP · GALAXY · ONYX • 30×30×220cm
+    let mainTitleStr = `${qtyWord} • ${attrStr}`;
+    if (dimsMetric) {
+        mainTitleStr += ` • ${dimsMetric}`;
+    }
 
     // Classification below main title
     const catAndTypeGrid = getProductCategoryAndType(norm);
     const classificationStr = [catAndTypeGrid.category, catAndTypeGrid.type].filter(Boolean).join('  ›  ').toUpperCase();
 
-    // 2. Full Width Main Title on Top
+    // Resolve cutout PNG to place to the left of the title
     const topY = M;
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    const splitTitle = doc.splitTextToSize(mainTitleStr, fullW - 28);
-    doc.text(splitTitle, M, topY + 4.5);
+    const cutoutUrl = getItemCutoutPng(item);
+    let cutoutImgData: any = null;
+    let cutoutW = 0;
+    let cutoutH = 0;
 
-    doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(50, 50, 50);
-    const qtyStr = `QTY: ${norm.quantity || 1}`;
-    doc.text(qtyStr, PW - M - doc.getTextWidth(qtyStr), topY + 4.5);
-
-    let subY = topY + 5.0 + (splitTitle.length * 4.3);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(100, 116, 139);
-    doc.text(classificationStr, M, subY);
-    subY += 4.2;
-
-    // Hairline divider below title block
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.2);
-    doc.line(M, subY, PW - M, subY);
-
-    // 3. Header Specs Bar: Color Bubbles on left, Barcode + Hairline + Hex Square + QR on right
-    const barZoneY = subY + 2.0;
-    const barZoneH = 14;
-
-    // Extracted color bubbles on left
-    const extractedColors = getItemExtractedColors(norm, itemDataObj);
-    if (extractedColors.length > 0) {
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(100, 116, 139);
-        doc.text('EXTRACTED COLOR PALETTE', M, barZoneY + 3.5);
-        drawColorBubbles(doc, extractedColors, M, barZoneY + 8.8, 125);
+    if (cutoutUrl) {
+        try {
+            cutoutImgData = await loadImgData(cutoutUrl, 400, true);
+            if (cutoutImgData && cutoutImgData.dataUrl) {
+                const maxCutoutH = 30;
+                const maxCutoutW = 36;
+                cutoutH = maxCutoutH;
+                cutoutW = maxCutoutH;
+                if (cutoutImgData.w && cutoutImgData.h) {
+                    const aspect = cutoutImgData.w / cutoutImgData.h;
+                    if (aspect >= 1) {
+                        cutoutW = Math.min(maxCutoutW, maxCutoutH * aspect);
+                        cutoutH = cutoutW / aspect;
+                    } else {
+                        cutoutH = maxCutoutH;
+                        cutoutW = Math.min(maxCutoutW, cutoutH * aspect);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[pdfExport] Failed to load cutout PNG for title:', e);
+        }
     }
 
-    // Right elements: QR, Barcode, Hairline, Normalized Hex Map Square
+    // Top Right Corner Block: Barcode + Small QR Code (same height as barcode) + TagID/Retail/Acq matching width
+    const barW = 38;
+    const barH = 8.0;
+    const qrSize = barH; // small QR code same height as barcode
+    const codeGap = 2.0;
+    const totalCodesW = barW + codeGap + qrSize; // 48.0mm
+    const rightEdge = PW - M;
+    const blockX = rightEdge - totalCodesW;
+    const barX = blockX;
+    const qrX = blockX + barW + codeGap;
+
     let qrDataUrl = '';
     try {
         qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { errorCorrectionLevel: 'H', margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
@@ -1591,229 +2127,374 @@ async function drawCatalogHubPageLandscapeGrid(
         barDataUrl = canvas.toDataURL('image/png');
     } catch (e) {}
 
-    const qrSize = 13.5;
-    const rightEdge = PW - M;
-    const currX = rightEdge - qrSize;
+    if (barDataUrl) {
+        doc.addImage(barDataUrl, 'PNG', barX, topY, barW, barH);
+    }
 
     if (qrDataUrl) {
-        doc.addImage(qrDataUrl, 'PNG', currX, barZoneY + 0.5, qrSize, qrSize);
+        doc.addImage(qrDataUrl, 'PNG', qrX, topY, qrSize, qrSize);
         const tagVColor = getVendorColor(barcode);
         const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
-        const qrCenterX = currX + qrSize / 2;
-        const qrCenterY = barZoneY + 0.5 + qrSize / 2;
+        const qrCenterX = qrX + qrSize / 2;
+        const qrCenterY = topY + qrSize / 2;
         doc.setFillColor(255, 255, 255);
-        doc.circle(qrCenterX, qrCenterY, 1.8, 'F');
+        doc.circle(qrCenterX, qrCenterY, 1.4, 'F');
         doc.setFillColor(tagHexColor);
-        doc.circle(qrCenterX, qrCenterY, 1.3, 'F');
+        doc.circle(qrCenterX, qrCenterY, 0.95, 'F');
     }
 
-    const barW = 38;
-    const barH = 8;
-    const barX = currX - barW - 4;
+    // TAGID + Retail + Acquisition Code line: EXACT same width as [ Barcode ] [ QR ]
+    const tagTextY = topY + barH + 3.2;
+    drawFormattedTagCode(doc, codes, blockX, tagTextY, 9, false, itemDataObj, totalCodesW);
 
-    if (barDataUrl) {
-        doc.addImage(barDataUrl, 'PNG', barX, barZoneY, barW, barH);
-        drawFormattedTagCode(doc, codes, barX, barZoneY + barH + 3.2, 8, true);
+    const titleGap = cutoutW > 0 ? 3.5 : 0;
+    const titleX = M + cutoutW + titleGap;
+    const titleW = blockX - titleX - 4.0;
 
-        const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
-        const wVal = norm.weightKg ? `${norm.weightKg}kg` : '—';
-        const infoStr = `${dimsMetric || 'Custom Dims'} · ${wVal}`;
-        
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(80, 80, 80);
-        doc.text(infoStr, barX, barZoneY + barH + 6.2);
-    }
+    // 2. Main Title, Shopify Subtitle, and Classification
+    const shopifySubTitle = getShopifyTitleSubtitle(norm, itemDataObj, mainTitleStr);
 
-    // Small hairline element to the left of the barcode
-    const barHairlineX = barX - 4.5;
-    doc.setDrawColor(218, 222, 229);
-    doc.setLineWidth(0.25);
-    doc.line(barHairlineX, barZoneY, barHairlineX, barZoneY + barZoneH);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    const splitTitle = doc.splitTextToSize(mainTitleStr, titleW);
+    doc.text(splitTitle, titleX, topY + 4.5);
 
-    // Colored square of normalized hex map stretched to square (no empty spaces)
-    const sqSize = 13;
-    const sqX = barHairlineX - sqSize - 4;
-    const sqY = barZoneY + 0.6;
-    const sqDataUrl = await generateNormalizedVeinMaskSquareDataUrl(itemDataObj, norm, 140);
-    if (sqDataUrl) {
-        doc.addImage(sqDataUrl, 'PNG', sqX, sqY, sqSize, sqSize);
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.2);
-        doc.roundedRect(sqX, sqY, sqSize, sqSize, 0.8, 0.8, 'S');
-    }
+    let currTitleY = topY + 4.5 + (splitTitle.length > 1 ? (splitTitle.length - 1) * 4.3 : 0);
 
-    const sep2Y = barZoneY + barZoneH + 2.5;
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.2);
-    doc.line(M, sep2Y, PW - M, sep2Y);
-
-    // 4. Horizontal Two-Column Layout (Left: Images Grid, Right: Details & Axo)
-    const contentY = sep2Y + 2;
-    const contentH = PH - 20 - contentY;
-    const leftW = 160;
-    const rightX = M + leftW + 8;
-    const rightW = PW - M - rightX;
-
-    // LEFT ZONE: MULTIPLE CLEAN ROOM IMAGES (Hero larger on top, secondary grid below)
-    const imgs = getItemImages(item).filter(u => !isHexMapUrl(u));
-
-    if (imgs.length === 0) {
-        try {
-            const heroAxo = await getAdvancedAxoDataUrl(norm, item.data || item);
-            if (heroAxo) {
-                const axoSize = Math.min(leftW * 0.8, contentH * 0.8, 110);
-                doc.addImage(heroAxo, heroAxo.startsWith('data:image/png') ? 'PNG' : 'JPEG', M + (leftW - axoSize) / 2, contentY + (contentH - axoSize) / 2, axoSize, axoSize);
-            }
-        } catch (e) {}
-    } else if (imgs.length === 1) {
-        const d0 = await loadImgData(imgs[0], 800, false, '#FFFFFF', 6);
-        if (d0) drawContain(doc, d0, M, contentY, leftW, contentH, 0.96);
-    } else {
-        // First image larger on top
-        const heroH = contentH * 0.62;
-        const heroData = await loadImgData(imgs[0], 800, false, '#FFFFFF', 6);
-        if (heroData) {
-            drawContain(doc, heroData, M, contentY, leftW, heroH, 0.98);
-        }
-
-        // Secondary images and PNGs in smaller grid below
-        const gridY = contentY + heroH + 2.5;
-        const gridH = contentH - heroH - 2.5;
-        const secImgs = imgs.slice(1);
-
-        if (secImgs.length === 1) {
-            const d1 = await loadImgData(secImgs[0], 800, false, '#FFFFFF', 4);
-            const secW = Math.min(gridH * 1.5, leftW * 0.5);
-            const gx = M + (leftW - secW) / 2;
-            if (d1) {
-                drawContain(doc, d1, gx, gridY, secW, gridH, 0.96);
-                doc.setDrawColor(241, 245, 249);
-                doc.setLineWidth(0.2);
-                doc.roundedRect(gx, gridY, secW, gridH, 1, 1, 'S');
-            }
-        } else if (secImgs.length <= 4) {
-            const gap = 3;
-            const colW = (leftW - (secImgs.length - 1) * gap) / secImgs.length;
-            for (let idx = 0; idx < secImgs.length; idx++) {
-                const d = await loadImgData(secImgs[idx], 800, false, '#FFFFFF', 4);
-                const gx = M + idx * (colW + gap);
-                if (d) {
-                    drawContain(doc, d, gx, gridY, colW, gridH, 0.96);
-                    doc.setDrawColor(241, 245, 249);
-                    doc.setLineWidth(0.2);
-                    doc.roundedRect(gx, gridY, colW, gridH, 1, 1, 'S');
-                }
-            }
-        } else {
-            const cols = Math.min(4, Math.ceil(secImgs.length / 2));
-            const rows = 2;
-            const gap = 2.5;
-            const colW = (leftW - (cols - 1) * gap) / cols;
-            const rowH = (gridH - gap) / rows;
-            for (let idx = 0; idx < Math.min(8, secImgs.length); idx++) {
-                const c = idx % cols;
-                const r = Math.floor(idx / cols);
-                const gx = M + c * (colW + gap);
-                const gy = gridY + r * (rowH + gap);
-                const d = await loadImgData(secImgs[idx], 800, false, '#FFFFFF', 3);
-                if (d) {
-                    drawContain(doc, d, gx, gy, colW, rowH, 0.96);
-                    doc.setDrawColor(241, 245, 249);
-                    doc.setLineWidth(0.2);
-                    doc.roundedRect(gx, gy, colW, rowH, 1, 1, 'S');
-                }
-            }
-        }
-    }
-
-    // Hairline Vertical Divider between Images and Specifications
-    doc.setDrawColor(235, 235, 235);
-    doc.setLineWidth(0.2);
-    doc.line(M + leftW + 4, contentY, M + leftW + 4, contentY + contentH);
-
-    // RIGHT ZONE: Smaller subtitle above description, marketing HTML, LARGER Axo & Dimensions (NO RETAIL)
-    let rY = contentY + 1;
-    const shopifyOrInvoiceTitle = normalizeBrandTerms(
-        itemDataObj.shopifyTitle || 
-        itemDataObj.shopify_title || 
-        itemDataObj.invoiceTitle || 
-        itemDataObj.invoice_title || 
-        itemDataObj.title || 
-        itemDataObj.generatedTitle || 
-        itemDataObj.generated_title || 
-        itemDataObj.detailed_description || 
-        itemDataObj.description || 
-        norm.description || 
-        ''
-    ).replace(/\s+/g, ' ').trim().toUpperCase();
-
-    if (shopifyOrInvoiceTitle) {
+    // Shopify Title as Subtitle directly under deterministic title
+    if (shopifySubTitle) {
+        currTitleY += 4.3;
         doc.setFontSize(9.5);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(30, 41, 59);
-        const splitSub = doc.splitTextToSize(shopifyOrInvoiceTitle, rightW);
-        doc.text(splitSub, rightX, rY + 3.5);
-        rY += (splitSub.length * 4.0) + 3;
+        doc.setTextColor(51, 65, 85);
+        const splitShopify = doc.splitTextToSize(shopifySubTitle, titleW);
+        doc.text(splitShopify, titleX, currTitleY);
+        currTitleY += (splitShopify.length > 1 ? (splitShopify.length - 1) * 3.8 : 0);
     }
 
-    doc.setDrawColor(241, 245, 249);
-    doc.setLineWidth(0.2);
-    doc.line(rightX, rY, PW - M, rY);
-    rY += 3;
+    // Classification line
+    if (classificationStr) {
+        currTitleY += 4.2;
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text(classificationStr, titleX, currTitleY);
+    }
 
-    // Marketing description
-    const textZoneH = contentH - (rY - contentY) - 48;
-    const marketingHtml = normalizeBrandTerms(item.data?.marketing_description || item.data?.generatedDescription || item.data?.generated_description || '');
-    renderStyledMarketingHtml(doc, marketingHtml, rightX, rY, rightW, textZoneH);
+    // Color glass bubble indicators stacked vertically under the classification subtitle
+    const extractedColors = getItemExtractedColors(norm, itemDataObj);
+    let afterBubblesY = currTitleY + 2.0;
+    if (extractedColors.length > 0) {
+        afterBubblesY = drawVerticalColorBubbles(doc, extractedColors, titleX, currTitleY + 2.0, 4);
+    }
 
-    // 5. LARGER Advanced Axo & Dimensions at bottom right (NO RETAIL)
-    const axoSize = 44;
-    const axoY = contentY + contentH - axoSize - 2;
+    let subY = afterBubblesY + 1.5;
 
-    try {
-        const smallAxoUrl = await getAdvancedAxoDataUrl(norm, item.data || item);
-        if (smallAxoUrl) {
-            doc.addImage(smallAxoUrl, smallAxoUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG', rightX, axoY, axoSize, axoSize);
+    // Draw cutout PNG to the left of the title block
+    if (cutoutImgData && cutoutImgData.dataUrl) {
+        const titleBlockTotalH = Math.max(cutoutH, subY - topY);
+        const pngY = topY + Math.max(0, (titleBlockTotalH - cutoutH) / 2);
+        doc.addImage(cutoutImgData.dataUrl, 'PNG', M, pngY, cutoutW, cutoutH);
+    }
+
+    const headerBottomY = Math.max(topY + cutoutH, subY, tagTextY + 2.0);
+
+    // 4. Content Area: Dynamic Image Grid
+    // Rules:
+    // - Single-image items: third size gallery completely hidden, single image shown larger (full contentH), Axo falls to medium size space under description (no double axo).
+    // - Tower lamps with two portrait images as main image: third size gallery hidden, two portrait images shown larger side-by-side (full contentH), Axo falls to medium size panel under description.
+    // - Multi-image items: 3-tier dynamic grid with bottom carousel.
+    const contentY = headerBottomY + 3.5;
+    const contentH = PH - 14 - contentY;
+    const imgs = getItemImages(item).filter(u => !isHexMapUrl(u));
+    const isTower = isTowerLamp(norm, itemDataObj, cleanType);
+
+    const isSingleImg = imgs.length <= 1;
+    const isTowerTwoImg = isTower && (imgs.length === 2 || imgs.length === 3);
+    const hideBottomCarousel = isSingleImg || isTowerTwoImg;
+
+    if (hideBottomCarousel) {
+        // =========================================================================
+        // CASE A: Single Image or Tower Lamp 2-Portrait Main Images (No Bottom Carousel)
+        // =========================================================================
+        const leftW = isTowerTwoImg ? 162 : 158;
+        const rightX = M + leftW + 8;
+        const rightW = fullW - leftW - 8;
+
+        // LEFT SECTION: Large Hero Image(s) occupying FULL content height
+        if (isTowerTwoImg && imgs.length >= 2) {
+            // Two large portrait images side by side
+            const largeGap = 4.0;
+            const eachLargeW = (leftW - largeGap) / 2;
+            for (let i = 0; i < 2; i++) {
+                const lx = M + i * (eachLargeW + largeGap);
+                const lData = await loadImgData(imgs[i], 800, false, '#FFFFFF', 6);
+                if (lData) {
+                    drawContain(doc, lData, lx, contentY, eachLargeW, contentH, 0.98);
+                    doc.setDrawColor(241, 245, 249);
+                    doc.setLineWidth(0.2);
+                    doc.roundedRect(lx, contentY, eachLargeW, contentH, 1, 1, 'S');
+                }
+            }
+        } else if (imgs.length === 1) {
+            // Single image shown significantly larger (full content height)
+            const heroData = await loadImgData(imgs[0], 800, false, '#FFFFFF', 6);
+            if (heroData) {
+                drawContain(doc, heroData, M, contentY, leftW, contentH, 0.98);
+                doc.setDrawColor(241, 245, 249);
+                doc.setLineWidth(0.2);
+                doc.roundedRect(M, contentY, leftW, contentH, 1, 1, 'S');
+            }
+        } else {
+            // Fallback for 0 images: hero wireframe
+            try {
+                const heroAxo = await getAdvancedAxoDataUrl(norm, item.data || item);
+                if (heroAxo) {
+                    const axoSize = Math.min(leftW * 0.85, contentH * 0.85, 110);
+                    doc.addImage(heroAxo, heroAxo.startsWith('data:image/png') ? 'PNG' : 'JPEG', M + (leftW - axoSize) / 2, contentY + (contentH - axoSize) / 2, axoSize, axoSize);
+                }
+            } catch (e) {}
         }
-    } catch (e) {}
 
-    const panelX = rightX + axoSize + 5;
-    const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in') || '—';
-    const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in') || '—';
-    const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in') || '—';
-    const wtImp = toImp(norm.weightKg, 'lbs') || '—';
-    const ovImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ') || '—';
+        // RIGHT SECTION: Compact Description + Axo & Vertical Imperial Sizes in Medium Space
+        const descMaxH = Math.min(32, contentH * 0.26);
+        const marketingHtml = normalizeBrandTerms(item.data?.marketing_description || item.data?.generatedDescription || item.data?.generated_description || '');
+        if (marketingHtml) {
+            renderStyledMarketingHtml(doc, marketingHtml, rightX, contentY + 1, rightW, descMaxH);
+        }
 
-    doc.setFontSize(7.5);
-    let dimY = axoY + 10;
-    const rowGap = 6.5;
+        const midY = contentY + 1 + descMaxH + 4;
+        const midH = contentH - descMaxH - 6;
 
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
-    doc.text('WIDTH:', panelX, dimY);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(wImp, panelX + 13, dimY);
+        let axoDataUrl: string | null = null;
+        try {
+            axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
+        } catch (e) {}
 
-    dimY += rowGap;
+        if (isTowerTwoImg && imgs.length === 3) {
+            // Tower lamp with 3 images: 3rd image is 1st medium panel, Axo is 2nd medium panel
+            const medGap = 3.5;
+            const eachMedW = (rightW - medGap) / 2;
+            const mData = await loadImgData(imgs[2], 800, false, '#FFFFFF', 5);
+            if (mData) {
+                drawContain(doc, mData, rightX, midY, eachMedW, midH, 0.98);
+                doc.setDrawColor(241, 245, 249);
+                doc.setLineWidth(0.2);
+                doc.roundedRect(rightX, midY, eachMedW, midH, 1, 1, 'S');
+            }
 
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
-    doc.text('HEIGHT:', panelX, dimY);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(hImp, panelX + 14, dimY);
+            const axoX = rightX + eachMedW + medGap;
+            const axoCardH = Math.min(midH * 0.58, 48);
+            if (axoDataUrl) {
+                const pad = 1.0;
+                doc.addImage(
+                    axoDataUrl,
+                    axoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG',
+                    axoX + pad,
+                    midY + pad,
+                    eachMedW - 2 * pad,
+                    axoCardH - 2 * pad,
+                    undefined,
+                    'FAST'
+                );
+            }
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(axoX, midY, eachMedW, axoCardH, 1, 1, 'S');
 
-    dimY += rowGap;
+            const sizesY = midY + axoCardH + 3.0;
+            const sizesH = midH - axoCardH - 3.0;
+            drawVerticalImperialSizesCard(doc, norm, axoX, sizesY, eachMedW, sizesH);
+        } else {
+            // Single image or Tower lamp with 2 images: Axo element falls to medium panel side-by-side with Imperial Sizes
+            const gap = 4.0;
+            const cardH = Math.min(midH, 68);
+            const axoW = (rightW - gap) * 0.52;
+            const sizesW = rightW - gap - axoW;
 
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
-    doc.text('DEPTH:', panelX, dimY);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(dImp, panelX + 13, dimY);
+            if (axoDataUrl) {
+                const pad = 1.0;
+                doc.addImage(
+                    axoDataUrl,
+                    axoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG',
+                    rightX + pad,
+                    midY + pad,
+                    axoW - 2 * pad,
+                    cardH - 2 * pad,
+                    undefined,
+                    'FAST'
+                );
+            }
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(rightX, midY, axoW, cardH, 1, 1, 'S');
 
-    dimY += rowGap;
+            const sizesX = rightX + axoW + gap;
+            drawVerticalImperialSizesCard(doc, norm, sizesX, midY, sizesW, cardH);
+        }
+    } else {
+        // =========================================================================
+        // CASE B: Multi-Image Items with 3-Tier Dynamic Grid (Bottom Carousel Active)
+        // =========================================================================
+        let largeImgs: string[] = [];
+        let mediumImgs: string[] = [];
+        let smallImgs: string[] = [];
 
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 90, 90);
-    doc.text('WEIGHT:', panelX, dimY);
-    doc.setFont('helvetica', 'bold'); doc.setTextColor(20, 20, 20);
-    doc.text(wtImp, panelX + 15, dimY);
+        if (isTower && imgs.length >= 4) {
+            largeImgs = [imgs[0], imgs[1]];
+            if (imgs.length >= 5) {
+                mediumImgs = [imgs[2], imgs[4]];
+                smallImgs = imgs.filter((_, idx) => idx !== 0 && idx !== 1 && idx !== 2 && idx !== 4);
+            } else {
+                mediumImgs = [imgs[2], imgs[3]];
+                smallImgs = [];
+            }
+        } else {
+            largeImgs = imgs.length > 0 ? [imgs[0]] : [];
+            if (imgs.length >= 3) {
+                mediumImgs = [imgs[2]];
+                smallImgs = imgs.filter((_, idx) => idx !== 0 && idx !== 2);
+            } else if (imgs.length === 2) {
+                mediumImgs = [imgs[1]];
+                smallImgs = [];
+            }
+        }
+
+        const secPanelH = 38;
+        const secPanelY = contentY + contentH - secPanelH;
+        const upperH = secPanelY - contentY - 3.5;
+
+        const leftW = 158;
+        const rightX = M + leftW + 8;
+        const rightW = fullW - leftW - 8;
+
+        // UPPER LEFT: Large Hero Images
+        if (largeImgs.length === 2) {
+            const largeGap = 4.0;
+            const eachLargeW = (leftW - largeGap) / 2;
+            for (let i = 0; i < 2; i++) {
+                const lx = M + i * (eachLargeW + largeGap);
+                const lData = await loadImgData(largeImgs[i], 800, false, '#FFFFFF', 6);
+                if (lData) {
+                    drawContain(doc, lData, lx, contentY, eachLargeW, upperH, 0.98);
+                    doc.setDrawColor(241, 245, 249);
+                    doc.setLineWidth(0.2);
+                    doc.roundedRect(lx, contentY, eachLargeW, upperH, 1, 1, 'S');
+                }
+            }
+        } else if (largeImgs.length === 1) {
+            const heroData = await loadImgData(largeImgs[0], 800, false, '#FFFFFF', 6);
+            if (heroData) {
+                drawContain(doc, heroData, M, contentY, leftW, upperH, 0.98);
+            }
+        }
+
+        // UPPER RIGHT: Compact Description + Larger Medium Images
+        let rY = contentY + 1;
+        const descMaxH = Math.min(24, upperH * 0.22);
+        const marketingHtml = normalizeBrandTerms(item.data?.marketing_description || item.data?.generatedDescription || item.data?.generated_description || '');
+        if (marketingHtml) {
+            renderStyledMarketingHtml(doc, marketingHtml, rightX, rY, rightW, descMaxH);
+        }
+
+        const midY = rY + descMaxH + 2.5;
+        const midH = upperH - descMaxH - 3.5;
+
+        if (mediumImgs.length === 2) {
+            const medGap = 3.5;
+            const eachMedW = (rightW - medGap) / 2;
+            for (let i = 0; i < 2; i++) {
+                const mx = rightX + i * (eachMedW + medGap);
+                const mData = await loadImgData(mediumImgs[i], 800, false, '#FFFFFF', 5);
+                if (mData) {
+                    drawContain(doc, mData, mx, midY, eachMedW, midH, 0.98);
+                    doc.setDrawColor(241, 245, 249);
+                    doc.setLineWidth(0.2);
+                    doc.roundedRect(mx, midY, eachMedW, midH, 1, 1, 'S');
+                }
+            }
+        } else if (mediumImgs.length === 1) {
+            const mData = await loadImgData(mediumImgs[0], 800, false, '#FFFFFF', 5);
+            if (mData) {
+                drawContain(doc, mData, rightX, midY, rightW, midH, 0.98);
+                doc.setDrawColor(241, 245, 249);
+                doc.setLineWidth(0.2);
+                doc.roundedRect(rightX, midY, rightW, midH, 1, 1, 'S');
+            }
+        }
+
+        // LOWER FULL-WIDTH CAROUSEL: Remaining Small Images + Axo + Vertical Stacked Imperial Sizes
+        const displayThumbs = smallImgs.slice(0, 5);
+        const numThumbs = displayThumbs.length;
+        const gap = 3.5;
+        const axoW = 38;
+        const sizesW = 38;
+        const fixedEndW = axoW + gap + sizesW;
+
+        let axoDataUrl: string | null = null;
+        try {
+            axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
+        } catch (e) {}
+
+        if (numThumbs > 0) {
+            const availThumbsW = fullW - fixedEndW - gap;
+            const colW = (availThumbsW - (numThumbs - 1) * gap) / numThumbs;
+
+            for (let idx = 0; idx < numThumbs; idx++) {
+                const gx = M + idx * (colW + gap);
+                const d = await loadImgData(displayThumbs[idx], 800, false, '#FFFFFF', 4);
+                if (d) {
+                    drawContain(doc, d, gx, secPanelY, colW, secPanelH, 0.96);
+                }
+                doc.setDrawColor(241, 245, 249);
+                doc.setLineWidth(0.2);
+                doc.roundedRect(gx, secPanelY, colW, secPanelH, 1, 1, 'S');
+            }
+
+            const axoX = M + numThumbs * (colW + gap);
+            if (axoDataUrl) {
+                const pad = 1.0;
+                doc.addImage(
+                    axoDataUrl,
+                    axoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG',
+                    axoX + pad,
+                    secPanelY + pad,
+                    axoW - 2 * pad,
+                    secPanelH - 2 * pad,
+                    undefined,
+                    'FAST'
+                );
+            }
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(axoX, secPanelY, axoW, secPanelH, 1, 1, 'S');
+
+            const sizesX = axoX + axoW + gap;
+            drawVerticalImperialSizesCard(doc, norm, sizesX, secPanelY, sizesW, secPanelH);
+        } else {
+            const axoX = PW - M - fixedEndW;
+            if (axoDataUrl) {
+                const pad = 1.0;
+                doc.addImage(
+                    axoDataUrl,
+                    axoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG',
+                    axoX + pad,
+                    secPanelY + pad,
+                    axoW - 2 * pad,
+                    secPanelH - 2 * pad,
+                    undefined,
+                    'FAST'
+                );
+            }
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(axoX, secPanelY, axoW, secPanelH, 1, 1, 'S');
+
+            const sizesX = axoX + axoW + gap;
+            drawVerticalImperialSizesCard(doc, norm, sizesX, secPanelY, sizesW, secPanelH);
+        }
+    }
 }
 /**
  * Decoded images, keyed by every argument that changes the result.
@@ -1965,6 +2646,25 @@ async function yieldToUi(force = false): Promise<void> {
 }
 
 
+function normalizeSummaryShape(rawShape: string): string {
+    const s = (rawShape || '').trim().toUpperCase();
+    if (!s) return 'SCULPTURAL';
+    if (s.includes('CYLINDER') || s.includes('CILIND')) return 'CYLINDER';
+    if (s.includes('SQUARE') || s.includes('CUADRAD')) return 'SQUARED';
+    if (s.includes('RECTANG')) return 'RECTANGULAR';
+    if (s.includes('ROUND') || s.includes('REDOND') || s.includes('CIRC')) return 'ROUND';
+    if (s.includes('OVAL')) return 'OVAL';
+    if (s.includes('FREE') || s.includes('ORGANIC')) return 'FREE FORM';
+    if (s.includes('BOULDER')) return 'BOULDER';
+    if (s.includes('CUBE') || s.includes('CUBO')) return 'CUBE';
+    if (s.includes('DIAMOND') || s.includes('DIAMANTE')) return 'DIAMOND';
+    if (s.includes('LARGE') || s.includes('GRANDE')) return 'LARGE';
+    if (s.includes('MEDIUM') || s.includes('MEDIAN')) return 'MEDIUM';
+    if (s.includes('SMALL') || s.includes('CHIC') || s.includes('PEQUEN')) return 'SMALL';
+    if (s.includes('MINI')) return 'MINI';
+    return cleanSingleTypeName(s);
+}
+
 async function drawCatalogSummaryPages(
     doc: any,
     results: CatalogArtifact[],
@@ -1975,19 +2675,27 @@ async function drawCatalogSummaryPages(
     isLandscape: boolean,
     catalogTitle?: string
 ) {
+    await yieldToUi(true);
+
     const totalItems = results.length;
     let grandTotalUnits = 0;
     let grandTotalWeightKg = 0;
+    const fullW = PW - 2 * M;
 
-    interface SpecSummary {
-        shapeType: string;
-        colorMaterial: string;
+    interface TypeGroupAccumulator {
+        type: string;
+        typeCanonId: string;
+        shapeCounts: Map<string, number>;
+        colorsSet: Set<string>;
+        sizesSet: Set<string>;
         itemCount: number;
         totalUnits: number;
         totalWeightKg: number;
     }
 
-    const specMap = new Map<string, SpecSummary>();
+    const typeGroupsMap = new Map<string, TypeGroupAccumulator>();
+    const shapeFrequencyMap = new Map<string, number>();
+    const distinctTypesSet = new Set<string>();
 
     for (const it of results) {
         const d = it.data || it;
@@ -1996,51 +2704,59 @@ async function drawCatalogSummaryPages(
         const wt = parseFloat(norm.weightKg || '0') || 0;
 
         const rawShape = (norm.shape || d.shape || d.Shape || '').trim();
-        const rawType = (norm.shortDescription || norm.short_description || norm.generatedType || d.type || d.Type || d.category || '').trim();
-        const rawColor = (norm.color || d.color || d.Color || norm.generatedColor || '').trim();
-        const rawMat = (norm.material || d.material || d.Material || 'Mexican Onyx').trim();
+        const cleanType = resolveCleanProductType(norm, d, rawShape) || 'STONE PIECE';
+        const cleanShape = normalizeSummaryShape(rawShape || (norm.shortDescription && norm.shortDescription !== cleanType ? norm.shortDescription : ''));
 
-        let shapeType = '';
-        if (rawShape && rawType) {
-            if (rawShape.toUpperCase() === rawType.toUpperCase()) {
-                shapeType = rawShape.toUpperCase();
-            } else {
-                shapeType = `${rawShape.toUpperCase()} · ${rawType.toUpperCase()}`;
-            }
-        } else {
-            shapeType = (rawShape || rawType || 'SCULPTURAL FORM').toUpperCase();
-        }
+        distinctTypesSet.add(cleanType);
+        shapeFrequencyMap.set(cleanShape, (shapeFrequencyMap.get(cleanShape) || 0) + qty);
 
-        const colorMaterial = [rawColor, rawMat].filter(Boolean).map(s => s.trim().toUpperCase()).join(' · ') || 'NATURAL STONE';
-        const groupKey = `${shapeType}__${colorMaterial}`;
+        const colorName = (norm.color || d.color || d.Color || norm.generatedColor || '').trim();
+        const matName = (norm.material || d.material || d.Material || 'Onyx').trim();
+        const colorMatStr = [colorName, matName].filter(Boolean).join(' • ').toUpperCase() || 'NATURAL STONE';
+
+        const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
 
         grandTotalUnits += qty;
         grandTotalWeightKg += (wt * qty);
 
-        let group = specMap.get(groupKey);
-        if (!group) {
-            group = {
-                shapeType,
-                colorMaterial,
+        let grp = typeGroupsMap.get(cleanType);
+        if (!grp) {
+            const canon = canonicalType(cleanType, rawShape);
+            grp = {
+                type: cleanType,
+                typeCanonId: canon.id || cleanType.toLowerCase().replace(/\s+/g, '-'),
+                shapeCounts: new Map<string, number>(),
+                colorsSet: new Set<string>(),
+                sizesSet: new Set<string>(),
                 itemCount: 0,
                 totalUnits: 0,
                 totalWeightKg: 0,
             };
-            specMap.set(groupKey, group);
+            typeGroupsMap.set(cleanType, grp);
         }
-        group.itemCount += 1;
-        group.totalUnits += qty;
-        group.totalWeightKg += (wt * qty);
+
+        grp.itemCount += 1;
+        grp.totalUnits += qty;
+        grp.totalWeightKg += (wt * qty);
+        grp.shapeCounts.set(cleanShape, (grp.shapeCounts.get(cleanShape) || 0) + qty);
+        if (colorMatStr) grp.colorsSet.add(colorMatStr);
+        if (dimsMetric) grp.sizesSet.add(dimsMetric);
     }
 
-    // Sort primarily by shapeType, then by totalUnits descending
-    const sortedGroups = Array.from(specMap.values()).sort((a, b) => {
-        const c = a.shapeType.localeCompare(b.shapeType);
-        if (c !== 0) return c;
-        return b.totalUnits - a.totalUnits;
-    });
+    // Determine top distinct shapes to display as columns (e.g. up to 6 in landscape, 4 in portrait)
+    const sortedShapesByFreq = Array.from(shapeFrequencyMap.keys()).sort(
+        (a, b) => (shapeFrequencyMap.get(b) || 0) - (shapeFrequencyMap.get(a) || 0)
+    );
+    const maxShapeCols = isLandscape ? 6 : 4;
+    const activeShapes = sortedShapesByFreq.slice(0, maxShapeCols);
+    const hasOtherShapes = sortedShapesByFreq.length > maxShapeCols;
+    const shapeColumns = hasOtherShapes ? [...activeShapes, 'OTHER'] : activeShapes;
+
+    // Sort Product Types by totalUnits descending
+    const sortedTypeGroups = Array.from(typeGroupsMap.values()).sort((a, b) => b.totalUnits - a.totalUnits);
+
     const grandTotalWeightLbs = grandTotalWeightKg * 2.20462;
-    const grandTotalGroups = sortedGroups.length;
+    const grandTotalTypes = sortedTypeGroups.length;
 
     // Page 1 of Summary
     addPage();
@@ -2054,14 +2770,14 @@ async function drawCatalogSummaryPages(
     doc.setFontSize(isLandscape ? 7.5 : 8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
-    doc.text('EXECUTIVE SPECIFICATION MANIFEST · SHAPE+TYPE & COLOR+MATERIAL', M, isLandscape ? 23 : 28);
+    doc.text('EXECUTIVE SPECIFICATION MANIFEST • AGGREGATED BY PRODUCT TYPE & SHAPE', M, isLandscape ? 23 : 28);
 
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
     doc.text(`DATE: ${dateStr}`, PW - M, isLandscape ? 18 : 22, { align: 'right' });
-    doc.text(`${totalItems} ITEMS  ·  ${grandTotalUnits} UNITS  ·  ${grandTotalGroups} SPECIFICATIONS`, PW - M, isLandscape ? 23 : 28, { align: 'right' });
+    doc.text(`${totalItems} ITEMS  •  ${grandTotalUnits} UNITS  •  ${grandTotalTypes} PRODUCT TYPES`, PW - M, isLandscape ? 23 : 28, { align: 'right' });
 
     // Hairline Header Divider
     const divY = isLandscape ? 27 : 32;
@@ -2073,13 +2789,13 @@ async function drawCatalogSummaryPages(
     const cardY = divY + 3.5;
     const cardH = isLandscape ? 16 : 20;
     const gap = 3.5;
-    const cardW = (PW - 2 * M - 3 * gap) / 4;
+    const cardW = (fullW - 3 * gap) / 4;
 
     const kpis = [
         { label: 'TOTAL ITEMS', val: `${totalItems}`, sub: 'CATALOG LINE ITEMS' },
         { label: 'TOTAL QUANTITY', val: `${grandTotalUnits}`, sub: 'AGGREGATE PIECES' },
         { label: 'TOTAL ESTIMATED WEIGHT', val: `${Math.round(grandTotalWeightKg).toLocaleString()} kg`, sub: `${Math.round(grandTotalWeightLbs).toLocaleString()} lbs` },
-        { label: 'SPECIFICATION GROUPS', val: `${grandTotalGroups}`, sub: 'SHAPE+TYPE & COLOR+MAT' },
+        { label: 'PRODUCT TYPES', val: `${grandTotalTypes}`, sub: `${sortedShapesByFreq.length} SHAPE FAMILIES` },
     ];
 
     kpis.forEach((kpi, idx) => {
@@ -2106,188 +2822,229 @@ async function drawCatalogSummaryPages(
         doc.text(kpi.sub, cx + 3.5, cardY + (isLandscape ? 14 : 17));
     });
 
-    // Hairline Grid Table of Totals Grouped by SHAPE+TYPE and COLOR+MATERIAL (NO INDIVIDUAL ITEMS)
+    // Compute column widths for landscape & portrait
+    const colTypeW = isLandscape ? 52 : 42;
+    const shapeColW = isLandscape ? 15 : 12;
+    const totalShapesW = shapeColumns.length * shapeColW;
+    const colItemsW = isLandscape ? 14 : 11;
+    const colUnitsW = isLandscape ? 14 : 11;
+    const colWeightW = isLandscape ? 32 : 25;
+    const remW = fullW - (colTypeW + totalShapesW + colItemsW + colUnitsW + colWeightW);
+    const colColorsW = Math.round(remW * 0.54);
+    const colSizesW = remW - colColorsW;
+
+    // Coordinate helpers
+    const xType = M;
+    const xShapes = xType + colTypeW;
+    const xColors = xShapes + totalShapesW;
+    const xSizes = xColors + colColorsW;
+    const xItems = xSizes + colSizesW;
+    const xUnits = xItems + colItemsW;
+    const xWeight = xUnits + colUnitsW;
+
+    const headerH = 8.5;
+
     const drawTableHeader = (startY: number) => {
         doc.setFillColor(248, 250, 252);
-        doc.rect(M, startY, PW - 2 * M, 7, 'F');
+        doc.rect(M, startY, fullW, headerH, 'F');
         doc.setDrawColor(203, 213, 225);
         doc.setLineWidth(0.25);
         doc.line(M, startY, PW - M, startY);
-        doc.line(M, startY + 7, PW - M, startY + 7);
+        doc.line(M, startY + headerH, PW - M, startY + headerH);
 
-        doc.setFontSize(7.5);
+        doc.setFontSize(6.8);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(71, 85, 105);
+        doc.text('PRODUCT TYPE', xType + 3.5, startY + 5.8);
 
-        if (isLandscape) {
-            doc.text('SHAPE · TYPE', M + 4, startY + 4.8);
-            doc.text('COLOR · MATERIAL', M + 85, startY + 4.8);
-            doc.text('CATALOG ITEMS', M + 175, startY + 4.8, { align: 'right' });
-            doc.text('TOTAL UNITS', M + 210, startY + 4.8, { align: 'right' });
-            doc.text('WEIGHT (KG)', M + 242, startY + 4.8, { align: 'right' });
-            doc.text('WEIGHT (LBS)', PW - M - 4, startY + 4.8, { align: 'right' });
-        } else {
-            doc.text('SHAPE · TYPE', M + 3, startY + 4.8);
-            doc.text('COLOR · MATERIAL', M + 55, startY + 4.8);
-            doc.text('ITEMS', M + 112, startY + 4.8, { align: 'right' });
-            doc.text('UNITS', M + 134, startY + 4.8, { align: 'right' });
-            doc.text('WEIGHT (KG)', M + 160, startY + 4.8, { align: 'right' });
-            doc.text('WEIGHT (LBS)', PW - M - 3, startY + 4.8, { align: 'right' });
-        }
+        // Shape Column Headers: text only, NO hairline icons per user requirement
+        shapeColumns.forEach((sName, sIdx) => {
+            const sx = xShapes + sIdx * shapeColW;
+            doc.setFontSize(6.2);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(71, 85, 105);
+            const sLabel = sName.length > 9 ? sName.slice(0, 8) + '…' : sName;
+            doc.text(sLabel, sx + shapeColW / 2, startY + 5.8, { align: 'center' });
+        });
+
+        doc.setFontSize(6.8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(71, 85, 105);
+        doc.text('COLORS & MATERIAL', xColors + 2.5, startY + 5.8);
+        doc.text('SIZES', xSizes + 2.5, startY + 5.8);
+        doc.text('ITEMS', xItems + colItemsW - 2, startY + 5.8, { align: 'right' });
+        doc.text('UNITS', xUnits + colUnitsW - 2, startY + 5.8, { align: 'right' });
+        doc.text(isLandscape ? 'WEIGHT (KG / LBS)' : 'WEIGHT', xWeight + colWeightW - 3, startY + 5.8, { align: 'right' });
     };
 
     let tableY = cardY + cardH + 5;
     drawTableHeader(tableY);
-    let rowY = tableY + 7;
-    const rowH = 7.5;
+    let rowY = tableY + headerH;
+    const rowH = 13.5; // Larger row height for prominent hairline figures
 
-    for (let i = 0; i < sortedGroups.length; i++) {
-        const group = sortedGroups[i];
+    for (let i = 0; i < sortedTypeGroups.length; i++) {
+        if (i % 3 === 0) {
+            await yieldToUi();
+        }
+
+        const group = sortedTypeGroups[i];
         const wtKgFmt = `${Math.round(group.totalWeightKg).toLocaleString()} kg`;
         const wtLbsFmt = `${Math.round(group.totalWeightKg * 2.20462).toLocaleString()} lbs`;
 
-        if (rowY + rowH > PH - 24) {
+        if (rowY + rowH > PH - 22) {
             addPage();
             doc.setFontSize(10.5);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(15, 23, 42);
-            doc.text('SPECIFICATION TOTALS MANIFEST (CONTINUED)', M, isLandscape ? 16 : 20);
+            doc.text('EXECUTIVE SPECIFICATION MANIFEST • GROUPED BY TYPE (CONTINUED)', M, isLandscape ? 16 : 20);
             doc.setDrawColor(226, 232, 240);
             doc.setLineWidth(0.2);
             doc.line(M, isLandscape ? 19 : 24, PW - M, isLandscape ? 19 : 24);
 
             tableY = isLandscape ? 22 : 27;
             drawTableHeader(tableY);
-            rowY = tableY + 7;
+            rowY = tableY + headerH;
         }
 
         if (i % 2 === 1) {
             doc.setFillColor(253, 254, 255);
-            doc.rect(M, rowY, PW - 2 * M, rowH, 'F');
+            doc.rect(M, rowY, fullW, rowH, 'F');
         }
 
-        doc.setFontSize(7.5);
+        // 1. PRODUCT TYPE & LARGER HAIRLINE ICON (11.0mm)
+        const iconSize = 11.0;
+        let hasRenderedIcon = false;
+        try {
+            const tIcon = getHairlineIconDataUrl(group.typeCanonId || group.type, null, '#1E293B');
+            if (tIcon) {
+                doc.addImage(tIcon, 'PNG', xType + 2.0, rowY + (rowH - iconSize) / 2, iconSize, iconSize);
+                hasRenderedIcon = true;
+            }
+        } catch (e) {}
+
+        const typeTextX = hasRenderedIcon ? xType + iconSize + 3.5 : xType + 3.0;
+        doc.setFontSize(7.2);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
+        const splitType = doc.splitTextToSize(group.type, colTypeW - (typeTextX - xType) - 2);
+        doc.text(splitType, typeTextX, rowY + (rowH / 2) + (splitType.length > 1 ? -0.5 : 1.4));
 
-        if (isLandscape) {
-            // Hairline badge for SHAPE · TYPE
-            const badgeW = 76;
-            const badgeH = 5.2;
-            doc.setFillColor(255, 255, 255);
-            doc.roundedRect(M + 3, rowY + 1.2, badgeW, badgeH, 0.8, 0.8, 'F');
-            doc.setDrawColor(218, 226, 237);
-            doc.setLineWidth(0.18);
-            doc.roundedRect(M + 3, rowY + 1.2, badgeW, badgeH, 0.8, 0.8, 'S');
+        const cellTextY = rowY + rowH / 2 + 1.2;
 
-            // Cyan geometric accent indicator
-            doc.setFillColor(2, 132, 199);
-            doc.circle(M + 5.5, rowY + 1.2 + badgeH / 2, 0.65, 'F');
+        // 2. SHAPE COLUMNS (Quantities per shape)
+        shapeColumns.forEach((sName, sIdx) => {
+            const sx = xShapes + sIdx * shapeColW;
+            let count = 0;
+            if (sName === 'OTHER') {
+                for (const [k, v] of group.shapeCounts.entries()) {
+                    if (!activeShapes.includes(k)) count += v;
+                }
+            } else {
+                count = group.shapeCounts.get(sName) || 0;
+            }
 
-            doc.setFontSize(6.8);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(15, 23, 42);
-            const splitShape = doc.splitTextToSize(group.shapeType, badgeW - 6);
-            doc.text(splitShape[0] || group.shapeType, M + 7.5, rowY + 4.7);
+            if (count > 0) {
+                doc.setFontSize(7.5);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(15, 23, 42);
+                doc.text(String(count), sx + shapeColW / 2, cellTextY, { align: 'center' });
+            } else {
+                doc.setFontSize(7.0);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(203, 213, 225);
+                doc.text('-', sx + shapeColW / 2, cellTextY, { align: 'center' });
+            }
+        });
 
-            // Vertical hairline column dividers
-            doc.setDrawColor(241, 245, 249);
-            doc.setLineWidth(0.15);
-            doc.line(M + 82, rowY, M + 82, rowY + rowH);
-            doc.line(M + 158, rowY, M + 158, rowY + rowH);
+        // 3. COLORS & MATERIAL
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        const colorsStr = Array.from(group.colorsSet).join(', ');
+        const splitColors = doc.splitTextToSize(colorsStr, colColorsW - 3);
+        doc.text(splitColors, xColors + 2.5, cellTextY - (splitColors.length > 1 ? 1.5 : 0));
 
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(71, 85, 105);
-            const splitColMat = doc.splitTextToSize(group.colorMaterial, 85);
-            doc.text(splitColMat[0] || group.colorMaterial, M + 85, rowY + 5);
+        // 4. SIZES
+        const sizesStr = Array.from(group.sizesSet).join(', ');
+        const splitSizes = doc.splitTextToSize(sizesStr, colSizesW - 3);
+        doc.text(splitSizes, xSizes + 2.5, cellTextY - (splitSizes.length > 1 ? 1.5 : 0));
 
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 41, 59);
-            doc.text(`${group.itemCount}`, M + 175, rowY + 5, { align: 'right' });
-            doc.text(`${group.totalUnits}`, M + 210, rowY + 5, { align: 'right' });
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(71, 85, 105);
-            doc.text(wtKgFmt, M + 242, rowY + 5, { align: 'right' });
-            doc.text(wtLbsFmt, PW - M - 4, rowY + 5, { align: 'right' });
-        } else {
-            // Hairline badge for SHAPE · TYPE
-            const badgeW = 49;
-            const badgeH = 5.2;
-            doc.setFillColor(255, 255, 255);
-            doc.roundedRect(M + 2, rowY + 1.2, badgeW, badgeH, 0.8, 0.8, 'F');
-            doc.setDrawColor(218, 226, 237);
-            doc.setLineWidth(0.18);
-            doc.roundedRect(M + 2, rowY + 1.2, badgeW, badgeH, 0.8, 0.8, 'S');
+        // 5. ITEMS
+        doc.setFontSize(7.2);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text(String(group.itemCount), xItems + colItemsW - 2, cellTextY, { align: 'right' });
 
-            // Cyan geometric accent indicator
-            doc.setFillColor(2, 132, 199);
-            doc.circle(M + 4.2, rowY + 1.2 + badgeH / 2, 0.65, 'F');
+        // 6. UNITS
+        doc.text(String(group.totalUnits), xUnits + colUnitsW - 2, cellTextY, { align: 'right' });
 
-            doc.setFontSize(6.5);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(15, 23, 42);
-            const splitShape = doc.splitTextToSize(group.shapeType, badgeW - 5);
-            doc.text(splitShape[0] || group.shapeType, M + 6.0, rowY + 4.7);
-
-            // Vertical hairline column dividers
-            doc.setDrawColor(241, 245, 249);
-            doc.setLineWidth(0.15);
-            doc.line(M + 53, rowY, M + 53, rowY + rowH);
-            doc.line(M + 98, rowY, M + 98, rowY + rowH);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(71, 85, 105);
-            const splitColMat = doc.splitTextToSize(group.colorMaterial, 54);
-            doc.text(splitColMat[0] || group.colorMaterial, M + 55, rowY + 5);
-
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(30, 41, 59);
-            doc.text(`${group.itemCount}`, M + 112, rowY + 5, { align: 'right' });
-            doc.text(`${group.totalUnits}`, M + 134, rowY + 5, { align: 'right' });
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(71, 85, 105);
-            doc.text(wtKgFmt, M + 160, rowY + 5, { align: 'right' });
-            doc.text(wtLbsFmt, PW - M - 3, rowY + 5, { align: 'right' });
-        }
+        // 7. WEIGHT
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        const wtStr = isLandscape ? `${wtKgFmt} (${wtLbsFmt})` : wtKgFmt;
+        doc.text(wtStr, xWeight + colWeightW - 3, cellTextY, { align: 'right' });
 
         // Hairline divider
         doc.setDrawColor(241, 245, 249);
-        doc.setLineWidth(0.2);
+        doc.setLineWidth(0.18);
         doc.line(M, rowY + rowH, PW - M, rowY + rowH);
 
         rowY += rowH;
     }
 
     // Grand Totals Row (NO RETAIL)
-    if (rowY + 8 > PH - 24) {
+    if (rowY + 9.0 > PH - 22) {
         addPage();
         rowY = isLandscape ? 20 : 24;
     }
 
+    const totalRowH = 8.5;
     doc.setFillColor(248, 250, 252);
-    doc.rect(M, rowY, PW - 2 * M, 8, 'F');
+    doc.rect(M, rowY, fullW, totalRowH, 'F');
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.25);
     doc.line(M, rowY, PW - M, rowY);
-    doc.line(M, rowY + 8, PW - M, rowY + 8);
+    doc.line(M, rowY + totalRowH, PW - M, rowY + totalRowH);
+
+    doc.setFontSize(7.2);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`GRAND TOTALS  (${grandTotalTypes} TYPES • ${totalItems} ITEMS)`, xType + 3.5, rowY + 5.5);
+
+    // Sum per shape column
+    shapeColumns.forEach((sName, sIdx) => {
+        const sx = xShapes + sIdx * shapeColW;
+        let totalShapeQty = 0;
+        if (sName === 'OTHER') {
+            for (const grp of sortedTypeGroups) {
+                for (const [k, v] of grp.shapeCounts.entries()) {
+                    if (!activeShapes.includes(k)) totalShapeQty += v;
+                }
+            }
+        } else {
+            totalShapeQty = shapeFrequencyMap.get(sName) || 0;
+        }
+
+        if (totalShapeQty > 0) {
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(15, 23, 42);
+            doc.text(String(totalShapeQty), sx + shapeColW / 2, rowY + 5.5, { align: 'center' });
+        }
+    });
 
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
+    doc.text(String(grandTotalUnits), xUnits + colUnitsW - 2, rowY + 5.5, { align: 'right' });
 
-    if (isLandscape) {
-        doc.text(`GRAND TOTALS  (${grandTotalGroups} SPECIFICATIONS)`, M + 4, rowY + 5.3);
-        doc.text(`${totalItems}`, M + 175, rowY + 5.3, { align: 'right' });
-        doc.text(`${grandTotalUnits}`, M + 210, rowY + 5.3, { align: 'right' });
-        doc.text(`${Math.round(grandTotalWeightKg).toLocaleString()} kg`, M + 242, rowY + 5.3, { align: 'right' });
-        doc.text(`${Math.round(grandTotalWeightLbs).toLocaleString()} lbs`, PW - M - 4, rowY + 5.3, { align: 'right' });
-    } else {
-        doc.text(`GRAND TOTALS  (${grandTotalGroups} SPECIFICATIONS)`, M + 3, rowY + 5.3);
-        doc.text(`${totalItems}`, M + 112, rowY + 5.3, { align: 'right' });
-        doc.text(`${grandTotalUnits}`, M + 134, rowY + 5.3, { align: 'right' });
-        doc.text(`${Math.round(grandTotalWeightKg).toLocaleString()} kg`, M + 160, rowY + 5.3, { align: 'right' });
-        doc.text(`${Math.round(grandTotalWeightLbs).toLocaleString()} lbs`, PW - M - 3, rowY + 5.3, { align: 'right' });
-    }
+    const totalWtStr = isLandscape 
+        ? `${Math.round(grandTotalWeightKg).toLocaleString()} kg (${Math.round(grandTotalWeightLbs).toLocaleString()} lbs)`
+        : `${Math.round(grandTotalWeightKg).toLocaleString()} kg`;
+    doc.text(totalWtStr, xWeight + colWeightW - 3, rowY + 5.5, { align: 'right' });
+
+    await yieldToUi(true);
 }
 
 export async function exportCatalogPdf(
@@ -2430,7 +3187,9 @@ export async function exportCatalogPdf(
     if (exportType === 'catalog') {
         // 1. Executive Summary & Specification Sheets (Hairline metrics & manifest)
         onProgress?.(5, 'Generating Executive Summary...');
+        await yieldToUi(true);
         await drawCatalogSummaryPages(doc, results, M, PW, PH, addPage, isLandscape, config.title);
+        await yieldToUi(true);
 
         // 2. Item Catalog Pages
         for (let i = 0; i < results.length; i++) {

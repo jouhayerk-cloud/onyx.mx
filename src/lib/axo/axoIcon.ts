@@ -1,7 +1,9 @@
 import { buildTypeFigure } from '../../features/entry/hairline/typeFigures';
+import { buildFamilyFigure } from '../../features/entry/hairline/figures/familyFigures';
 import type { Dims, FigurePart } from '../../features/entry/hairline/types';
 import { parseShapeText } from '../../features/entry/hairline/variantOptions';
 import { canonicalType } from '../canonicalType';
+import { classifyGeometry } from '../geometry';
 import { resolveItemColor } from '../axonometric';
 
 export interface AxoRenderParams {
@@ -125,7 +127,7 @@ export function renderAxoIconDataUrl(params: AxoRenderParams): string | null {
     const diamondTable = isDiamondTable(params.typeId, shapeStr);
     const canon = canonicalType(params.typeId, shapeStr);
     const id = diamondTable ? 'table' : (canon.id ?? (params.typeId ? params.typeId.toLowerCase().trim() : null));
-    if (!id) return null;
+    if (!id && !shapeStr) return null;
 
     // Dimensions: w = Width, h = Height, d = Length (order from spec)
     const rawDims: Dims | null = (params.w != null && params.w > 0) || (params.h != null && params.h > 0) || (params.l != null && params.l > 0)
@@ -142,7 +144,14 @@ export function renderAxoIconDataUrl(params: AxoRenderParams): string | null {
     const top = params.top ?? parsedShape.extra.top ?? null;
     const holes = params.holes ?? canon.holes ?? undefined;
 
-    const parts = buildTypeFigure(id, rawDims, holes, effectiveShape, top);
+    let parts: FigurePart[] | null = null;
+    if (id) {
+        parts = buildTypeFigure(id, rawDims, holes, effectiveShape, top);
+    }
+    if (!parts || !parts.length) {
+        const { geom, isMirror } = classifyGeometry(shapeStr, params.typeId || '');
+        parts = buildFamilyFigure(geom, isMirror, rawDims);
+    }
     if (!parts || !parts.length) return null;
 
     const canvasSize = 400;

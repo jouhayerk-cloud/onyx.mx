@@ -249,6 +249,12 @@ export const UniversalToolsBar: React.FC = () => {
     const setIsBatchWizardOpen = useSetAtom(isBatchWizardOpenAtom);
     const setBatchWizardItems = useSetAtom(batchWizardItemsAtom);
     const workbookPrefix = useAtomValue(workbookVersionAtom);
+
+    // Catalog Export Modal States (unconditional hooks to avoid React Error #310)
+    const [isCatalogExportOpen, setIsCatalogExportOpen] = useState(false);
+    const [catalogExportProgress, setCatalogExportProgress] = useState(0);
+    const [catalogExportStatus, setCatalogExportStatus] = useState('');
+    const [catalogPdfBlobUrl, setCatalogPdfBlobUrl] = useState<string | null>(null);
     
     // Finance States
     const [isFinSearchOpen, setIsFinSearchOpen] = useAtom(isPaymentsSearchOpenAtom);
@@ -443,11 +449,6 @@ export const UniversalToolsBar: React.FC = () => {
         setIsBatchWizardOpen(true);
     };
 
-    const [isCatalogExportOpen, setIsCatalogExportOpen] = useState(false);
-    const [catalogExportProgress, setCatalogExportProgress] = useState(0);
-    const [catalogExportStatus, setCatalogExportStatus] = useState('');
-    const [catalogPdfBlobUrl, setCatalogPdfBlobUrl] = useState<string | null>(null);
-
     const handleExportCatalogPdf = () => {
         const items = getSelectedItems();
         if (items.length === 0) {
@@ -466,12 +467,15 @@ export const UniversalToolsBar: React.FC = () => {
                 const rawCleanPng = norm.generatedPngUrl || norm.generated_png_url || norm.maskUrl;
                 const cleanPng = rawCleanPng ? getCleanImageUrl(rawCleanPng) : null;
                 const exportImgs = collectExportImages(norm);
-                const combined = [cleanPng, ...exportImgs].filter(Boolean) as string[];
-                const imgs = Array.from(new Set(combined));
+                // User requirement: Gallery must show ONLY clean room photos, no PNG or SVG cutouts
+                const imgs = Array.from(new Set(exportImgs.length > 0 ? exportImgs : (cleanPng ? [cleanPng] : [])));
                 const codes = calculateCodesAndPrices(item.data || item, currentRate, workbookPrefix || '1');
                 
                 return {
-                    data: norm,
+                    data: {
+                        ...norm,
+                        generatedPngUrl: norm.generatedPngUrl || rawCleanPng
+                    },
                     codes: {
                         bookBarcode: codes.bookBarcode || norm.itemId || '',
                         bookAqCode: codes.bookAqCode,
@@ -503,6 +507,8 @@ export const UniversalToolsBar: React.FC = () => {
         } catch (err: any) {
             console.error("PDF Export error:", err);
             toast.error(tr("Failed to export PDF catalog: ") + (err?.message || ''));
+            setCatalogExportProgress(0);
+            setIsCatalogExportOpen(false);
         }
     };
 
