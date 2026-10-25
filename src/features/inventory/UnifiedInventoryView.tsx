@@ -403,7 +403,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const handleToggleSelection = (id: string | number) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
-    const norm = useMemo(() => normalizeInventoryData(item.data), [item.data]);
+    const norm = useMemo(() => normalizeInventoryData(item?.data || item || {}), [item]);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
     const [showViewer, setShowViewer] = useState(false);
@@ -460,8 +460,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const itemKey = String(item.row ?? item.data?.id ?? '');
     let deployedInfo = deployedItemsMap?.get(itemKey) || null;
     if (!deployedInfo) {
-        const crateId = item.data.crate_id;
-        const isPacked = item.data.packing_status === 'Packed';
+        const crateId = item?.data?.crate_id ?? item?.crate_id;
+        const isPacked = (item?.data?.packing_status ?? item?.packing_status) === 'Packed';
         const crate = logisticsDocs?.find((c: any) => c.id === crateId);
         if (isPacked && crateId && (!crate || crate.status === 'Deployed')) {
             deployedInfo = { manifestId: crate?.name || 'Deployed', crateId };
@@ -616,9 +616,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             let relArray: string[] = [];
             if (Array.isArray(rel)) relArray = rel.map(id => String(id));
             else if (typeof rel === 'string') relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
-            return relArray.includes(String(item.data.id));
+            const itemIdStr = String(item?.data?.id ?? item?.id ?? item?.row ?? '');
+            return relArray.includes(itemIdStr);
         }).sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-    }, [isContentExpanded, financeDocs, item.data.id]);
+    }, [isContentExpanded, financeDocs, item?.data?.id, item?.id, item?.row]);
 
     // Book 825 is prepaid by rule (getStatusClass, "Book 825 / Prepaid
     // Override"), so its items read GREEN with no payment record behind them.
@@ -709,7 +710,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const setInventoryVersion = useSetAtom(InventoryVersionAtom);
 
     const handleEdit = (e: React.MouseEvent) => {
-        e.stopPropagation(); if (onEdit) onEdit(item.row, item.data);
+        e.stopPropagation(); if (onEdit) onEdit(item.row, item?.data || item);
     };
 
     const handleDelete = async (e: React.MouseEvent) => {
@@ -1577,7 +1578,7 @@ export const UnifiedInventoryView = () => {
         const tags = selectedIds.map(id => {
             const item = items.find(i => (i.row ?? i.data?.id) === id);
             if (!item) return null;
-            const norm = normalizeInventoryData(item.data);
+            const norm = normalizeInventoryData(item?.data || item || {});
             const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
             return calculated.bookBarcode;
         }).filter(Boolean);
@@ -1651,7 +1652,7 @@ export const UnifiedInventoryView = () => {
 
     const handleEditItem = useCallback(async (rowId: string, currentData: any) => {
         const item = items.find(i => (i.row ?? i.data?.id) === rowId);
-        const dataToLoad = item ? { ...item.data, id: rowId } : { ...currentData, id: rowId };
+        const dataToLoad = item ? { ...(item.data || item), id: rowId } : { ...currentData, id: rowId };
         setUploadItemData(dataToLoad);
         setIsUploadWizardOpen(true);
     }, [items, setUploadItemData, setIsUploadWizardOpen]);
@@ -1670,7 +1671,7 @@ export const UnifiedInventoryView = () => {
         const vendorKeys = Object.keys(vendors).sort((a, b) => b.length - a.length);
 
         return items.map(item => {
-            const d = item.data;
+            const d = item?.data || item || {};
             const itemIdStr = String(d.itemId || d.item_id || '');
             const itemIdLower = itemIdStr.toLowerCase();
             const normalizedItemId = itemIdLower.replace(/[^a-z0-9]/g, '');
@@ -1877,8 +1878,8 @@ export const UnifiedInventoryView = () => {
 
     displayItemsRef.current = displayItems;
 
-    const totalCount = useMemo(() => displayItems.reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0), [displayItems]);
-    const totalValueMXN = useMemo(() => displayItems.reduce((acc, i) => acc + ((parseInt(i.data.price) || 0) * (parseInt(i.data.quantity) || 1)), 0), [displayItems]);
+    const totalCount = useMemo(() => displayItems.reduce((acc, i) => acc + (parseInt(i?.data?.quantity ?? i?.quantity) || 1), 0), [displayItems]);
+    const totalValueMXN = useMemo(() => displayItems.reduce((acc, i) => acc + ((parseInt(i?.data?.price ?? i?.price) || 0) * (parseInt(i?.data?.quantity ?? i?.quantity) || 1)), 0), [displayItems]);
 
     // Atomic update to derived stats atom: one render per data change
     useEffect(() => {
@@ -2007,7 +2008,7 @@ export const UnifiedInventoryView = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             const urls = items
-                .flatMap(i => (i.data as any)._allMedia || [])
+                .flatMap(i => (i?.data as any)?._allMedia || (i as any)?._allMedia || [])
                 .filter((u: string) => !isVideoFile(u))
                 .map((u: string) => getCleanImageUrl(u))
                 .slice(0, 20);
@@ -2250,7 +2251,8 @@ export const UnifiedInventoryView = () => {
                         ) : (
                             <>
                             {displayItems.slice(0, galleryLimit).map(item => {
-                                const mediaCount = ((item.data.generatedPngUrl ? item.data.generatedPngUrl + ',' : '') + (item.data.mediaUrls || '')).split(',').map((u: string) => u.trim()).filter(Boolean).length;
+                                const itemData = item?.data || item || {};
+                                const mediaCount = ((itemData.generatedPngUrl ? itemData.generatedPngUrl + ',' : '') + (itemData.mediaUrls || '')).split(',').map((u: string) => u.trim()).filter(Boolean).length;
                                 const isLarge = mediaCount >= 1 && mediaCount < 10;
                                 const isFull = mediaCount >= 10;
 

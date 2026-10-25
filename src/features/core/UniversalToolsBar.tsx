@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { exportCatalogPdf } from '../../lib/pdfExport';
 import { ExportWizard } from '../../components/ExportWizard';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { 
@@ -486,6 +485,7 @@ export const UniversalToolsBar: React.FC = () => {
                 };
             });
 
+            const { exportCatalogPdf } = await import('../../lib/pdfExport');
             const blob = await exportCatalogPdf(itemsToExport as any, {
                 title: cfg.title || "ONYX COLLECTION",
                 method: cfg.method || "grid",

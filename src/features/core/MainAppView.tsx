@@ -66,6 +66,7 @@ import { SyncStatusBadge } from '../../components/SyncStatusBadge';
 import { ViewSkeleton } from '../../components/ui/ViewSkeleton';
 import { useRemoteControl } from '../pico/useRemoteControl';
 import { tr } from '../../lib/i18n';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
 
 // ── Lazy-loaded route views ────────────────────────────────────────────────────
 // These chunks are only downloaded when the user navigates to that view.
@@ -379,9 +380,11 @@ export function MainAppView() {
 
                     <main className="flex-1 flex flex-col min-h-0 p-0 m-0">
                         {/* Suspense catches lazy-loaded view chunks during navigation */}
-                        <Suspense fallback={<ViewSkeleton />}>
-                            {pageContent}
-                        </Suspense>
+                        <ErrorBoundary fallbackTitle="View Error">
+                            <Suspense fallback={<ViewSkeleton />}>
+                                {pageContent}
+                            </Suspense>
+                        </ErrorBoundary>
                     </main>
 
                     {/* Modals/wizards — mounted only while open. Unmounting drops

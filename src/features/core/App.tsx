@@ -18,6 +18,7 @@ import { SyncProgressBar } from '../../components/SyncProgressBar';
 import { GeminiKeyDialog } from '../../components/GeminiKeyDialog';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 import toast from '../onyxIsland/notify/toast';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
 
 // Lazy-load deep-link views — only needed for URL-based tag/truck entry flows
 const TagView         = React.lazy(() => import('../public/TagPublicView').then(m => ({ default: m.TagPublicView })));
@@ -302,6 +303,7 @@ export default function App() {
     // change reach components that do not read languageAtom themselves.
     // Switching is rare, and drafts survive via useFormDraft.
     <React.Fragment key={language}>
+      <ErrorBoundary fallbackTitle="Application Error">
       <PullToRefresh />
       <SyncProgressBar />
       {view === 'tag' && tagId ? (
@@ -356,6 +358,7 @@ export default function App() {
           <GeminiKeyDialog />
         </>
       )}
+      </ErrorBoundary>
     </React.Fragment>
   );
 }

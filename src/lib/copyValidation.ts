@@ -115,9 +115,23 @@ const COLOUR_CONTAINS: Record<string, string[]> = {
  */
 export function citedCentimetres(text: string): number[] {
     const out: number[] = [];
-    const re = /(?<![.\d])(\d{1,4})\s*(?:cm|centimet)/gi;
+    // Compatible with iOS WebKit (no regex lookbehind)
+    // Matches numbers preceding cm/centimet (e.g. "83.75 cm" or "40 cm")
+    const re = /(\d+(?:\.\d+)?)\s*(?:cm|centimet)/gi;
     let m: RegExpExecArray | null;
-    while ((m = re.exec(text)) !== null) out.push(parseInt(m[1], 10));
+    while ((m = re.exec(text)) !== null) {
+        const numStr = m[1];
+        if (numStr.includes('.')) {
+            // Decimal like "83.75 cm": round to 84 cm instead of falsely capturing "75 cm"
+            out.push(Math.round(parseFloat(numStr)));
+        } else {
+            // Ensure integer is not immediately preceded by a dot or digit in the source string
+            const prevChar = m.index > 0 ? text[m.index - 1] : '';
+            if (!/[.\d]/.test(prevChar)) {
+                out.push(parseInt(numStr, 10));
+            }
+        }
+    }
     // Metres, written out, are the same claim in different units.
     const rm = /(\d+(?:\.\d+)?)\s*met(?:re|er)s?\b/gi;
     while ((m = rm.exec(text)) !== null) out.push(Math.round(parseFloat(m[1]) * 100));

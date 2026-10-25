@@ -158,7 +158,7 @@ export function finishDescription(html: string, maxWords: number = COPY_LIMITS.d
         if (hitCeiling) break;
 
         if (block.kind === 'p') {
-            const pieces = block.content.split(/(?<=[.!?]['"”’\)]*)\s+/).map(s => s.trim()).filter(Boolean);
+            const pieces = block.content.replace(/([.!?]['"”’\)]*)\s+/g, '$1\u0000').split('\u0000').map(s => s.trim()).filter(Boolean);
             const validSentences: string[] = [];
 
             for (const piece of pieces) {

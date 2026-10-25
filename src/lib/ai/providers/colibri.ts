@@ -312,7 +312,8 @@ const COLIBRI_CHAT_TOOLS = new Set([
 /** First sentence, at most `max` characters. */
 function compactText(text: string | undefined, max: number): string {
     const t = String(text ?? '').trim();
-    const first = t.split(/(?<=[.!?])\s/)[0] || t;
+    const m = /^(.*?[.!?])(?:\s|$)/.exec(t);
+    const first = m ? m[1] : t;
     return first.length > max ? first.slice(0, max - 1) + '…' : first;
 }
 
