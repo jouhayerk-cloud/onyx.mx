@@ -651,7 +651,7 @@ export function getHairlineIconDataUrl(
 
     if (!parts || parts.length === 0) return null;
 
-    const size = 260;
+    const size = 340;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
@@ -2884,34 +2884,40 @@ async function drawCatalogSummaryPages(
     // Page 1 of Summary
     addPage();
 
-    // Title & Header block
-    doc.setFontSize(isLandscape ? 15 : 17);
+    // Clean display title (guarding against "Catalog Catalog")
+    let displayTitle = (catalogTitle || 'ONYX COLLECTION').trim();
+    if (/^catalog\s+catalog$/i.test(displayTitle) || displayTitle.toLowerCase() === 'catalog') {
+        displayTitle = 'ONYX COLLECTION';
+    }
+
+    // Title & Header block (Compact Top Panel)
+    doc.setFontSize(isLandscape ? 13 : 15);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(catalogTitle || 'ONYX COLLECTION CATALOGUE', M, isLandscape ? 18 : 22);
+    doc.text(displayTitle, M, isLandscape ? 15 : 18);
 
-    doc.setFontSize(isLandscape ? 7.5 : 8);
+    doc.setFontSize(isLandscape ? 7.0 : 7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
-    doc.text('EXECUTIVE SPECIFICATION MANIFEST • AGGREGATED BY PRODUCT TYPE & SHAPE', M, isLandscape ? 23 : 28);
+    doc.text('EXECUTIVE SPECIFICATION MANIFEST • AGGREGATED BY PRODUCT TYPE & SHAPE', M, isLandscape ? 19.5 : 23);
 
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
-    doc.setFontSize(7.5);
+    doc.setFontSize(7.0);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text(`DATE: ${dateStr}`, PW - M, isLandscape ? 18 : 22, { align: 'right' });
-    doc.text(`${totalItems} ITEMS  •  ${grandTotalUnits} UNITS  •  ${grandTotalTypes} PRODUCT TYPES`, PW - M, isLandscape ? 23 : 28, { align: 'right' });
+    doc.text(`DATE: ${dateStr}`, PW - M, isLandscape ? 15 : 18, { align: 'right' });
+    doc.text(`${totalItems} ITEMS  •  ${grandTotalUnits} UNITS  •  ${grandTotalTypes} PRODUCT TYPES`, PW - M, isLandscape ? 19.5 : 23, { align: 'right' });
 
     // Hairline Header Divider
-    const divY = isLandscape ? 27 : 32;
+    const divY = isLandscape ? 22.5 : 26;
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.2);
     doc.line(M, divY, PW - M, divY);
 
-    // 4 KPI Summary Cards (NO RETAIL!)
-    const cardY = divY + 3.5;
-    const cardH = isLandscape ? 16 : 20;
-    const gap = 3.5;
+    // 4 KPI Summary Cards (Compact Totals Top Panel)
+    const cardY = divY + 2.0;
+    const cardH = isLandscape ? 11.5 : 13.5;
+    const gap = 3.0;
     const cardW = (fullW - 3 * gap) / 4;
 
     const kpis = [
@@ -2924,29 +2930,29 @@ async function drawCatalogSummaryPages(
     kpis.forEach((kpi, idx) => {
         const cx = M + idx * (cardW + gap);
         doc.setFillColor(252, 253, 255);
-        doc.roundedRect(cx, cardY, cardW, cardH, 1.5, 1.5, 'F');
+        doc.roundedRect(cx, cardY, cardW, cardH, 1.2, 1.2, 'F');
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.2);
-        doc.roundedRect(cx, cardY, cardW, cardH, 1.5, 1.5, 'S');
+        doc.roundedRect(cx, cardY, cardW, cardH, 1.2, 1.2, 'S');
 
-        doc.setFontSize(6.5);
+        doc.setFontSize(5.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(100, 116, 139);
-        doc.text(kpi.label, cx + 3.5, cardY + 5);
+        doc.text(kpi.label, cx + 3.0, cardY + 3.8);
 
-        doc.setFontSize(isLandscape ? 11 : 12.5);
+        doc.setFontSize(isLandscape ? 9.5 : 10.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
-        doc.text(kpi.val, cx + 3.5, cardY + (isLandscape ? 10.5 : 12.5));
+        doc.text(kpi.val, cx + 3.0, cardY + 8.2);
 
-        doc.setFontSize(6);
+        doc.setFontSize(5.0);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(148, 163, 184);
-        doc.text(kpi.sub, cx + 3.5, cardY + (isLandscape ? 14 : 17));
+        doc.text(kpi.sub, cx + 3.0, cardY + 11.2);
     });
 
     // Compute column widths with generous space for Colors & Sizes
-    const colTypeW = isLandscape ? 46 : 38;
+    const colTypeW = isLandscape ? 50 : 42;
     const shapeColW = isLandscape ? 12.0 : 10.0;
     const totalShapesW = shapeColumns.length * shapeColW;
     const colItemsW = isLandscape ? 10.0 : 8.5;
@@ -3001,13 +3007,13 @@ async function drawCatalogSummaryPages(
         doc.text(isLandscape ? 'WEIGHT (KG / LBS)' : 'WEIGHT', xWeight + colWeightW - 3, startY + 5.8, { align: 'right' });
     };
 
-    let tableY = cardY + cardH + 5;
+    let tableY = cardY + cardH + 3.0;
     drawTableHeader(tableY);
     let rowY = tableY + headerH;
-    const baseMinRowH = 13.5; // Minimum row height ensuring prominent 11mm hairline figures
-    const lineH = 2.56;
-    const lineHType = 2.92;
-    const iconSize = 11.0;
+    const baseMinRowH = 14.5; // Row height ensuring prominent 13mm hairline figures
+    const lineH = 2.45;
+    const lineHType = 2.80;
+    const iconSize = 13.0;
 
     for (let i = 0; i < sortedTypeGroups.length; i++) {
         if (i % 3 === 0) {
@@ -3209,6 +3215,43 @@ async function drawCatalogSummaryPages(
  * - Title, clean specifications, dimensions, weight, badges, barcodes, QR, and retail price.
  * - NO gallery images, NO generated descriptions, NO shopify titles, NO classifications.
  */
+function drawCompactColorBubbles(
+    doc: any,
+    colors: ExtractedColorInfo[],
+    startX: number,
+    startY: number,
+    maxW: number = 75
+): number {
+    if (!colors || colors.length === 0) return 0;
+    let curX = startX;
+    const bubbleR = 1.3;
+    const bubbleDiameter = bubbleR * 2;
+    doc.setFontSize(5.6);
+    doc.setFont('helvetica', 'bold');
+
+    for (const c of colors) {
+        const textW = doc.getTextWidth(c.name);
+        const itemW = bubbleDiameter + 1.5 + textW + 3.0;
+        if (curX + itemW - startX > maxW) break;
+
+        const circleCenterX = curX + bubbleR;
+        const circleCenterY = startY;
+
+        doc.setFillColor(c.rgb[0], c.rgb[1], c.rgb[2]);
+        doc.circle(circleCenterX, circleCenterY, bubbleR, 'F');
+
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.15);
+        doc.circle(circleCenterX, circleCenterY, bubbleR, 'S');
+
+        doc.setTextColor(71, 85, 105);
+        doc.text(c.name, curX + bubbleDiameter + 1.5, startY + 0.7);
+
+        curX += itemW;
+    }
+    return curX - startX;
+}
+
 async function drawCatalogCompactPage(
     doc: any,
     items: CatalogArtifact[],
@@ -3217,32 +3260,16 @@ async function drawCatalogCompactPage(
     M: number,
     PW: number,
     PH: number,
-    catalogTitle?: string
+    _catalogTitle?: string
 ) {
     const pageItems = items.slice(startIndex, startIndex + itemsPerPage);
-    const totalItems = items.length;
 
-    // Header strip without subtitle
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(catalogTitle || 'ONYX COLLECTION CATALOGUE', M, 16.0);
-
-    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
-    doc.setFontSize(7.0);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(`DATE: ${dateStr}`, PW - M, 16.0, { align: 'right' });
-
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.2);
-    doc.line(M, 19.5, PW - M, 19.5);
-
-    const startY = 22.5;
-    const bottomLimit = PH - 18.0;
+    // Compact item page: starts directly at top margin M without headers or titles
+    const startY = M;
+    const bottomLimit = PH - 16.0; // Clear of footer
     const availH = bottomLimit - startY;
-    const cardGap = 3.5;
-    const cardH = (availH - (itemsPerPage - 1) * cardGap) / itemsPerPage; // ~61.0mm
+    const cardGap = 2.4;
+    const cardH = (availH - (itemsPerPage - 1) * cardGap) / itemsPerPage; // ~42.4mm for 6 items
     const cardW = PW - 2 * M; // 186mm
 
     for (let i = 0; i < pageItems.length; i++) {
@@ -3255,18 +3282,18 @@ async function drawCatalogCompactPage(
 
         // Card Container Plate
         doc.setFillColor(254, 255, 256);
-        doc.roundedRect(M, cardY, cardW, cardH, 1.5, 1.5, 'F');
+        doc.roundedRect(M, cardY, cardW, cardH, 1.2, 1.2, 'F');
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.2);
-        doc.roundedRect(M, cardY, cardW, cardH, 1.5, 1.5, 'S');
+        doc.roundedRect(M, cardY, cardW, cardH, 1.2, 1.2, 'S');
 
-        // SECTION 1: Cutout PNG(s) (Smaller: width 34mm, max height 38mm)
-        const cutoutSecW = 34.0;
+        // SECTION 1: Cutout PNG(s) (Smaller: width 26mm, max height 26mm)
+        const cutoutSecW = 26.0;
         const cutoutSecX = M + 2.0;
         const cutoutUrls = getItemCutoutPngs(item);
         const loadedCutouts: { dataUrl: string; w: number; h: number }[] = [];
-        const maxEachCutW = cutoutUrls.length > 1 ? 15.5 : 30.0;
-        const maxCutH = Math.min(38.0, cardH - 8.0);
+        const maxEachCutW = cutoutUrls.length > 1 ? 12.0 : 24.0;
+        const maxCutH = Math.min(26.0, cardH - 6.0);
 
         for (const u of cutoutUrls) {
             try {
@@ -3287,56 +3314,56 @@ async function drawCatalogCompactPage(
             } catch (e) {}
         }
 
-        const totalCutW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? 2.0 : 0), 0);
-        let currCutX = cutoutSecX + (cutoutSecW - totalCutW) / 2;
+        const totalCutW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? 1.5 : 0), 0);
+        let currCutX = cutoutSecX + Math.max(0, (cutoutSecW - totalCutW) / 2);
         for (const c of loadedCutouts) {
             const pngY = cardY + (cardH - c.h) / 2;
             doc.addImage(c.dataUrl, 'PNG', currCutX, pngY, c.w, c.h);
-            currCutX += c.w + 2.0;
+            currCutX += c.w + 1.5;
         }
 
         // Divider 1
-        const div1X = M + cutoutSecW + 3.0;
+        const div1X = M + cutoutSecW + 2.5;
         doc.setDrawColor(241, 245, 249);
         doc.setLineWidth(0.2);
-        doc.line(div1X, cardY + 4, div1X, cardY + cardH - 4);
+        doc.line(div1X, cardY + 3.0, div1X, cardY + cardH - 3.0);
 
-        // SECTION 2: Axo Element (Smaller: width 36mm, strictly 1:1, NO sizes bar)
-        const axoSecX = div1X + 2.0;
-        const axoSecW = 36.0;
-        const axoSecH = cardH - 4.0;
+        // SECTION 2: Axo Element (Smaller: width 28mm, strictly 1:1, NO sizes bar)
+        const axoSecX = div1X + 1.5;
+        const axoSecW = 28.0;
+        const axoSecH = cardH - 3.0;
         try {
             const axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
             if (axoDataUrl) {
-                drawAxoContain(doc, axoDataUrl, axoSecX, cardY + 2.0, axoSecW, axoSecH, 0.88);
+                drawAxoContain(doc, axoDataUrl, axoSecX, cardY + 1.5, axoSecW, axoSecH, 0.88);
             }
         } catch (e) {}
 
         // Divider 2
-        const div2X = axoSecX + axoSecW + 2.0;
+        const div2X = axoSecX + axoSecW + 1.5;
         doc.setDrawColor(241, 245, 249);
-        doc.line(div2X, cardY + 4, div2X, cardY + cardH - 4);
+        doc.line(div2X, cardY + 3.0, div2X, cardY + cardH - 3.0);
 
-        // SECTION 3: Exact Deterministic Title & Details (Same as Grid catalog)
-        const infoX = div2X + 3.5;
-        const div3X = PW - M - 48.0;
+        // SECTION 3: Exact Deterministic Title, Dimensions, Weight, and Color Indicators
+        const infoX = div2X + 3.0;
+        const div3X = PW - M - 40.0;
         const infoW = div3X - infoX - 2.5;
 
         // Exact Deterministic Title matching Grid catalog:
         const mainTitleStr = buildDeterministicTitle(norm, itemDataObj);
-        doc.setFontSize(7.2);
+        doc.setFontSize(6.8);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
         const splitTitle = doc.splitTextToSize(mainTitleStr, infoW);
-        const titleLines = splitTitle.slice(0, 3);
-        doc.text(titleLines, infoX, cardY + 5.8);
-        let currInfoY = cardY + 5.8 + (titleLines.length - 1) * 3.2 + 3.8;
+        const titleLines = splitTitle.slice(0, 2);
+        doc.text(titleLines, infoX, cardY + 5.0);
+        let currInfoY = cardY + 5.0 + (titleLines.length - 1) * 2.8 + 3.4;
 
         // Color Glass Indicators
         const extractedColors = getItemExtractedColors(norm, itemDataObj);
         if (extractedColors.length > 0) {
-            drawColorBubbles(doc, extractedColors.slice(0, 3), infoX, currInfoY, infoW);
-            currInfoY += 5.2;
+            drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, currInfoY, infoW);
+            currInfoY += 4.2;
         }
 
         // Dimensions (Imperial & Metric)
@@ -3346,40 +3373,39 @@ async function drawCatalogCompactPage(
         const metricDims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join(' × ') + (norm.lengthCm || norm.widthCm || norm.heightCm ? ' cm' : '');
         const impDims = [dImp, wImp, hImp].filter(Boolean).join(' × ');
 
-        doc.setFontSize(6.2);
+        doc.setFontSize(5.8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(30, 41, 59);
         if (metricDims && impDims) {
             doc.text(`${metricDims}  (${impDims})`, infoX, currInfoY);
-            currInfoY += 3.4;
+            currInfoY += 3.0;
         } else if (metricDims) {
             doc.text(metricDims, infoX, currInfoY);
-            currInfoY += 3.4;
+            currInfoY += 3.0;
         }
 
         // Weight
         const wtKg = parseFloat(norm.weightKg || '0');
         if (wtKg > 0) {
             const wtLbs = wtKg * 2.20462;
-            doc.setFontSize(6.0);
+            doc.setFontSize(5.5);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(71, 85, 105);
+            doc.setTextColor(100, 116, 139);
             doc.text(`${Math.round(wtKg)} kg  •  ${Math.round(wtLbs)} lbs`, infoX, currInfoY);
-            currInfoY += 3.4;
         }
 
         // Divider 3
         doc.setDrawColor(241, 245, 249);
         doc.setLineWidth(0.2);
-        doc.line(div3X, cardY + 4, div3X, cardY + cardH - 4);
+        doc.line(div3X, cardY + 3.0, div3X, cardY + cardH - 3.0);
 
-        // SECTION 4: EXACT Barcode, QR Code & TagID-retailAcqCode as in Grid Catalog
-        const blockX = div3X + 2.5;
-        const barW = 34.0;
-        const barH = 7.5;
-        const qrSize = barH; // Same height as barcode
-        const codeGap = 2.0;
-        const totalCodesW = barW + codeGap + qrSize; // 43.5mm
+        // SECTION 4: EXACT Barcode, QR Code & TagID-retailAcqCode as in Grid Catalog (Smaller)
+        const blockX = div3X + 2.0;
+        const barW = 28.0;
+        const barH = 6.0;
+        const qrSize = barH; // Same height as barcode (6.0mm)
+        const codeGap = 1.8;
+        const totalCodesW = barW + codeGap + qrSize; // 35.8mm
         const barX = blockX;
         const qrX = blockX + barW + codeGap;
 
@@ -3387,36 +3413,36 @@ async function drawCatalogCompactPage(
         let barDataUrl: string | null = null;
         try {
             const canvas = document.createElement('canvas');
-            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 30, lineColor: '#141414' });
+            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 26, lineColor: '#141414' });
             barDataUrl = canvas.toDataURL('image/png');
         } catch (e) {}
 
         if (barDataUrl) {
-            doc.addImage(barDataUrl, 'PNG', barX, cardY + 5.0, barW, barH);
+            doc.addImage(barDataUrl, 'PNG', barX, cardY + 4.0, barW, barH);
         }
 
         // QR Code with vendor center dot
         let qrDataUrl = '';
         try {
             const publicUrl = `https://onyx.mx/tag/${encodeURIComponent(barcode)}`;
-            qrDataUrl = await QRCode.toDataURL(publicUrl, { width: 140, margin: 0 });
+            qrDataUrl = await QRCode.toDataURL(publicUrl, { width: 120, margin: 0 });
         } catch (e) {}
 
         if (qrDataUrl) {
-            doc.addImage(qrDataUrl, 'PNG', qrX, cardY + 5.0, qrSize, qrSize);
+            doc.addImage(qrDataUrl, 'PNG', qrX, cardY + 4.0, qrSize, qrSize);
             const tagVColor = getVendorColor(barcode);
             const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
             const qrCenterX = qrX + qrSize / 2;
-            const qrCenterY = cardY + 5.0 + qrSize / 2;
+            const qrCenterY = cardY + 4.0 + qrSize / 2;
             doc.setFillColor(255, 255, 255);
-            doc.circle(qrCenterX, qrCenterY, 1.3, 'F');
+            doc.circle(qrCenterX, qrCenterY, 1.1, 'F');
             doc.setFillColor(tagHexColor);
-            doc.circle(qrCenterX, qrCenterY, 0.9, 'F');
+            doc.circle(qrCenterX, qrCenterY, 0.75, 'F');
         }
 
         // TagID + Retail + Acquisition Code line: EXACT same width as [ Barcode ] [ QR ], no raw retail label
-        const tagTextY = cardY + 5.0 + barH + 3.2;
-        drawFormattedTagCode(doc, codes, blockX, tagTextY, 8.5, false, itemDataObj, totalCodesW);
+        const tagTextY = cardY + 4.0 + barH + 2.8;
+        drawFormattedTagCode(doc, codes, blockX, tagTextY, 7.2, false, itemDataObj, totalCodesW);
     }
 }
 
@@ -3569,7 +3595,7 @@ export async function exportCatalogPdf(
         // 2. Item Catalog Pages
         if (isCompactMode) {
             // COMPACT CATALOG: 4 items per sheet, no photo gallery, no marketing text
-            const itemsPerPage = 4;
+            const itemsPerPage = 6;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
                 addPage();
@@ -3607,7 +3633,7 @@ export async function exportCatalogPdf(
     } else {
         // --- COMPACT OR ONE IMAGE PER PAGE ---
         if (isCompactMode) {
-            const itemsPerPage = 4;
+            const itemsPerPage = 6;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
                 addPage();

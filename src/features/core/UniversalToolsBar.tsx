@@ -764,7 +764,7 @@ export const UniversalToolsBar: React.FC = () => {
                     onStart={handleStartCatalogExport}
                     progress={catalogExportProgress}
                     status={catalogExportStatus}
-                    moduleName="Catalog"
+                    moduleName="Onyx Collection"
                     pdfBlobUrl={catalogPdfBlobUrl}
                 />
             )}

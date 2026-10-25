@@ -37,7 +37,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
 }) => {
     const [step, setStep] = useState<'config' | 'progress' | 'complete'>('config');
     const [config, setConfig] = useState<ExportConfig>({
-        title: `${moduleName} Catalog`,
+        title: moduleName.toLowerCase().includes('catalog') ? (moduleName.toLowerCase() === 'catalog' ? 'Onyx Collection' : moduleName) : `${moduleName} Catalog`,
         method: 'grid',
         includeImages: true,
         notes: '',
