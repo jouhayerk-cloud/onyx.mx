@@ -286,15 +286,29 @@ html.style-slab #process .proc-terminal {
 
 /* Over a photograph. Glass over an image is two images, and the media wells
    are the one place in the app where the picture is the content. */
-html.style-slab .inv-card-media,
-html.style-slab .inv-gal-hero,
-html.style-slab .inv-gal-tile,
-html.style-slab .inv-hero,
-html.style-slab .inv-thumb,
+/* Scrims and beds that stay opaque */
 html.style-slab .threed-scrim,
 html.style-slab #threed .threed-well,
 html.style-slab #trucking .trk-bed {
     backdrop-filter: none !important;
+}
+
+/* ── Media Wells: Transparent Glass ─────────────────────────────────────── */
+html.style-slab .inv-card-media,
+html.style-slab .inv-gal-hero,
+html.style-slab .inv-gal-tile,
+html.style-slab .inv-hero,
+html.style-slab .inv-thumb {
+    background-color: var(--slab-glass-lo) !important;
+    backdrop-filter: blur(24px) saturate(1.8) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(1.8) !important;
+}
+
+html.style-slab .inv-card-media::after,
+html.style-slab .inv-gal-hero::after,
+html.style-slab .inv-gal-tile::after {
+    box-shadow: inset 0 0 0 1px var(--slab-glass-rim, rgba(255, 255, 255, 0.18)),
+                inset 0 1px 1px rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Meaning colour is not chrome and never becomes glass — rule 3 stands. */
@@ -455,12 +469,6 @@ html.style-slab .inv-drawer-body {
 
 /* Restated last: anything over a photograph, and the pressed wells, stay
    solid even when they were built from those utilities. */
-html.style-slab .inv-card-media[class*="bg-"],
-html.style-slab .inv-gal-hero[class*="bg-"],
-html.style-slab .inv-hero[class*="bg-"],
-html.style-slab .inv-thumb[class*="bg-"],
-html.style-slab .inv-card-media,
-html.style-slab .inv-gal-hero,
 html.style-slab .inv-axo,
 html.style-slab .threed-scrim {
     backdrop-filter: none !important;

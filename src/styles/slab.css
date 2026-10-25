@@ -2006,7 +2006,7 @@ html.style-slab .inv-card-media,
 html.style-slab .inv-gal-hero,
 html.style-slab .inv-gal-tile,
 html.style-slab .inv-xl-axo {
-    background-color: color-mix(in srgb, var(--slab-sh) 22%, var(--slab));
+    background-color: var(--slab-glass-lo, color-mix(in srgb, var(--slab-sh) 22%, var(--slab)));
 }
 
 html.style-slab .inv-card-media,
@@ -2016,7 +2016,7 @@ html.style-slab .inv-gal-hero {
 
 html.style-slab .inv-card-media::after,
 html.style-slab .inv-gal-hero::after {
-    box-shadow: var(--slab-pressed), inset 0 0 0 1px var(--slab-edge);
+    box-shadow: inset 0 0 0 1px var(--slab-glass-rim, var(--slab-edge));
 }
 
 /* The readout — an instrument, recessed. */

@@ -1097,7 +1097,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
                             {mediaUrls.length > 0 && (
                                 <div className="inv-panel-media">
-                                    <div role="button" tabIndex={0} className="inv-hero bg-black/40"
+                                    <div role="button" tabIndex={0} className="inv-hero"
                                         title={tr("Open photos")}
                                         onClick={(e) => { e.stopPropagation(); setViewerIdx(0); setShowViewer(true); }}
                                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(0); setShowViewer(true); } }}>
@@ -1108,7 +1108,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     {mediaUrls.length > 1 && (
                                         <div className="inv-thumbs no-scrollbar">
                                             {mediaUrls.slice(1).map((u, i) => (
-                                                <div key={i} role="button" tabIndex={0} className="inv-thumb bg-black/40"
+                                                <div key={i} role="button" tabIndex={0} className="inv-thumb"
                                                     onClick={(e) => { e.stopPropagation(); setViewerIdx(i + 1); setShowViewer(true); }}
                                                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(i + 1); setShowViewer(true); } }}>
                                                     <DriveImage loading="lazy" src={u} className="w-full h-full object-cover" />

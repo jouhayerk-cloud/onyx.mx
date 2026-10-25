@@ -286,6 +286,9 @@
     border-radius: 6px;
     overflow: hidden;
     cursor: zoom-in;
+    background-color: var(--slab-glass-lo, rgb(255 255 255 / 0.05));
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
 }
 
 .inv-hero-count {
@@ -315,6 +318,9 @@
     border-radius: 4px;
     overflow: hidden;
     cursor: zoom-in;
+    background-color: var(--slab-glass-lo, rgb(255 255 255 / 0.05));
+    backdrop-filter: blur(16px) saturate(1.8);
+    -webkit-backdrop-filter: blur(16px) saturate(1.8);
 }
 
 .inv-hero:focus-visible,
