@@ -740,10 +740,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 <div className="inv-specs-body">
                     {!hasAxoOverlay && (
                         <div className="inv-axo-col">
+                            {renderColorBubbles('inv-axo-bubbles-floating')}
                             <div className="inv-axo" title={tr("Proportions")} aria-hidden="true">
                                 <WireframeIcon item={norm} />
                             </div>
-                            {renderColorBubbles('inv-axo-bubbles-floating')}
                         </div>
                     )}
                     <div className="inv-measures" aria-label={tr("Size and weight")}>
@@ -830,9 +830,6 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     </React.Fragment>
                                 )) : '—'}
                             </span>
-                        </SpecRow>
-                        <SpecRow k="ai-colors" label={tr("Colors")}>
-                            {renderColorBubbles() || "—"}
                         </SpecRow>
                     </dl>
                     <div className="inv-ai-bodywrap">
@@ -1314,10 +1311,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             {heroMedia(sheetIdx, 'inv-gal-img')}
                             {mediaUrls.length > 0 && (
                                 <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
+                                    {renderColorBubbles('inv-axo-bubbles-floating')}
                                     <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
                                         <WireframeIcon item={norm} />
                                     </div>
-                                    {renderColorBubbles('inv-axo-bubbles-floating')}
                                 </div>
                             )}
                             {heroKeys(sheetIdx, stepSheet, 20)}
@@ -1357,10 +1354,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 {heroMedia(heroIdx, 'inv-gal-img')}
                                 {mediaUrls.length > 0 && (
                                     <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
+                                        {renderColorBubbles('inv-axo-bubbles-floating')}
                                         <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
                                             <WireframeIcon item={norm} />
                                         </div>
-                                        {renderColorBubbles('inv-axo-bubbles-floating')}
                                     </div>
                                 )}
                                 {heroKeys(heroIdx, stepPhoto, 18)}
@@ -1424,10 +1421,10 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     {heroMedia(heroIdx, 'inv-card-img')}
                     {mediaUrls.length > 0 && (
                         <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
+                            {renderColorBubbles('inv-axo-bubbles-floating')}
                             <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
                                 <WireframeIcon item={norm} />
                             </div>
-                            {renderColorBubbles('inv-axo-bubbles-floating')}
                         </div>
                     )}
                     {heroKeys(heroIdx, stepPhoto, 16)}
