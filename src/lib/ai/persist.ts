@@ -326,9 +326,9 @@ export async function buildAiPatch(
                 pixelMaps.push({
                     type: 'pixel_map',
                     index: photo.index ?? idx,
-                    dimensions: `${photo.cols || 20}x${photo.rows || 20}`,
-                    cols: photo.cols || 20,
-                    rows: photo.rows || 20,
+                    dimensions: `${photo.cols || 60}x${photo.rows || 60}`,
+                    cols: photo.cols || 60,
+                    rows: photo.rows || 60,
                     hex_string: photo.hexString,
                     bitmap_url: bUrl || null,
                 });
@@ -341,9 +341,9 @@ export async function buildAiPatch(
             const bitmapUrl = await ensureUploaded(result.hexMap.bitmapUrl, `bitmap_${rowId}.webp`, 'Bitmap');
             pixelMaps.push({
                 type: 'pixel_map',
-                dimensions: `${cols}x${rows}`,
-                cols,
-                rows,
+                dimensions: `${cols || 60}x${rows || 60}`,
+                cols: cols || 60,
+                rows: rows || 60,
                 hex_string: hexString,
                 bitmap_url: bitmapUrl || null,
             });

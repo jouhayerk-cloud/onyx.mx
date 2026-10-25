@@ -868,8 +868,8 @@ export async function generateAxonometricDataUrl(
 
         let hexPattern: CanvasPattern | null = null;
         let parsedHexList: string[] = [];
-        let tCols = 24;
-        let tRows = 24;
+        let tCols = 60;
+        let tRows = 60;
 
         try {
             if (hexMapString) {
@@ -893,6 +893,8 @@ export async function generateAxonometricDataUrl(
                         if (len === 180) { sCols = isTall ? 9 : 20; sRows = isTall ? 20 : 9; }
                         else if (len === 300) { sCols = isTall ? 15 : 20; sRows = isTall ? 20 : 15; }
                         else if (len === 160) { sCols = isTall ? 8 : 20; sRows = isTall ? 20 : 8; }
+                        else if (len === 3600) { sCols = 60; sRows = 60; }
+                        else if (len === 6400) { sCols = 80; sRows = 80; }
                         else if (len === 400) { sCols = 20; sRows = 20; }
                         else if (len === 100) { sCols = 10; sRows = 10; }
                         else if (len === 64) { sCols = 8; sRows = 8; }

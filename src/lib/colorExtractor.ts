@@ -281,8 +281,8 @@ export interface PixelationResult {
  */
 export async function generateBitmapAndHexMap(
     imageUrl?: string | null,
-    cols = 20,
-    rows = 8,
+    cols = 60,
+    rows = 60,
     pixelSize = 80,
     brightness = 149,
     contrast = 61,
@@ -560,6 +560,8 @@ export function reconstructRgbPixelMap(spatialPoints: any): ReconstructedPixelMa
     } else if (!pixelMapObj.cols || !pixelMapObj.rows) {
         if (hexList.length === 160) { cols = 20; rows = 8; }
         else if (hexList.length === 400) { cols = 20; rows = 20; }
+        else if (hexList.length === 3600) { cols = 60; rows = 60; }
+        else if (hexList.length === 6400) { cols = 80; rows = 80; }
         else {
             cols = Math.max(1, Math.round(Math.sqrt(hexList.length)));
             rows = Math.ceil(hexList.length / cols);

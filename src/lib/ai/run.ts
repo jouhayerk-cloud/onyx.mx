@@ -504,7 +504,7 @@ function storedOf(raw: any, n: any, media: RunMedia[]): RunItem['stored'] {
     if (typeof points === 'string') { try { points = JSON.parse(points); } catch { points = null; } }
     const pm = Array.isArray(points) ? points.find((p: any) => p?.type === 'pixel_map' || p?.hex_string) : null;
     if (pm?.hex_string) {
-        hexMap = { hexString: String(pm.hex_string), bitmapUrl: urlOrUndef(pm.bitmap_url), cols: Number(pm.cols) || 20, rows: Number(pm.rows) || 20 };
+        hexMap = { hexString: String(pm.hex_string), bitmapUrl: urlOrUndef(pm.bitmap_url), cols: Number(pm.cols) || 60, rows: Number(pm.rows) || 60 };
     }
     return { photos, hexMap, axoIconUrl: urlOrUndef(raw.axo_icon_url ?? raw.axoIconUrl) };
 }
@@ -1021,7 +1021,7 @@ export function summarizeItem(item: RunItem): RunItem {
     // from the hero, so this keeps the hexString paired with them.
     const heroHex = h.hexString || photoHexMaps[0];
     const hexMap: RunHexMap | undefined = heroHex
-        ? { hexString: heroHex, bitmapUrl: h.bitmapUrl, cols: h.cols || 20, rows: h.rows || 20 }
+        ? { hexString: heroHex, bitmapUrl: h.bitmapUrl, cols: h.cols || 60, rows: h.rows || 60 }
         : undefined;
     const axoIconUrl = item.ops.map(o => o.op.result?.axoIconUrl).filter(Boolean).pop() as string | undefined;
 

@@ -853,7 +853,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                 // backdrop), else the original photo, instead.
                 const lightFrame = isLightRoomKey(result.cleanedKey, imageUrl);
                 const colorSource = segWhite || (!lightFrame && getCleanImageUrl(result.cleanedUrl)) || getCleanImageUrl(result.cutoutUrl) || imageUrl;
-                const bitmapRes = await generateBitmapAndHexMap(colorSource, 20, 20, 80, 149, 61, 199, item.material, item.shape, item.vendorColor);
+                const bitmapRes = await generateBitmapAndHexMap(colorSource, 60, 60, 80, 149, 61, 199, item.material, item.shape, item.vendorColor);
                 // generateBitmapAndHexMap never throws: on a load failure, a
                 // CORS refusal or its timeout it returns an all-#FFFFFF grid,
                 // no bitmap and colours guessed from the material text. Only

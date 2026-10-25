@@ -57,7 +57,7 @@ export const CATALOG_PROCESSES: readonly CatalogProcess[] = [
     },
     {
         id: 'hex_map',
-        label: '20x20 Spatial Hex Color Map',
+        label: '60x60 Spatial Hex Color Map',
         writes: ['spatial_points'],
         requiresMedia: true,
         requiresVideo: false,

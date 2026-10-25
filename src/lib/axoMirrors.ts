@@ -311,11 +311,11 @@ function drawRoundMirror(
         const maxY = Math.max(...ptsGlass.map(p => p.y));
 
         const sheenGrd = ctx.createLinearGradient(maxX, minY, minX, maxY);
-        sheenGrd.addColorStop(0, helpers.colorTop);
-        sheenGrd.addColorStop(0.44, helpers.colorTop);
+        sheenGrd.addColorStop(0, '#E8F0F8');
+        sheenGrd.addColorStop(0.44, '#E8F0F8');
         sheenGrd.addColorStop(0.49, '#FFFFFF');
-        sheenGrd.addColorStop(0.54, helpers.colorTop);
-        sheenGrd.addColorStop(1, helpers.colorTop);
+        sheenGrd.addColorStop(0.54, '#D0E0EE');
+        sheenGrd.addColorStop(1, '#D0E0EE');
 
         ctx.fillStyle = sheenGrd;
         ctx.fill();
@@ -476,11 +476,11 @@ function drawSlabBoxMirror(
         const maxY = Math.max(...ptsGlass.map(p => p.y));
 
         const sheenGrd = ctx.createLinearGradient(maxX, minY, minX, maxY);
-        sheenGrd.addColorStop(0, helpers.colorTop);
-        sheenGrd.addColorStop(0.44, helpers.colorTop);
+        sheenGrd.addColorStop(0, '#E8F0F8');
+        sheenGrd.addColorStop(0.44, '#E8F0F8');
         sheenGrd.addColorStop(0.49, '#FFFFFF');
-        sheenGrd.addColorStop(0.54, helpers.colorTop);
-        sheenGrd.addColorStop(1, helpers.colorTop);
+        sheenGrd.addColorStop(0.54, '#D0E0EE');
+        sheenGrd.addColorStop(1, '#D0E0EE');
 
         ctx.fillStyle = sheenGrd;
         ctx.fill();
