@@ -1452,65 +1452,141 @@ function resolveCleanProductType(norm: any, itemDataObj: any, shapeStr?: string)
 }
 
 /**
- * Resolves the transparent cutout PNG for an item to float in the title bar.
+ * Resolves transparent cutout PNG(s) for an item to float in the header:
+ * - Single item / single photo: strictly 1 cutout PNG (no duplicates!).
+ * - Floor lamps / lamps: uses lights ON rule (photos 2 and 4 in gallery, i.e. angle_1 and angle_3).
+ * - Multi-quantity items with multiple photos: shows multiple cutouts (up to quantity).
+ * - Prefers cutout of element with lights ON.
  */
-export function getItemCutoutPng(item: any): string | null {
-    if (!item) return null;
+export function getItemCutoutPngs(item: any): string[] {
+    if (!item) return [];
     const it = item.data || item;
     const norm = normalizeInventoryData(it);
 
-    const candidates = [
-        norm.generatedPngUrl,
-        it.generated_png_url,
-        it.generatedPngUrl,
-        norm.maskUrl,
-        it.maskUrl,
-        it.mask_url,
-        it.cutoutUrl
-    ];
+    const qty = parseInt(norm.quantity || it.quantity || it.Quantity || '1', 10) || 1;
 
-    for (const c of candidates) {
-        if (c && typeof c === 'string' && !isHexMapUrl(c) && !isVideoFile(c)) {
-            return getCleanImageUrl(c) || c;
+    // Count available still photos to guard against duplicating when only 1 photo exists
+    const rawStills = collectAllImages(norm, { dropVideos: true });
+    const studioPhotos = getItemImages(item).filter(u => !isPngCutoutUrl(u));
+    const totalPhotos = Math.max(rawStills.length, studioPhotos.length);
+
+    // If item only has 1 photo or qty <= 1, strictly return at most 1 cutout (no duplicates!)
+    const maxCutouts = (qty > 1 && totalPhotos > 1) ? Math.min(qty, totalPhotos) : 1;
+
+    const shapeStr = (norm.shape || norm.shortDescription || it.Shape || '').toLowerCase();
+    const typeStr = (norm.generatedType || norm.canonicalType || norm.type || it.Type || '').toLowerCase();
+    const descStr = (norm.description || norm.title || it.Title || '').toLowerCase();
+    const isLamp = shapeStr.includes('lamp') || shapeStr.includes('lantern') || shapeStr.includes('pendant') || 
+                   shapeStr.includes('light') || shapeStr.includes('sconce') || typeStr.includes('lamp') || descStr.includes('lamp');
+
+    // Parse spatial_masks angle map
+    const spMasks = it.spatial_masks || it.spatialMasks || norm.spatialMasks || norm.spatial_masks;
+    let maskMap: Record<string, any> = {};
+    if (spMasks) {
+        if (typeof spMasks === 'string') {
+            try { maskMap = JSON.parse(spMasks) || {}; } catch (e) {}
+        } else if (typeof spMasks === 'object' && spMasks) {
+            maskMap = spMasks;
         }
     }
 
-    // Check spatial_masks
-    const spMasks = it.spatial_masks || it.spatialMasks || norm.spatialMasks || norm.spatial_masks;
-    if (spMasks) {
-        let mObj = spMasks;
-        if (typeof mObj === 'string') {
-            try { mObj = JSON.parse(mObj); } catch (e) {}
-        }
-        if (typeof mObj === 'object' && mObj) {
-            if (Array.isArray(mObj) && mObj.length > 0) {
-                const u = mObj[0].cutoutUrl || mObj[0].pngUrl || mObj[0].mask;
+    const getAngleCutout = (idx: number): string | null => {
+        const entry = maskMap[`angle_${idx}`];
+        if (entry) {
+            if (Array.isArray(entry) && entry.length > 0) {
+                const u = entry[0].cutoutUrl || entry[0].mask || entry[0].pngUrl;
                 if (u && typeof u === 'string') return getCleanImageUrl(u) || u;
-            } else {
-                const angle0 = (mObj as any).angle_0 || Object.values(mObj)[0];
-                if (angle0) {
-                    if (Array.isArray(angle0) && angle0.length > 0) {
-                        const u = angle0[0].cutoutUrl || angle0[0].mask || angle0[0].pngUrl;
-                        if (u && typeof u === 'string') return getCleanImageUrl(u) || u;
-                    } else if (typeof angle0 === 'string') {
-                        return getCleanImageUrl(angle0) || angle0;
-                    }
+            } else if (typeof entry === 'string') {
+                return getCleanImageUrl(entry) || entry;
+            } else if (typeof entry === 'object' && entry) {
+                const u = entry.cutoutUrl || entry.mask || entry.pngUrl;
+                if (u && typeof u === 'string') return getCleanImageUrl(u) || u;
+            }
+        }
+        return null;
+    };
+
+    const resolvedCutouts: string[] = [];
+    const seenFileIds = new Set<string>();
+
+    const addCutout = (url?: string | null) => {
+        if (!url || typeof url !== 'string') return;
+        const clean = getCleanImageUrl(url) || url;
+        if (!clean || !/^https?:\/\//i.test(clean) || isHexMapUrl(clean) || isVideoFile(clean)) return;
+        const fid = extractFileId(clean) || clean;
+        if (seenFileIds.has(fid)) return;
+        seenFileIds.add(fid);
+        resolvedCutouts.push(clean);
+    };
+
+    if (isLamp && totalPhotos >= 2) {
+        // Floor lamp / lamps rule: Photo 2 and 4 in gallery have lights ON!
+        // (Photo 2 = angle_1 lights ON; Photo 4 = angle_3 lights ON)
+        const angle1Cutout = getAngleCutout(1); // Lamp 1 lights ON
+        const angle3Cutout = getAngleCutout(3); // Lamp 2 lights ON
+        const angle0Cutout = getAngleCutout(0); // Lamp 1 lights OFF
+        const angle2Cutout = getAngleCutout(2); // Lamp 2 lights OFF
+
+        if (maxCutouts >= 2) {
+            // Pair with multiple quantity: Lamp 1 ON (angle 1) and Lamp 2 ON (angle 3)
+            addCutout(angle1Cutout || angle0Cutout);
+            addCutout(angle3Cutout || angle2Cutout);
+        } else {
+            // Single lamp: prefer Lights ON (angle 1), fallback to angle 0
+            addCutout(angle1Cutout || angle0Cutout);
+        }
+    } else {
+        // Non-lamp items: collect distinct angles up to maxCutouts
+        for (let idx = 0; idx < 6 && resolvedCutouts.length < maxCutouts; idx++) {
+            const c = getAngleCutout(idx);
+            if (c) addCutout(c);
+        }
+    }
+
+    // Fallbacks if spatial_masks didn't yield enough cutouts:
+    if (resolvedCutouts.length === 0) {
+        const candidates = [
+            norm.generatedPngUrl,
+            it.generated_png_url,
+            it.generatedPngUrl,
+            norm.maskUrl,
+            it.maskUrl,
+            it.mask_url,
+            it.cutoutUrl
+        ];
+        for (const c of candidates) {
+            addCutout(c);
+            if (resolvedCutouts.length >= maxCutouts) break;
+        }
+    }
+
+    // Check item.images for transparent PNG cutouts
+    if (resolvedCutouts.length < maxCutouts) {
+        const imgs = item.images || it.images;
+        if (Array.isArray(imgs)) {
+            for (const u of imgs) {
+                if (typeof u === 'string' && isPngCutoutUrl(u)) {
+                    addCutout(u);
+                    if (resolvedCutouts.length >= maxCutouts) break;
                 }
             }
         }
     }
 
-    // Check images array for any transparent PNG cutout
-    const imgs = item.images || it.images;
-    if (Array.isArray(imgs)) {
-        for (const u of imgs) {
-            if (typeof u === 'string' && isPngCutoutUrl(u) && !isHexMapUrl(u) && !isVideoFile(u)) {
-                return getCleanImageUrl(u) || u;
-            }
-        }
+    // Guard: If only 1 distinct photo exists or maxCutouts === 1, strictly at most 1 cutout
+    if (maxCutouts === 1 && resolvedCutouts.length > 1) {
+        return [resolvedCutouts[0]];
     }
 
-    return null;
+    return resolvedCutouts.slice(0, maxCutouts);
+}
+
+/**
+ * Resolves the primary transparent cutout PNG for backward compatibility.
+ */
+export function getItemCutoutPng(item: any): string | null {
+    const list = getItemCutoutPngs(item);
+    return list.length > 0 ? list[0] : null;
 }
 
 /**
@@ -1714,38 +1790,38 @@ async function drawCatalogHubPagePortrait(
     const catAndTypeGrid = getProductCategoryAndType(norm);
     const classificationStr = [catAndTypeGrid.category, catAndTypeGrid.type].filter(Boolean).join('  ›  ').toUpperCase();
 
-    // Resolve cutout PNG to place to the left of the title
+    // Resolve cutout PNG(s) to place to the left of the title (multi-cutout if qty matches & lights on)
     const topY = M;
-    const cutoutUrl = getItemCutoutPng(item);
-    let cutoutImgData: any = null;
-    let cutoutW = 0;
-    let cutoutH = 0;
+    const cutoutUrls = getItemCutoutPngs(item);
+    interface LoadedCutout { dataUrl: string; w: number; h: number; }
+    const loadedCutouts: LoadedCutout[] = [];
+    const maxCutoutH = 30;
+    const maxEachCutoutW = cutoutUrls.length > 1 ? 26 : 36;
+    const cutoutGap = 2.5;
 
-    if (cutoutUrl) {
+    for (const cUrl of cutoutUrls) {
         try {
-            cutoutImgData = await loadImgData(cutoutUrl, 400, true);
-            if (cutoutImgData && cutoutImgData.dataUrl) {
-                const maxCutoutH = 30;
-                const maxCutoutW = 36;
-                if (cutoutImgData.w && cutoutImgData.h) {
-                    const aspect = cutoutImgData.w / cutoutImgData.h;
-                    const boxAspect = maxCutoutW / maxCutoutH;
-                    if (aspect > boxAspect) {
-                        cutoutW = maxCutoutW;
-                        cutoutH = maxCutoutW / aspect;
-                    } else {
-                        cutoutH = maxCutoutH;
-                        cutoutW = maxCutoutH * aspect;
-                    }
+            const cData = await loadImgData(cUrl, 400, true);
+            if (cData && cData.dataUrl && cData.w && cData.h) {
+                const aspect = cData.w / cData.h;
+                const boxAspect = maxEachCutoutW / maxCutoutH;
+                let cw: number, ch: number;
+                if (aspect > boxAspect) {
+                    cw = maxEachCutoutW;
+                    ch = maxEachCutoutW / aspect;
                 } else {
-                    cutoutH = maxCutoutH;
-                    cutoutW = maxCutoutH;
+                    ch = maxCutoutH;
+                    cw = maxCutoutH * aspect;
                 }
+                loadedCutouts.push({ dataUrl: cData.dataUrl, w: cw, h: ch });
             }
         } catch (e) {
             console.warn('[pdfExport] Failed to load cutout PNG for title:', e);
         }
     }
+
+    const totalCutoutsW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? cutoutGap : 0), 0);
+    const maxCutoutActualH = loadedCutouts.reduce((max, c) => Math.max(max, c.h), 0);
 
     // Top Right Corner Block: Barcode + Small QR Code (same height as barcode) + TagID/Retail/Acq matching width
     const barW = 38;
@@ -1790,8 +1866,8 @@ async function drawCatalogHubPagePortrait(
     const tagTextY = topY + barH + 3.2;
     drawFormattedTagCode(doc, codes, blockX, tagTextY, 9, false, itemDataObj, totalCodesW);
 
-    const titleGap = cutoutW > 0 ? 3.5 : 0;
-    const titleX = M + cutoutW + titleGap;
+    const titleGap = totalCutoutsW > 0 ? 3.5 : 0;
+    const titleX = M + totalCutoutsW + titleGap;
     const titleW = blockX - titleX - 4.0;
 
     // 2. Main Title, Shopify Subtitle, and Classification
@@ -1834,14 +1910,18 @@ async function drawCatalogHubPagePortrait(
 
     let subY = afterBubblesY + 1.5;
 
-    // Draw cutout PNG to the left of the title block
-    if (cutoutImgData && cutoutImgData.dataUrl) {
-        const titleBlockTotalH = Math.max(cutoutH, subY - topY);
-        const pngY = topY + Math.max(0, (titleBlockTotalH - cutoutH) / 2);
-        doc.addImage(cutoutImgData.dataUrl, 'PNG', M, pngY, cutoutW, cutoutH);
+    // Draw cutout PNG(s) to the left of the title block
+    if (loadedCutouts.length > 0) {
+        const titleBlockTotalH = Math.max(maxCutoutActualH, subY - topY);
+        let currCutX = M;
+        for (const c of loadedCutouts) {
+            const pngY = topY + Math.max(0, (titleBlockTotalH - c.h) / 2);
+            doc.addImage(c.dataUrl, 'PNG', currCutX, pngY, c.w, c.h);
+            currCutX += c.w + cutoutGap;
+        }
     }
 
-    const headerBottomY = Math.max(topY + cutoutH, subY, tagTextY + 2.0);
+    const headerBottomY = Math.max(topY + maxCutoutActualH, subY, tagTextY + 2.0);
 
     // 4. Content Zone
     const contentY = headerBottomY + 3.5;
@@ -2107,38 +2187,38 @@ async function drawCatalogHubPageLandscapeGrid(
     const catAndTypeGrid = getProductCategoryAndType(norm);
     const classificationStr = [catAndTypeGrid.category, catAndTypeGrid.type].filter(Boolean).join('  ›  ').toUpperCase();
 
-    // Resolve cutout PNG to place to the left of the title
+    // Resolve cutout PNG(s) to place to the left of the title (multi-cutout if qty matches & lights on)
     const topY = M;
-    const cutoutUrl = getItemCutoutPng(item);
-    let cutoutImgData: any = null;
-    let cutoutW = 0;
-    let cutoutH = 0;
+    const cutoutUrls = getItemCutoutPngs(item);
+    interface LoadedCutout { dataUrl: string; w: number; h: number; }
+    const loadedCutouts: LoadedCutout[] = [];
+    const maxCutoutH = 30;
+    const maxEachCutoutW = cutoutUrls.length > 1 ? 26 : 36;
+    const cutoutGap = 2.5;
 
-    if (cutoutUrl) {
+    for (const cUrl of cutoutUrls) {
         try {
-            cutoutImgData = await loadImgData(cutoutUrl, 400, true);
-            if (cutoutImgData && cutoutImgData.dataUrl) {
-                const maxCutoutH = 30;
-                const maxCutoutW = 36;
-                if (cutoutImgData.w && cutoutImgData.h) {
-                    const aspect = cutoutImgData.w / cutoutImgData.h;
-                    const boxAspect = maxCutoutW / maxCutoutH;
-                    if (aspect > boxAspect) {
-                        cutoutW = maxCutoutW;
-                        cutoutH = maxCutoutW / aspect;
-                    } else {
-                        cutoutH = maxCutoutH;
-                        cutoutW = maxCutoutH * aspect;
-                    }
+            const cData = await loadImgData(cUrl, 400, true);
+            if (cData && cData.dataUrl && cData.w && cData.h) {
+                const aspect = cData.w / cData.h;
+                const boxAspect = maxEachCutoutW / maxCutoutH;
+                let cw: number, ch: number;
+                if (aspect > boxAspect) {
+                    cw = maxEachCutoutW;
+                    ch = maxEachCutoutW / aspect;
                 } else {
-                    cutoutH = maxCutoutH;
-                    cutoutW = maxCutoutH;
+                    ch = maxCutoutH;
+                    cw = maxCutoutH * aspect;
                 }
+                loadedCutouts.push({ dataUrl: cData.dataUrl, w: cw, h: ch });
             }
         } catch (e) {
             console.warn('[pdfExport] Failed to load cutout PNG for title:', e);
         }
     }
+
+    const totalCutoutsW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? cutoutGap : 0), 0);
+    const maxCutoutActualH = loadedCutouts.reduce((max, c) => Math.max(max, c.h), 0);
 
     // Top Right Corner Block: Barcode + Small QR Code (same height as barcode) + TagID/Retail/Acq matching width
     const barW = 38;
@@ -2183,8 +2263,8 @@ async function drawCatalogHubPageLandscapeGrid(
     const tagTextY = topY + barH + 3.2;
     drawFormattedTagCode(doc, codes, blockX, tagTextY, 9, false, itemDataObj, totalCodesW);
 
-    const titleGap = cutoutW > 0 ? 3.5 : 0;
-    const titleX = M + cutoutW + titleGap;
+    const titleGap = totalCutoutsW > 0 ? 3.5 : 0;
+    const titleX = M + totalCutoutsW + titleGap;
     const titleW = blockX - titleX - 4.0;
 
     // 2. Main Title, Shopify Subtitle, and Classification
@@ -2227,14 +2307,18 @@ async function drawCatalogHubPageLandscapeGrid(
 
     let subY = afterBubblesY + 1.5;
 
-    // Draw cutout PNG to the left of the title block
-    if (cutoutImgData && cutoutImgData.dataUrl) {
-        const titleBlockTotalH = Math.max(cutoutH, subY - topY);
-        const pngY = topY + Math.max(0, (titleBlockTotalH - cutoutH) / 2);
-        doc.addImage(cutoutImgData.dataUrl, 'PNG', M, pngY, cutoutW, cutoutH);
+    // Draw cutout PNG(s) to the left of the title block
+    if (loadedCutouts.length > 0) {
+        const titleBlockTotalH = Math.max(maxCutoutActualH, subY - topY);
+        let currCutX = M;
+        for (const c of loadedCutouts) {
+            const pngY = topY + Math.max(0, (titleBlockTotalH - c.h) / 2);
+            doc.addImage(c.dataUrl, 'PNG', currCutX, pngY, c.w, c.h);
+            currCutX += c.w + cutoutGap;
+        }
     }
 
-    const headerBottomY = Math.max(topY + cutoutH, subY, tagTextY + 2.0);
+    const headerBottomY = Math.max(topY + maxCutoutActualH, subY, tagTextY + 2.0);
 
     // 4. Content Area: Dynamic Image Grid
     // Rules:
@@ -3085,9 +3169,282 @@ async function drawCatalogSummaryPages(
     await yieldToUi(true);
 }
 
+/**
+ * Draws a Compact Multi-Item Catalog Page:
+ * - 4 items per page on vertical A4 (portrait).
+ * - Multi-cutout PNGs (lights ON) + Axo element strictly 1:1 (NO sizes bar below it).
+ * - Title, clean specifications, dimensions, weight, badges, barcodes, QR, and retail price.
+ * - NO gallery images, NO generated descriptions, NO shopify titles, NO classifications.
+ */
+async function drawCatalogCompactPage(
+    doc: any,
+    items: CatalogArtifact[],
+    startIndex: number,
+    itemsPerPage: number,
+    M: number,
+    PW: number,
+    PH: number,
+    catalogTitle?: string
+) {
+    const pageItems = items.slice(startIndex, startIndex + itemsPerPage);
+    const totalItems = items.length;
+
+    // Header strip
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(catalogTitle || 'ONYX COLLECTION CATALOGUE', M, 15.5);
+
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('COMPACT SPECIFICATION CATALOGUE • SPECIFICATIONS & CODES', M, 19.5);
+
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+    doc.text(`DATE: ${dateStr}`, PW - M, 15.5, { align: 'right' });
+    const endIdx = Math.min(startIndex + itemsPerPage, totalItems);
+    doc.text(`ITEMS ${startIndex + 1}–${endIdx} OF ${totalItems}`, PW - M, 19.5, { align: 'right' });
+
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.line(M, 22.0, PW - M, 22.0);
+
+    const startY = 25.0;
+    const bottomLimit = PH - 18.0;
+    const availH = bottomLimit - startY;
+    const cardGap = 3.5;
+    const cardH = (availH - (itemsPerPage - 1) * cardGap) / itemsPerPage; // ~60.5mm
+    const cardW = PW - 2 * M; // 186mm
+
+    for (let i = 0; i < pageItems.length; i++) {
+        const item = pageItems[i];
+        const cardY = startY + i * (cardH + cardGap);
+        const itemDataObj = item.data || item;
+        const norm = normalizeInventoryData(itemDataObj);
+        const qty = parseInt(norm.quantity || itemDataObj.quantity || itemDataObj.Quantity || '1', 10) || 1;
+
+        // Card Container Plate
+        doc.setFillColor(254, 255, 256);
+        doc.roundedRect(M, cardY, cardW, cardH, 1.5, 1.5, 'F');
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(M, cardY, cardW, cardH, 1.5, 1.5, 'S');
+
+        // SECTION 1: Cutout PNG(s) (Width 44mm)
+        const cutoutSecW = 44.0;
+        const cutoutSecX = M + 2.0;
+        const cutoutUrls = getItemCutoutPngs(item);
+        const loadedCutouts: { dataUrl: string; w: number; h: number }[] = [];
+        const maxEachCutW = cutoutUrls.length > 1 ? 20.0 : 40.0;
+        const maxCutH = cardH - 6.0;
+
+        for (const u of cutoutUrls) {
+            try {
+                const cData = await loadImgData(u, 400, true);
+                if (cData && cData.dataUrl && cData.w && cData.h) {
+                    const aspect = cData.w / cData.h;
+                    const boxAspect = maxEachCutW / maxCutH;
+                    let cw: number, ch: number;
+                    if (aspect > boxAspect) {
+                        cw = maxEachCutW;
+                        ch = maxEachCutW / aspect;
+                    } else {
+                        ch = maxCutH;
+                        cw = maxCutH * aspect;
+                    }
+                    loadedCutouts.push({ dataUrl: cData.dataUrl, w: cw, h: ch });
+                }
+            } catch (e) {}
+        }
+
+        const totalCutW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? 2.0 : 0), 0);
+        let currCutX = cutoutSecX + (cutoutSecW - totalCutW) / 2;
+        for (const c of loadedCutouts) {
+            const pngY = cardY + (cardH - c.h) / 2;
+            doc.addImage(c.dataUrl, 'PNG', currCutX, pngY, c.w, c.h);
+            currCutX += c.w + 2.0;
+        }
+
+        // Divider 1
+        const div1X = M + cutoutSecW + 4.0;
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.2);
+        doc.line(div1X, cardY + 4, div1X, cardY + cardH - 4);
+
+        // SECTION 2: Axo Element (No sizes bar, strictly 1:1 aspect-contained)
+        const axoSecX = div1X + 2.0;
+        const axoSecW = 46.0;
+        const axoSecH = cardH - 4.0;
+        try {
+            const axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
+            if (axoDataUrl) {
+                drawAxoContain(doc, axoDataUrl, axoSecX, cardY + 2.0, axoSecW, axoSecH, 0.92);
+            }
+        } catch (e) {}
+
+        // Divider 2
+        const div2X = axoSecX + axoSecW + 2.0;
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.2);
+        doc.line(div2X, cardY + 4, div2X, cardY + cardH - 4);
+
+        // SECTION 3: Item Specifications (No descriptions, no shopify titles, no classifications)
+        const infoX = div2X + 3.5;
+        const infoW = 46.0;
+
+        // Title (Item clean title only)
+        const rawTitle = norm.title || norm.shortDescription || itemDataObj.title || norm.description || 'STONE PIECE';
+        const cleanTitle = normalizeBrandTerms(rawTitle).toUpperCase();
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        const splitTitle = doc.splitTextToSize(cleanTitle, infoW);
+        const titleLines = splitTitle.slice(0, 3);
+        doc.text(titleLines, infoX, cardY + 6.0);
+        let currInfoY = cardY + 6.0 + (titleLines.length - 1) * 3.2 + 3.8;
+
+        // Category & Type & Material
+        const rawShape = (norm.shape || itemDataObj.shape || itemDataObj.Shape || '').trim();
+        const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape) || 'STONE PIECE';
+        const cleanShape = normalizeSummaryShape(rawShape || norm.shortDescription || '');
+        const colorName = (norm.color || itemDataObj.color || itemDataObj.Color || norm.generatedColor || '').trim();
+        const matName = (norm.material || itemDataObj.material || itemDataObj.Material || 'Onyx').trim();
+        
+        let colorMat = 'NATURAL STONE';
+        if (colorName && matName) {
+            colorMat = colorName.toUpperCase().includes(matName.toUpperCase()) 
+                ? colorName.toUpperCase() 
+                : `${colorName.toUpperCase()} • ${matName.toUpperCase()}`;
+        } else if (colorName) {
+            colorMat = colorName.toUpperCase();
+        } else if (matName) {
+            colorMat = matName.toUpperCase();
+        }
+
+        doc.setFontSize(6.0);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text(`${cleanType}  •  ${cleanShape}`.toUpperCase(), infoX, currInfoY);
+        currInfoY += 3.2;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        doc.text(colorMat, infoX, currInfoY);
+        currInfoY += 3.6;
+
+        // Dimensions (Metric & Imperial)
+        const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in');
+        const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in');
+        const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in');
+        const metricDims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join(' × ') + (norm.lengthCm || norm.widthCm || norm.heightCm ? ' cm' : '');
+        const impDims = [dImp, wImp, hImp].filter(Boolean).join(' × ');
+
+        doc.setFontSize(6.2);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30, 41, 59);
+        if (metricDims) {
+            doc.text(metricDims, infoX, currInfoY);
+            currInfoY += 3.0;
+        }
+        if (impDims) {
+            doc.setTextColor(100, 116, 139);
+            doc.text(`(${impDims})`, infoX, currInfoY);
+            currInfoY += 3.2;
+        }
+
+        // Weight
+        const wtKg = parseFloat(norm.weightKg || '0');
+        if (wtKg > 0) {
+            const wtLbs = wtKg * 2.20462;
+            doc.setFontSize(6.0);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(71, 85, 105);
+            doc.text(`${Math.round(wtKg)} kg  •  ${Math.round(wtLbs)} lbs`, infoX, currInfoY);
+            currInfoY += 3.2;
+        }
+
+        // Quantity badge (if qty > 1)
+        if (qty > 1) {
+            doc.setFontSize(6.2);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(15, 23, 42);
+            doc.text(`QUANTITY: ${qty} PIECES`, infoX, cardY + cardH - 3.8);
+        }
+
+        // Divider 3
+        const div3X = infoX + infoW + 2.0;
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.2);
+        doc.line(div3X, cardY + 4, div3X, cardY + cardH - 4);
+
+        // SECTION 4: Barcode, Codes, QR Code & Retail Price
+        const codesX = div3X + 3.0;
+        const codesW = cardW - (codesX - M) - 2.5;
+
+        // Barcode
+        const codes = item.codes || calculateCodesAndPrices(itemDataObj, 18.5, '1');
+        const barVal = codes.bookBarcode || norm.itemId || '';
+        let barDataUrl: string | null = null;
+        try {
+            barDataUrl = generateBarcodeDataUrl(barVal);
+        } catch (e) {}
+
+        const barW = Math.min(codesW, 33.0);
+        const barH = 7.0;
+        if (barDataUrl) {
+            doc.addImage(barDataUrl, 'PNG', codesX, cardY + 4.0, barW, barH);
+        }
+
+        // Tag ID / Item Code
+        const tagY = cardY + 4.0 + barH + 3.0;
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        const tagLabel = norm.itemId ? `TAG: ${norm.itemId}` : (codes.bookBarcode ? `TAG: ${codes.bookBarcode}` : '');
+        doc.text(tagLabel, codesX, tagY);
+
+        // Acquisition & Land codes
+        doc.setFontSize(5.6);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        const codeLines = [
+            codes.bookAqCode ? `AQ: ${codes.bookAqCode}` : '',
+            codes.bookLandCode ? `LAND: ${codes.bookLandCode}` : ''
+        ].filter(Boolean).join('   ');
+        doc.text(codeLines, codesX, tagY + 3.5);
+
+        // QR Code & Retail Price
+        const qrSize = 10.0;
+        const qrY = tagY + 6.0;
+        let qrDataUrl: string | null = null;
+        try {
+            const publicUrl = `https://onyx.mx/tag/${norm.itemId || codes.bookBarcode || ''}`;
+            qrDataUrl = await QRCode.toDataURL(publicUrl, { width: 140, margin: 0 });
+        } catch (e) {}
+
+        if (qrDataUrl) {
+            doc.addImage(qrDataUrl, 'PNG', codesX, qrY, qrSize, qrSize);
+        }
+
+        // Retail Price block next to QR
+        const priceX = codesX + qrSize + 2.5;
+        doc.setFontSize(5.8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 116, 139);
+        doc.text('USD RETAIL', priceX, qrY + 3.2);
+
+        const retailVal = codes.bookRetail || norm.retailPrice || norm.retail || '';
+        const retailStr = retailVal ? (String(retailVal).startsWith('$') ? String(retailVal) : `$${retailVal} USD`) : '—';
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(retailStr, priceX, qrY + 8.5);
+    }
+}
+
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
-    config: { title: string; method: 'grid' | 'single'; logo?: string; exportType?: 'regular' | 'catalog' },
+    config: { title: string; method: 'grid' | 'single' | 'compact'; logo?: string; exportType?: 'regular' | 'catalog' },
     onProgress?: (p: number, s: string) => void,
     output: 'download' | 'blob' = 'download',
     onStats?: (stats: CatalogExportStats) => void,
@@ -3141,6 +3498,8 @@ export async function exportCatalogPdf(
     }
     // Grid method triggers horizontal landscape layout with multiple images per page
     // Single method triggers vertical portrait layout with one single image per sheet
+    // Compact method triggers vertical portrait layout with 4 compact items per page
+    const isCompactMode = config.method === 'compact';
     const isLandscape = config.method === 'grid';
     const PW = isLandscape ? 297 : 210;
     const PH = isLandscape ? 210 : 297;
@@ -3158,7 +3517,7 @@ export async function exportCatalogPdf(
     const footer = (doc: any) => { 
         globalPageNum++; 
         
-        if (config.method === 'single' || exportType === 'catalog') {
+        if (config.method === 'single' || config.method === 'compact' || exportType === 'catalog') {
             // Hairline divider across footer
             doc.setDrawColor(228, 228, 231);
             doc.setLineWidth(0.2);
@@ -3230,33 +3589,56 @@ export async function exportCatalogPdf(
         await yieldToUi(true);
 
         // 2. Item Catalog Pages
-        for (let i = 0; i < results.length; i++) {
-            const item = results[i];
-            const imgs = getItemImages(item);
-            processedCount++;
-            onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
-            await yieldToUi();
-
-            if (isLandscape) {
-                // HORIZONTAL PAGE: MULTIPLE CLEAN ROOM IMAGES PER PAGE
+        if (isCompactMode) {
+            // COMPACT CATALOG: 4 items per sheet, no photo gallery, no marketing text
+            const itemsPerPage = 4;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
                 addPage();
-                await drawCatalogHubPageLandscapeGrid(doc, item, M, PW, PH, { current: i + 1, total: totalItems });
-            } else {
-                // VERTICAL PAGE: ONE SINGLE CLEAN ROOM IMAGE PER SHEET
-                if (imgs.length <= 1) {
+                const startIdx = pageIdx * itemsPerPage;
+                onProgress?.(Math.round(10 + ((pageIdx + 1) / totalPages) * 85), `Rendering Compact Sheet ${pageIdx + 1}/${totalPages}...`);
+                await yieldToUi();
+                await drawCatalogCompactPage(doc, results, startIdx, itemsPerPage, M, PW, PH, config.title);
+            }
+        } else {
+            for (let i = 0; i < results.length; i++) {
+                const item = results[i];
+                const imgs = getItemImages(item);
+                processedCount++;
+                onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+                await yieldToUi();
+
+                if (isLandscape) {
+                    // HORIZONTAL PAGE: MULTIPLE CLEAN ROOM IMAGES PER PAGE
                     addPage();
-                    await drawCatalogHubPagePortrait(doc, item, M, PW, PH, { current: i + 1, total: totalItems }, 0);
+                    await drawCatalogHubPageLandscapeGrid(doc, item, M, PW, PH, { current: i + 1, total: totalItems });
                 } else {
-                    for (let j = 0; j < imgs.length; j++) {
+                    // VERTICAL PAGE: ONE SINGLE CLEAN ROOM IMAGE PER SHEET
+                    if (imgs.length <= 1) {
                         addPage();
-                        await drawCatalogHubPagePortrait(doc, item, M, PW, PH, { current: i + 1, total: totalItems }, j);
+                        await drawCatalogHubPagePortrait(doc, item, M, PW, PH, { current: i + 1, total: totalItems }, 0);
+                    } else {
+                        for (let j = 0; j < imgs.length; j++) {
+                            addPage();
+                            await drawCatalogHubPagePortrait(doc, item, M, PW, PH, { current: i + 1, total: totalItems }, j);
+                        }
                     }
                 }
             }
         }
     } else {
-        // --- METHOD: ONE IMAGE PER PAGE ---
-        for (let i = 0; i < results.length; i++) {
+        // --- COMPACT OR ONE IMAGE PER PAGE ---
+        if (isCompactMode) {
+            const itemsPerPage = 4;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+                addPage();
+                const startIdx = pageIdx * itemsPerPage;
+                onProgress?.(Math.round(5 + ((pageIdx + 1) / totalPages) * 90), `Rendering Compact Sheet ${pageIdx + 1}/${totalPages}...`);
+                await yieldToUi();
+                await drawCatalogCompactPage(doc, results, startIdx, itemsPerPage, M, PW, PH, config.title);
+            }
+        } else for (let i = 0; i < results.length; i++) {
             const item = results[i];
             const imgs = getItemImages(item);
             processedCount++;

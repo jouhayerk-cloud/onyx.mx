@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Loader2, Check, Download, FileText, LayoutGrid, X, ChevronRight, ExternalLink, Sparkles } from 'lucide-react';
+import { Loader2, Check, Download, FileText, LayoutGrid, Layers, X, ChevronRight, ExternalLink, Sparkles } from 'lucide-react';
 import { tr } from '../lib/i18n';
 
 export interface ExportConfig {
     title: string;
-    method: 'grid' | 'single' | 'list';
+    method: 'grid' | 'single' | 'list' | 'compact';
     includeImages: boolean;
     notes: string;
     bruteWeight?: string;
@@ -149,7 +149,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                             {/* Layout Methodology (Glass Cards) */}
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] ml-1">{tr("Layout Format")}</label>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                                     <button 
                                         type="button"
                                         onClick={() => setConfig({ ...config, method: 'grid' })}
@@ -172,7 +172,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                                     ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
                                                     : 'bg-white/[0.03] border-white/[0.06] text-white/30'
                                             }`}>
-                                                Horizontal A4
+                                                Landscape A4
                                             </span>
                                         </div>
                                         <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'grid' ? 'text-white' : 'text-white/70'}`}>{tr("Catalog Grid")}</p>
@@ -201,11 +201,40 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                                     ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
                                                     : 'bg-white/[0.03] border-white/[0.06] text-white/30'
                                             }`}>
-                                                Vertical A4
+                                                Portrait A4
                                             </span>
                                         </div>
                                         <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'single' ? 'text-white' : 'text-white/70'}`}>{tr("Per Image")}</p>
                                         <p className="text-[10px] font-medium text-white/35 mt-0.5">{tr("Vertical portrait · One single clean room image per sheet")}</p>
+                                    </button>
+
+                                    <button 
+                                        type="button"
+                                        onClick={() => setConfig({ ...config, method: 'compact' })}
+                                        className={`group relative flex flex-col p-4.5 rounded-2xl border transition-all text-left backdrop-blur-xl ${
+                                            config.method === 'compact' 
+                                                ? 'bg-(--main-color)/14 border-(--main-color)/50 shadow-[0_0_30px_rgba(var(--main-color),0.22),inset_0_1px_1px_rgba(255,255,255,0.22)]' 
+                                                : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.06]'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between mb-2.5">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors ${
+                                                config.method === 'compact' 
+                                                    ? 'bg-(--main-color)/25 border-(--main-color)/40 text-(--main-color)' 
+                                                    : 'bg-white/[0.04] border-white/[0.08] text-white/40'
+                                            }`}>
+                                                <Layers size={18} />
+                                            </div>
+                                            <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                                                config.method === 'compact'
+                                                    ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
+                                                    : 'bg-white/[0.03] border-white/[0.06] text-white/30'
+                                            }`}>
+                                                4 Per Page
+                                            </span>
+                                        </div>
+                                        <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'compact' ? 'text-white' : 'text-white/70'}`}>{tr("Compact Catalog")}</p>
+                                        <p className="text-[10px] font-medium text-white/35 mt-0.5">{tr("Multiple items per page · Cutout PNGs & Axo · Barcode & Retail")}</p>
                                     </button>
                                 </div>
                             </div>
