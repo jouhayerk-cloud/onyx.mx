@@ -984,13 +984,13 @@
 /* ── Hero image AXO overlay: compact free-floating axo with color bubbles ── */
 .inv-hero-axo-overlay {
     position: absolute;
-    top: 8px;
-    left: 8px;
+    top: 6px;
+    left: 3px;
     right: auto;
     z-index: 5;
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: flex-start;
     justify-content: flex-start;
     gap: 8px;
     overflow: visible;
@@ -1022,8 +1022,8 @@
 
 @media (min-width: 768px) {
     .inv-hero-axo-overlay {
-        top: 10px;
-        left: 10px;
+        top: 6px;
+        left: 4px;
         right: auto;
     }
     .inv-hero-axo-figure {
@@ -1042,10 +1042,11 @@
 /* ── Spacious view (inv-card--xl) and Sheet modal: balanced corner badge on left ── */
 .inv-card--xl .inv-hero-axo-overlay,
 .inv-sheet-body .inv-hero-axo-overlay {
-    top: 10px;
-    left: 10px;
+    top: 6px;
+    left: 4px;
     right: auto;
-    gap: 10px;
+    gap: 8px;
+    align-items: flex-start;
 }
 
 .inv-card--xl .inv-hero-axo-figure,
@@ -1062,8 +1063,8 @@
 @media (min-width: 768px) {
     .inv-card--xl .inv-hero-axo-overlay,
     .inv-sheet-body .inv-hero-axo-overlay {
-        top: 12px;
-        left: 12px;
+        top: 8px;
+        left: 6px;
         right: auto;
     }
     .inv-card--xl .inv-hero-axo-figure,
@@ -1091,7 +1092,7 @@
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 4px 0 0 0 !important;
     pointer-events: auto !important;
 }
 
