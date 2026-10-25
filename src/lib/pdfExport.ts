@@ -3220,18 +3220,18 @@ function drawCompactColorBubbles(
     colors: ExtractedColorInfo[],
     startX: number,
     startY: number,
-    maxW: number = 75
+    maxW: number = 85
 ): number {
     if (!colors || colors.length === 0) return 0;
     let curX = startX;
-    const bubbleR = 1.3;
+    const bubbleR = 1.25;
     const bubbleDiameter = bubbleR * 2;
-    doc.setFontSize(5.6);
+    doc.setFontSize(6.0);
     doc.setFont('helvetica', 'bold');
 
     for (const c of colors) {
         const textW = doc.getTextWidth(c.name);
-        const itemW = bubbleDiameter + 1.5 + textW + 3.0;
+        const itemW = bubbleDiameter + 1.2 + textW + 3.0;
         if (curX + itemW - startX > maxW) break;
 
         const circleCenterX = curX + bubbleR;
@@ -3244,8 +3244,8 @@ function drawCompactColorBubbles(
         doc.setLineWidth(0.15);
         doc.circle(circleCenterX, circleCenterY, bubbleR, 'S');
 
-        doc.setTextColor(71, 85, 105);
-        doc.text(c.name, curX + bubbleDiameter + 1.5, startY + 0.7);
+        doc.setTextColor(51, 65, 85);
+        doc.text(c.name, circleCenterX + bubbleR + 1.2, startY + 0.85);
 
         curX += itemW;
     }
@@ -3264,36 +3264,27 @@ async function drawCatalogCompactPage(
 ) {
     const pageItems = items.slice(startIndex, startIndex + itemsPerPage);
 
-    // Compact item page: starts directly at top margin M without headers or titles
-    const startY = M;
+    // Clean frameless high-density layout: starts directly at top margin M without headers or titles
+    const startY = M + 1.0;
     const bottomLimit = PH - 16.0; // Clear of footer
     const availH = bottomLimit - startY;
-    const cardGap = 2.4;
-    const cardH = (availH - (itemsPerPage - 1) * cardGap) / itemsPerPage; // ~42.4mm for 6 items
-    const cardW = PW - 2 * M; // 186mm
+    const rowH = availH / itemsPerPage; // ~33.5mm for 8 items
 
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
-        const cardY = startY + i * (cardH + cardGap);
+        const rowY = startY + i * rowH;
         const itemDataObj = item.data || item;
         const norm = normalizeInventoryData(itemDataObj);
         const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, 18.5, '1') || {};
         const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
-        // Card Container Plate
-        doc.setFillColor(254, 255, 256);
-        doc.roundedRect(M, cardY, cardW, cardH, 1.2, 1.2, 'F');
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.2);
-        doc.roundedRect(M, cardY, cardW, cardH, 1.2, 1.2, 'S');
-
-        // SECTION 1: Cutout PNG(s) (Smaller: width 26mm, max height 26mm)
-        const cutoutSecW = 26.0;
-        const cutoutSecX = M + 2.0;
+        // 1. GRAPHICS BLOCK (Left): Cutout PNG(s) + Axo (Frameless, tight spacing)
+        const cutoutSecW = 25.0;
+        const cutoutSecX = M;
         const cutoutUrls = getItemCutoutPngs(item);
         const loadedCutouts: { dataUrl: string; w: number; h: number }[] = [];
-        const maxEachCutW = cutoutUrls.length > 1 ? 12.0 : 24.0;
-        const maxCutH = Math.min(26.0, cardH - 6.0);
+        const maxEachCutW = cutoutUrls.length > 1 ? 12.0 : 25.0;
+        const maxCutH = Math.min(26.5, rowH - 4.0);
 
         for (const u of cutoutUrls) {
             try {
@@ -3314,100 +3305,36 @@ async function drawCatalogCompactPage(
             } catch (e) {}
         }
 
-        const totalCutW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? 1.5 : 0), 0);
+        const totalCutW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? 1.0 : 0), 0);
         let currCutX = cutoutSecX + Math.max(0, (cutoutSecW - totalCutW) / 2);
         for (const c of loadedCutouts) {
-            const pngY = cardY + (cardH - c.h) / 2;
+            const pngY = rowY + (rowH - c.h) / 2;
             doc.addImage(c.dataUrl, 'PNG', currCutX, pngY, c.w, c.h);
-            currCutX += c.w + 1.5;
+            currCutX += c.w + 1.0;
         }
 
-        // Divider 1
-        const div1X = M + cutoutSecW + 2.5;
-        doc.setDrawColor(241, 245, 249);
-        doc.setLineWidth(0.2);
-        doc.line(div1X, cardY + 3.0, div1X, cardY + cardH - 3.0);
-
-        // SECTION 2: Axo Element (Smaller: width 28mm, strictly 1:1, NO sizes bar)
-        const axoSecX = div1X + 1.5;
-        const axoSecW = 28.0;
-        const axoSecH = cardH - 3.0;
+        // Axo Element (Strictly 1:1, centered in 27mm slot)
+        const axoSecX = cutoutSecX + cutoutSecW + 2.0;
+        const axoSecW = 27.0;
+        const axoSecH = Math.min(27.0, rowH - 3.0);
+        const axoSecY = rowY + (rowH - axoSecH) / 2;
         try {
             const axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
             if (axoDataUrl) {
-                drawAxoContain(doc, axoDataUrl, axoSecX, cardY + 1.5, axoSecW, axoSecH, 0.88);
+                drawAxoContain(doc, axoDataUrl, axoSecX, axoSecY, axoSecW, axoSecH, 0.98);
             }
         } catch (e) {}
 
-        // Divider 2
-        const div2X = axoSecX + axoSecW + 1.5;
-        doc.setDrawColor(241, 245, 249);
-        doc.line(div2X, cardY + 3.0, div2X, cardY + cardH - 3.0);
-
-        // SECTION 3: Exact Deterministic Title, Dimensions, Weight, and Color Indicators
-        const infoX = div2X + 3.0;
-        const div3X = PW - M - 40.0;
-        const infoW = div3X - infoX - 2.5;
-
-        // Exact Deterministic Title matching Grid catalog:
-        const mainTitleStr = buildDeterministicTitle(norm, itemDataObj);
-        doc.setFontSize(6.8);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(15, 23, 42);
-        const splitTitle = doc.splitTextToSize(mainTitleStr, infoW);
-        const titleLines = splitTitle.slice(0, 2);
-        doc.text(titleLines, infoX, cardY + 5.0);
-        let currInfoY = cardY + 5.0 + (titleLines.length - 1) * 2.8 + 3.4;
-
-        // Color Glass Indicators
-        const extractedColors = getItemExtractedColors(norm, itemDataObj);
-        if (extractedColors.length > 0) {
-            drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, currInfoY, infoW);
-            currInfoY += 4.2;
-        }
-
-        // Dimensions (Imperial & Metric)
-        const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in');
-        const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in');
-        const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in');
-        const metricDims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join(' × ') + (norm.lengthCm || norm.widthCm || norm.heightCm ? ' cm' : '');
-        const impDims = [dImp, wImp, hImp].filter(Boolean).join(' × ');
-
-        doc.setFontSize(5.8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(30, 41, 59);
-        if (metricDims && impDims) {
-            doc.text(`${metricDims}  (${impDims})`, infoX, currInfoY);
-            currInfoY += 3.0;
-        } else if (metricDims) {
-            doc.text(metricDims, infoX, currInfoY);
-            currInfoY += 3.0;
-        }
-
-        // Weight
-        const wtKg = parseFloat(norm.weightKg || '0');
-        if (wtKg > 0) {
-            const wtLbs = wtKg * 2.20462;
-            doc.setFontSize(5.5);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(100, 116, 139);
-            doc.text(`${Math.round(wtKg)} kg  •  ${Math.round(wtLbs)} lbs`, infoX, currInfoY);
-        }
-
-        // Divider 3
-        doc.setDrawColor(241, 245, 249);
-        doc.setLineWidth(0.2);
-        doc.line(div3X, cardY + 3.0, div3X, cardY + cardH - 3.0);
-
-        // SECTION 4: EXACT Barcode, QR Code & TagID-retailAcqCode as in Grid Catalog (Smaller)
-        const blockX = div3X + 2.0;
-        const barW = 28.0;
-        const barH = 6.0;
-        const qrSize = barH; // Same height as barcode (6.0mm)
-        const codeGap = 1.8;
-        const totalCodesW = barW + codeGap + qrSize; // 35.8mm
+        // 2. CODES BLOCK (Far Right): Barcode (Code128) + QR with vendor dot + TagID-retailAcqCode
+        const totalCodesW = 34.5;
+        const blockX = PW - M - totalCodesW;
+        const barW = 27.0;
+        const barH = 5.8;
+        const qrSize = barH; // 5.8mm
+        const codeGap = 1.7;
         const barX = blockX;
         const qrX = blockX + barW + codeGap;
+        const codesY = rowY + 5.5;
 
         // Barcode (Code128)
         let barDataUrl: string | null = null;
@@ -3418,7 +3345,7 @@ async function drawCatalogCompactPage(
         } catch (e) {}
 
         if (barDataUrl) {
-            doc.addImage(barDataUrl, 'PNG', barX, cardY + 4.0, barW, barH);
+            doc.addImage(barDataUrl, 'PNG', barX, codesY, barW, barH);
         }
 
         // QR Code with vendor center dot
@@ -3429,20 +3356,79 @@ async function drawCatalogCompactPage(
         } catch (e) {}
 
         if (qrDataUrl) {
-            doc.addImage(qrDataUrl, 'PNG', qrX, cardY + 4.0, qrSize, qrSize);
+            doc.addImage(qrDataUrl, 'PNG', qrX, codesY, qrSize, qrSize);
             const tagVColor = getVendorColor(barcode);
             const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
             const qrCenterX = qrX + qrSize / 2;
-            const qrCenterY = cardY + 4.0 + qrSize / 2;
+            const qrCenterY = codesY + qrSize / 2;
             doc.setFillColor(255, 255, 255);
-            doc.circle(qrCenterX, qrCenterY, 1.1, 'F');
+            doc.circle(qrCenterX, qrCenterY, 1.0, 'F');
             doc.setFillColor(tagHexColor);
-            doc.circle(qrCenterX, qrCenterY, 0.75, 'F');
+            doc.circle(qrCenterX, qrCenterY, 0.65, 'F');
         }
 
         // TagID + Retail + Acquisition Code line: EXACT same width as [ Barcode ] [ QR ], no raw retail label
-        const tagTextY = cardY + 4.0 + barH + 2.8;
-        drawFormattedTagCode(doc, codes, blockX, tagTextY, 7.2, false, itemDataObj, totalCodesW);
+        const tagTextY = codesY + barH + 2.7;
+        drawFormattedTagCode(doc, codes, blockX, tagTextY, 7.5, false, itemDataObj, totalCodesW);
+
+        // 3. MIDDLE INFORMATION BLOCK: High Readability, Few Font Sizes
+        const infoX = axoSecX + axoSecW + 3.5;
+        const infoW = blockX - infoX - 3.0; // ~92mm width
+
+        // Font Size 1 (Title): 8.5pt Bold Slate-900 (High contrast & readability)
+        const mainTitleStr = buildDeterministicTitle(norm, itemDataObj);
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        const splitTitle = doc.splitTextToSize(mainTitleStr, infoW);
+        const titleLines = splitTitle.slice(0, 2);
+        const titleY = rowY + 5.5;
+        doc.text(titleLines, infoX, titleY);
+        let currInfoY = titleY + (titleLines.length - 1) * 3.3 + 3.4;
+
+        // Color Glass Indicators (Font 6.0pt bold)
+        const extractedColors = getItemExtractedColors(norm, itemDataObj);
+        if (extractedColors.length > 0) {
+            drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, currInfoY, infoW);
+            currInfoY += 3.8;
+        }
+
+        // Font Size 2 (Details: Dimensions & Weight): Unified 6.4pt Normal Slate-700
+        const wImp = cmToImperial(norm.widthCm) || toImp(norm.widthCm, 'in');
+        const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in');
+        const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in');
+        const metricDims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join(' × ') + (norm.lengthCm || norm.widthCm || norm.heightCm ? ' cm' : '');
+        const impDims = [dImp, wImp, hImp].filter(Boolean).join(' × ');
+
+        const wtKg = parseFloat(norm.weightKg || '0');
+        const wtStr = wtKg > 0 ? `${Math.round(wtKg)} kg • ${Math.round(wtKg * 2.20462)} lbs` : '';
+
+        let dimsLine = '';
+        if (metricDims && impDims) {
+            dimsLine = `${metricDims}  (${impDims})`;
+        } else if (metricDims) {
+            dimsLine = metricDims;
+        }
+        if (dimsLine && wtStr) {
+            dimsLine += `   •   ${wtStr}`;
+        } else if (wtStr) {
+            dimsLine = wtStr;
+        }
+
+        if (dimsLine) {
+            doc.setFontSize(6.4);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(51, 65, 85);
+            const splitDims = doc.splitTextToSize(dimsLine, infoW);
+            doc.text(splitDims.slice(0, 2), infoX, currInfoY);
+        }
+
+        // Frameless Subtle Hairline Row Divider (Except after last item)
+        if (i < pageItems.length - 1) {
+            doc.setDrawColor(226, 232, 240); // slate-200 hairline
+            doc.setLineWidth(0.15);
+            doc.line(M, rowY + rowH, PW - M, rowY + rowH);
+        }
     }
 }
 
@@ -3502,7 +3488,7 @@ export async function exportCatalogPdf(
     }
     // Grid method triggers horizontal landscape layout with multiple images per page
     // Single method triggers vertical portrait layout with one single image per sheet
-    // Compact method triggers vertical portrait layout with 4 compact items per page
+    // Compact method triggers vertical portrait layout with 8 compact items per page
     const isCompactMode = config.method === 'compact';
     const isLandscape = config.method === 'grid';
     const PW = isLandscape ? 297 : 210;
@@ -3594,8 +3580,8 @@ export async function exportCatalogPdf(
 
         // 2. Item Catalog Pages
         if (isCompactMode) {
-            // COMPACT CATALOG: 4 items per sheet, no photo gallery, no marketing text
-            const itemsPerPage = 6;
+            // COMPACT CATALOG: High-density 8 items per sheet, clean frameless design
+            const itemsPerPage = 8;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
                 addPage();
@@ -3633,7 +3619,7 @@ export async function exportCatalogPdf(
     } else {
         // --- COMPACT OR ONE IMAGE PER PAGE ---
         if (isCompactMode) {
-            const itemsPerPage = 6;
+            const itemsPerPage = 8;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
                 addPage();
