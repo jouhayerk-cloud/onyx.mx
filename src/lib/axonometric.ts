@@ -965,6 +965,7 @@ export async function generateAxonometricDataUrl(
                 project, scale, cx, cy,
                 colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: strokeGradient,
                 lineWidth: 1.8, isWireframe, hexPattern,
+                parsedHexList, tCols, tRows,
             });
             if (shouldDrawBoundingBox) {
                 draw3DBoundingDimensionFrame(

@@ -70,6 +70,12 @@ export interface AxoDrawHelpers {
     isWireframe?: boolean;
     /** Optional repetitive pattern */
     hexPattern?: CanvasPattern | null;
+    /** Normalized 2D stone color grid for facet-mapped rendering */
+    parsedHexList?: string[];
+    /** Number of columns in parsedHexList grid */
+    tCols?: number;
+    /** Number of rows in parsedHexList grid */
+    tRows?: number;
     /** Optional shape text override (e.g. 'cylinder', 'round', 'squared', 'cube') */
     shapeText?: string;
     /** Optional flag to render 3D bounding dimension frame */

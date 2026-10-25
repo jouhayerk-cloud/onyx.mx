@@ -193,6 +193,47 @@ function drawPolygonFace(
 }
 
 /**
+ * Samples a stone color from parsedHexList at normalized UV coordinates (0..1, 0..1).
+ * If the sampled cell is white (#FFFFFF) or empty, falls back to stoneFallback or helpers.colorRight.
+ */
+function sampleMirrorColor(
+    helpers: AxoDrawHelpers,
+    normU: number,
+    normV: number,
+    fallback: string,
+): string {
+    const list = helpers.parsedHexList;
+    if (!list || list.length === 0) return fallback;
+    const cols = helpers.tCols || 60;
+    const rows = helpers.tRows || 60;
+    const c = Math.max(0, Math.min(cols - 1, Math.floor(normU * cols)));
+    const r = Math.max(0, Math.min(rows - 1, Math.floor(normV * rows)));
+    const col = list[r * cols + c];
+    if (!col) return fallback;
+    const uc = col.toUpperCase().replace('#', '');
+    if (uc === 'FFFFFF' || uc === 'FEFEFE' || uc === 'FDFDFD' || uc === 'FCFFFF' || uc === 'FFFFF7') {
+        return fallback;
+    }
+    return col.startsWith('#') ? col : `#${col}`;
+}
+
+/**
+ * Finds the first dominant non-white stone color from parsedHexList to serve as a reliable fallback.
+ */
+function getStoneFallback(helpers: AxoDrawHelpers, defaultColor: string): string {
+    const list = helpers.parsedHexList;
+    if (list && list.length > 0) {
+        for (const c of list) {
+            const uc = c.toUpperCase().replace('#', '');
+            if (uc !== 'FFFFFF' && uc !== 'FEFEFE' && uc !== 'FDFDFD' && uc !== 'FCFFFF' && uc !== 'FFFFF7') {
+                return c.startsWith('#') ? c : `#${c}`;
+            }
+        }
+    }
+    return defaultColor;
+}
+
+/**
  * ROUND: A thick stone ring slab with an elliptical rough opening and recessed glass.
  */
 function drawRoundMirror(
@@ -237,24 +278,50 @@ function drawRoundMirror(
         frontMantlePts.push(toCanvas(helpers, x, y, 0));
     }
 
-    ctx.beginPath();
-    ctx.moveTo(frontMantlePts[0].x, frontMantlePts[0].y);
-    ctx.lineTo(backMantlePts[0].x, backMantlePts[0].y);
-    for (let i = 1; i <= M; i++) {
-        ctx.lineTo(backMantlePts[i].x, backMantlePts[i].y);
-    }
-    ctx.lineTo(frontMantlePts[M].x, frontMantlePts[M].y);
-    for (let i = M - 1; i >= 0; i--) {
-        ctx.lineTo(frontMantlePts[i].x, frontMantlePts[i].y);
-    }
-    ctx.closePath();
+    const stoneFallback = getStoneFallback(helpers, helpers.colorRight || '#B8956A');
 
     if (helpers.isWireframe) {
+        ctx.beginPath();
+        ctx.moveTo(frontMantlePts[0].x, frontMantlePts[0].y);
+        ctx.lineTo(backMantlePts[0].x, backMantlePts[0].y);
+        for (let i = 1; i <= M; i++) {
+            ctx.lineTo(backMantlePts[i].x, backMantlePts[i].y);
+        }
+        ctx.lineTo(frontMantlePts[M].x, frontMantlePts[M].y);
+        for (let i = M - 1; i >= 0; i--) {
+            ctx.lineTo(frontMantlePts[i].x, frontMantlePts[i].y);
+        }
+        ctx.closePath();
         ctx.fillStyle = 'rgba(0,0,0,0)';
         ctx.fill();
-    } else if (helpers.hexPattern) {
-        ctx.fillStyle = helpers.hexPattern;
-        ctx.fill();
+    } else {
+        // Draw mantle quads textured from perimeter of hex map
+        for (let i = 0; i < M; i++) {
+            const tA = tStart + (i / M) * (tEnd - tStart);
+            const tB = tStart + ((i + 1) / M) * (tEnd - tStart);
+            const tMid = (tA + tB) / 2;
+
+            // In photo: outer rim at perimeter
+            const u = 0.5 + 0.46 * Math.cos(tMid);
+            const v = 0.5 - 0.46 * Math.sin(tMid);
+            const col = sampleMirrorColor(helpers, u, v, helpers.colorLeft);
+
+            const p1 = frontMantlePts[i];
+            const p2 = frontMantlePts[i + 1];
+            const p3 = backMantlePts[i + 1];
+            const p4 = backMantlePts[i];
+
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineTo(p4.x, p4.y);
+            ctx.closePath();
+            ctx.fillStyle = col;
+            ctx.fill();
+        }
+
+        // Soft isometric shading overlay across the mantle
         const shGrd = ctx.createLinearGradient(
             frontMantlePts[M].x,
             frontMantlePts[M].y,
@@ -263,18 +330,19 @@ function drawRoundMirror(
         );
         shGrd.addColorStop(0, 'rgba(0,0,0,0.35)');
         shGrd.addColorStop(1, 'rgba(255,255,255,0.15)');
+
+        ctx.beginPath();
+        ctx.moveTo(frontMantlePts[0].x, frontMantlePts[0].y);
+        ctx.lineTo(backMantlePts[0].x, backMantlePts[0].y);
+        for (let i = 1; i <= M; i++) {
+            ctx.lineTo(backMantlePts[i].x, backMantlePts[i].y);
+        }
+        ctx.lineTo(frontMantlePts[M].x, frontMantlePts[M].y);
+        for (let i = M - 1; i >= 0; i--) {
+            ctx.lineTo(frontMantlePts[i].x, frontMantlePts[i].y);
+        }
+        ctx.closePath();
         ctx.fillStyle = shGrd;
-        ctx.fill();
-    } else {
-        const mantleGrd = ctx.createLinearGradient(
-            frontMantlePts[M].x,
-            frontMantlePts[M].y,
-            frontMantlePts[0].x,
-            frontMantlePts[0].y,
-        );
-        mantleGrd.addColorStop(0, helpers.colorLeft);
-        mantleGrd.addColorStop(1, helpers.colorTop);
-        ctx.fillStyle = mantleGrd;
         ctx.fill();
     }
 
@@ -329,30 +397,78 @@ function drawRoundMirror(
     }
     const innerOpeningPts = ptsInner3d.map(p => toCanvas(helpers, p.x, p.y, 0));
 
-    ctx.beginPath();
-    // Outer circle
-    ctx.moveTo(outerCirclePts[0].x, outerCirclePts[0].y);
-    for (let i = 1; i < outerCirclePts.length; i++) {
-        ctx.lineTo(outerCirclePts[i].x, outerCirclePts[i].y);
-    }
-    ctx.closePath();
-    // Inner wavy opening
-    ctx.moveTo(innerOpeningPts[0].x, innerOpeningPts[0].y);
-    for (let i = 1; i < innerOpeningPts.length; i++) {
-        ctx.lineTo(innerOpeningPts[i].x, innerOpeningPts[i].y);
-    }
-    ctx.closePath();
-
     if (helpers.isWireframe) {
+        ctx.beginPath();
+        ctx.moveTo(outerCirclePts[0].x, outerCirclePts[0].y);
+        for (let i = 1; i < outerCirclePts.length; i++) {
+            ctx.lineTo(outerCirclePts[i].x, outerCirclePts[i].y);
+        }
+        ctx.closePath();
+        ctx.moveTo(innerOpeningPts[0].x, innerOpeningPts[0].y);
+        for (let i = 1; i < innerOpeningPts.length; i++) {
+            ctx.lineTo(innerOpeningPts[i].x, innerOpeningPts[i].y);
+        }
+        ctx.closePath();
         ctx.fillStyle = 'rgba(0,0,0,0)';
         ctx.fill('evenodd');
-    } else if (helpers.hexPattern) {
-        ctx.fillStyle = helpers.hexPattern;
-        ctx.fill('evenodd');
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-        ctx.fill('evenodd');
     } else {
-        ctx.fillStyle = helpers.colorRight;
+        // True 3D radial ring facet mapping: strictly samples authentic stone rim
+        const NR = 4;
+        for (let i = 0; i < N; i++) {
+            const nextI = (i + 1) % N;
+            const t1 = (i / N) * 2 * Math.PI;
+            const t2 = ((i + 1) / N) * 2 * Math.PI;
+            const rIn1 = rInner * (1 + 0.05 * roughWiggle(t1));
+            const rIn2 = rInner * (1 + 0.05 * roughWiggle(t2));
+
+            for (let j = 0; j < NR; j++) {
+                const frac1 = j / NR;
+                const frac2 = (j + 1) / NR;
+                const fracMid = (frac1 + frac2) / 2;
+
+                const rad1A = (1 - frac1) * rIn1 + frac1 * R;
+                const rad2A = (1 - frac2) * rIn1 + frac2 * R;
+                const rad1B = (1 - frac1) * rIn2 + frac1 * R;
+                const rad2B = (1 - frac2) * rIn2 + frac2 * R;
+
+                const tMid = (t1 + t2) / 2;
+                const radMid = (1 - fracMid) * rInner + fracMid * R;
+
+                // Normalized UV coordinates in photo (mirror outer edge at ~0.46 radius)
+                const normR = radMid / R;
+                const u = 0.5 + 0.46 * normR * Math.cos(tMid);
+                const v = 0.5 - 0.46 * normR * Math.sin(tMid);
+                const col = sampleMirrorColor(helpers, u, v, stoneFallback);
+
+                const c1 = toCanvas(helpers, Xc + rad1A * Math.cos(t1), Yc + rad1A * Math.sin(t1), 0);
+                const c2 = toCanvas(helpers, Xc + rad2A * Math.cos(t1), Yc + rad2A * Math.sin(t1), 0);
+                const c3 = toCanvas(helpers, Xc + rad2B * Math.cos(t2), Yc + rad2B * Math.sin(t2), 0);
+                const c4 = toCanvas(helpers, Xc + rad1B * Math.cos(t2), Yc + rad1B * Math.sin(t2), 0);
+
+                ctx.beginPath();
+                ctx.moveTo(c1.x, c1.y);
+                ctx.lineTo(c2.x, c2.y);
+                ctx.lineTo(c3.x, c3.y);
+                ctx.lineTo(c4.x, c4.y);
+                ctx.closePath();
+                ctx.fillStyle = col;
+                ctx.fill();
+            }
+        }
+
+        // Subtle ambient shadow overlay
+        ctx.beginPath();
+        ctx.moveTo(outerCirclePts[0].x, outerCirclePts[0].y);
+        for (let i = 1; i < outerCirclePts.length; i++) {
+            ctx.lineTo(outerCirclePts[i].x, outerCirclePts[i].y);
+        }
+        ctx.closePath();
+        ctx.moveTo(innerOpeningPts[0].x, innerOpeningPts[0].y);
+        for (let i = 1; i < innerOpeningPts.length; i++) {
+            ctx.lineTo(innerOpeningPts[i].x, innerOpeningPts[i].y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
         ctx.fill('evenodd');
     }
 
@@ -390,6 +506,7 @@ function drawRoundMirror(
     }
 }
 
+
 /**
  * SQUARED & RECTANGULAR: Thick stone slab box with a wavy hand-cut opening and recessed glass.
  */
@@ -409,32 +526,108 @@ function drawSlabBoxMirror(
     const zGlass = Math.max(2, Math.min(D * 0.5, 4));
 
     // 1. Left face of slab box (x = 0)
-    drawPolygonFace(
-        ctx,
-        helpers,
-        [
-            { x: 0, y: 0, z: 0 },
-            { x: 0, y: 0, z: D },
-            { x: 0, y: H, z: D },
-            { x: 0, y: H, z: 0 },
-        ],
-        helpers.colorLeft,
-        'rgba(0, 0, 0, 0.35)',
-    );
+    if (helpers.isWireframe) {
+        drawPolygonFace(
+            ctx,
+            helpers,
+            [
+                { x: 0, y: 0, z: 0 },
+                { x: 0, y: 0, z: D },
+                { x: 0, y: H, z: D },
+                { x: 0, y: H, z: 0 },
+            ],
+            'rgba(0,0,0,0)',
+        );
+    } else {
+        const stoneFallback = getStoneFallback(helpers, helpers.colorLeft || '#8A7050');
+        const NY = 16;
+        for (let yStep = 0; yStep < NY; yStep++) {
+            const y1 = (yStep / NY) * H;
+            const y2 = ((yStep + 1) / NY) * H;
+            const midY = (y1 + y2) / 2;
+            const u = 0.06;
+            const v = 1 - (midY / H);
+            const col = sampleMirrorColor(helpers, u, v, stoneFallback);
+
+            const p1 = toCanvas(helpers, 0, y1, 0);
+            const p2 = toCanvas(helpers, 0, y1, D);
+            const p3 = toCanvas(helpers, 0, y2, D);
+            const p4 = toCanvas(helpers, 0, y2, 0);
+
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineTo(p4.x, p4.y);
+            ctx.closePath();
+            ctx.fillStyle = col;
+            ctx.fill();
+        }
+        drawPolygonFace(
+            ctx,
+            helpers,
+            [
+                { x: 0, y: 0, z: 0 },
+                { x: 0, y: 0, z: D },
+                { x: 0, y: H, z: D },
+                { x: 0, y: H, z: 0 },
+            ],
+            'rgba(0,0,0,0)',
+            'rgba(0, 0, 0, 0.35)',
+        );
+    }
 
     // 2. Top face of slab box (y = H)
-    drawPolygonFace(
-        ctx,
-        helpers,
-        [
-            { x: 0, y: H, z: 0 },
-            { x: W, y: H, z: 0 },
-            { x: W, y: H, z: D },
-            { x: 0, y: H, z: D },
-        ],
-        helpers.colorTop,
-        'rgba(255, 255, 255, 0.15)',
-    );
+    if (helpers.isWireframe) {
+        drawPolygonFace(
+            ctx,
+            helpers,
+            [
+                { x: 0, y: H, z: 0 },
+                { x: W, y: H, z: 0 },
+                { x: W, y: H, z: D },
+                { x: 0, y: H, z: D },
+            ],
+            'rgba(0,0,0,0)',
+        );
+    } else {
+        const stoneFallback = getStoneFallback(helpers, helpers.colorTop || '#D4B896');
+        const NX = 16;
+        for (let xStep = 0; xStep < NX; xStep++) {
+            const x1 = (xStep / NX) * W;
+            const x2 = ((xStep + 1) / NX) * W;
+            const midX = (x1 + x2) / 2;
+            const u = midX / W;
+            const v = 0.06;
+            const col = sampleMirrorColor(helpers, u, v, stoneFallback);
+
+            const p1 = toCanvas(helpers, x1, H, 0);
+            const p2 = toCanvas(helpers, x2, H, 0);
+            const p3 = toCanvas(helpers, x2, H, D);
+            const p4 = toCanvas(helpers, x1, H, D);
+
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineTo(p4.x, p4.y);
+            ctx.closePath();
+            ctx.fillStyle = col;
+            ctx.fill();
+        }
+        drawPolygonFace(
+            ctx,
+            helpers,
+            [
+                { x: 0, y: H, z: 0 },
+                { x: W, y: H, z: 0 },
+                { x: W, y: H, z: D },
+                { x: 0, y: H, z: D },
+            ],
+            'rgba(0,0,0,0)',
+            'rgba(255, 255, 255, 0.15)',
+        );
+    }
 
     // 3. Generate wavy hand-cut opening points in 3D
     const N = 64;
@@ -494,30 +687,97 @@ function drawSlabBoxMirror(
 
     const innerOpeningPts = ptsInner3d.map(p => toCanvas(helpers, p.x, p.y, 0));
 
-    ctx.beginPath();
-    // Outer rect
-    ctx.moveTo(p0.x, p0.y);
-    ctx.lineTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.lineTo(p3.x, p3.y);
-    ctx.closePath();
-    // Inner wavy opening
-    ctx.moveTo(innerOpeningPts[0].x, innerOpeningPts[0].y);
-    for (let i = 1; i < innerOpeningPts.length; i++) {
-        ctx.lineTo(innerOpeningPts[i].x, innerOpeningPts[i].y);
-    }
-    ctx.closePath();
-
     if (helpers.isWireframe) {
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.closePath();
+        ctx.moveTo(innerOpeningPts[0].x, innerOpeningPts[0].y);
+        for (let i = 1; i < innerOpeningPts.length; i++) {
+            ctx.lineTo(innerOpeningPts[i].x, innerOpeningPts[i].y);
+        }
+        ctx.closePath();
         ctx.fillStyle = 'rgba(0,0,0,0)';
         ctx.fill('evenodd');
-    } else if (helpers.hexPattern) {
-        ctx.fillStyle = helpers.hexPattern;
-        ctx.fill('evenodd');
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-        ctx.fill('evenodd');
     } else {
-        ctx.fillStyle = helpers.colorRight;
+        // True 3D superelliptical perimeter facet mapping: strictly samples stone frame borders
+        const stoneFallback = getStoneFallback(helpers, helpers.colorRight || '#C0A080');
+        const NR = 4;
+        const outW = W / 2;
+        const outH = H / 2;
+
+        for (let i = 0; i < N; i++) {
+            const nextI = (i + 1) % N;
+            const t1 = (i / N) * 2 * Math.PI;
+            const t2 = ((i + 1) / N) * 2 * Math.PI;
+
+            const cosS1 = signedPow(Math.cos(t1), 1 / 3);
+            const sinS1 = signedPow(Math.sin(t1), 1 / 3);
+            const cosS2 = signedPow(Math.cos(t2), 1 / 3);
+            const sinS2 = signedPow(Math.sin(t2), 1 / 3);
+
+            const outX1 = W / 2 + outW * cosS1;
+            const outY1 = H / 2 + outH * sinS1;
+            const outX2 = W / 2 + outW * cosS2;
+            const outY2 = H / 2 + outH * sinS2;
+
+            const inPt1 = ptsInner3d[i];
+            const inPt2 = ptsInner3d[nextI];
+
+            for (let j = 0; j < NR; j++) {
+                const alpha1 = j / NR;
+                const alpha2 = (j + 1) / NR;
+
+                const q1x = (1 - alpha1) * inPt1.x + alpha1 * outX1;
+                const q1y = (1 - alpha1) * inPt1.y + alpha1 * outY1;
+
+                const q2x = (1 - alpha2) * inPt1.x + alpha2 * outX1;
+                const q2y = (1 - alpha2) * inPt1.y + alpha2 * outY1;
+
+                const q3x = (1 - alpha2) * inPt2.x + alpha2 * outX2;
+                const q3y = (1 - alpha2) * inPt2.y + alpha2 * outY2;
+
+                const q4x = (1 - alpha1) * inPt2.x + alpha1 * outX2;
+                const q4y = (1 - alpha1) * inPt2.y + alpha1 * outY2;
+
+                const midX = (q1x + q2x + q3x + q4x) / 4;
+                const midY = (q1y + q2y + q3y + q4y) / 4;
+
+                const u = Math.max(0.01, Math.min(0.99, midX / W));
+                const v = Math.max(0.01, Math.min(0.99, 1 - (midY / H)));
+                const col = sampleMirrorColor(helpers, u, v, stoneFallback);
+
+                const c1 = toCanvas(helpers, q1x, q1y, 0);
+                const c2 = toCanvas(helpers, q2x, q2y, 0);
+                const c3 = toCanvas(helpers, q3x, q3y, 0);
+                const c4 = toCanvas(helpers, q4x, q4y, 0);
+
+                ctx.beginPath();
+                ctx.moveTo(c1.x, c1.y);
+                ctx.lineTo(c2.x, c2.y);
+                ctx.lineTo(c3.x, c3.y);
+                ctx.lineTo(c4.x, c4.y);
+                ctx.closePath();
+                ctx.fillStyle = col;
+                ctx.fill();
+            }
+        }
+
+        // Subtle ambient shadow overlay
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.closePath();
+        ctx.moveTo(innerOpeningPts[0].x, innerOpeningPts[0].y);
+        for (let i = 1; i < innerOpeningPts.length; i++) {
+            ctx.lineTo(innerOpeningPts[i].x, innerOpeningPts[i].y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
         ctx.fill('evenodd');
     }
 
@@ -558,6 +818,7 @@ function drawSlabBoxMirror(
         drawStrataLine(ctx, strataPts, helpers);
     }
 }
+
 
 /**
  * Dispatches drawing of a natural stone slab mirror onto a 2D canvas.
