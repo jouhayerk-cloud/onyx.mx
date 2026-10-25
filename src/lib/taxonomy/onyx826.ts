@@ -891,11 +891,17 @@ export function buildInvoiceTitle826(item: any): string {
   let typeNoun = entry?.labelEN ?? (rawType.trim() || 'Luminary');
   if (/tower\s*lamp/i.test(typeNoun)) typeNoun = 'Floor Lamp';
 
-  // Top flag
-  const topVal = String(item.top || item.data?.top || '').trim().toLowerCase();
+  // Descriptive stone patterns & colors
+  const pattern = String(item.pattern || item.stonePattern || item.stone_pattern || item.patternDescription || item.generatedPattern || '').trim();
+  if (pattern && !color.toLowerCase().includes(pattern.toLowerCase())) {
+    color = `${pattern} ${color}`;
+  }
+
+  // Top flag (never emit [Top: confirm])
+  const topVal = String(item.top || item.top_type || item.data?.top || '').trim().toLowerCase();
   const topStr = topVal === 'open' ? 'Open Top'
     : topVal === 'closed' ? 'Closed Top'
-      : (needsTopFlag(rawType, rawShape) ? '[Top: confirm]' : '');
+    : '';
 
   // Dimensions
   const w = item.widthCm ?? item.width_cm;

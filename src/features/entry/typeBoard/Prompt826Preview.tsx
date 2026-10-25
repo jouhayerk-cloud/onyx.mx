@@ -313,19 +313,23 @@ export const Prompt826Preview: React.FC<Prompt826PreviewProps> = ({ onClose }) =
                     laya: useLaya ? 'ran' : 'offline',
                 };
 
-                // copy_826
+                // copy_826 (informed by photo)
                 const built = buildContentPrompt826(item as any);
                 const aiRes = await generateJson<{
                     shopifyTitle: string;
+                    invoiceTitle?: string;
                     body: string;
                     dominantColors: string[];
                 }>({
                     job: 'content',
                     prompt: built.prompt,
                     schema: built.schema,
+                    images: photo ? [photo] : undefined,
                 });
 
-                const invoiceTitle = buildInvoiceTitle826(item as any);
+                const fallbackInvoice = buildInvoiceTitle826(item as any);
+                const rawInvoice = aiRes?.invoiceTitle || fallbackInvoice;
+                const invoiceTitle = rawInvoice.replace(/\[top:\s*confirm\]/gi, '').trim();
                 const approvedColors = getApprovedShopifyColors826(item.vendorColor || item.color);
                 const finalColors = aiRes?.dominantColors?.length ? aiRes.dominantColors : approvedColors;
 

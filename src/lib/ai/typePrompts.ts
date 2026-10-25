@@ -296,14 +296,21 @@ export function typeGuidance826For(item: any): string {
     // 2. Titles instruction
     sections.push(`TITLE INSTRUCTIONS:
 - shopifyTitle: 60 to 70 characters strictly.
-  * Format: Grant format, Title Case, no articles (a, an, the, and, of), no trailing period.
-  * Use "Amber" and "Luminary" spelling (for lit pieces: "Table Luminary", "Floor Luminary", "Pendant Luminary").
-  * Example length: exactly 60-70 characters.`);
+  * Format: Title Case, no articles (a, an, the, and, of), no trailing period.
+  * DO NOT USE sizes, dimensions, or relative size words (NEVER use "Small", "Medium", "Large", "Mini", "cm", "in", dimensions).
+  * DO NOT USE phrases or words like "Light Column", "Ambient Pillar", "Ambient Stone Tower", "Stone Tower", "Ambient Stone Towe".
+  * USE regular nouns: "Tower", "Floor Lamp", or "Table Lamp".
+  * MUST include a couple of descriptive words of the onyx patterns and colors observed in the image (e.g. Banded Amber, Striated Caramel, Cream Cloud Veins, Honey Gold Waves).
+- invoiceTitle:
+  * Deterministic identification title in Title Case.
+  * NEVER include "[Top: confirm]".
+  * MUST include a couple of descriptive words of the onyx patterns and colors observed in the image.`);
 
     // 3. Body instruction
     sections.push(`BODY INSTRUCTIONS:
 - body: Strictly 600 to 750 characters.
 - MUST BE PLAIN TEXT ONLY. Never include HTML tags (<p>, <ul>, <li>, etc.).
+- MUST BE INFORMED BY THE ATTACHED IMAGE: Closely observe the attached photo of the item. Describe visible stone characteristics seen in the image: banding strata, crystalline veins, translucent clouding, mineral color gradations, and how light interacts with translucent stone.
 - Angle: ${famSpec.angle}
 - Structure:
 ${famSpec.structure.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}
@@ -358,6 +365,40 @@ export function validate826Output(
             field: 'shopifyTitle',
             rule: 'no-articles',
             message: `Shopify title must not contain articles ("${articleMatch[0]}").`,
+            severity: 'error',
+        });
+    }
+
+    // Banned phrases in shopifyTitle
+    const bannedPhrases = [/light\s*column/i, /ambient\s*pillar/i, /ambient\s*stone\s*towe/i, /stone\s*tower/i];
+    for (const bp of bannedPhrases) {
+        if (bp.test(shopifyTitle)) {
+            issues.push({
+                field: 'shopifyTitle',
+                rule: 'banned-phrase',
+                message: `Shopify title must not use phrase matching "${bp}". Use regular Tower, Floor Lamp, or Table Lamp.`,
+                severity: 'error',
+            });
+        }
+    }
+    // Banned size words in shopifyTitle
+    const sizeWords = [/\b(small|medium|large|mini)\b/i, /\b\d+\s*x\s*\d+\b/i, /\b\d+\s*cm\b/i, /\b\d+\s*in\b/i];
+    for (const sw of sizeWords) {
+        if (sw.test(shopifyTitle)) {
+            issues.push({
+                field: 'shopifyTitle',
+                rule: 'no-sizes',
+                message: `Shopify title must not use size or dimension terms ("${shopifyTitle.match(sw)?.[0]}").`,
+                severity: 'error',
+            });
+        }
+    }
+    // Invoice title check
+    if (output.invoiceTitle && /\[top:\s*confirm\]/i.test(output.invoiceTitle)) {
+        issues.push({
+            field: 'invoiceTitle',
+            rule: 'no-top-confirm',
+            message: 'Invoice title must not include [Top: confirm].',
             severity: 'error',
         });
     }
@@ -464,22 +505,26 @@ export const CONTENT_SCHEMA_826 = {
     properties: {
         shopifyTitle: {
             type: 'string',
-            description: 'Shopify product title, 60 to 70 characters, Title Case, no articles (a, an, the, and, of), no trailing period, Grant format.',
+            description: 'Shopify product title, 60 to 70 characters strictly, Title Case, no articles (a, an, the, and, of), no trailing period. NO sizes (no Small, Medium, Large, Mini, dimensions). NO phrases like Light Column, Ambient Pillar, Ambient Stone Tower. Use regular Tower, Floor Lamp, or Table Lamp. MUST include descriptive words of the onyx patterns and colors from the image.',
+        },
+        invoiceTitle: {
+            type: 'string',
+            description: 'Invoice title in Title Case. NO [Top: confirm]. MUST include descriptive words of the onyx patterns and colors from the image.',
         },
         body: {
             type: 'string',
-            description: 'Plain text description of the piece, strictly 600 to 750 characters, NO HTML tags, plain record facts.',
+            description: 'Plain text description of the piece, strictly 600 to 750 characters, NO HTML tags. MUST be informed by the attached image, describing visible stone patterns, veining, banding, color gradations, and light transmission if lit.',
         },
         dominantColors: {
             type: 'array',
             items: { type: 'string', enum: [...ALLOWED_SHOPIFY_COLORS] },
             minItems: 1,
             maxItems: 3,
-            description: '1 to 3 dominant approved stone colors.',
+            description: '1 to 3 dominant approved stone colors observed in the image.',
         },
     },
-    required: ['shopifyTitle', 'body', 'dominantColors'],
-    propertyOrdering: ['shopifyTitle', 'body', 'dominantColors'],
+    required: ['shopifyTitle', 'invoiceTitle', 'body', 'dominantColors'],
+    propertyOrdering: ['shopifyTitle', 'invoiceTitle', 'body', 'dominantColors'],
 } as const;
 
 /**
@@ -493,16 +538,18 @@ export function buildContentPrompt826(
     const invoiceTitle = buildInvoiceTitle826(item);
 
     const prompt = `You are writing catalogue copy for Rare Earth Gallery's Book 826 collection of Mexican stone artifacts.
+You are inspecting the attached image of the item. Your titles and description MUST be directly informed by the visual patterns and colors visible in the stone.
 
 Your goal is to produce accurate, strictly factual product copy adhering to owner-approved rules:
-1. shopifyTitle: 60 to 70 characters, Title Case, no articles (a, an, the, and, of), no trailing period.
-2. body: Strictly 600 to 750 characters of PLAIN TEXT (no HTML tags, no markup). Describe only record facts.
-3. dominantColors: 1 to 3 approved colors.
+1. shopifyTitle: 60 to 70 characters strictly, Title Case, no articles (a, an, the, and, of), no trailing period. NO sizes/dimensions (no Small, Medium, Large, Mini, cm, in). NO phrases like "Light Column", "Ambient Pillar", "Ambient Stone Tower". USE regular "Tower", "Floor Lamp", or "Table Lamp". MUST include descriptive words of the onyx patterns and colors seen in the image.
+2. invoiceTitle: Invoice title in Title Case. NEVER include "[Top: confirm]". MUST include descriptive words of the onyx patterns and colors seen in the image.
+3. body: Strictly 600 to 750 characters of PLAIN TEXT (no HTML tags, no markup). Describe visible stone patterns, veining, banding, and colors observed in the image.
+4. dominantColors: 1 to 3 approved colors observed in the image.
 
 PER-FAMILY GUIDANCE AND RECORD FACTS:
 ${guidance}
 
-Return JSON with "shopifyTitle", "body", and "dominantColors".`;
+Return JSON with "shopifyTitle", "invoiceTitle", "body", and "dominantColors".`;
 
     return {
         prompt,
