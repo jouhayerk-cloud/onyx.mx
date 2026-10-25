@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getCleanImageUrl, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
+import { getCleanImageUrl, collectExportImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
@@ -929,27 +929,53 @@ function generateNormalizedHexSquareDataUrl(
 }
 
 /**
- * Resolves ONLY clean room images for the catalogue (background-removed cutouts & clean studio room photos).
- * Raw warehouse/uploaded photos and hex maps are strictly excluded.
+ * Checks if a URL represents a transparent cutout mask PNG rather than a studio room photo.
+ */
+function isPngCutoutUrl(url?: string): boolean {
+    if (!url || typeof url !== 'string') return false;
+    const lower = url.toLowerCase();
+    return lower.includes('mask') || 
+           lower.includes('cutout') || 
+           lower.includes('segmentation') || 
+           lower.includes('generated_png') || 
+           lower.includes('_label_png');
+}
+
+/**
+ * Resolves images for catalogue export:
+ * - Clean room studio photos are prioritized as the large HERO image.
+ * - For lamps: if 2+ photos exist, photo 2 (lights on) is normalized as Hero.
+ * - For bowls: photo 1 is side view (Hero), photo 2 is top view.
+ * - For mirrors/panels: photo 1 is front view lights on (Hero).
+ * - Transparent PNG cutouts are placed AFTER studio photos to render as smaller secondary grid images.
  */
 function getItemImages(item: any): string[] {
     if (!item) return [];
 
     const norm = normalizeInventoryData(item.data || item);
-    const cleanRoomUrls: string[] = [];
+    const itemDataObj = item.data || item;
 
     const isClean = (u?: string): u is string => {
         if (!u || typeof u !== 'string') return false;
         if (isHexMapUrl(u)) return false;
+        if (isVideoFile(u)) return false;
         return /^https?:\/\//i.test(u);
     };
 
-    // 1. Cutout clean room PNG (generated_png_url / mask_url)
-    const genPng = cleanStillUrl(norm.generatedPngUrl || item.generated_png_url || item.generatedPngUrl || item.maskUrl || item.mask_url);
-    if (isClean(genPng)) cleanRoomUrls.push(genPng);
+    // 1. Collect clean room studio photos (excluding transparent mask PNGs)
+    const studioPhotos: string[] = [];
 
-    // 2. Background-replaced clean room studio photos from processed_media_urls
-    const rawProcessed = norm.processedMediaUrls || norm.processed_media_urls;
+    // Check collectExportImages which maps source stills to their clean room studio replacements
+    const exportImgs = collectExportImages(norm);
+    for (const u of exportImgs) {
+        const c = cleanStillUrl(u);
+        if (c && isClean(c) && !isPngCutoutUrl(c) && !studioPhotos.includes(c)) {
+            studioPhotos.push(c);
+        }
+    }
+
+    // Also inspect processed_media_urls directly for studio photos
+    const rawProcessed = norm.processedMediaUrls || norm.processed_media_urls || itemDataObj.processed_media_urls || itemDataObj.processedMediaUrls;
     if (rawProcessed) {
         let processedMap: Record<string, any> = {};
         if (typeof rawProcessed === 'object') {
@@ -961,32 +987,104 @@ function getItemImages(item: any): string[] {
             }
         }
         for (const [key, val] of Object.entries(processedMap)) {
-            if (isHexMapUrl(key)) continue;
+            if (key.startsWith('_') || isHexMapUrl(key)) continue;
             if (isClean(val)) {
                 const c = cleanStillUrl(val);
-                if (c && !cleanRoomUrls.includes(c) && !isHexMapUrl(c)) {
-                    cleanRoomUrls.push(c);
+                if (c && !isPngCutoutUrl(c) && !studioPhotos.includes(c)) {
+                    studioPhotos.push(c);
                 }
             }
         }
     }
 
-    // 3. Pre-filtered clean room images
+    // Also check item.images if pre-passed
     if (Array.isArray(item.images) && item.images.length > 0) {
-        const preCleaned = item.images.map(cleanStillUrl).filter(Boolean) as string[];
-        for (const u of preCleaned) {
-            if (isClean(u) && !cleanRoomUrls.includes(u)) {
-                if (cleanRoomUrls.length === 0 || u.includes('mask') || u.includes('png') || u.includes('processed')) {
-                    cleanRoomUrls.push(u);
-                }
+        for (const u of item.images) {
+            const c = cleanStillUrl(u);
+            if (c && isClean(c) && !isPngCutoutUrl(c) && !studioPhotos.includes(c)) {
+                studioPhotos.push(c);
             }
         }
     }
 
-    if (cleanRoomUrls.length > 0) {
-        return cleanRoomUrls;
+    // 2. Collect transparent PNG cutouts (to be rendered in the smaller secondary grid)
+    const pngCutouts: string[] = [];
+    const rawPngList = [
+        norm.generatedPngUrl,
+        item.generated_png_url,
+        item.generatedPngUrl,
+        itemDataObj.generated_png_url,
+        itemDataObj.generatedPngUrl,
+        norm.maskUrl,
+        item.maskUrl,
+        itemDataObj.mask_url
+    ];
+    for (const raw of rawPngList) {
+        const c = cleanStillUrl(raw);
+        if (c && isClean(c) && !pngCutouts.includes(c)) {
+            pngCutouts.push(c);
+        }
     }
 
+    for (const u of (item.images || []).concat(exportImgs)) {
+        const c = cleanStillUrl(u);
+        if (c && isClean(c) && isPngCutoutUrl(c) && !pngCutouts.includes(c)) {
+            pngCutouts.push(c);
+        }
+    }
+
+    // 3. Normalize ordering of Clean Room Studio Photos based on product shape / type rules:
+    const shapeStr = (norm.shape || norm.shortDescription || itemDataObj.Shape || '').toLowerCase();
+    const typeStr = (norm.generatedType || norm.canonicalType || norm.type || itemDataObj.Type || '').toLowerCase();
+    const descStr = (norm.description || norm.title || itemDataObj.Title || '').toLowerCase();
+
+    const isLamp = shapeStr.includes('lamp') || shapeStr.includes('lantern') || shapeStr.includes('pendant') || 
+                   shapeStr.includes('light') || shapeStr.includes('sconce') || typeStr.includes('lamp') || descStr.includes('lamp');
+    const isBowl = shapeStr.includes('bowl') || shapeStr.includes('sink') || shapeStr.includes('basin') || 
+                   shapeStr.includes('vessel') || shapeStr.includes('tray') || shapeStr.includes('plate') || shapeStr.includes('dish') || typeStr.includes('bowl');
+    const isMirrorOrPanel = shapeStr.includes('mirror') || shapeStr.includes('panel') || shapeStr.includes('slab') || 
+                            shapeStr.includes('wall') || typeStr.includes('mirror') || descStr.includes('mirror');
+
+    let orderedStudioPhotos = [...studioPhotos];
+
+    if (isLamp && orderedStudioPhotos.length >= 2) {
+        // For lamps: photo 1 is lights off, photo 2 is lights on.
+        // Use the second photo (lights on) as hero!
+        // If 4 photos (two lamps: lamp 1 off, lamp 1 on, lamp 2 off, lamp 2 on):
+        // Hero is lamp 1 on (index 1), then lamp 1 off (index 0), then lamp 2 on (index 3), then lamp 2 off (index 2)
+        if (orderedStudioPhotos.length === 2) {
+            orderedStudioPhotos = [orderedStudioPhotos[1], orderedStudioPhotos[0]];
+        } else if (orderedStudioPhotos.length >= 4) {
+            orderedStudioPhotos = [
+                orderedStudioPhotos[1], // Lamp 1 on (Hero)
+                orderedStudioPhotos[0], // Lamp 1 off
+                orderedStudioPhotos[3], // Lamp 2 on
+                orderedStudioPhotos[2], // Lamp 2 off
+                ...orderedStudioPhotos.slice(4)
+            ];
+        } else if (orderedStudioPhotos.length === 3) {
+            orderedStudioPhotos = [orderedStudioPhotos[1], orderedStudioPhotos[0], orderedStudioPhotos[2]];
+        }
+    } else if (isBowl && orderedStudioPhotos.length >= 2) {
+        // Bowls normalized to: first photo side view (Hero), second photo top view
+        // Keep in natural order: [photo0 (side view), photo1 (top view), ...]
+    } else if (isMirrorOrPanel && orderedStudioPhotos.length >= 2) {
+        // Mirrors and panels: first photo front view lights on (Hero)
+        // Keep in natural order: [photo0 (front view lights on), ...]
+    }
+
+    // 4. Combine: Clean room studio photos first (hero is orderedStudioPhotos[0]),
+    // and clean transparent PNGs as smaller secondary images in the smaller grid!
+    if (orderedStudioPhotos.length > 0) {
+        return [...orderedStudioPhotos, ...pngCutouts];
+    }
+
+    // Fallback: If no studio photos exist, use transparent PNG cutouts
+    if (pngCutouts.length > 0) {
+        return pngCutouts;
+    }
+
+    // Last resort fallback
     const fallback = cleanStillUrl(norm.imageUrl || item.image_url || item.imageUrl);
     return (fallback && isClean(fallback)) ? [fallback] : [];
 }
