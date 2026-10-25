@@ -2707,7 +2707,18 @@ async function drawCatalogSummaryPages(
 
         const colorName = (norm.color || d.color || d.Color || norm.generatedColor || '').trim();
         const matName = (norm.material || d.material || d.Material || 'Onyx').trim();
-        const colorMatStr = [colorName, matName].filter(Boolean).join(' • ').toUpperCase() || 'NATURAL STONE';
+        let colorMatStr = 'NATURAL STONE';
+        if (colorName && matName) {
+            if (colorName.toUpperCase().includes(matName.toUpperCase())) {
+                colorMatStr = colorName.toUpperCase();
+            } else {
+                colorMatStr = `${colorName.toUpperCase()} • ${matName.toUpperCase()}`;
+            }
+        } else if (colorName) {
+            colorMatStr = colorName.toUpperCase();
+        } else if (matName) {
+            colorMatStr = matName.toUpperCase();
+        }
 
         const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
 
@@ -2817,15 +2828,15 @@ async function drawCatalogSummaryPages(
         doc.text(kpi.sub, cx + 3.5, cardY + (isLandscape ? 14 : 17));
     });
 
-    // Compute column widths for landscape & portrait
-    const colTypeW = isLandscape ? 52 : 42;
-    const shapeColW = isLandscape ? 15 : 12;
+    // Compute column widths with generous space for Colors & Sizes
+    const colTypeW = isLandscape ? 46 : 38;
+    const shapeColW = isLandscape ? 12.0 : 10.0;
     const totalShapesW = shapeColumns.length * shapeColW;
-    const colItemsW = isLandscape ? 14 : 11;
-    const colUnitsW = isLandscape ? 14 : 11;
-    const colWeightW = isLandscape ? 32 : 25;
-    const remW = fullW - (colTypeW + totalShapesW + colItemsW + colUnitsW + colWeightW);
-    const colColorsW = Math.round(remW * 0.54);
+    const colItemsW = isLandscape ? 10.0 : 8.5;
+    const colUnitsW = isLandscape ? 10.0 : 8.5;
+    const colWeightW = isLandscape ? 28.0 : 21.0;
+    const remW = Math.max(30, fullW - (colTypeW + totalShapesW + colItemsW + colUnitsW + colWeightW));
+    const colColorsW = Math.round(remW * 0.52);
     const colSizesW = remW - colColorsW;
 
     // Coordinate helpers
@@ -2855,10 +2866,11 @@ async function drawCatalogSummaryPages(
         // Shape Column Headers: text only, NO hairline icons per user requirement
         shapeColumns.forEach((sName, sIdx) => {
             const sx = xShapes + sIdx * shapeColW;
-            doc.setFontSize(6.2);
+            doc.setFontSize(6.0);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(71, 85, 105);
-            const sLabel = sName.length > 9 ? sName.slice(0, 8) + '…' : sName;
+            const maxChars = isLandscape ? 9 : 7;
+            const sLabel = sName.length > maxChars ? sName.slice(0, maxChars - 1) + '…' : sName;
             doc.text(sLabel, sx + shapeColW / 2, startY + 5.8, { align: 'center' });
         });
 
@@ -2875,7 +2887,10 @@ async function drawCatalogSummaryPages(
     let tableY = cardY + cardH + 5;
     drawTableHeader(tableY);
     let rowY = tableY + headerH;
-    const rowH = 13.5; // Larger row height for prominent hairline figures
+    const baseMinRowH = 13.5; // Minimum row height ensuring prominent 11mm hairline figures
+    const lineH = 2.56;
+    const lineHType = 2.92;
+    const iconSize = 11.0;
 
     for (let i = 0; i < sortedTypeGroups.length; i++) {
         if (i % 3 === 0) {
@@ -2886,7 +2901,32 @@ async function drawCatalogSummaryPages(
         const wtKgFmt = `${Math.round(group.totalWeightKg).toLocaleString()} kg`;
         const wtLbsFmt = `${Math.round(group.totalWeightKg * 2.20462).toLocaleString()} lbs`;
 
-        if (rowY + rowH > PH - 22) {
+        // 1. Pre-calculate wrapped lines for Product Type
+        doc.setFontSize(7.2);
+        doc.setFont('helvetica', 'bold');
+        const typeTextAvailW = colTypeW - (iconSize + 5.5);
+        const splitType = doc.splitTextToSize(group.type, typeTextAvailW);
+
+        // 2. Pre-calculate wrapped lines for Colors & Material
+        doc.setFontSize(6.3);
+        doc.setFont('helvetica', 'normal');
+        const colorsArr = Array.from(group.colorsSet).filter(Boolean);
+        const colorsStr = colorsArr.length > 0 ? colorsArr.join(', ') : '—';
+        const splitColors = doc.splitTextToSize(colorsStr, colColorsW - 4.5);
+
+        // 3. Pre-calculate wrapped lines for Sizes
+        const sizesArr = Array.from(group.sizesSet).filter(Boolean);
+        const sizesStr = sizesArr.length > 0 ? sizesArr.join(', ') : '—';
+        const splitSizes = doc.splitTextToSize(sizesStr, colSizesW - 4.5);
+
+        // 4. Calculate dynamic row height to fit all wrapped lines without overlapping
+        const colorsReqH = (splitColors.length - 1) * lineH + 5.5;
+        const sizesReqH = (splitSizes.length - 1) * lineH + 5.5;
+        const typeReqH = (splitType.length - 1) * lineHType + 5.5;
+        const currRowH = Math.max(baseMinRowH, colorsReqH, sizesReqH, typeReqH);
+
+        // Page break check with dynamic row height
+        if (rowY + currRowH > PH - 20) {
             addPage();
             doc.setFontSize(10.5);
             doc.setFont('helvetica', 'bold');
@@ -2901,18 +2941,19 @@ async function drawCatalogSummaryPages(
             rowY = tableY + headerH;
         }
 
+        // Alternating row background
         if (i % 2 === 1) {
             doc.setFillColor(253, 254, 255);
-            doc.rect(M, rowY, fullW, rowH, 'F');
+            doc.rect(M, rowY, fullW, currRowH, 'F');
         }
 
-        // 1. PRODUCT TYPE & LARGER HAIRLINE ICON (11.0mm)
-        const iconSize = 11.0;
+        // 1. PRODUCT TYPE & HAIRLINE ICON (11.0mm, vertically centered)
         let hasRenderedIcon = false;
         try {
             const tIcon = getHairlineIconDataUrl(group.typeCanonId || group.type, null, '#1E293B');
             if (tIcon) {
-                doc.addImage(tIcon, 'PNG', xType + 2.0, rowY + (rowH - iconSize) / 2, iconSize, iconSize);
+                const iconY = rowY + (currRowH - iconSize) / 2;
+                doc.addImage(tIcon, 'PNG', xType + 2.0, iconY, iconSize, iconSize);
                 hasRenderedIcon = true;
             }
         } catch (e) {}
@@ -2921,10 +2962,11 @@ async function drawCatalogSummaryPages(
         doc.setFontSize(7.2);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
-        const splitType = doc.splitTextToSize(group.type, colTypeW - (typeTextX - xType) - 2);
-        doc.text(splitType, typeTextX, rowY + (rowH / 2) + (splitType.length > 1 ? -0.5 : 1.4));
+        const typeSpan = (splitType.length - 1) * lineHType + 2.4;
+        const typeBaselineY = rowY + (currRowH - typeSpan) / 2 + 1.8;
+        doc.text(splitType, typeTextX, typeBaselineY);
 
-        const cellTextY = rowY + rowH / 2 + 1.2;
+        const midBaselineY = rowY + currRowH / 2 + 1.2;
 
         // 2. SHAPE COLUMNS (Quantities per shape)
         shapeColumns.forEach((sName, sIdx) => {
@@ -2942,50 +2984,50 @@ async function drawCatalogSummaryPages(
                 doc.setFontSize(7.5);
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor(15, 23, 42);
-                doc.text(String(count), sx + shapeColW / 2, cellTextY, { align: 'center' });
+                doc.text(String(count), sx + shapeColW / 2, midBaselineY, { align: 'center' });
             } else {
                 doc.setFontSize(7.0);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(203, 213, 225);
-                doc.text('-', sx + shapeColW / 2, cellTextY, { align: 'center' });
+                doc.text('-', sx + shapeColW / 2, midBaselineY, { align: 'center' });
             }
         });
 
-        // 3. COLORS & MATERIAL
-        doc.setFontSize(6.5);
+        // 3. COLORS & MATERIAL (Vertically centered, wrapping into new lines)
+        doc.setFontSize(6.3);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(71, 85, 105);
-        const colorsStr = Array.from(group.colorsSet).join(', ');
-        const splitColors = doc.splitTextToSize(colorsStr, colColorsW - 3);
-        doc.text(splitColors, xColors + 2.5, cellTextY - (splitColors.length > 1 ? 1.5 : 0));
+        const colorsSpan = (splitColors.length - 1) * lineH + 2.0;
+        const colorsBaselineY = rowY + (currRowH - colorsSpan) / 2 + 1.5;
+        doc.text(splitColors, xColors + 2.5, colorsBaselineY);
 
-        // 4. SIZES
-        const sizesStr = Array.from(group.sizesSet).join(', ');
-        const splitSizes = doc.splitTextToSize(sizesStr, colSizesW - 3);
-        doc.text(splitSizes, xSizes + 2.5, cellTextY - (splitSizes.length > 1 ? 1.5 : 0));
+        // 4. SIZES (Vertically centered, wrapping into new lines)
+        const sizesSpan = (splitSizes.length - 1) * lineH + 2.0;
+        const sizesBaselineY = rowY + (currRowH - sizesSpan) / 2 + 1.5;
+        doc.text(splitSizes, xSizes + 2.5, sizesBaselineY);
 
         // 5. ITEMS
         doc.setFontSize(7.2);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 41, 59);
-        doc.text(String(group.itemCount), xItems + colItemsW - 2, cellTextY, { align: 'right' });
+        doc.text(String(group.itemCount), xItems + colItemsW - 2, midBaselineY, { align: 'right' });
 
         // 6. UNITS
-        doc.text(String(group.totalUnits), xUnits + colUnitsW - 2, cellTextY, { align: 'right' });
+        doc.text(String(group.totalUnits), xUnits + colUnitsW - 2, midBaselineY, { align: 'right' });
 
         // 7. WEIGHT
         doc.setFontSize(6.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(71, 85, 105);
         const wtStr = isLandscape ? `${wtKgFmt} (${wtLbsFmt})` : wtKgFmt;
-        doc.text(wtStr, xWeight + colWeightW - 3, cellTextY, { align: 'right' });
+        doc.text(wtStr, xWeight + colWeightW - 3, midBaselineY, { align: 'right' });
 
-        // Hairline divider
+        // Hairline divider at bottom of this expanded row
         doc.setDrawColor(241, 245, 249);
         doc.setLineWidth(0.18);
-        doc.line(M, rowY + rowH, PW - M, rowY + rowH);
+        doc.line(M, rowY + currRowH, PW - M, rowY + currRowH);
 
-        rowY += rowH;
+        rowY += currRowH;
     }
 
     // Grand Totals Row (NO RETAIL)
@@ -3032,6 +3074,7 @@ async function drawCatalogSummaryPages(
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
+    doc.text(String(totalItems), xItems + colItemsW - 2, rowY + 5.5, { align: 'right' });
     doc.text(String(grandTotalUnits), xUnits + colUnitsW - 2, rowY + 5.5, { align: 'right' });
 
     const totalWtStr = isLandscape 
