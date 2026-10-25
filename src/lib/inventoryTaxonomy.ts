@@ -480,6 +480,7 @@ export const CANONICAL_COLOURS = [
     'Rose Gold',
     'Silver',
     'Tan',
+    'Teal',
     'Turquoise/Aqua',
     'White',
     'Yellow',
@@ -506,6 +507,7 @@ export const CANONICAL_STONE_VARIETIES = [
     'Red Pyramid',
     'Serpentine',
     'Talan',
+    'Teal Serpentine',
     'Tehuacan',
     'Zebra',
 ] as const;
@@ -885,6 +887,8 @@ const MATERIAL_ALIASES: Readonly<Record<string, CanonicalMaterial>> = {
 const VENDOR_COLOUR_MAP: Readonly<Record<string, string>> = {
     'green talan': 'Green Talan',
     'pearlescent': 'Pearlescent',
+    'teal serpentine': 'Teal Serpentine',
+    'teal': 'Teal',
     'tehuacan': 'Tehuacan',
     'aqua serpentine': 'Aqua Serpentine',
     'purple green': 'Purple Green',

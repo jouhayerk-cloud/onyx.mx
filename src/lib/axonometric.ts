@@ -4,7 +4,7 @@ import type { AxoMirrorClass } from './axoMirrors';
 import type { AxoExtraClass } from './axoExtra';
 import { classifyGeometry } from './geometry';
 import type { Geometry } from './geometry';
-import { resolveStonePalette, resolveItemColor } from './canonicalColors';
+import { resolveStonePalette, resolveItemColor, enhanceStoneColor } from './canonicalColors';
 import type { StonePalette } from './canonicalColors';
 
 export { resolveStonePalette, resolveItemColor };
@@ -231,7 +231,7 @@ export function normalizeHexMapTexture(
         for (let tc = 0; tc < targetCols; tc++) {
             const srcC = Math.min(cropW - 1, Math.floor((tc / targetCols) * cropW));
             const hex = (cropped[srcR] && cropped[srcR][srcC]) || (stoneCoords[0] && stoneCoords[0].hex) || '#CCCCCC';
-            result.push(toOpaqueHex(hex));
+            result.push(enhanceStoneColor(toOpaqueHex(hex)));
         }
     }
 
@@ -1853,9 +1853,9 @@ export async function generateAxonometricDataUrl(
                 if (isWireframe) {
                     ctx!.globalAlpha = 0.55;
                 }
-                drawProjectedHexGrid('top', 'rgba(255, 255, 255, 0.15)');
-                drawProjectedHexGrid('left', 'rgba(0, 0, 0, 0.35)');
-                drawProjectedHexGrid('front', 'rgba(0, 0, 0, 0.15)');
+                drawProjectedHexGrid('top', 'rgba(255, 255, 255, 0.22)');
+                drawProjectedHexGrid('left', 'rgba(0, 0, 0, 0.16)');
+                drawProjectedHexGrid('front', 'rgba(0, 0, 0, 0.04)');
                 ctx!.restore();
 
                 const strokeFace = (indices: number[]) => {

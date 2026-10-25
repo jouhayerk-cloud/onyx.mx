@@ -1,5 +1,6 @@
 import { tr } from './i18n';
 import type { AxoDrawHelpers } from './axoExtra';
+import { enhanceStoneColor } from './canonicalColors';
 
 /**
  * axoMirrors.ts — Natural stone slab mirror icon renderer for the axonometric rasteriser.
@@ -247,7 +248,7 @@ function drawRoundMirror(
     const Yc = H / 2;
 
     // Opening radius: frame band is ~24% on each side -> inner radius is ~52% of R
-    const rInner = R * 0.52;
+    const rInner = R * 0.46;
     const zGlass = Math.max(2, Math.min(D * 0.5, 4));
 
     const N = 64;
@@ -301,9 +302,9 @@ function drawRoundMirror(
             const tB = tStart + ((i + 1) / M) * (tEnd - tStart);
             const tMid = (tA + tB) / 2;
 
-            // In photo: outer rim at perimeter
-            const u = 0.5 + 0.46 * Math.cos(tMid);
-            const v = 0.5 - 0.46 * Math.sin(tMid);
+            // In photo: outer rim at perimeter (safely within stone border)
+            const u = 0.5 + 0.44 * Math.cos(tMid);
+            const v = 0.5 - 0.44 * Math.sin(tMid);
             const col = sampleMirrorColor(helpers, u, v, helpers.colorLeft);
 
             const p1 = frontMantlePts[i];
@@ -328,8 +329,8 @@ function drawRoundMirror(
             frontMantlePts[0].x,
             frontMantlePts[0].y,
         );
-        shGrd.addColorStop(0, 'rgba(0,0,0,0.35)');
-        shGrd.addColorStop(1, 'rgba(255,255,255,0.15)');
+        shGrd.addColorStop(0, 'rgba(0,0,0,0.16)');
+        shGrd.addColorStop(1, 'rgba(255,255,255,0.22)');
 
         ctx.beginPath();
         ctx.moveTo(frontMantlePts[0].x, frontMantlePts[0].y);
@@ -434,10 +435,10 @@ function drawRoundMirror(
                 const tMid = (t1 + t2) / 2;
                 const radMid = (1 - fracMid) * rInner + fracMid * R;
 
-                // Normalized UV coordinates in photo (mirror outer edge at ~0.46 radius)
-                const normR = radMid / R;
-                const u = 0.5 + 0.46 * normR * Math.cos(tMid);
-                const v = 0.5 - 0.46 * normR * Math.sin(tMid);
+                // Normalized UV coordinates in photo: sweep stone frame from inner border (0.26) to outer border (0.43)
+                const sampleRadius = 0.26 + 0.17 * fracMid;
+                const u = 0.5 + sampleRadius * Math.cos(tMid);
+                const v = 0.5 - sampleRadius * Math.sin(tMid);
                 const col = sampleMirrorColor(helpers, u, v, stoneFallback);
 
                 const c1 = toCanvas(helpers, Xc + rad1A * Math.cos(t1), Yc + rad1A * Math.sin(t1), 0);
@@ -468,7 +469,7 @@ function drawRoundMirror(
             ctx.lineTo(innerOpeningPts[i].x, innerOpeningPts[i].y);
         }
         ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.02)';
         ctx.fill('evenodd');
     }
 
@@ -745,8 +746,8 @@ function drawSlabBoxMirror(
                 const midX = (q1x + q2x + q3x + q4x) / 4;
                 const midY = (q1y + q2y + q3y + q4y) / 4;
 
-                const u = Math.max(0.01, Math.min(0.99, midX / W));
-                const v = Math.max(0.01, Math.min(0.99, 1 - (midY / H)));
+                const u = Math.max(0.04, Math.min(0.96, midX / W));
+                const v = Math.max(0.04, Math.min(0.96, 1 - (midY / H)));
                 const col = sampleMirrorColor(helpers, u, v, stoneFallback);
 
                 const c1 = toCanvas(helpers, q1x, q1y, 0);
@@ -777,7 +778,7 @@ function drawSlabBoxMirror(
             ctx.lineTo(innerOpeningPts[i].x, innerOpeningPts[i].y);
         }
         ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.02)';
         ctx.fill('evenodd');
     }
 

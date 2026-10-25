@@ -508,7 +508,18 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
     const aiTitle = String(norm.detailedDescription || '').trim();
     const aiBodyText = useMemo(() => (isContentExpanded ? htmlToText(norm.generatedDescription || '') : ''), [isContentExpanded, norm.generatedDescription]);
-    const aiColors = String(norm.generatedColor || '').split(',').map(c => c.trim()).filter(Boolean);
+    const rawAiColors = String(norm.generatedColor || '').split(',').map(c => c.trim()).filter(Boolean);
+    const isAquaOrTeal = String(norm.color || '').toLowerCase().includes('aqua') ||
+                         String(norm.color || '').toLowerCase().includes('teal') ||
+                         String(norm.material || '').toLowerCase().includes('aqua') ||
+                         String(norm.material || '').toLowerCase().includes('teal');
+    const aiColors = rawAiColors.map(c => {
+        const lc = c.toLowerCase();
+        if (isAquaOrTeal && (lc === 'blue' || lc === 'turquoise/aqua' || lc === 'aqua')) {
+            return 'Teal';
+        }
+        return c;
+    });
     const aiTypePath = String(norm.generatedType || '').split('>').map(p => p.trim()).filter(Boolean);
 
     const hasAiCopy = !!(aiTitle || aiBodyText);
@@ -794,10 +805,21 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                         const inStore = SHOPIFY_COLOR_SET.has(lc);
                                         const hint = !inStore
                                             ? tr("Not one of the store's colour names — the export resolves it through the stone table or leaves it out")
-                                            : lc === 'turquoise/aqua' ? tr("Exports as Blue — the store has no Turquoise/Aqua value") : undefined;
+                                            : lc === 'turquoise/aqua' ? tr("Exports as Teal — the store has no Turquoise/Aqua value") : undefined;
+                                        const sw = swatchFor(c);
+                                        const isGrad = sw.includes('gradient');
                                         return (
-                                            <span key={c} className={`inv-ai-chip${inStore ? '' : ' inv-ai-chip--off'}`} title={hint}>
-                                                <span className="inv-ai-sw" style={{ background: swatchFor(c) }} aria-hidden="true" />{c}
+                                            <span
+                                                key={c}
+                                                className={`inv-ai-glass-bubble${inStore ? '' : ' inv-ai-glass-bubble--off'}`}
+                                                style={{
+                                                    ['--bubble-color' as any]: sw,
+                                                    ...(isGrad ? { background: `radial-gradient(ellipse at 35% 25%, rgba(255, 255, 255, 0.42) 0%, transparent 70%), ${sw}` } : {}),
+                                                }}
+                                                title={hint}
+                                            >
+                                                <span className="inv-ai-glass-bubble__gloss" aria-hidden="true" />
+                                                <span className="inv-ai-glass-bubble__text">{c}</span>
                                             </span>
                                         );
                                     })}

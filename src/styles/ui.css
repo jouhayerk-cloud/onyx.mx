@@ -1499,12 +1499,49 @@ html.style-slab.theme-aqua {
 
 .ui-root .ui-color > span:last-child:not(.ui-color__x) { padding-right: 4px; }
 
+.ui-root .ui-color {
+    overflow: visible;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
 .ui-root .ui-color__sw {
+    position: relative;
     flex: none;
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    border: 1px solid rgb(0 0 0 / 0.25);
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    box-shadow:
+        inset 1px 1px 2px rgba(255, 255, 255, 0.75),
+        inset -1px -1.5px 2px rgba(0, 0, 0, 0.35),
+        0 1.5px 3px rgba(0, 0, 0, 0.12);
+    transform-origin: center center;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+.ui-root .ui-color__sw::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.35) 32%, transparent 65%);
+    pointer-events: none;
+}
+
+.ui-root .ui-color__sw:hover,
+.ui-root .ui-color:hover .ui-color__sw {
+    transform: scale(1.65);
+    z-index: 10;
+    border-color: rgba(255, 255, 255, 0.85);
+    box-shadow:
+        inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.95),
+        inset -1.5px -2px 3.5px rgba(0, 0, 0, 0.45),
+        0 4px 10px rgba(0, 0, 0, 0.25),
+        0 0 10px rgba(255, 255, 255, 0.5);
+    filter: brightness(1.15) saturate(1.25);
 }
 
 .ui-root .ui-color__x {

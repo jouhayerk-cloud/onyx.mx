@@ -353,7 +353,7 @@ const splitColorTokens = (raw: string): string[] => {
 // aqua: the swatches, the catalogue filters and the AI classifier are unchanged.
 // If they add the metaobject later, deleting this entry is the whole rollback.
 const STORE_COLOR_SUBSTITUTIONS: Partial<Record<AllowedShopifyColor, AllowedShopifyColor>> = {
-    'Turquoise/Aqua': 'Blue',
+    'Turquoise/Aqua': 'Teal',
 };
 
 /** Substitutes unsupported colours and drops the duplicate that creates -- an

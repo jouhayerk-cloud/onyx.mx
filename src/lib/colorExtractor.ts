@@ -21,6 +21,7 @@ export const ALLOWED_SHOPIFY_COLORS = [
     "Rose Gold",
     "Silver",
     "Tan",
+    "Teal",
     "Turquoise/Aqua",
     "White",
     "Yellow"
@@ -48,6 +49,7 @@ export const COLOR_PALETTE: { name: ShopifyColor; rgb: [number, number, number] 
     { name: "Yellow", rgb: [255, 215, 0] },
     { name: "Green", rgb: [40, 160, 40] },
     { name: "Blue", rgb: [30, 100, 220] },
+    { name: "Teal", rgb: [0, 128, 128] },
     { name: "Turquoise/Aqua", rgb: [64, 224, 208] },
     { name: "Pink", rgb: [255, 182, 193] },
     { name: "Purple", rgb: [140, 40, 200] },
@@ -61,8 +63,14 @@ export const COLOR_PALETTE: { name: ShopifyColor; rgb: [number, number, number] 
 export function getStoneStyleColors(material: string = '', title: string = '', color: string = ''): ShopifyColor[] {
     const combined = `${material} ${title} ${color}`.toLowerCase();
     
-    if (combined.includes('aqua') || combined.includes('blue') || combined.includes('azul') || combined.includes('turquoise')) {
-        return ["Turquoise/Aqua", "Brown", "Tan"];
+    if (combined.includes('aqua')) {
+        return ["Tan", "Brown", "Teal"];
+    }
+    if (combined.includes('blue') || combined.includes('azul') || combined.includes('argentin')) {
+        return ["Blue", "Brown", "Tan"];
+    }
+    if (combined.includes('turquoise') || combined.includes('teal')) {
+        return ["Tan", "Brown", "Teal"];
     }
     if (combined.includes('white') || combined.includes('blanco') || combined.includes('ivory')) {
         return ["White", "Cream", "Tan"];
