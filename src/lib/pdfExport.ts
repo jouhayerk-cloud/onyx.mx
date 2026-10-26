@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { DEFAULT_EXCHANGE_RATE } from './consts';
-import { calculateCodesAndPrices, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
+import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
@@ -50,7 +50,8 @@ function drawFormattedTagCode(
     fontSize: number = 9, 
     hideRetail: boolean = false, 
     fallbackData?: any,
-    targetWidth?: number
+    targetWidth?: number,
+    maxFontSize: number = 11.5
 ) {
     let barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || fallbackData?.bookBarcode || '').trim();
     const acqCode = (codes.bookAqCode && codes.bookAqCode !== '-') ? codes.bookAqCode.trim() : (fallbackData?.bookAqCode && fallbackData.bookAqCode !== '-' ? fallbackData.bookAqCode.trim() : '');
@@ -91,7 +92,7 @@ function drawFormattedTagCode(
         const testW = doc.getTextWidth(fullStr);
         if (testW > 0) {
             const scaled = 10 * (targetWidth / testW);
-            activeFontSize = Math.max(7.0, Math.min(11.5, scaled));
+            activeFontSize = Math.max(7.0, Math.min(maxFontSize, scaled));
         }
     }
 
@@ -3352,7 +3353,8 @@ function drawCompactColorBubbles(
     doc.setFont('helvetica', 'bold');
 
     for (const c of colors) {
-        const textW = doc.getTextWidth(c.name);
+        const label = c.name.startsWith('#') ? c.name : toTitleCase(c.name);
+        const textW = doc.getTextWidth(label);
         const itemW = bubbleDiameter + 1.8 + textW + 4.0;
         if (curX + itemW - startX > maxW) break;
 
@@ -3367,7 +3369,7 @@ function drawCompactColorBubbles(
         doc.circle(circleCenterX, circleCenterY, bubbleR, 'S');
 
         doc.setTextColor(30, 41, 59); // deep slate-800 for high readability
-        doc.text(c.name, circleCenterX + bubbleR + 1.6, startY + 1.2);
+        doc.text(label, circleCenterX + bubbleR + 1.6, startY + 1.2);
 
         curX += itemW;
     }
@@ -3447,19 +3449,24 @@ async function drawCatalogCompactPage(
             }
         } catch (e) {}
 
-        // 2. CODES BLOCK (Far Right): Barcode + QR + TagID + MADE IN MEXICO (Vertically centered)
+        // 2. CODES BLOCK (Far Right): barcode + QR, tag line, MADE IN MEXICO.
+        // Line positions come from real cap heights so the lines never touch, and the
+        // block is centred on the row like the info block.
         const totalCodesW = 34.0;
         const blockX = PW - M - totalCodesW;
-        const barW = 26.5;
-        const barH = 5.4;
-        const qrSize = barH; // 5.4mm
+        const barH = 6.4;
+        const qrSize = barH;
         const codeGap = 1.6;
+        const barW = totalCodesW - qrSize - codeGap;
         const barX = blockX;
         const qrX = blockX + barW + codeGap;
-
-        // Total height of codes block ~15.5mm; vertically center it to align with images
-        const codesTotalH = barH + 2.4 + 3.0 + 2.4 + 2.8;
-        const codesY = rowY + (rowH - codesTotalH) / 2;
+        const PT = 0.3528; // mm per pt
+        const tagPt = 8.0;
+        const mimPt = 6.5;
+        const lineGap = 1.3; // clear space between lines, mm
+        const tagBaseOff = barH + lineGap + tagPt * PT * 0.72; // 0.72em = Helvetica cap height
+        const mimBaseOff = tagBaseOff + tagPt * PT * 0.22 + lineGap + mimPt * PT * 0.72;
+        const codesY = rowY + (rowH - mimBaseOff) / 2;
 
         // Barcode (Code128)
         let barDataUrl: string | null = null;
@@ -3493,12 +3500,11 @@ async function drawCatalogCompactPage(
         }
 
         // TagID + Retail + Acquisition Code line
-        const tagTextY = codesY + barH + 2.4;
-        drawFormattedTagCode(doc, codes, blockX, tagTextY, 7.8, false, itemDataObj, totalCodesW);
+        const tagTextY = codesY + tagBaseOff;
+        drawFormattedTagCode(doc, codes, blockX, tagTextY, tagPt, false, itemDataObj, totalCodesW, tagPt);
 
-        // MADE IN MEXICO larger subtitle below tag text (7.0pt bold slate-600)
-        const mimY = tagTextY + 2.8;
-        doc.setFontSize(7.0);
+        const mimY = codesY + mimBaseOff;
+        doc.setFontSize(mimPt);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(71, 85, 105);
         const mimText = 'MADE IN MEXICO';
@@ -3519,12 +3525,12 @@ async function drawCatalogCompactPage(
             shape = norm.shortDescription.trim();
         }
         const shapeTypeParts = [shape, cleanType].filter(Boolean);
-        const shapeTypeStr = Array.from(new Set(shapeTypeParts)).join(' ').replace(/\s+/g, ' ').trim().toUpperCase() || 'SCULPTURAL FORM';
+        const shapeTypeStr = toTitleCase(Array.from(new Set(shapeTypeParts)).join(' ').replace(/\s+/g, ' ').trim()) || 'Sculptural Form';
 
         const color = (norm.color || (itemDataObj ? itemDataObj.Color : '') || '').trim();
         const material = (norm.material || (itemDataObj ? itemDataObj.Material : '') || 'Mexican Onyx').trim();
         const colorMatParts = [color, material].filter(Boolean);
-        const colorMatStr = Array.from(new Set(colorMatParts)).join(' ').replace(/\s+/g, ' ').trim().toUpperCase();
+        const colorMatStr = toTitleCase(Array.from(new Set(colorMatParts)).join(' ').replace(/\s+/g, ' ').trim());
 
         const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
         const dImp = cmToImperial(norm.lengthCm || norm.length_cm) || (norm.lengthInches ? `${norm.lengthInches}"` : '');
