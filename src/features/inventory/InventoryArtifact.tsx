@@ -24,9 +24,9 @@ import { X, Package, LayoutList, LayoutGrid, Layout, Share2, DollarSign, Tag, In
 
 const VENDOR_COLORS: Record<string, string> = {
     'emmanuel': '#00AEEF', 'gerardo': '#F7941D', 'jose': '#6BCEBB', 'carlos': '#85C1E9',
-    'angel': '#FFED00', 'susana': '#B19CD9', 'tellez': '#FFCB05', 'delfino': '#8DC63F',
+    'angel': '#FFED00', 'susana': '#B19CD9', 'tellez': '#D11C7E', 'delfino': '#8DC63F',
     'maria': '#F9A17A', 'fountain': '#F36F21', 'eduardo': '#636466', 'alejandro': '#800020',
-    'bernardo': '#603913', 'roberto': '#00A591', 'gift': '#D11C7E', 'cantera': '#A01E5D'
+    'bernardo': '#603913', 'roberto': '#00A591', 'gift': '#FFCB05', 'cantera': '#A01E5D'
 };
 
 interface InventoryArtifactProps {

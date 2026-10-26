@@ -82,7 +82,7 @@
     "CA": { "name": "Carlos Arenas", "color": "#85C1E9" },
     "AN": { "name": "Angel Cabrera", "color": "#FFED00" },
     "SU": { "name": "Susana", "color": "#B19CD9" },
-    "TE": { "name": "Tellez Taller", "color": "#FFCB05" },
+    "TE": { "name": "Tellez Taller", "color": "#D11C7E" },
     "DH": { "name": "Delfino Hernandez", "color": "#8DC63F" },
     "ML": { "name": "Maria Luisa", "color": "#F9A17A" },
     "GE": { "name": "Gerardo De Gante", "color": "#F7941D" },
@@ -91,7 +91,7 @@
     "AM": { "name": "Alejandro Meza", "color": "#800020" },
     "BT": { "name": "Bernardo", "color": "#603913" },
     "RF": { "name": "Roberto Florita", "color": "#00A591" },
-    "GS": { "name": "Gift Store", "color": "#D11C7E" },
+    "GS": { "name": "Gift Store", "color": "#FFCB05" },
     "CP": { "name": "Cantera Puebla", "color": "#A01E5D" }
   },
   "anti_patterns": [

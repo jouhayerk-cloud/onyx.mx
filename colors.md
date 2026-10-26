@@ -26,7 +26,7 @@
 | **CA** | `#85C1E9` | *System Auto-Assigned* |
 | **AN** | `#FFED00` | *System Auto-Assigned* |
 | **SU** | `#B19CD9` | *System Auto-Assigned* |
-| **TE** | `#FFCB05` | *System Auto-Assigned* |
+| **TE** | `#D11C7E` | *System Auto-Assigned* |
 | **DH** | `#8DC63F` | *System Auto-Assigned* |
 | **ML** | `#F9A17A` | *System Auto-Assigned* |
 | **GE** | `#F7941D` | *System Auto-Assigned* |
@@ -35,5 +35,5 @@
 | **AM** | `#800020` | *System Auto-Assigned* |
 | **BT** | `#603913` | *System Auto-Assigned* |
 | **RF** | `#00A591` | *System Auto-Assigned* |
-| **GS** | `#D11C7E` | *System Auto-Assigned* |
+| **GS** | `#FFCB05` | *System Auto-Assigned* |
 | **CP** | `#A01E5D` | *System Auto-Assigned* |

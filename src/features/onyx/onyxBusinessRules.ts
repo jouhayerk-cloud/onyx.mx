@@ -73,7 +73,7 @@ export const ONYX_CONTEXT = {
         CA: { name: "CARLOS ARENAS", firstName: "Carlos", color: "#85C1E9", bio: "Logistics specialist" },
         AN: { name: "ANGEL CABRERA", firstName: "Angel", color: "#FFED00", bio: "Artisan carver" },
         SU: { name: "SUSANA", firstName: "Susana", color: "#B19CD9", bio: "Quality control" },
-        TE: { name: "TELLEZ TALLER", firstName: "Tellez", color: "#FFCB05", bio: "Production workshop" },
+        TE: { name: "TELLEZ TALLER", firstName: "Tellez", color: "#D11C7E", bio: "Production workshop" },
         DH: { name: "DELFINO HERNANDEZ", firstName: "Delfino", color: "#8DC63F", bio: "Slab specialist" },
         ML: { name: "MARIA LUISA", firstName: "Maria", color: "#F9A17A", bio: "Finishing expert" },
         GE: { name: "GERARDO DE GANTE", firstName: "Gerardo", color: "#F7941D", bio: "Primary source for carved figures" },
@@ -82,7 +82,7 @@ export const ONYX_CONTEXT = {
         AM: { name: "ALEJANDRO MEZA", firstName: "Alejandro", color: "#800020", bio: "Stone selection" },
         BT: { name: "BERNARDO", firstName: "Bernardo", color: "#603913", bio: "Logistics support" },
         RF: { name: "ROBERTO FLORITA", firstName: "Roberto", color: "#00A591", bio: "Export specialist" },
-        GS: { name: "GIFT STORE", firstName: "Gift", color: "#D11C7E", bio: "Retail channel" },
+        GS: { name: "GIFT STORE", firstName: "Gift", color: "#FFCB05", bio: "Retail channel" },
         CP: { name: "CANTERA PUEBLA", firstName: "Cantera", color: "#A01E5D", bio: "Quarry source" },
         IH: { name: "ISMAEL HUERTA", firstName: "Ismael", color: "#E8A020", bio: "New vendor" }
     }

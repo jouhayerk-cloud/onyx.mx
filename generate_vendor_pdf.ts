@@ -21,14 +21,14 @@ const vendorsObj = {
   FR: { name: 'FOUNTAIN ROCK', color: '#F36F21' },
   GE: { name: 'GERARDO DE GANTE', color: '#F7941D' },
   GM: { name: 'GEMA MARTIN', color: '#E6194B' },
-  GS: { name: 'GIFT STORE', color: '#D11C7E' },
+  GS: { name: 'GIFT STORE', color: '#FFCB05' },
   IH: { name: 'ISMAEL HUERTA', color: '#F3FF94' },
   JM: { name: 'JOSE MEZA', color: '#6BCEBB' },
   ML: { name: 'MARIA LUISA', color: '#F9A17A' },
   MM: { name: 'MARGARITA MEZA', color: '#911EB4' },
   RF: { name: 'ROBERTO FLORITA', color: '#00A591' },
   SU: { name: 'SUSANA', color: '#B19CD9' },
-  TE: { name: 'TELLEZ TALLER', color: '#FFCB05' },
+  TE: { name: 'TELLEZ TALLER', color: '#D11C7E' },
 };
 
 const vendorKeys = Object.keys(vendorsObj).sort();

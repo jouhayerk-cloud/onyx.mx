@@ -17,9 +17,9 @@ SUPABASE_KEY = os.getenv("VITE_SUPABASE_ANON_KEY")
 VENDOR_COLORS = {
     'R': '737104', 'M': '4F2068', 'W': 'E67E22', 'C': 'D35400',
     'JM': '6BCEBB', 'EM': '00AEEF', 'CA': '85C1E9', 'AN': 'FFED00',
-    'SU': 'B19CD9', 'TE': 'FFCB05', 'DH': '8DC63F', 'ML': 'F9A17A',
+    'SU': 'B19CD9', 'TE': 'D11C7E', 'DH': '8DC63F', 'ML': 'F9A17A',
     'GE': 'F7941D', 'FR': 'F36F21', 'ET': '636466', 'AM': '800020',
-    'BT': '603913', 'RF': '00A591', 'GS': 'D11C7E', 'CP': 'A01E5D'
+    'BT': '603913', 'RF': '00A591', 'GS': 'FFCB05', 'CP': 'A01E5D'
 }
 
 STATUS_FILLS = {
