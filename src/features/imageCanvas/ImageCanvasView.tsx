@@ -1,13 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Copy, Eraser, Save, Undo2, RotateCcw } from 'lucide-react';
+import { Copy, Eraser, PenTool, RotateCcw, Save, Undo2 } from 'lucide-react';
 import { imageCanvasTargetAtom, inventoryAtom, userAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
-import { extractFileId, fetchImageBatch, imageCache, normalizeInventoryData } from '../../lib/utils';
+import { extractFileId, fetchImageBatch, getCleanImageUrl, imageCache, normalizeInventoryData } from '../../lib/utils';
 import { mediaOf } from '../../lib/ai/run';
+import { toPipelineItem } from '../../lib/ai/item';
+import { resolve826TypeId } from '../../lib/taxonomy/onyx826';
 import { blobToDataUrl, iopaintHealth, IOPAINT_START_CMD } from '../../lib/ai/providers/iopaintService';
-import { cleanedPhotoState, rollbackCleanedPhotoInDb, saveCleanedPhotoToDb } from './imageCanvasPersist';
+import {
+    cleanedPhotoState,
+    maskOutlineState,
+    rollbackCleanedPhotoInDb,
+    rollbackMaskSvgInDb,
+    saveCleanedPhotoToDb,
+    saveMaskSvgToDb,
+} from './imageCanvasPersist';
 import { CleanupBrushStage } from './CleanupBrushStage';
+import { MaskVectorStage } from './MaskVectorStage';
 import { Input, ItemTag, Key, Segmented, StatusPill, Thumb } from '../../components/ui';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { tr } from '../../lib/i18n';
@@ -30,9 +40,57 @@ async function loadPhotoDataUrl(url: string): Promise<string> {
     return blobToDataUrl(await res.blob());
 }
 
+function decodeBase64Utf8(base64: string): string {
+    const clean = base64.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '');
+    const binary = atob(clean);
+    try {
+        const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+        return new TextDecoder('utf-8').decode(bytes);
+    } catch {
+        return binary;
+    }
+}
+
 /**
- * ImageCanvas (Developer and Admin): the cleanup brush on one still photo of an inventory row. Opened from the
- * catalog's Edit in ImageCanvas keys, or from the search box here.
+ * Load the stored SVG outline text: try `fetch` on `getCleanImageUrl(url)` first,
+ * and fall back to `fetchImageBatch` for Drive file IDs just like photo loading.
+ */
+async function loadOutlineSvgText(url: string): Promise<string> {
+    const trimmed = url.trim();
+    if (trimmed.startsWith('<')) return trimmed;
+    if (trimmed.startsWith('data:')) {
+        const comma = trimmed.indexOf(',');
+        if (comma >= 0) {
+            const meta = trimmed.slice(0, comma);
+            const payload = trimmed.slice(comma + 1);
+            return /;base64/i.test(meta) ? decodeBase64Utf8(payload) : decodeURIComponent(payload);
+        }
+    }
+
+    const cleanUrl = getCleanImageUrl(trimmed) || trimmed;
+    try {
+        const res = await fetch(cleanUrl);
+        if (res.ok) {
+            const text = await res.text();
+            if (text.includes('<svg') || text.includes('<path')) return text;
+        }
+    } catch {
+        // Fall back to Drive batch loader below when direct fetch fails or is blocked by CORS.
+    }
+
+    const fileId = extractFileId(trimmed);
+    if (fileId) {
+        const d = await fetchImageBatch(fileId);
+        const text = decodeBase64Utf8(d.base64);
+        if (text.includes('<svg') || text.includes('<path')) return text;
+    }
+
+    throw new Error(tr('The outline SVG could not be loaded'));
+}
+
+/**
+ * ImageCanvas (Developer and Admin): the cleanup brush and mask vector editor on one still photo of an inventory row.
+ * Opened from the catalog's Edit in ImageCanvas keys, or from the search box here.
  */
 export function ImageCanvasView() {
     const [target, setTarget] = useAtom(imageCanvasTargetAtom);
@@ -41,11 +99,14 @@ export function ImageCanvasView() {
     const itemId = target?.itemId ?? '';
     const angleIndex = target?.angleIndex ?? 0;
 
+    const [tool, setTool] = useState<'brush' | 'vector'>('brush');
     const [query, setQuery] = useState('');
     const [row, setRow] = useState<Record<string, any> | null>(null);
     const [source, setSource] = useState<'cleaned' | 'original'>('cleaned');
     const [pass, setPass] = useState<string | null>(null);
     const [passHistory, setPassHistory] = useState<string[]>([]);
+    const [svgText, setSvgText] = useState<string | null>(null);
+    const [svgLoading, setSvgLoading] = useState(false);
     const [service, setService] = useState<'checking' | 'online' | 'offline'>('checking');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -58,7 +119,7 @@ export function ImageCanvasView() {
 
     useEffect(() => { checkService(); }, []);
 
-    // The raw row, fresh: the clean map and the rollback key are read from it, never from a cached copy.
+    // The raw row, fresh: the clean map, spatial_masks and rollback state are read from it, never from a cached copy.
     useEffect(() => {
         setRow(null);
         setError(null);
@@ -76,8 +137,15 @@ export function ImageCanvasView() {
     const stills = useMemo(() => (row ? mediaOf(normalizeInventoryData(row)).filter(m => !m.isVideo) : []), [row]);
     const sourceUrl = stills[angleIndex]?.url ?? null;
     const clean = row && sourceUrl ? cleanedPhotoState(row, sourceUrl) : {};
+    const mask = useMemo(() => (row ? maskOutlineState(row, angleIndex) : { hasPrevOutline: false }), [row, angleIndex]);
     const showCleaned = source === 'cleaned' && !!clean.cleanedUrl;
     const loadUrl = showCleaned ? clean.cleanedUrl! : sourceUrl;
+
+    const isMirror = useMemo(() => {
+        if (!row) return false;
+        const item = toPipelineItem(row);
+        return resolve826TypeId(item.type, item.shape) === 'mirror' || /mirror|espejo/i.test(`${item.type || ''} ${item.shape || ''}`);
+    }, [row]);
 
     // The working image: loaded whenever the photo or the source changes. Passes start over with it.
     useEffect(() => {
@@ -90,6 +158,35 @@ export function ImageCanvasView() {
             .catch(e => { if (alive) setError((e as Error)?.message || tr('The photo could not be loaded')); });
         return () => { alive = false; };
     }, [loadUrl]);
+
+    // Load the stored outline SVG whenever the angle's stored svgUrl or pathD changes.
+    useEffect(() => {
+        setSvgText(null);
+        if (!mask.svgUrl && !mask.pathD) {
+            setSvgLoading(false);
+            return;
+        }
+        if (!mask.svgUrl && mask.pathD) {
+            setSvgText(mask.pathD);
+            setSvgLoading(false);
+            return;
+        }
+        let alive = true;
+        setSvgLoading(true);
+        loadOutlineSvgText(mask.svgUrl!)
+            .then(txt => {
+                if (alive) setSvgText(txt);
+            })
+            .catch(e => {
+                if (!alive) return;
+                if (mask.pathD) setSvgText(mask.pathD);
+                else setError((e as Error)?.message || tr('The outline SVG could not be loaded'));
+            })
+            .finally(() => {
+                if (alive) setSvgLoading(false);
+            });
+        return () => { alive = false; };
+    }, [mask.svgUrl, mask.pathD]);
 
     const matches = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -147,11 +244,65 @@ export function ImageCanvasView() {
         }
     };
 
+    const saveOutline = async ({
+        pathD,
+        fillRule,
+        width,
+        height,
+    }: {
+        pathD: string;
+        fillRule: 'nonzero' | 'evenodd';
+        width: number;
+        height: number;
+    }) => {
+        if (!row || !sourceUrl) return;
+        setSaving(true);
+        setError(null);
+        setMessage(null);
+        try {
+            const { savedRow } = await saveMaskSvgToDb({
+                row,
+                angleIndex,
+                sourceUrl,
+                pathD,
+                fillRule,
+                width,
+                height,
+                cutoutUrl: mask.cutoutUrl,
+                user,
+            });
+            setRow(savedRow as Record<string, any>);
+            setMessage(tr('Saved outline to Drive and to the inventory row.'));
+        } catch (e) {
+            setError((e as Error)?.message || tr('Save failed'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const restorePreviousOutline = async () => {
+        if (!row) return;
+        setSaving(true);
+        setError(null);
+        setMessage(null);
+        try {
+            const saved = await rollbackMaskSvgInDb(row, angleIndex, user);
+            setRow(saved as Record<string, any>);
+            setMessage(tr('Restored the previous outline version.'));
+        } catch (e) {
+            setError((e as Error)?.message || tr('Restore failed'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const serviceState = service === 'online'
         ? { state: 'done' as const, label: tr('IOPaint online') }
         : service === 'offline'
             ? { state: 'failed' as const, label: tr('IOPaint offline') }
             : { state: 'queued' as const, label: tr('Checking IOPaint') };
+
+    const hasOutline = Boolean(mask.svgUrl || mask.pathD);
 
     return (
         <div className="ui-root flex h-full min-h-0 flex-col gap-3 p-3">
@@ -187,11 +338,11 @@ export function ImageCanvasView() {
                 <Segmented
                     size="sm"
                     label={tr('Tool')}
-                    value="brush"
-                    onChange={() => undefined}
+                    value={tool}
+                    onChange={v => setTool(v as "vector" | "brush")}
                     options={[
                         { value: 'brush', label: tr('Cleanup Brush'), icon: <Eraser size={14} /> },
-                        { value: 'vector', label: <>{tr('Mask Vector')} <span className="text-[11px]">{tr('Coming soon')}</span></>, disabled: true, title: tr('Coming soon') },
+                        { value: 'vector', label: tr('Mask Vector'), icon: <PenTool size={14} /> },
                     ]} />
                 <Segmented
                     size="sm"
@@ -202,13 +353,17 @@ export function ImageCanvasView() {
                         { value: 'cleaned', label: tr('Cleaned'), disabled: !clean.cleanedUrl },
                         { value: 'original', label: tr('Original') },
                     ]} />
-                <span className="flex-1" />
-                <Key size="sm" icon={<Undo2 size={14} />} disabled={!passHistory.length || saving} onClick={undoPass}>{tr('Undo pass')}</Key>
-                <Key size="sm" icon={<RotateCcw size={14} />} disabled={!clean.prevUrl || saving} onClick={restorePrevious}>{tr('Restore previous clean')}</Key>
-                <Key variant="go" size="sm" icon={<Save size={14} />} disabled={!pass || !row || !sourceUrl || saving} busy={saving} onClick={save}>{tr('Save to Drive')}</Key>
+                {tool === 'brush' && (
+                    <>
+                        <span className="flex-1" />
+                        <Key size="sm" icon={<Undo2 size={14} />} disabled={!passHistory.length || saving} onClick={undoPass}>{tr('Undo pass')}</Key>
+                        <Key size="sm" icon={<RotateCcw size={14} />} disabled={!clean.prevUrl || saving} onClick={restorePrevious}>{tr('Restore previous clean')}</Key>
+                        <Key variant="go" size="sm" icon={<Save size={14} />} disabled={!pass || !row || !sourceUrl || saving} busy={saving} onClick={save}>{tr('Save to Drive')}</Key>
+                    </>
+                )}
             </div>
 
-            {service === 'offline' && (
+            {tool === 'brush' && service === 'offline' && (
                 <div className="liquid-panel flex flex-wrap items-center gap-2 rounded-md p-3">
                     <p className="text-sm">{tr('IOPaint is not running on this PC. Start it, then retry.')}</p>
                     <code className="break-all text-[12px]">{IOPAINT_START_CMD}</code>
@@ -225,6 +380,25 @@ export function ImageCanvasView() {
                     <p className="text-sm">{tr('Find an item above, or open a photo with Edit in ImageCanvas.')}</p>
                 ) : row && !sourceUrl ? (
                     <p className="text-sm">{tr('This item has no photo.')}</p>
+                ) : tool === 'vector' ? (
+                    row && !hasOutline ? (
+                        <div className="liquid-panel rounded-md p-3">
+                            <p className="text-sm">{tr('This photo has no stored outline yet. Run Vector Cutout in the Catalog Hub first.')}</p>
+                        </div>
+                    ) : pass && svgText && !svgLoading ? (
+                        <MaskVectorStage
+                            baseImageUrl={pass}
+                            svgTextOrD={svgText}
+                            cutoutUrl={mask.cutoutUrl}
+                            matteUrl={mask.matteUrl}
+                            isMirror={isMirror}
+                            hasPreviousOutline={mask.hasPrevOutline}
+                            saving={saving}
+                            onSave={saveOutline}
+                            onRestorePrevious={restorePreviousOutline} />
+                    ) : !error ? (
+                        <div className="flex flex-1 items-center justify-center"><LoadingIndicator /></div>
+                    ) : null
                 ) : pass ? (
                     <CleanupBrushStage
                         baseImageUrl={pass}
