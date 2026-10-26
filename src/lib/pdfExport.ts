@@ -42,6 +42,20 @@ function formatQuantityText(qty: any): string {
     return words[n] || String(n);
 }
 
+/** Public tag page for a tag ID, the same URL the printed labels use. */
+function tagPageUrl(tagId: string): string {
+    return `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${encodeURIComponent(tagId.replace(/\s+/g, ''))}`;
+}
+
+/**
+ * QR for catalog pages. Error correction H recovers ~30% of modules (the vendor
+ * dot hides ~6%, print/scan blur takes the rest); margin 1 keeps a quiet zone next
+ * to the barcode; 400 px keeps module edges sharp in print.
+ */
+function tagQrDataUrl(data: string): Promise<string> {
+    return QRCode.toDataURL(data, { errorCorrectionLevel: 'H', margin: 1, width: 400, color: { dark: '#141414', light: '#ffffff' } });
+}
+
 function drawFormattedTagCode(
     doc: jsPDF, 
     codes: any, 
@@ -1906,7 +1920,7 @@ async function drawCatalogHubPagePortrait(
 
     let qrDataUrl = '';
     try {
-        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { errorCorrectionLevel: 'H', margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
+        qrDataUrl = await tagQrDataUrl(tagPageUrl(barcode));
     } catch (e) {}
 
     let barDataUrl = '';
@@ -2303,7 +2317,7 @@ async function drawCatalogHubPageLandscapeGrid(
 
     let qrDataUrl = '';
     try {
-        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { errorCorrectionLevel: 'H', margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
+        qrDataUrl = await tagQrDataUrl(tagPageUrl(barcode));
     } catch (e) {}
 
     let barDataUrl = '';
@@ -3489,10 +3503,7 @@ async function drawCatalogCompactPage(
         const qrX = blockX + leftW + CODE_GAP;
         let qrDataUrl = '';
         try {
-            const publicUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${encodeURIComponent(barcode.replace(/\s+/g, ''))}`;
-            // H recovers ~30% of modules: the vendor dot hides ~6%, and print/scan blur takes the rest.
-            // margin 1 keeps a quiet zone next to the barcode; 400 px keeps module edges sharp in print.
-            qrDataUrl = await QRCode.toDataURL(publicUrl, { errorCorrectionLevel: 'H', margin: 1, width: 400, color: { dark: '#141414', light: '#ffffff' } });
+            qrDataUrl = await tagQrDataUrl(barcode.replace(/\s+/g, '')); // compact: plain tag ID
         } catch (e) {}
         if (qrDataUrl) {
             doc.addImage(qrDataUrl, 'PNG', qrX, codesY, qrSize, qrSize);

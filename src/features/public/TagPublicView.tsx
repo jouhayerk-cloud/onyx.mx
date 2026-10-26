@@ -183,14 +183,11 @@ export const TagPublicView: React.FC<TagPublicViewProps> = ({ tagId, onBack }) =
     );
 
     // Share permalink
-    const shareUrl = useMemo(() => {
-        if (typeof window !== 'undefined') {
-            const url = new URL(window.location.href);
-            url.searchParams.set('tagid', tagText);
-            return url.toString();
-        }
-        return `https://onyx.mx/?tagid=${encodeURIComponent(tagText)}`;
-    }, [tagText]);
+    // Always the canonical public URL (the one printed QR codes use), whatever host this page was opened on.
+    const shareUrl = useMemo(
+        () => `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${encodeURIComponent(tagText)}`,
+        [tagText],
+    );
 
     const handleCopyShare = useCallback(() => {
         navigator.clipboard.writeText(shareUrl).then(() => {
