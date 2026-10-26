@@ -1900,10 +1900,12 @@ async function drawCatalogHubPagePortrait(
     const maxCutoutActualH = loadedCutouts.reduce((max, c) => Math.max(max, c.h), 0);
 
     // Top Right Corner Block: Barcode + Small QR Code (same height as barcode) + TagID/Retail/Acq matching width
-    const barW = 38;
-    const barH = 8.0;
-    const qrSize = barH; // small QR code same height as barcode
+    // The QR carries the tag-page URL (33x33 modules + quiet zone); at 12 mm each module is
+    // ~0.32 mm, which fast phone scans read reliably (8 mm, 0.22 mm modules, did not).
+    const qrSize = 12.0;
+    const barH = qrSize;
     const codeGap = 2.0;
+    const barW = 48.0 - codeGap - qrSize;
     const totalCodesW = barW + codeGap + qrSize; // 48.0mm
     const rightEdge = PW - M;
     const blockX = rightEdge - totalCodesW;
@@ -2289,10 +2291,12 @@ async function drawCatalogHubPageLandscapeGrid(
     const maxCutoutActualH = loadedCutouts.reduce((max, c) => Math.max(max, c.h), 0);
 
     // Top Right Corner Block: Barcode + Small QR Code (same height as barcode) + TagID/Retail/Acq matching width
-    const barW = 38;
-    const barH = 8.0;
-    const qrSize = barH; // small QR code same height as barcode
+    // The QR carries the tag-page URL (33x33 modules + quiet zone); at 12 mm each module is
+    // ~0.32 mm, which fast phone scans read reliably (8 mm, 0.22 mm modules, did not).
+    const qrSize = 12.0;
+    const barH = qrSize;
     const codeGap = 2.0;
+    const barW = 48.0 - codeGap - qrSize;
     const totalCodesW = barW + codeGap + qrSize; // 48.0mm
     const rightEdge = PW - M;
     const blockX = rightEdge - totalCodesW;
