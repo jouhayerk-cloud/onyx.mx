@@ -3347,9 +3347,9 @@ function drawCompactColorBubbles(
 ): number {
     if (!colors || colors.length === 0) return 0;
     let curX = startX;
-    const bubbleR = 2.0; // Larger orb (diameter 4.0mm) - readable from afar
+    const bubbleR = 2.3;
     const bubbleDiameter = bubbleR * 2;
-    doc.setFontSize(8.8); // Larger color titles (8.8pt bold) - readable from afar
+    doc.setFontSize(10.0);
     doc.setFont('helvetica', 'bold');
 
     for (const c of colors) {
@@ -3369,7 +3369,7 @@ function drawCompactColorBubbles(
         doc.circle(circleCenterX, circleCenterY, bubbleR, 'S');
 
         doc.setTextColor(30, 41, 59); // deep slate-800 for high readability
-        doc.text(label, circleCenterX + bubbleR + 1.6, startY + 1.2);
+        doc.text(label, circleCenterX + bubbleR + 1.6, startY + 1.3);
 
         curX += itemW;
     }
@@ -3461,8 +3461,8 @@ async function drawCatalogCompactPage(
         const barX = blockX;
         const qrX = blockX + barW + codeGap;
         const PT = 0.3528; // mm per pt
-        const tagPt = 8.0;
-        const mimPt = 6.5;
+        const tagPt = 9.2;
+        const mimPt = 7.5;
         const lineGap = 1.3; // clear space between lines, mm
         const tagBaseOff = barH + lineGap + tagPt * PT * 0.72; // 0.72em = Helvetica cap height
         const mimBaseOff = tagBaseOff + tagPt * PT * 0.22 + lineGap + mimPt * PT * 0.72;
@@ -3550,37 +3550,37 @@ async function drawCatalogCompactPage(
         if (dimsImperial) titleChunks.push({ text: dimsMetric ? ` (${dimsImperial})` : ` ${dimsImperial}`, bold: false });
 
         // Measure and layout structured title
-        const titleFontSize = 10.2;
-        const titleLineH = 4.0;
+        const titleFontSize = 12.0;
+        const titleLineH = 4.8;
         const measuredTitle = measureStructuredTitle(doc, titleChunks, infoW, titleFontSize, titleLineH);
-        const displayLines = measuredTitle.lines.slice(0, 2); // 2 lines max for clean spacing
-        const actualTitleH = displayLines.length <= 1 ? 3.6 : (displayLines.length - 1) * titleLineH + 3.6;
+        const displayLines = measuredTitle.lines.slice(0, 3); // 3 lines fit the row: 13.8mm title + 14.6mm colours and weight < 31.3mm
+        const actualTitleH = displayLines.length <= 1 ? 4.2 : (displayLines.length - 1) * titleLineH + 4.2;
 
         const extractedColors = getItemExtractedColors(norm, itemDataObj);
         const wtKg = parseFloat(norm.weightKg || '0');
 
         // Dynamically compute total height of middle info block to align center height of item images
-        const colorBlockH = extractedColors.length > 0 ? 5.2 : 0;
-        const wtBlockH = wtKg > 0 ? 3.0 : 0;
+        const colorBlockH = extractedColors.length > 0 ? 6.0 : 0;
+        const wtBlockH = wtKg > 0 ? 3.4 : 0;
         const infoTotalH = actualTitleH + (extractedColors.length > 0 ? 2.8 + colorBlockH : 0) + (wtKg > 0 ? 2.4 + wtBlockH : 0);
 
         // Vertically center middle info block with image center height
-        const infoStartY = rowY + (rowH - infoTotalH) / 2 + 3.2;
+        const infoStartY = rowY + (rowH - infoTotalH) / 2 + 3.8;
 
         // Render structured title (Quantity regular, Shape Type Bold, Color material regular, sizes cm bold, sizes imperial regular)
         drawMeasuredTitle(doc, displayLines, infoX, infoStartY, titleLineH);
-        let currInfoY = infoStartY + (displayLines.length - 1) * titleLineH + 4.4;
+        let currInfoY = infoStartY + (displayLines.length - 1) * titleLineH + 5.2;
 
         // Color Glass Indicators (8.8pt bold, 4mm orbs - readable from afar, colors bold)
         if (extractedColors.length > 0) {
             drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, currInfoY, infoW);
-            currInfoY += 5.2;
+            currInfoY += 6.0;
         }
 
         // Weight (7.2pt Normal Slate-600)
         if (wtKg > 0) {
             const wtLbs = Math.round(wtKg * 2.20462);
-            doc.setFontSize(7.2);
+            doc.setFontSize(8.5);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
             doc.text(`${Math.round(wtKg)} kg  •  ${wtLbs} lbs`, infoX, currInfoY);
