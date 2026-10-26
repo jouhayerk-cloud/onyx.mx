@@ -12,6 +12,7 @@ const viewLoaders: Record<string, () => Promise<unknown>> = {
     control: () => import('../control/ControlView'),
     workbook: () => import('../archived/ArchivedView'),
     devices: () => import('../pico/devices/DevicesView'),
+    'image-canvas': () => import('../imageCanvas/ImageCanvasView'),
 };
 
 const prefetched = new Set<string>();

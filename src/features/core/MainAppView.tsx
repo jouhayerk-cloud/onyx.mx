@@ -103,6 +103,7 @@ const CratePackingManager = React.lazy(() => import('../logistics/CratePackingMa
 const ItemsPayWizard     = React.lazy(() => import('../finance/ItemsPayWizard').then(m => ({ default: m.ItemsPayWizard })));
 const DevicesView        = React.lazy(() => import('../pico/devices/DevicesView').then(m => ({ default: m.DevicesView })));
 const PackagingStudio    = React.lazy(() => import('../packaging/PackagingStudio').then(m => ({ default: m.PackagingStudio })));
+const ImageCanvasView    = React.lazy(() => import('../imageCanvas/ImageCanvasView').then(m => ({ default: m.ImageCanvasView })));
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function MainAppView() {
@@ -304,6 +305,7 @@ export function MainAppView() {
             case 'onyx-reg': return <RegStorePreview />;
             case 'pico-bridge': return <DevicesView />;
             case 'devices': return <DevicesView />;
+            case 'image-canvas': return (user?.role === 'Developer' || user?.role === 'Admin') ? <ImageCanvasView /> : <InventoryView />;
 
             default:
                 return <InventoryView />;

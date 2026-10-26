@@ -17,7 +17,7 @@
 export type NavId =
     | 'home' | 'dashboard' | 'finance' | 'inventory' | 'add-entry'
     | 'warehouse' | 'trucking' | 'viewer'
-    | 'control' | 'archived' | 'devices';
+    | 'control' | 'archived' | 'devices' | 'image-canvas';
 
 /** The view each entry opens. */
 export const NAV_VIEW: Record<NavId, string | null> = {
@@ -32,9 +32,10 @@ export const NAV_VIEW: Record<NavId, string | null> = {
     control: 'control',
     archived: 'workbook',
     devices: 'devices',
+    'image-canvas': 'image-canvas',
 };
 
-const ADMIN_NAV: readonly NavId[] = ['home', 'dashboard', 'finance', 'inventory', 'add-entry', 'warehouse', 'trucking', 'viewer'];
+const ADMIN_NAV: readonly NavId[] = ['home', 'dashboard', 'finance', 'inventory', 'add-entry', 'warehouse', 'trucking', 'viewer', 'image-canvas'];
 const DEV_ONLY_NAV: readonly NavId[] = ['control', 'archived', 'devices'];
 const CLIENT_FINANCE_NAV: readonly NavId[] = ['dashboard', 'finance', 'inventory'];
 const CLIENT_NAV: readonly NavId[] = ['home', 'inventory', 'viewer'];
@@ -68,6 +69,7 @@ const GUARDED: Record<string, NavId> = {
     control: 'control',
     workbook: 'archived',
     devices: 'devices',
+    'image-canvas': 'image-canvas',
 };
 
 /** False when the view has a sidebar entry the role does not see. Views with no entry (Add entry flows, tags...) stay open as before. */

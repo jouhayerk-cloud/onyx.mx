@@ -6,8 +6,14 @@ import {
   ImageSrcAtom,
   IsUploadedImageAtom,
   SelectedItemDataAtom,
+  SelectedItemRowAtom,
+  activeViewAtom,
+  imageCanvasTargetAtom,
+  userAtom,
 } from '../../lib/atoms';
 import {LoadingIndicator} from '../../components/LoadingIndicator';
+import { Key } from '../../components/ui';
+import { Pipette } from 'lucide-react';
 import { imageCache, fetchImageBatch } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
 
@@ -167,8 +173,13 @@ const MediaThumbnail: React.FC<{
 
 export function ItemMediaPanel() {
   const selectedItemData = useAtomValue(SelectedItemDataAtom);
+  const selectedRow = useAtomValue(SelectedItemRowAtom);
   const setImageSrc = useSetAtom(ImageSrcAtom);
   const setIsUploadedImage = useSetAtom(IsUploadedImageAtom);
+  const user = useAtomValue(userAtom);
+  const setActiveView = useSetAtom(activeViewAtom);
+  const setImageCanvasTarget = useSetAtom(imageCanvasTargetAtom);
+  const [angleIndex, setAngleIndex] = useState(0);
 
   const mediaUrls =
     selectedItemData?.mediaUrls
@@ -179,6 +190,11 @@ export function ItemMediaPanel() {
   const handleThumbnailClick = (dataUrl: string) => {
     setImageSrc(dataUrl);
     setIsUploadedImage(false); // When clicking existing media, it's not a new upload.
+  };
+
+  const openImageCanvas = () => {
+    setImageCanvasTarget({ itemId: String(selectedItemData?.id || selectedRow), angleIndex });
+    setActiveView('image-canvas');
   };
 
   if (mediaUrls.length === 0) {
@@ -200,6 +216,9 @@ export function ItemMediaPanel() {
         <span className="cat-origin cat-origin--raw" title={mediaOriginTitle('raw')}>
           {MEDIA_ORIGIN_WORD.raw}
         </span>
+        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+          <Key size="sm" icon={<Pipette size={13} />} onClick={openImageCanvas}>{tr('Edit in ImageCanvas')}</Key>
+        )}
       </div>
       <MediaOriginNote />
       <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -208,7 +227,7 @@ export function ItemMediaPanel() {
             key={index}
             url={url}
             origin="raw"
-            onClick={handleThumbnailClick}
+            onClick={(dataUrl) => { setAngleIndex(index); handleThumbnailClick(dataUrl); }}
           />
         ))}
       </div>

@@ -25,8 +25,10 @@ import {
   allAnnotationDataAtom,
   workflowStepAtom,
   exchangeRateAtom,
+  activeViewAtom,
+  imageCanvasTargetAtom,
 } from '../../lib/atoms';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pipette } from 'lucide-react';
 import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
@@ -152,6 +154,9 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
+  const user = useAtomValue(userAtom);
+  const setActiveView = useSetAtom(activeViewAtom);
+  const setImageCanvasTarget = useSetAtom(imageCanvasTargetAtom);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -378,6 +383,22 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
 
         {/* The distinction, in a word, on the face of the frame it describes. */}
         {imageDataUrl && <MediaOriginBadge origin={origin} variant="onmedia" />}
+
+        {(user?.role === 'Developer' || user?.role === 'Admin') && !isVideo && (
+          <button
+            type="button"
+            className="cat-media-key cat-media-key--zoom"
+            aria-label={tr("Edit in ImageCanvas")}
+            title={tr("Edit in ImageCanvas")}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Angle 0 is the first raw still; the cleaned PNG sits in front of it in this gallery.
+              setImageCanvasTarget({ itemId: String(item.data.id || item.row), angleIndex: cleanedUrl ? Math.max(0, activeMediaIndex - 1) : activeMediaIndex });
+              setActiveView('image-canvas');
+            }}>
+            <Pipette size={14} />
+          </button>
+        )}
 
         {mediaUrls.length > 1 && (
           <>

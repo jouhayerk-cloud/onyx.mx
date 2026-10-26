@@ -334,7 +334,16 @@ export const batchActionItemsDataAtom = atom<InventoryItem[]>([]);
 export const isMarketMultiSelectModeAtom = atom(false);
 export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
-export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'warehouse' | 'trucking' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'workbook' | 'typeboard' | 'store' | 'process' | 'viewer' | 'welcome' | 'onyx' | 'pico-bridge' | 'onyx-reg' | 'devices' | 'threed'>('activeView', 'welcome', sessionJSONStorage);
+export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'warehouse' | 'trucking' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'workbook' | 'typeboard' | 'store' | 'process' | 'viewer' | 'welcome' | 'onyx' | 'pico-bridge' | 'onyx-reg' | 'devices' | 'threed' | 'image-canvas'>('activeView', 'welcome', sessionJSONStorage);
+
+/** The inventory row, its 0-based still photo and tool that the ImageCanvas view opens on. */
+export interface ImageCanvasTarget {
+    itemId: string;
+    angleIndex?: number;
+    tool?: 'brush' | 'vector';
+}
+// No explicit `| null` type argument: this project runs with strictNullChecks off, where it collapses and jotai picks its read-only overload.
+export const imageCanvasTargetAtom = atom(null as ImageCanvasTarget | null);
 export const onyxMessagesAtom = atom<any[]>([]);
 export const onyxIsListeningAtom = atom<boolean>(false);
 export const onyxIsTypingAtom = atom<boolean>(false);
