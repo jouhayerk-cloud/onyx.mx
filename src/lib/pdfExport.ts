@@ -3439,8 +3439,8 @@ async function drawCatalogCompactPage(
 
         // Axo Element (Strictly 1:1, centered in 25mm slot)
         const axoSecX = cutoutSecX + cutoutSecW + 1.8;
-        const axoSecW = 25.0;
-        const axoSecH = Math.min(25.0, rowH - 3.0);
+        const axoSecW = 29.0;
+        const axoSecH = Math.min(29.0, rowH - 1.5);
         const axoSecY = rowY + (rowH - axoSecH) / 2;
         try {
             const axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
