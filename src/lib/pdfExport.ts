@@ -3233,18 +3233,18 @@ function drawCompactColorBubbles(
     colors: ExtractedColorInfo[],
     startX: number,
     startY: number,
-    maxW: number = 85
+    maxW: number = 95
 ): number {
     if (!colors || colors.length === 0) return 0;
     let curX = startX;
-    const bubbleR = 1.7; // Larger bubble (diameter 3.4mm)
+    const bubbleR = 2.0; // Larger orb (diameter 4.0mm) - readable from afar
     const bubbleDiameter = bubbleR * 2;
-    doc.setFontSize(7.2); // Larger subtitle size
+    doc.setFontSize(8.8); // Larger color titles (8.8pt bold) - readable from afar
     doc.setFont('helvetica', 'bold');
 
     for (const c of colors) {
         const textW = doc.getTextWidth(c.name);
-        const itemW = bubbleDiameter + 1.4 + textW + 3.5;
+        const itemW = bubbleDiameter + 1.8 + textW + 4.0;
         if (curX + itemW - startX > maxW) break;
 
         const circleCenterX = curX + bubbleR;
@@ -3254,11 +3254,11 @@ function drawCompactColorBubbles(
         doc.circle(circleCenterX, circleCenterY, bubbleR, 'F');
 
         doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.18);
+        doc.setLineWidth(0.2);
         doc.circle(circleCenterX, circleCenterY, bubbleR, 'S');
 
-        doc.setTextColor(51, 65, 85);
-        doc.text(c.name, circleCenterX + bubbleR + 1.4, startY + 1.0);
+        doc.setTextColor(30, 41, 59); // deep slate-800 for high readability
+        doc.text(c.name, circleCenterX + bubbleR + 1.6, startY + 1.2);
 
         curX += itemW;
     }
@@ -3291,7 +3291,7 @@ async function drawCatalogCompactPage(
         const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, 18.5, '1') || {};
         const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
-        // 1. GRAPHICS BLOCK (Left): Cutout PNG(s) + Axo (Frameless, tight spacing)
+        // 1. GRAPHICS BLOCK (Left): Cutout PNG(s) + Axo (Frameless, vertically centered in row)
         const cutoutSecW = 24.0;
         const cutoutSecX = M;
         const cutoutUrls = getItemCutoutPngs(item);
@@ -3338,7 +3338,7 @@ async function drawCatalogCompactPage(
             }
         } catch (e) {}
 
-        // 2. CODES BLOCK (Far Right): Barcode + QR + TagID + MADE IN MEXICO subtitle
+        // 2. CODES BLOCK (Far Right): Barcode + QR + TagID + MADE IN MEXICO (Vertically centered)
         const totalCodesW = 34.0;
         const blockX = PW - M - totalCodesW;
         const barW = 26.5;
@@ -3347,7 +3347,10 @@ async function drawCatalogCompactPage(
         const codeGap = 1.6;
         const barX = blockX;
         const qrX = blockX + barW + codeGap;
-        const codesY = rowY + 4.8;
+
+        // Total height of codes block ~15.5mm; vertically center it to align with images
+        const codesTotalH = barH + 2.4 + 3.0 + 2.4 + 2.8;
+        const codesY = rowY + (rowH - codesTotalH) / 2;
 
         // Barcode (Code128)
         let barDataUrl: string | null = null;
@@ -3380,47 +3383,58 @@ async function drawCatalogCompactPage(
             doc.circle(qrCenterX, qrCenterY, 0.6, 'F');
         }
 
-        // TagID + Retail + Acquisition Code line: EXACT same width as [ Barcode ] [ QR ], no raw retail label
-        const tagTextY = codesY + barH + 2.5;
-        drawFormattedTagCode(doc, codes, blockX, tagTextY, 7.2, false, itemDataObj, totalCodesW);
+        // TagID + Retail + Acquisition Code line
+        const tagTextY = codesY + barH + 2.4;
+        drawFormattedTagCode(doc, codes, blockX, tagTextY, 7.8, false, itemDataObj, totalCodesW);
 
-        // MADE IN MEXICO small subtitle below tag text
-        const mimY = tagTextY + 2.6;
-        doc.setFontSize(5.2);
+        // MADE IN MEXICO larger subtitle below tag text (7.0pt bold slate-600)
+        const mimY = tagTextY + 2.8;
+        doc.setFontSize(7.0);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(148, 163, 184);
+        doc.setTextColor(71, 85, 105);
         const mimText = 'MADE IN MEXICO';
         const mimW = doc.getTextWidth(mimText);
         const mimX = blockX + (totalCodesW - mimW) / 2;
         doc.text(mimText, mimX, mimY);
 
-        // 3. MIDDLE INFORMATION BLOCK: High Readability, Deterministic Imperial Title & Weight
+        // 3. MIDDLE INFORMATION BLOCK: Large readable text, vertically centered with images
         const infoX = axoSecX + axoSecW + 3.2;
         const infoW = blockX - infoX - 3.0; // ~95mm width
 
-        // Font Size 1 (Title): 8.5pt Bold Slate-900 with both Metric (cm) & Imperial Dimensions
+        // Large Deterministic Title (10.2pt Bold Slate-900 - readable from afar)
         const mainTitleStr = buildDeterministicTitle(norm, itemDataObj, true);
-        doc.setFontSize(8.5);
+        doc.setFontSize(10.2);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(15, 23, 42);
+        const titleLineH = 4.0;
         const splitTitle = doc.splitTextToSize(mainTitleStr, infoW);
-        const titleLines = splitTitle.slice(0, 3);
-        const titleY = rowY + 4.8;
-        doc.text(titleLines, infoX, titleY);
-        let currInfoY = titleY + (titleLines.length - 1) * 3.3 + 3.4;
+        const titleLines = splitTitle.slice(0, 2);
 
-        // Color Glass Indicators (Font 7.2pt bold subtitle size, larger 3.4mm bubbles)
         const extractedColors = getItemExtractedColors(norm, itemDataObj);
+        const wtKg = parseFloat(norm.weightKg || '0');
+
+        // Dynamically compute total height of middle info block to align center height of item images
+        const titleBlockH = (titleLines.length - 1) * titleLineH + 3.6;
+        const colorBlockH = extractedColors.length > 0 ? 5.2 : 0;
+        const wtBlockH = wtKg > 0 ? 3.0 : 0;
+        const infoTotalH = titleBlockH + (extractedColors.length > 0 ? 2.8 : 0) + colorBlockH + (wtKg > 0 ? 2.4 : 0) + wtBlockH;
+
+        // Vertically center middle info block with image height
+        const infoStartY = rowY + (rowH - infoTotalH) / 2 + 3.2;
+
+        doc.setTextColor(15, 23, 42);
+        doc.text(titleLines, infoX, infoStartY);
+        let currInfoY = infoStartY + (titleLines.length - 1) * titleLineH + 4.2;
+
+        // Color Glass Indicators (8.8pt bold, 4mm orbs - readable from afar)
         if (extractedColors.length > 0) {
             drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, currInfoY, infoW);
-            currInfoY += 4.0;
+            currInfoY += 5.2;
         }
 
-        // Font Size 2 (Weight): Unified 6.4pt Normal Slate-700 (NO duplicate cm dimensions)
-        const wtKg = parseFloat(norm.weightKg || '0');
+        // Weight (7.2pt Normal Slate-600)
         if (wtKg > 0) {
             const wtLbs = Math.round(wtKg * 2.20462);
-            doc.setFontSize(6.4);
+            doc.setFontSize(7.2);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
             doc.text(`${Math.round(wtKg)} kg  •  ${wtLbs} lbs`, infoX, currInfoY);
