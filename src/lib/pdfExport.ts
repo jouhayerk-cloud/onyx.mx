@@ -3264,116 +3264,112 @@ interface MeasuredWordToken {
     w: number;
 }
 
+/** Breaks title runs into lines no wider than maxW; a chunk containing "\n" forces a line break. */
 function measureStructuredTitle(
     doc: any,
     chunks: TitleChunk[],
     maxW: number,
-    fontSize: number = 10.2,
-    lineHeight: number = 4.0
-): { lines: MeasuredWordToken[][]; totalH: number } {
+    fontSize: number,
+): MeasuredWordToken[][] {
     doc.setFontSize(fontSize);
     const tokens: MeasuredWordToken[] = [];
     for (const chunk of chunks) {
-        if (!chunk.text) continue;
-        const words = chunk.text.split(/(\s+)/);
-        for (const w of words) {
+        for (const w of chunk.text.split(/(\s+)/)) {
             if (!w) continue;
             doc.setFont('helvetica', chunk.bold ? 'bold' : 'normal');
-            const tokenW = doc.getTextWidth(w);
-            tokens.push({ word: w, bold: chunk.bold, w: tokenW });
+            tokens.push({ word: w, bold: chunk.bold, w: w.includes('\n') ? 0 : doc.getTextWidth(w) });
         }
     }
-
     const lines: MeasuredWordToken[][] = [];
-    let currentLine: MeasuredWordToken[] = [];
-    let currentLineW = 0;
-
+    let line: MeasuredWordToken[] = [];
+    let lineW = 0;
+    const flush = () => {
+        while (line.length && /^\s+$/.test(line[line.length - 1].word)) line.pop();
+        if (line.length) lines.push(line);
+        line = [];
+        lineW = 0;
+    };
     for (const t of tokens) {
+        if (t.word.includes('\n')) { flush(); continue; }
         const isSpace = /^\s+$/.test(t.word);
-        if (currentLineW + t.w > maxW && currentLine.length > 0) {
-            while (currentLine.length > 0 && /^\s+$/.test(currentLine[currentLine.length - 1].word)) {
-                currentLine.pop();
-            }
-            if (currentLine.length > 0) {
-                lines.push(currentLine);
-            }
-            currentLine = isSpace ? [] : [t];
-            currentLineW = isSpace ? 0 : t.w;
-        } else {
-            currentLine.push(t);
-            currentLineW += t.w;
+        if (lineW + t.w > maxW && line.length) {
+            flush();
+            if (isSpace) continue;
         }
+        if (isSpace && !line.length) continue;
+        line.push(t);
+        lineW += t.w;
     }
-    if (currentLine.length > 0) {
-        while (currentLine.length > 0 && /^\s+$/.test(currentLine[currentLine.length - 1].word)) {
-            currentLine.pop();
-        }
-        if (currentLine.length > 0) {
-            lines.push(currentLine);
-        }
-    }
-
-    const totalH = lines.length <= 1 ? 3.6 : (lines.length - 1) * lineHeight + 3.6;
-    return { lines, totalH };
+    flush();
+    return lines;
 }
 
+/** Width of a measured line. */
+function measuredLineWidth(line: MeasuredWordToken[]): number {
+    return line.reduce((s, t) => s + t.w, 0);
+}
+
+/**
+ * Draws measured lines. Consecutive tokens of the same weight are drawn as one
+ * string and advanced by that string's own width, so word gaps come from the font
+ * rather than from summing per-word widths (which spread the words unevenly).
+ */
 function drawMeasuredTitle(
     doc: any,
     lines: MeasuredWordToken[][],
     startX: number,
     startY: number,
-    lineHeight: number = 4.0
+    lineHeight: number,
+    fontSize: number,
 ) {
+    doc.setFontSize(fontSize);
+    doc.setTextColor(15, 23, 42); // slate-900
     let curY = startY;
-    for (let l = 0; l < lines.length; l++) {
-        const line = lines[l];
+    for (const line of lines) {
         let curX = startX;
-        for (const t of line) {
-            doc.setFont('helvetica', t.bold ? 'bold' : 'normal');
-            doc.setTextColor(15, 23, 42); // slate-900
-            doc.text(t.word, curX, curY);
-            curX += t.w;
+        let i = 0;
+        while (i < line.length) {
+            const bold = line[i].bold;
+            let run = '';
+            while (i < line.length && line[i].bold === bold) run += line[i++].word;
+            doc.setFont('helvetica', bold ? 'bold' : 'normal');
+            doc.text(run, curX, curY);
+            curX += doc.getTextWidth(run);
         }
         curY += lineHeight;
     }
 }
 
+/** Colour orbs with bold Title Case labels on one text baseline; returns the width used. */
 function drawCompactColorBubbles(
     doc: any,
     colors: ExtractedColorInfo[],
     startX: number,
-    startY: number,
-    maxW: number = 95
+    baselineY: number,
+    maxW: number,
+    fontSize: number,
 ): number {
     if (!colors || colors.length === 0) return 0;
+    const capH = fontSize * 0.3528 * 0.72;
+    const bubbleR = capH * 0.62;
+    const centerY = baselineY - capH / 2;
     let curX = startX;
-    const bubbleR = 2.3;
-    const bubbleDiameter = bubbleR * 2;
-    doc.setFontSize(10.0);
+    doc.setFontSize(fontSize);
     doc.setFont('helvetica', 'bold');
-
     for (const c of colors) {
         const label = c.name.startsWith('#') ? c.name : toTitleCase(c.name);
-        const textW = doc.getTextWidth(label);
-        const itemW = bubbleDiameter + 1.8 + textW + 4.0;
+        const itemW = bubbleR * 2 + 1.0 + doc.getTextWidth(label);
         if (curX + itemW - startX > maxW) break;
-
-        const circleCenterX = curX + bubbleR;
-        const circleCenterY = startY;
-
         doc.setFillColor(c.rgb[0], c.rgb[1], c.rgb[2]);
-        doc.circle(circleCenterX, circleCenterY, bubbleR, 'F');
-
+        doc.circle(curX + bubbleR, centerY, bubbleR, 'F');
         doc.setDrawColor(203, 213, 225);
         doc.setLineWidth(0.2);
-        doc.circle(circleCenterX, circleCenterY, bubbleR, 'S');
-
-        doc.setTextColor(30, 41, 59); // deep slate-800 for high readability
-        doc.text(label, circleCenterX + bubbleR + 1.6, startY + 1.3);
-
-        curX += itemW;
+        doc.circle(curX + bubbleR, centerY, bubbleR, 'S');
+        doc.setTextColor(30, 41, 59); // slate-800
+        doc.text(label, curX + bubbleR * 2 + 1.0, baselineY);
+        curX += itemW + 3.0;
     }
-    return curX - startX;
+    return curX - 3.0 - startX;
 }
 
 async function drawCatalogCompactPage(
@@ -3437,10 +3433,16 @@ async function drawCatalogCompactPage(
             currCutX += c.w + 1.0;
         }
 
-        // Axo Element (Strictly 1:1, centered in 25mm slot)
-        const axoSecX = cutoutSecX + cutoutSecW + 1.8;
-        const axoSecW = 29.0;
-        const axoSecH = Math.min(29.0, rowH - 1.5);
+        // Layout rule for the whole row: 1 mm clear between elements.
+        const GAP = 1.0;
+        const PT = 0.3528; // mm per pt
+        const CAP = 0.72;  // Helvetica cap height, em
+        const DESC = 0.21; // Helvetica descender, em
+
+        // Axo Element (1:1, nearly full row height)
+        const axoSecX = cutoutSecX + cutoutSecW + GAP;
+        const axoSecW = Math.min(30.0, rowH - 1.0);
+        const axoSecH = axoSecW;
         const axoSecY = rowY + (rowH - axoSecH) / 2;
         try {
             const axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
@@ -3449,24 +3451,28 @@ async function drawCatalogCompactPage(
             }
         } catch (e) {}
 
-        // 2. CODES BLOCK (Far Right): barcode + QR, tag line, MADE IN MEXICO.
-        // Line positions come from real cap heights so the lines never touch, and the
-        // block is centred on the row like the info block.
-        const totalCodesW = 34.0;
+        // 2. CODES BLOCK (Far Right), proportions from Ramses's codes-block mockup:
+        //   MADE IN MEXICO  [QR]   <- text fitted to the barcode width, cap top = QR top
+        //   barcode         [QR]   <- barcode bottom = QR bottom
+        //   AM826 1NXM -11167LLE   <- fitted to the full block width
+        const totalCodesW = 36.0;
         const blockX = PW - M - totalCodesW;
-        const barH = 6.4;
-        const qrSize = barH;
-        const codeGap = 1.6;
-        const barW = totalCodesW - qrSize - codeGap;
-        const barX = blockX;
-        const qrX = blockX + barW + codeGap;
-        const PT = 0.3528; // mm per pt
-        const tagPt = 9.2;
-        const mimPt = 7.5;
-        const lineGap = 1.3; // clear space between lines, mm
-        const tagBaseOff = barH + lineGap + tagPt * PT * 0.72; // 0.72em = Helvetica cap height
-        const mimBaseOff = tagBaseOff + tagPt * PT * 0.22 + lineGap + mimPt * PT * 0.72;
-        const codesY = rowY + (rowH - mimBaseOff) / 2;
+        const CODE_GAP = 0.65;
+        const qrSize = 10.2;
+        const leftW = totalCodesW - qrSize - CODE_GAP;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const mimPt = Math.min(9.0, 10 * leftW / doc.getTextWidth('MADE IN MEXICO'));
+        const mimCap = mimPt * PT * CAP;
+        const barTop = mimCap + CODE_GAP;
+        const barH = qrSize - barTop;
+        const tagPt = 12.0; // cap; drawFormattedTagCode shrinks it to the block width
+        const codesH = qrSize + CODE_GAP + 9.4 * PT * CAP;
+        const codesY = rowY + (rowH - codesH) / 2;
+
+        doc.setFontSize(mimPt);
+        doc.setTextColor(12, 12, 12);
+        doc.text('MADE IN MEXICO', blockX, codesY + mimCap);
 
         // Barcode (Code128)
         let barDataUrl: string | null = null;
@@ -3475,18 +3481,17 @@ async function drawCatalogCompactPage(
             JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 26, lineColor: '#141414' });
             barDataUrl = canvas.toDataURL('image/png');
         } catch (e) {}
-
         if (barDataUrl) {
-            doc.addImage(barDataUrl, 'PNG', barX, codesY, barW, barH);
+            doc.addImage(barDataUrl, 'PNG', blockX, codesY + barTop, leftW, barH);
         }
 
-        // QR Code with vendor center dot
+        // QR Code with vendor colour dot, exactly centred
+        const qrX = blockX + leftW + CODE_GAP;
         let qrDataUrl = '';
         try {
             const publicUrl = `https://onyx.mx/tag/${encodeURIComponent(barcode)}`;
-            qrDataUrl = await QRCode.toDataURL(publicUrl, { width: 120, margin: 0 });
+            qrDataUrl = await QRCode.toDataURL(publicUrl, { width: 160, margin: 0 });
         } catch (e) {}
-
         if (qrDataUrl) {
             doc.addImage(qrDataUrl, 'PNG', qrX, codesY, qrSize, qrSize);
             const tagVColor = getVendorColor(barcode);
@@ -3494,29 +3499,18 @@ async function drawCatalogCompactPage(
             const qrCenterX = qrX + qrSize / 2;
             const qrCenterY = codesY + qrSize / 2;
             doc.setFillColor(255, 255, 255);
-            doc.circle(qrCenterX, qrCenterY, 0.95, 'F');
+            doc.circle(qrCenterX, qrCenterY, qrSize * 0.138, 'F');
             doc.setFillColor(tagHexColor);
-            doc.circle(qrCenterX, qrCenterY, 0.6, 'F');
+            doc.circle(qrCenterX, qrCenterY, qrSize * 0.087, 'F');
         }
 
-        // TagID + Retail + Acquisition Code line
-        const tagTextY = codesY + tagBaseOff;
-        drawFormattedTagCode(doc, codes, blockX, tagTextY, tagPt, false, itemDataObj, totalCodesW, tagPt);
+        // TagID + Retail + Acquisition Code, fitted to the block width (sectioned weights)
+        drawFormattedTagCode(doc, codes, blockX, codesY + codesH, tagPt, false, itemDataObj, totalCodesW, tagPt);
 
-        const mimY = codesY + mimBaseOff;
-        doc.setFontSize(mimPt);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(71, 85, 105);
-        const mimText = 'MADE IN MEXICO';
-        const mimW = doc.getTextWidth(mimText);
-        const mimX = blockX + (totalCodesW - mimW) / 2;
-        doc.text(mimText, mimX, mimY);
+        // 3. MIDDLE INFORMATION BLOCK: one font size for title, colours and weight.
+        const infoX = axoSecX + axoSecW + GAP;
+        const infoW = blockX - infoX - 2 * GAP;
 
-        // 3. MIDDLE INFORMATION BLOCK: Typographically styled & vertically centered with item images
-        const infoX = axoSecX + axoSecW + 3.2;
-        const infoW = blockX - infoX - 3.0; // ~95mm width
-
-        // Build sectioned chunks: Quantity regular, Shape Type Bold, Color material regular, sizes cm bold, sizes imperial regular
         const qtyNum = String(parseInt(String(norm.quantity), 10) || 1); // compact shows the number; grid keeps the word
         const rawShape = (norm.shape || (itemDataObj ? itemDataObj.Shape : '') || '').trim();
         const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
@@ -3538,54 +3532,48 @@ async function drawCatalogCompactPage(
         const hImp = cmToImperial(norm.heightCm || norm.height_cm) || (norm.heightInches ? `${norm.heightInches}"` : '');
         const dimsImperial = [dImp, wImp, hImp].filter(Boolean).join(' × ').toUpperCase();
 
-        // Compact title: fields separated by spaces only. Qty bold, shape+type bold,
-        // colour+material regular, cm bold, imperial regular.
+        // Qty + shape/type bold, colour/material regular; sizes start their own line, cm bold, imperial regular.
         const titleChunks: TitleChunk[] = [
             { text: qtyNum, bold: true },
             { text: ' ', bold: false },
             { text: shapeTypeStr, bold: true },
         ];
         if (colorMatStr) titleChunks.push({ text: ' ' + colorMatStr, bold: false });
-        if (dimsMetric) titleChunks.push({ text: ' ', bold: false }, { text: dimsMetric, bold: true });
-        if (dimsImperial) titleChunks.push({ text: dimsMetric ? ` (${dimsImperial})` : ` ${dimsImperial}`, bold: false });
+        if (dimsMetric || dimsImperial) titleChunks.push({ text: '\n', bold: false });
+        if (dimsMetric) titleChunks.push({ text: dimsMetric, bold: true });
+        if (dimsImperial) titleChunks.push({ text: dimsMetric ? ` (${dimsImperial})` : dimsImperial, bold: false });
 
-        // Measure and layout structured title
-        const titleFontSize = 12.0;
-        const titleLineH = 4.8;
-        const measuredTitle = measureStructuredTitle(doc, titleChunks, infoW, titleFontSize, titleLineH);
-        const displayLines = measuredTitle.lines.slice(0, 3); // 3 lines fit the row: 13.8mm title + 14.6mm colours and weight < 31.3mm
-        const actualTitleH = displayLines.length <= 1 ? 4.2 : (displayLines.length - 1) * titleLineH + 4.2;
+        const fontPt = 11.5;
+        const capH = fontPt * PT * CAP;
+        const descH = fontPt * PT * DESC;
+        const lineH = capH + descH + GAP;
+        const titleLines = measureStructuredTitle(doc, titleChunks, infoW, fontPt).slice(0, 3);
 
         const extractedColors = getItemExtractedColors(norm, itemDataObj);
         const wtKg = parseFloat(norm.weightKg || '0');
+        const hasDetailLine = extractedColors.length > 0 || wtKg > 0;
+        // The colour orbs are a little taller than the caps, so that line gets extra room.
+        const detailLineH = capH * 1.24 + descH + GAP;
 
-        // Dynamically compute total height of middle info block to align center height of item images
-        const colorBlockH = extractedColors.length > 0 ? 6.0 : 0;
-        const wtBlockH = wtKg > 0 ? 3.4 : 0;
-        const infoTotalH = actualTitleH + (extractedColors.length > 0 ? 2.8 + colorBlockH : 0) + (wtKg > 0 ? 2.4 + wtBlockH : 0);
+        const infoH = capH + (titleLines.length - 1) * lineH + (hasDetailLine ? detailLineH : 0) + descH;
+        const firstBaseline = rowY + (rowH - infoH) / 2 + capH;
+        drawMeasuredTitle(doc, titleLines, infoX, firstBaseline, lineH, fontPt);
 
-        // Vertically center middle info block with image center height
-        const infoStartY = rowY + (rowH - infoTotalH) / 2 + 3.8;
-
-        // Render structured title (Quantity regular, Shape Type Bold, Color material regular, sizes cm bold, sizes imperial regular)
-        drawMeasuredTitle(doc, displayLines, infoX, infoStartY, titleLineH);
-        let currInfoY = infoStartY + (displayLines.length - 1) * titleLineH + 5.2;
-
-        // Color Glass Indicators (8.8pt bold, 4mm orbs - readable from afar, colors bold)
-        if (extractedColors.length > 0) {
-            drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, currInfoY, infoW);
-            currInfoY += 6.0;
+        if (hasDetailLine) {
+            const detailBaseline = firstBaseline + (titleLines.length - 1) * lineH + detailLineH;
+            const titleRight = infoX + Math.min(infoW, Math.max(0, ...titleLines.map(measuredLineWidth)));
+            const colorsW = drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, detailBaseline, infoW * 0.6, fontPt);
+            if (wtKg > 0) {
+                const wtText = `${Math.round(wtKg)} kg • ${Math.round(wtKg * 2.20462)} lbs`;
+                doc.setFontSize(fontPt);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(71, 85, 105);
+                const wtW = doc.getTextWidth(wtText);
+                // Right-aligned under the end of the title, never over the colours.
+                const wtX = Math.max(infoX + colorsW + 4.0, titleRight - wtW);
+                doc.text(wtText, wtX, detailBaseline);
+            }
         }
-
-        // Weight (7.2pt Normal Slate-600)
-        if (wtKg > 0) {
-            const wtLbs = Math.round(wtKg * 2.20462);
-            doc.setFontSize(8.5);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(71, 85, 105);
-            doc.text(`${Math.round(wtKg)} kg  •  ${wtLbs} lbs`, infoX, currInfoY);
-        }
-
         // Frameless Subtle Hairline Row Divider (Except after last item)
         if (i < pageItems.length - 1) {
             doc.setDrawColor(226, 232, 240); // slate-200 hairline
