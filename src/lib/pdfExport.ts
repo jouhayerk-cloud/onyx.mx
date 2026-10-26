@@ -3511,7 +3511,7 @@ async function drawCatalogCompactPage(
         const infoW = blockX - infoX - 3.0; // ~95mm width
 
         // Build sectioned chunks: Quantity regular, Shape Type Bold, Color material regular, sizes cm bold, sizes imperial regular
-        const qtyWord = formatQuantityText(norm.quantity || 1);
+        const qtyNum = String(parseInt(String(norm.quantity), 10) || 1); // compact shows the number; grid keeps the word
         const rawShape = (norm.shape || (itemDataObj ? itemDataObj.Shape : '') || '').trim();
         const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
         let shape = rawShape;
@@ -3532,10 +3532,10 @@ async function drawCatalogCompactPage(
         const hImp = cmToImperial(norm.heightCm || norm.height_cm) || (norm.heightInches ? `${norm.heightInches}"` : '');
         const dimsImperial = [dImp, wImp, hImp].filter(Boolean).join(' × ').toUpperCase();
 
-        // Compact title: fields separated by spaces only. Qty regular, shape+type bold,
+        // Compact title: fields separated by spaces only. Qty bold, shape+type bold,
         // colour+material regular, cm bold, imperial regular.
         const titleChunks: TitleChunk[] = [
-            { text: qtyWord, bold: false },
+            { text: qtyNum, bold: true },
             { text: ' ', bold: false },
             { text: shapeTypeStr, bold: true },
         ];
