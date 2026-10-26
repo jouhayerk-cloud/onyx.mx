@@ -46,21 +46,21 @@ import {
     inventoryToolsOpenAtom,
     isInventorySmartFiltersOpenAtom,
     inventoryArtifactConfigAtom,
-    isPackingNFCWizardOpenAtom,
     isPackingCrateWizardOpenAtom,
     isCratePackingManagerOpenAtom,
     isPaymentWizardOpenAtom,
     workbookVersionAtom,
-    isBatchActionsModalOpenAtom,
-    batchActionItemsDataAtom,
     inventoryExportSelectedXLSXTriggerAtom,
     isBatchWizardOpenAtom,
-    batchWizardItemsAtom
+    batchWizardItemsAtom,
+    userAtom,
+    imageCanvasTargetAtom,
+    imageCanvasItemIdsAtom
 } from '../../lib/atoms';
 import { isPackingPrintWizardOpenAtom } from '../../lib/atoms';
 import { 
     Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus, DollarSign, Minimize2, Maximize2, Cpu, Calendar, Activity, Archive, Users, LayoutGrid, LayoutList, Layout, ChevronUp, ChevronDown, Activity as Heartbeat, Wallet, ShoppingCart, ShoppingBag, Package, Truck, ArrowUp, ArrowDown, History, Save, Hourglass, Settings, Send, PackageCheck, PackageOpen, PackageX,
-    Palette, Shapes, Printer, Nfc, Copy, FileSpreadsheet, Sparkles, Download, BookOpen
+    Palette, Shapes, Printer, Pipette, Copy, FileSpreadsheet, Sparkles, Download, BookOpen
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -238,13 +238,13 @@ export const UniversalToolsBar: React.FC = () => {
     
     // Batch & Print Actions
     const setPrintWizardOpen = useSetAtom(isPackingPrintWizardOpenAtom);
-    const setNFCOpen = useSetAtom(isPackingNFCWizardOpenAtom);
     const [isPackOpen, setPackOpen] = useAtom(isPackingCrateWizardOpenAtom);
     const isCratePackingManagerOpen = useAtomValue(isCratePackingManagerOpenAtom);
     const isPackModalActive = isPackOpen || isCratePackingManagerOpen;
     const setPayOpen = useSetAtom(isPaymentWizardOpenAtom);
-    const setIsBatchModalOpen = useSetAtom(isBatchActionsModalOpenAtom);
-    const setBatchItemsData = useSetAtom(batchActionItemsDataAtom);
+    const user = useAtomValue(userAtom);
+    const setImageCanvasTarget = useSetAtom(imageCanvasTargetAtom);
+    const setImageCanvasItemIds = useSetAtom(imageCanvasItemIdsAtom);
     const setExportSelectedXLSX = useSetAtom(inventoryExportSelectedXLSXTriggerAtom);
     const setIsBatchWizardOpen = useSetAtom(isBatchWizardOpenAtom);
     const setBatchWizardItems = useSetAtom(batchWizardItemsAtom);
@@ -439,9 +439,12 @@ export const UniversalToolsBar: React.FC = () => {
         }
     };
 
-    const handleOpenTags = () => {
-        setBatchItemsData(getSelectedItems());
-        setIsBatchModalOpen(true);
+    const handleOpenImageCanvas = () => {
+        const ids = getSelectedItems().map(item => String(item.data.id || item.row));
+        if (!ids.length) return;
+        setImageCanvasItemIds(ids);
+        setImageCanvasTarget({ itemId: ids[0], angleIndex: 0 });
+        setView('image-canvas');
     };
 
     const handleOpenAIWizard = () => {
@@ -535,10 +538,6 @@ export const UniversalToolsBar: React.FC = () => {
                     <Tag size={18} strokeWidth={2} />
                     <span className="utb-label-desktop">{tr("LABELS")}</span>
                 </button>
-                <button onClick={() => setNFCOpen(true)} className="utb-control" title={tr("Write NFC")} aria-label={tr("Write NFC")}>
-                    <Nfc size={18} strokeWidth={2} />
-                    <span className="utb-label-desktop">NFC</span>
-                </button>
                 <button 
                     onClick={() => setPackOpen(true)} 
                     className="utb-control text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:border-emerald-400/60 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.15)] transition-all font-black group/pack" 
@@ -557,10 +556,6 @@ export const UniversalToolsBar: React.FC = () => {
                     <DollarSign size={18} strokeWidth={2} />
                     <span className="utb-label-desktop">{tr("PAY")}</span>
                 </button>
-                <button onClick={handleOpenTags} className="utb-control text-[var(--main-color)]" title={tr("Manage Tags")} aria-label={tr("Manage Tags")}>
-                    <Tag size={18} strokeWidth={2} />
-                    <span className="utb-label-desktop">{tr("TAGS")}</span>
-                </button>
                 <button onClick={handleCopyTags} className="utb-control text-blue-400" title={tr("Copy Tag IDs")} aria-label={tr("Copy Tag IDs")}>
                     <Copy size={18} strokeWidth={2} />
                     <span className="utb-label-desktop">{tr("COPY")}</span>
@@ -577,6 +572,12 @@ export const UniversalToolsBar: React.FC = () => {
                     <Sparkles size={18} strokeWidth={2} />
                     <span className="utb-label-desktop">{tr("AI GEN")}</span>
                 </button>
+                {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                    <button onClick={handleOpenImageCanvas} className="utb-control text-[var(--main-color)]" title={tr("Image Canvas")} aria-label={tr("Image Canvas")}>
+                        <Pipette size={18} strokeWidth={2} />
+                        <span className="utb-label-desktop">{tr("IMAGE CANVAS")}</span>
+                    </button>
+                )}
             </div>
         </div>
     );

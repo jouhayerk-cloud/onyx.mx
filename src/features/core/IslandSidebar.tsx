@@ -707,19 +707,7 @@ export const IslandSidebar: React.FC = () => {
                 </SidebarSection>
 
                 {/* Developer only. Labs (Process, 3D and AR) is hidden: those views stay in the code as legacy examples. */}
-                <SidebarSection title={tr("Developer")} show={see('control') || see('archived') || see('devices') || see('image-canvas')} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
-                    {see('image-canvas') && (
-                        <NavItem
-                            icon={Pipette}
-                            label={tr("Image Canvas")}
-                            isActive={activeView === 'image-canvas'}
-                            view="image-canvas"
-                            action={() => { switchView('image-canvas'); handleMobileHide(); }}
-                            isCompact={isCompact}
-                            isRail={isRail}
-                            isHoverPeek={isHoverPeek}
-                        />
-                    )}
+                <SidebarSection title={tr("Developer")} show={see('control') || see('archived') || see('devices')} isCompact={isCompact} isRail={isRail} isHoverPeek={isHoverPeek}>
                     {see('control') && (
                         <NavItem
                             icon={Shield}

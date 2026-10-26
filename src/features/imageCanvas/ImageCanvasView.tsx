@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
-import { Copy, Eraser, PenTool, RotateCcw, Save, Undo2 } from 'lucide-react';
-import { imageCanvasTargetAtom, inventoryAtom, userAtom } from '../../lib/atoms';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { ArrowLeft, Copy, Eraser, PenTool, RotateCcw, Save, Undo2 } from 'lucide-react';
+import { activeViewAtom, imageCanvasItemIdsAtom, imageCanvasTargetAtom, inventoryAtom, userAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import { extractFileId, fetchImageBatch, getCleanImageUrl, normalizeInventoryData } from '../../lib/utils';
 import { mediaOf } from '../../lib/ai/run';
@@ -19,7 +19,7 @@ import {
 } from './imageCanvasPersist';
 import { CleanupBrushStage } from './CleanupBrushStage';
 import { MaskVectorStage } from './MaskVectorStage';
-import { Input, ItemTag, Key, Segmented, StatusPill, Thumb } from '../../components/ui';
+import { ItemTag, Key, Segmented, StatusPill, Thumb } from '../../components/ui';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { tr } from '../../lib/i18n';
 
@@ -75,17 +75,18 @@ async function loadOutlineSvgText(url: string): Promise<string> {
 
 /**
  * ImageCanvas (Developer and Admin): the cleanup brush and mask vector editor on one still photo of an inventory row.
- * Opened from the catalog's Edit in ImageCanvas keys, or from the search box here.
+ * Opened from the inventory selection dock (all selected items) or the catalog's Edit in ImageCanvas keys.
  */
 export function ImageCanvasView() {
     const [target, setTarget] = useAtom(imageCanvasTargetAtom);
     const inventory = useAtomValue(inventoryAtom);
+    const itemIds = useAtomValue(imageCanvasItemIdsAtom);
+    const setActiveView = useSetAtom(activeViewAtom);
     const user = useAtomValue(userAtom);
     const itemId = target?.itemId ?? '';
     const requestedAngle = target?.angleIndex ?? 0;
 
     const [tool, setTool] = useState<'brush' | 'vector'>('brush');
-    const [query, setQuery] = useState('');
     const [row, setRow] = useState<Record<string, any> | null>(null);
     const [source, setSource] = useState<'cleaned' | 'original'>('cleaned');
     const [pass, setPass] = useState<string | null>(null);
@@ -182,16 +183,13 @@ export function ImageCanvasView() {
         return () => { alive = false; };
     }, [mask.svgUrl, mask.pathD]);
 
-    const matches = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return [];
-        return inventory.filter(i => (i.label || '').toLowerCase().includes(q)).slice(0, 12);
-    }, [query, inventory]);
+    // The items sent from the inventory selection dock, in selection order.
+    const queue = useMemo(() => {
+        const byId = new Map(inventory.map(i => [String(i.data.id || i.row), i]));
+        return itemIds.map(id => byId.get(id)).filter(Boolean);
+    }, [itemIds, inventory]);
 
-    const pickItem = (id: string) => {
-        setTarget({ itemId: id, angleIndex: 0 });
-        setQuery('');
-    };
+    const pickItem = (id: string) => setTarget({ itemId: id, angleIndex: 0 });
 
     const onPassComplete = (url: string) => {
         if (pass) setPassHistory(h => [...h, pass].slice(-PASS_HISTORY));
@@ -313,18 +311,15 @@ export function ImageCanvasView() {
             <div className="liquid-surface flex flex-wrap items-center gap-2 rounded-md p-2">
                 {/* Disabled while a save or restore is in flight: its result belongs to the item on screen now. */}
                 <fieldset disabled={saving} className="contents">
-                    <Input
-                        type="search"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder={tr('Find an item')}
-                        aria-label={tr('Find an item')}
-                        className="w-48" />
-                    {matches.map(m => (
-                        <Key key={String(m.data.id || m.row)} size="sm" variant="quiet" onClick={() => pickItem(String(m.data.id || m.row))}>
-                            {m.label}
-                        </Key>
-                    ))}
+                    <Key size="sm" variant="quiet" icon={<ArrowLeft size={14} />} onClick={() => setActiveView('inventory')}>{tr('Back')}</Key>
+                    {queue.length > 1 && queue.map(m => {
+                        const id = String(m.data.id || m.row);
+                        return (
+                            <Key key={id} size="sm" variant={id === itemId ? 'go' : 'quiet'} onClick={() => pickItem(id)}>
+                                {m.data.book_barcode || m.label || id}
+                            </Key>
+                        );
+                    })}
                     {row && <ItemTag item={row} />}
                     {stills.map((m, i) => (
                         <Thumb
@@ -386,7 +381,7 @@ export function ImageCanvasView() {
 
             <div className="flex min-h-0 flex-1 flex-col">
                 {!itemId ? (
-                    <p className="text-sm">{tr('Find an item above, or open a photo with Edit in ImageCanvas.')}</p>
+                    <p className="text-sm">{tr('Select items in Inventory, then choose Image Canvas in the selection actions.')}</p>
                 ) : row && !sourceUrl ? (
                     <p className="text-sm">{tr('This item has no photo.')}</p>
                 ) : tool === 'vector' ? (

@@ -344,6 +344,8 @@ export interface ImageCanvasTarget {
 }
 // No explicit `| null` type argument: this project runs with strictNullChecks off, where it collapses and jotai picks its read-only overload.
 export const imageCanvasTargetAtom = atom(null as ImageCanvasTarget | null);
+/** The item ids sent to ImageCanvas from the inventory selection dock; the view lists them to switch between. */
+export const imageCanvasItemIdsAtom = atom<string[]>([]);
 export const onyxMessagesAtom = atom<any[]>([]);
 export const onyxIsListeningAtom = atom<boolean>(false);
 export const onyxIsTypingAtom = atom<boolean>(false);
