@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import { DEFAULT_EXCHANGE_RATE } from './consts';
 import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
+import { getVendorColor } from './excelStyles';
 import JsBarcode from 'jsbarcode';
 import { generateAxonometricDataUrl, resolveItemColor, normalizeHexMapTexture, parseHexMapString } from './axonometric';
 import { trackDocumentJob } from '../features/print/jobTracking';
@@ -50,10 +51,45 @@ function tagPageUrl(tagId: string): string {
  * QR for PDF pages. Nothing is drawn over the code, so level M (~15% recovery) is
  * enough, and it keeps the grid small: a tag-page URL is 33x33 modules at M vs 41x41
  * at H, i.e. ~24% bigger modules at the same printed size, which is what fast and
- * small-size scans need. margin 2 is the quiet zone; 400 px keeps edges sharp.
+ * small-size scans need. margin 2 is the quiet zone.
+ *
+ * The 3x3 centre of each finder (corner) square takes the vendor colour; only modules
+ * that are already dark are recoloured, nothing is covered. Scanners binarise those
+ * centres, so the colour is darkened until it has >= 4.5:1 contrast with white.
  */
-function tagQrDataUrl(data: string): Promise<string> {
-    return QRCode.toDataURL(data, { errorCorrectionLevel: 'M', margin: 2, width: 400, color: { dark: '#000000', light: '#ffffff' } });
+async function tagQrDataUrl(data: string, vendorArgb?: string): Promise<string> {
+    const qr = QRCode.create(data, { errorCorrectionLevel: 'M' });
+    const n = qr.modules.size;
+    const margin = 2;
+    const px = 12; // pixels per module, keeps edges sharp in print
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = (n + margin * 2) * px;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const eye = vendorArgb ? qrSafeColor(vendorArgb) : '#000000';
+    const isEyeCentre = (r: number, c: number) =>
+        [[0, 0], [0, n - 7], [n - 7, 0]].some(([r0, c0]) => r >= r0 + 2 && r <= r0 + 4 && c >= c0 + 2 && c <= c0 + 4);
+    for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+            if (!qr.modules.get(r, c)) continue;
+            ctx.fillStyle = isEyeCentre(r, c) ? eye : '#000000';
+            ctx.fillRect((c + margin) * px, (r + margin) * px, px, px);
+        }
+    }
+    return canvas.toDataURL('image/png');
+}
+
+/** Vendor colour (ARGB "FFRRGGBB" or "#RRGGBB"), darkened until its contrast with white is >= 4.5:1. */
+export function qrSafeColor(color: string): string {
+    const hex = color.replace('#', '').slice(-6);
+    let rgb = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) || 0);
+    const lum = (v: number[]) => {
+        const [r, g, b] = v.map(x => { const s = x / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    for (let i = 0; i < 40 && 1.05 / (lum(rgb) + 0.05) < 4.5; i++) rgb = rgb.map(x => Math.round(x * 0.9));
+    return '#' + rgb.map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
 function drawFormattedTagCode(
@@ -463,7 +499,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     let qrDataUrl = '';
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
     try {
-        qrDataUrl = await tagQrDataUrl(barcode.replace(/\s+/g, ''));
+        qrDataUrl = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode));
     } catch (e) { console.error('QR code err', e); }
 
     let barDataUrl = '';
@@ -1914,7 +1950,7 @@ async function drawCatalogHubPagePortrait(
 
     let qrDataUrl = '';
     try {
-        qrDataUrl = await tagQrDataUrl(tagPageUrl(barcode));
+        qrDataUrl = await tagQrDataUrl(tagPageUrl(barcode), getVendorColor(barcode));
     } catch (e) {}
 
     let barDataUrl = '';
@@ -2305,7 +2341,7 @@ async function drawCatalogHubPageLandscapeGrid(
 
     let qrDataUrl = '';
     try {
-        qrDataUrl = await tagQrDataUrl(tagPageUrl(barcode));
+        qrDataUrl = await tagQrDataUrl(tagPageUrl(barcode), getVendorColor(barcode));
     } catch (e) {}
 
     let barDataUrl = '';
@@ -3483,7 +3519,7 @@ async function drawCatalogCompactPage(
         const qrX = blockX + leftW + CODE_GAP;
         let qrDataUrl = '';
         try {
-            qrDataUrl = await tagQrDataUrl(barcode.replace(/\s+/g, '')); // compact: plain tag ID
+            qrDataUrl = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode)); // compact: plain tag ID
         } catch (e) {}
         if (qrDataUrl) {
             doc.addImage(qrDataUrl, 'PNG', qrX, codesY, qrSize, qrSize);
