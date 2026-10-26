@@ -3489,8 +3489,10 @@ async function drawCatalogCompactPage(
         const qrX = blockX + leftW + CODE_GAP;
         let qrDataUrl = '';
         try {
-            const publicUrl = `https://onyx.mx/tag/${encodeURIComponent(barcode)}`;
-            qrDataUrl = await QRCode.toDataURL(publicUrl, { width: 160, margin: 0 });
+            const publicUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${encodeURIComponent(barcode.replace(/\s+/g, ''))}`;
+            // H recovers ~30% of modules: the vendor dot hides ~6%, and print/scan blur takes the rest.
+            // margin 1 keeps a quiet zone next to the barcode; 400 px keeps module edges sharp in print.
+            qrDataUrl = await QRCode.toDataURL(publicUrl, { errorCorrectionLevel: 'H', margin: 1, width: 400, color: { dark: '#141414', light: '#ffffff' } });
         } catch (e) {}
         if (qrDataUrl) {
             doc.addImage(qrDataUrl, 'PNG', qrX, codesY, qrSize, qrSize);
