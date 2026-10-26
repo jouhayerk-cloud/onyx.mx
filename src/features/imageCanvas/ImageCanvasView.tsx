@@ -268,11 +268,12 @@ export function ImageCanvasView() {
                 width,
                 height,
                 cutoutUrl: mask.cutoutUrl,
+                photoUrl: pass,
                 user,
             });
             if (liveItemId.current !== id) return;
             setRow(savedRow as Record<string, any>);
-            setMessage(tr('Saved outline to Drive and to the inventory row.'));
+            setMessage(tr('Saved the outline, cutout and matte to Drive and to the inventory row.'));
         } catch (e) {
             if (liveItemId.current === id) setError((e as Error)?.message || tr('Save failed'));
         } finally {

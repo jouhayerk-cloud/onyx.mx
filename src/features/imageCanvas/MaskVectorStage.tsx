@@ -12,6 +12,7 @@ import {
     Save,
     Scissors,
     Sparkles,
+    Spline,
     Trash2,
     Undo2,
 } from 'lucide-react';
@@ -24,8 +25,11 @@ import {
     extractOutlineFromSvg,
     findNearestSegmentInSubpath,
     insertNodeOnNearestSegment,
+    moveHandle,
+    moveNode,
     serializeSubpathsToD,
     smoothSubpath,
+    toggleNodeCurve,
     type EditableSubpath,
     type ParsedSvgOutline,
 } from './svgPathEditor';
@@ -84,6 +88,8 @@ export function MaskVectorStage({
         pointerId: number;
         subpathId: string;
         nodeIndex: number;
+        /** Set when a direction handle, not the node itself, is being dragged. */
+        handle?: 'in' | 'out';
         before: EditableSubpath[];
         moved: boolean;
     } | null>(null);
@@ -218,6 +224,20 @@ export function MaskVectorStage({
         setSelected({ subpathId: activeSubpath.id, nodeIndex: null });
     };
 
+    const selectedNode = selected && selected.nodeIndex !== null
+        ? subpaths.find(sp => sp.id === selected.subpathId)?.nodes[selected.nodeIndex] ?? null
+        : null;
+
+    const handleToggleCurve = () => {
+        if (!selected || selected.nodeIndex === null || saving) return;
+        const sp = subpaths.find(s => s.id === selected.subpathId);
+        if (!sp) return;
+        const nextSp = toggleNodeCurve(sp, selected.nodeIndex);
+        if (nextSp === sp) return;
+        pushHistory(subpaths);
+        setSubpaths(prev => prev.map(s => (s.id === sp.id ? nextSp : s)));
+    };
+
     const handleReset = () => {
         if (saving || !undo.length) return;
         pushHistory(subpaths);
@@ -298,6 +318,12 @@ export function MaskVectorStage({
         }
     };
 
+    const onHandlePointerDown = (e: React.PointerEvent<SVGCircleElement>, subpathId: string, nodeIndex: number, handle: 'in' | 'out') => {
+        if (panMode || saving || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        dragRef.current = { pointerId: e.pointerId, subpathId, nodeIndex, handle, before: subpaths, moved: false };
+        e.currentTarget.setPointerCapture(e.pointerId);
+    };
+
     const onNodePointerDown = (e: React.PointerEvent<SVGCircleElement>, subpathId: string, nodeIndex: number) => {
         if (panMode || saving || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
         // No stopPropagation: CanvasViewport must see every press to track a pinch.
@@ -343,7 +369,13 @@ export function MaskVectorStage({
         setSubpaths(prev =>
             prev.map(sp => {
                 if (sp.id !== d.subpathId) return sp;
-                const nextNodes = sp.nodes.map((n, idx) => (idx === d.nodeIndex ? { x: clampedX, y: clampedY } : n));
+                // Handles may reach past the photo edge; nodes stay on it. Alt breaks the handle pair.
+                const nextNodes = sp.nodes.map((n, idx) => {
+                    if (idx !== d.nodeIndex) return n;
+                    return d.handle
+                        ? moveHandle(n, d.handle, { x: round1(pt.x), y: round1(pt.y) }, e.altKey)
+                        : moveNode(n, clampedX, clampedY);
+                });
                 return { ...sp, nodes: nextNodes };
             }),
         );
@@ -418,6 +450,13 @@ export function MaskVectorStage({
                     disabled={!activeSubpath || saving}
                     onClick={handleSmooth}>
                     {tr('Smooth selected subpath')}
+                </Key>
+                <Key
+                    size="sm"
+                    icon={<Spline size={14} />}
+                    disabled={!selectedNode || saving}
+                    onClick={handleToggleCurve}>
+                    {selectedNode && (selectedNode.in || selectedNode.out) ? tr('Make corner') : tr('Make curve')}
                 </Key>
                 <Key iconOnly size="sm" icon={<Undo2 size={14} />} label={tr('Undo')} disabled={!undo.length || saving} onClick={handleUndo} />
                 <Key iconOnly size="sm" icon={<Redo2 size={14} />} label={tr('Redo')} disabled={!redo.length || saving} onClick={handleRedo} />
@@ -519,6 +558,31 @@ export function MaskVectorStage({
                             strokeLinecap="round"
                             pointerEvents="none" />
                     )}
+                    {selected && selectedNode && (['in', 'out'] as const).map(which => {
+                        const h = selectedNode[which];
+                        if (!h) return null;
+                        return (
+                            <g key={`handle_${which}`}>
+                                <line
+                                    x1={selectedNode.x}
+                                    y1={selectedNode.y}
+                                    x2={h.x}
+                                    y2={h.y}
+                                    stroke="#38bdf8"
+                                    strokeWidth={1.5 * invScale}
+                                    pointerEvents="none" />
+                                <rect
+                                    x={h.x - nodeRadius}
+                                    y={h.y - nodeRadius}
+                                    width={nodeRadius * 2}
+                                    height={nodeRadius * 2}
+                                    fill="#38bdf8"
+                                    stroke="#ffffff"
+                                    strokeWidth={1.25 * invScale}
+                                    pointerEvents="none" />
+                            </g>
+                        );
+                    })}
                     {subpaths.map(sp =>
                         sp.nodes.map((node, idx) => {
                             const isSelected = selected?.subpathId === sp.id && selected?.nodeIndex === idx;
@@ -547,6 +611,23 @@ export function MaskVectorStage({
                             );
                         }),
                     )}
+                    {selected && selectedNode && selected.nodeIndex !== null && mode === 'move' && (['in', 'out'] as const).map(which => {
+                        const h = selectedNode[which];
+                        if (!h) return null;
+                        return (
+                            <circle
+                                key={`handle_hit_${which}`}
+                                cx={h.x}
+                                cy={h.y}
+                                r={hitRadius * 0.7}
+                                fill="transparent"
+                                style={{ cursor: panMode ? 'grab' : 'move' }}
+                                onPointerDown={(e) => onHandlePointerDown(e, selected.subpathId, selected.nodeIndex!, which)}
+                                onPointerMove={onNodePointerMove}
+                                onPointerUp={onNodePointerUp}
+                                onPointerCancel={onNodePointerCancel} />
+                        );
+                    })}
                 </svg>
             </CanvasViewport>
         </div>

@@ -1,8 +1,14 @@
 import { simplifyContourPoints } from '../../lib/workers/imagePixels';
 
-export interface SubpathNode {
+export interface Pt {
     x: number;
     y: number;
+}
+
+/** A node with optional Bezier direction handles, in absolute image coordinates. */
+export interface SubpathNode extends Pt {
+    in?: Pt;
+    out?: Pt;
 }
 
 export interface EditableSubpath {
@@ -152,6 +158,39 @@ function simplifySubpathNodes(nodes: SubpathNode[], closed: boolean, simplify: b
     return simplifyContourPoints(cleaned, RDP_TOLERANCE).map(p => ({ x: round1(p.x), y: round1(p.y) }));
 }
 
+const roundPt = (p: Pt): Pt => ({ x: round1(p.x), y: round1(p.y) });
+
+function roundNode(n: SubpathNode): SubpathNode {
+    const out: SubpathNode = roundPt(n);
+    if (n.in && Math.hypot(n.in.x - n.x, n.in.y - n.y) > 0.05) out.in = roundPt(n.in);
+    if (n.out && Math.hypot(n.out.x - n.x, n.out.y - n.y) > 0.05) out.out = roundPt(n.out);
+    return out;
+}
+
+/** The command end points as nodes; on a closed subpath an end point back on the start merges into the first node. */
+function exactNodes(raw: SubpathNode[], closed: boolean): SubpathNode[] {
+    const nodes = raw.map(roundNode);
+    if (closed && nodes.length > 3) {
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        if (Math.hypot(last.x - first.x, last.y - first.y) <= 0.5) {
+            nodes.pop();
+            if (last.in) first.in = last.in;
+        }
+    }
+    const out: SubpathNode[] = [];
+    for (const n of nodes) {
+        const prev = out[out.length - 1];
+        // A zero-length straight step adds nothing; fold its outgoing handle into the node before it.
+        if (prev && Math.hypot(prev.x - n.x, prev.y - n.y) <= 0.05 && !n.in && !prev.out) {
+            if (n.out) prev.out = n.out;
+            continue;
+        }
+        out.push(n);
+    }
+    return out;
+}
+
 /**
  * Parse a full SVG document or a bare `d` string into editable subpaths.
  * Splits into subpaths at each M/m, flattens C/Q/S/T/L/H/V/Z (absolute and relative)
@@ -176,8 +215,10 @@ export function extractOutlineFromSvg(
 
     const tokens = d.match(/[MmLlHhVvCcSsQqTtAaZz]|[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) || [];
     // `curved` is set by any C/S/Q/T/A command; a subpath without one is an editable polyline.
-    const rawSubpaths: { nodes: SubpathNode[]; closed: boolean; curved: boolean }[] = [];
-    let current: { nodes: SubpathNode[]; closed: boolean; curved: boolean } | null = null;
+    // `exact` keeps each command's end point with its control points as handles; `arc` marks a lossy A command.
+    type RawSubpath = { nodes: SubpathNode[]; exact: SubpathNode[]; closed: boolean; curved: boolean; arc: boolean };
+    const rawSubpaths: RawSubpath[] = [];
+    let current: RawSubpath | null = null;
 
     let curX = 0;
     let curY = 0;
@@ -189,7 +230,7 @@ export function extractOutlineFromSvg(
 
     const pushPt = (x: number, y: number) => {
         if (!current) {
-            current = { nodes: [], closed: false, curved: false };
+            current = { nodes: [], exact: [], closed: false, curved: false, arc: false };
             rawSubpaths.push(current);
         }
         const prev = current.nodes[current.nodes.length - 1];
@@ -197,6 +238,20 @@ export function extractOutlineFromSvg(
             current.nodes.push({ x, y });
         }
     };
+    const pushExact = (x: number, y: number, c1?: Pt, c2?: Pt) => {
+        if (!current) {
+            current = { nodes: [], exact: [], closed: false, curved: false, arc: false };
+            rawSubpaths.push(current);
+        }
+        const prev = current.exact[current.exact.length - 1];
+        if (prev && c1) prev.out = c1;
+        current.exact.push(c2 ? { x, y, in: c2 } : { x, y });
+    };
+    // A quadratic control point as the two cubic handles that draw the same curve.
+    const quadHandles = (x0: number, y0: number, qx: number, qy: number, x: number, y: number): [Pt, Pt] => [
+        { x: x0 + (2 / 3) * (qx - x0), y: y0 + (2 / 3) * (qy - y0) },
+        { x: x + (2 / 3) * (qx - x), y: y + (2 / 3) * (qy - y) },
+    ];
 
     let i = 0;
     let cmd = '';
@@ -238,7 +293,7 @@ export function extractOutlineFromSvg(
                 curY = cmd === 'm' ? curY + ny : ny;
                 startX = curX;
                 startY = curY;
-                current = { nodes: [{ x: curX, y: curY }], closed: false, curved: false };
+                current = { nodes: [{ x: curX, y: curY }], exact: [{ x: curX, y: curY }], closed: false, curved: false, arc: false };
                 rawSubpaths.push(current);
                 lastCtrlX = curX;
                 lastCtrlY = curY;
@@ -254,6 +309,7 @@ export function extractOutlineFromSvg(
                 curX = cmd === 'l' ? curX + nx : nx;
                 curY = cmd === 'l' ? curY + ny : ny;
                 pushPt(curX, curY);
+                pushExact(curX, curY);
                 lastCtrlX = curX;
                 lastCtrlY = curY;
                 lastCmd = cmd;
@@ -264,6 +320,7 @@ export function extractOutlineFromSvg(
                 const nx = nextNum();
                 curX = cmd === 'h' ? curX + nx : nx;
                 pushPt(curX, curY);
+                pushExact(curX, curY);
                 lastCtrlX = curX;
                 lastCtrlY = curY;
                 lastCmd = cmd;
@@ -274,6 +331,7 @@ export function extractOutlineFromSvg(
                 const ny = nextNum();
                 curY = cmd === 'v' ? curY + ny : ny;
                 pushPt(curX, curY);
+                pushExact(curX, curY);
                 lastCtrlX = curX;
                 lastCtrlY = curY;
                 lastCmd = cmd;
@@ -289,6 +347,7 @@ export function extractOutlineFromSvg(
                 const x = (rel ? curX : 0) + nextNum();
                 const y = (rel ? curY : 0) + nextNum();
                 sampleCubicBezier({ x: curX, y: curY }, { x: x1, y: y1 }, { x: x2, y: y2 }, { x, y }, pushPt);
+                pushExact(x, y, { x: x1, y: y1 }, { x: x2, y: y2 });
                 lastCtrlX = x2;
                 lastCtrlY = y2;
                 curX = x;
@@ -307,6 +366,7 @@ export function extractOutlineFromSvg(
                 const x = (rel ? curX : 0) + nextNum();
                 const y = (rel ? curY : 0) + nextNum();
                 sampleCubicBezier({ x: curX, y: curY }, { x: x1, y: y1 }, { x: x2, y: y2 }, { x, y }, pushPt);
+                pushExact(x, y, { x: x1, y: y1 }, { x: x2, y: y2 });
                 lastCtrlX = x2;
                 lastCtrlY = y2;
                 curX = x;
@@ -322,6 +382,7 @@ export function extractOutlineFromSvg(
                 const x = (rel ? curX : 0) + nextNum();
                 const y = (rel ? curY : 0) + nextNum();
                 sampleQuadBezier({ x: curX, y: curY }, { x: x1, y: y1 }, { x, y }, pushPt);
+                pushExact(x, y, ...quadHandles(curX, curY, x1, y1, x, y));
                 lastCtrlX = x1;
                 lastCtrlY = y1;
                 curX = x;
@@ -338,6 +399,7 @@ export function extractOutlineFromSvg(
                 const x = (rel ? curX : 0) + nextNum();
                 const y = (rel ? curY : 0) + nextNum();
                 sampleQuadBezier({ x: curX, y: curY }, { x: x1, y: y1 }, { x, y }, pushPt);
+                pushExact(x, y, ...quadHandles(curX, curY, x1, y1, x, y));
                 lastCtrlX = x1;
                 lastCtrlY = y1;
                 curX = x;
@@ -356,6 +418,8 @@ export function extractOutlineFromSvg(
                 const x = (rel ? curX : 0) + nextNum();
                 const y = (rel ? curY : 0) + nextNum();
                 pushPt(x, y);
+                pushExact(x, y);
+                if (current) current.arc = true;
                 lastCtrlX = x;
                 lastCtrlY = y;
                 curX = x;
@@ -380,9 +444,13 @@ export function extractOutlineFromSvg(
                     sp.nodes[sp.nodes.length - 1].x - sp.nodes[0].x,
                     sp.nodes[sp.nodes.length - 1].y - sp.nodes[0].y,
                 ) <= 1);
-        // Editor-saved polylines (M/L/H/V/Z, at most 400 nodes) come back exactly as saved.
+        // Editor-saved outlines (lines and curves, at most 400 commands, no arcs) come back exactly as saved, handles included.
+        // A traced curve with simplify on and more points than that still goes through RDP on its sampled points.
         const polyline = !sp.curved && sp.nodes.length <= 400;
-        const simplified = simplifySubpathNodes(sp.nodes, isClosed, simplify && !polyline);
+        const keepExact = !sp.arc && sp.exact.length <= 400 && (polyline || (sp.curved && simplify));
+        const simplified = keepExact
+            ? exactNodes(sp.exact, isClosed)
+            : simplifySubpathNodes(sp.nodes, isClosed, simplify && !polyline);
         if (simplified.length >= (isClosed ? 3 : 2)) {
             subpaths.push({
                 id: `subpath_${subpaths.length}`,
@@ -404,11 +472,16 @@ export function serializeSubpathsToD(subpaths: readonly EditableSubpath[]): stri
     return subpaths
         .filter(sp => sp.nodes.length > 0)
         .map(sp => {
-            const [first, ...rest] = sp.nodes;
-            const head = `M ${round1(first.x)} ${round1(first.y)}`;
-            const tail = rest.map(p => `L ${round1(p.x)} ${round1(p.y)}`).join(' ');
-            const close = sp.closed ? ' Z' : '';
-            return `${head}${tail ? ` ${tail}` : ''}${close}`;
+            const n = sp.nodes;
+            const xy = (p: Pt) => `${round1(p.x)} ${round1(p.y)}`;
+            const seg = (a: SubpathNode, b: SubpathNode) =>
+                a.out || b.in ? `C ${xy(a.out ?? a)} ${xy(b.in ?? b)} ${xy(b)}` : `L ${xy(b)}`;
+            const parts = [`M ${xy(n[0])}`];
+            for (let i = 1; i < n.length; i++) parts.push(seg(n[i - 1], n[i]));
+            // The closing segment is only written when it curves; Z draws the straight one.
+            if (sp.closed && n.length > 1 && (n[n.length - 1].out || n[0].in)) parts.push(seg(n[n.length - 1], n[0]));
+            if (sp.closed) parts.push('Z');
+            return parts.join(' ');
         })
         .join(' ');
 }
@@ -430,46 +503,123 @@ function closestPointOnSegment(
     return { x, y, dist: Math.hypot(pt.x - x, pt.y - y) };
 }
 
-/** Find the closest segment in a single subpath to `pt`. */
+const lerp = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+
+/** The closest point on the cubic a -> b (handles a.out, b.in), sampled at 32 steps. */
+function closestPointOnCubic(pt: Pt, a: SubpathNode, b: SubpathNode): { x: number; y: number; dist: number; t: number } {
+    const c1 = a.out ?? a;
+    const c2 = b.in ?? b;
+    let best = { x: a.x, y: a.y, dist: Infinity, t: 0 };
+    for (let s = 0; s <= 32; s++) {
+        const t = s / 32;
+        const p = lerp(lerp(lerp(a, c1, t), lerp(c1, c2, t), t), lerp(lerp(c1, c2, t), lerp(c2, b, t), t), t);
+        const dist = Math.hypot(pt.x - p.x, pt.y - p.y);
+        if (dist < best.dist) best = { x: p.x, y: p.y, dist, t };
+    }
+    return best;
+}
+
+/** Find the closest segment in a single subpath to `pt`; `t` is the position along that segment. */
 export function findNearestSegmentInSubpath(
     subpath: EditableSubpath,
-    pt: SubpathNode,
-): { insertIndex: number; point: SubpathNode; dist: number } {
+    pt: Pt,
+): { insertIndex: number; point: SubpathNode; dist: number; t: number } {
     const n = subpath.nodes.length;
-    if (n === 0) return { insertIndex: 0, point: { x: round1(pt.x), y: round1(pt.y) }, dist: 0 };
+    if (n === 0) return { insertIndex: 0, point: { x: round1(pt.x), y: round1(pt.y) }, dist: 0, t: 0 };
     if (n === 1) {
         const d = Math.hypot(pt.x - subpath.nodes[0].x, pt.y - subpath.nodes[0].y);
-        return { insertIndex: 1, point: { x: round1(pt.x), y: round1(pt.y) }, dist: d };
+        return { insertIndex: 1, point: { x: round1(pt.x), y: round1(pt.y) }, dist: d, t: 0 };
     }
 
     const segCount = subpath.closed ? n : n - 1;
     let bestIdx = 0;
     let bestPt = { x: round1(pt.x), y: round1(pt.y) };
     let bestDist = Infinity;
+    let bestT = 0;
 
     for (let i = 0; i < segCount; i++) {
         const a = subpath.nodes[i];
         const b = subpath.nodes[(i + 1) % n];
-        const hit = closestPointOnSegment(pt, a, b);
+        const hit = a.out || b.in ? closestPointOnCubic(pt, a, b) : { ...closestPointOnSegment(pt, a, b), t: 0 };
         if (hit.dist < bestDist) {
             bestDist = hit.dist;
             bestIdx = i + 1;
             bestPt = { x: round1(hit.x), y: round1(hit.y) };
+            bestT = hit.t;
         }
     }
 
-    return { insertIndex: bestIdx, point: bestPt, dist: bestDist };
+    return { insertIndex: bestIdx, point: bestPt, dist: bestDist, t: bestT };
 }
 
-/** Insert a node on the closest segment of `subpath`. */
-export function insertNodeOnNearestSegment(subpath: EditableSubpath, pt: SubpathNode): EditableSubpath {
-    const { insertIndex, point } = findNearestSegmentInSubpath(subpath, pt);
-    const nextNodes = [
-        ...subpath.nodes.slice(0, insertIndex),
-        point,
-        ...subpath.nodes.slice(insertIndex),
-    ];
-    return { ...subpath, nodes: nextNodes };
+/** Insert a node on the closest segment of `subpath`; a curved segment is split so its shape stays the same. */
+export function insertNodeOnNearestSegment(subpath: EditableSubpath, pt: Pt): EditableSubpath {
+    const { insertIndex, point, t } = findNearestSegmentInSubpath(subpath, pt);
+    const nodes = subpath.nodes.map(nd => ({ ...nd }));
+    const a = nodes[insertIndex - 1];
+    const b = a && nodes.length > 1 ? nodes[insertIndex % nodes.length] : undefined;
+    let mid: SubpathNode = point;
+    if (a && b && (a.out || b.in)) {
+        // de Casteljau split at t.
+        const c1 = a.out ?? a;
+        const c2 = b.in ?? b;
+        const p01 = lerp(a, c1, t), p12 = lerp(c1, c2, t), p23 = lerp(c2, b, t);
+        const p012 = lerp(p01, p12, t), p123 = lerp(p12, p23, t);
+        a.out = roundPt(p01);
+        b.in = roundPt(p23);
+        mid = { ...roundPt(lerp(p012, p123, t)), in: roundPt(p012), out: roundPt(p123) };
+    }
+    return { ...subpath, nodes: [...nodes.slice(0, insertIndex), mid, ...nodes.slice(insertIndex)] };
+}
+
+/** Make a corner node smooth (handles along its neighbours, a third of each side long), or a curved node a corner. */
+export function toggleNodeCurve(subpath: EditableSubpath, index: number): EditableSubpath {
+    const n = subpath.nodes.length;
+    const node = subpath.nodes[index];
+    if (!node || n < 2) return subpath;
+    let next: SubpathNode = { x: node.x, y: node.y };
+    if (!node.in && !node.out) {
+        const prev = index > 0 ? subpath.nodes[index - 1] : subpath.closed ? subpath.nodes[n - 1] : null;
+        const after = index < n - 1 ? subpath.nodes[index + 1] : subpath.closed ? subpath.nodes[0] : null;
+        const from = prev ?? node;
+        const to = after ?? node;
+        const len = Math.hypot(to.x - from.x, to.y - from.y);
+        if (!len) return subpath;
+        const ux = (to.x - from.x) / len;
+        const uy = (to.y - from.y) / len;
+        if (prev) {
+            const l = Math.hypot(node.x - prev.x, node.y - prev.y) / 3;
+            next.in = roundPt({ x: node.x - ux * l, y: node.y - uy * l });
+        }
+        if (after) {
+            const l = Math.hypot(after.x - node.x, after.y - node.y) / 3;
+            next.out = roundPt({ x: node.x + ux * l, y: node.y + uy * l });
+        }
+    }
+    return { ...subpath, nodes: subpath.nodes.map((nd, i) => (i === index ? next : nd)) };
+}
+
+/** Move a node, carrying its handles with it. */
+export function moveNode(node: SubpathNode, x: number, y: number): SubpathNode {
+    const dx = x - node.x;
+    const dy = y - node.y;
+    const out: SubpathNode = { x, y };
+    if (node.in) out.in = roundPt({ x: node.in.x + dx, y: node.in.y + dy });
+    if (node.out) out.out = roundPt({ x: node.out.x + dx, y: node.out.y + dy });
+    return out;
+}
+
+/** Drag one handle; unless `broken`, the opposite handle turns to stay in line and keeps its length. */
+export function moveHandle(node: SubpathNode, which: 'in' | 'out', pt: Pt, broken = false): SubpathNode {
+    const other = which === 'in' ? 'out' : 'in';
+    const next: SubpathNode = { ...node, [which]: roundPt(pt) };
+    const opp = node[other];
+    const d = Math.hypot(node.x - pt.x, node.y - pt.y);
+    if (!broken && opp && d > 0) {
+        const len = Math.hypot(opp.x - node.x, opp.y - node.y);
+        next[other] = roundPt({ x: node.x + ((node.x - pt.x) / d) * len, y: node.y + ((node.y - pt.y) / d) * len });
+    }
+    return next;
 }
 
 /** Delete node at `index` from `subpath`. Refuses below 3 nodes on a closed subpath (or below 2 on open). */
@@ -501,7 +651,7 @@ export function smoothSubpath(subpath: EditableSubpath): EditableSubpath {
         return { ...subpath, closed: true, nodes: next };
     }
 
-    const next: SubpathNode[] = [subpath.nodes[0]];
+    const next: SubpathNode[] = [{ x: subpath.nodes[0].x, y: subpath.nodes[0].y }];
     for (let i = 0; i < n - 1; i++) {
         const p0 = subpath.nodes[i];
         const p1 = subpath.nodes[i + 1];
@@ -510,7 +660,7 @@ export function smoothSubpath(subpath: EditableSubpath): EditableSubpath {
             { x: round1(0.25 * p0.x + 0.75 * p1.x), y: round1(0.25 * p0.y + 0.75 * p1.y) },
         );
     }
-    next.push(subpath.nodes[n - 1]);
+    next.push({ x: subpath.nodes[n - 1].x, y: subpath.nodes[n - 1].y });
     return { ...subpath, closed: false, nodes: next };
 }
 

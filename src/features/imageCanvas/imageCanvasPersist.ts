@@ -48,6 +48,43 @@ async function cutoutPngDataUrl(url: string): Promise<string | null> {
     }
 }
 
+/**
+ * The cutout (the photo inside the outline, transparent elsewhere) and its matte (white inside, black outside),
+ * both at the outline's size: the same pair the Catalog Hub stores, redrawn from the edited path.
+ */
+async function cutoutAndMatteFromPath(
+    photoUrl: string,
+    pathD: string,
+    fillRule: 'nonzero' | 'evenodd',
+    width: number,
+    height: number,
+): Promise<{ cutout: string; matte: string }> {
+    const img = await loadImage(await loadPhotoDataUrl(photoUrl));
+    const w = Math.max(1, Math.round(width));
+    const h = Math.max(1, Math.round(height));
+    const shape = new Path2D(pathD);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const c = canvas.getContext('2d')!;
+    c.clip(shape, fillRule);
+    // Same stretch as the SVG's preserveAspectRatio="none": the outline's coordinates are the photo's, scaled to w x h.
+    c.drawImage(img, 0, 0, w, h);
+    const cutout = await canvasToDataUrl(canvas, 'image/png');
+
+    const m = document.createElement('canvas');
+    m.width = w;
+    m.height = h;
+    const mc = m.getContext('2d')!;
+    mc.fillStyle = '#000';
+    mc.fillRect(0, 0, w, h);
+    mc.fillStyle = '#fff';
+    mc.fill(shape, fillRule);
+    const matte = await canvasToDataUrl(m, 'image/png');
+    return { cutout, matte };
+}
+
 const urlOrUndef = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 
 /** Same reading as persist.ts parseMap: a JSON object string, an object, or a legacy plain string kept under _legacy. */
@@ -126,12 +163,13 @@ async function freshMap(row: Record<string, any>): Promise<Record<string, string
 }
 
 /** Re-read spatial_masks and generated_svg_url right before merging an outline change. */
-async function freshMasks(row: Record<string, any>): Promise<{ masks: Record<string, unknown>; generatedSvgUrl: string | null }> {
-    const { data, error } = await supabase.from('inventory').select('spatial_masks, generated_svg_url').eq('id', row.id).single();
+async function freshMasks(row: Record<string, any>): Promise<{ masks: Record<string, unknown>; generatedSvgUrl: string | null; generatedPngUrl: string | null }> {
+    const { data, error } = await supabase.from('inventory').select('spatial_masks, generated_svg_url, generated_png_url').eq('id', row.id).single();
     if (error) throw new Error(`Could not re-read the item before saving: ${error.message}`);
     return {
         masks: parseMasks(data?.spatial_masks),
         generatedSvgUrl: typeof data?.generated_svg_url === 'string' ? data.generated_svg_url : null,
+        generatedPngUrl: typeof data?.generated_png_url === 'string' ? data.generated_png_url : null,
     };
 }
 
@@ -190,11 +228,13 @@ export interface SaveMaskSvgArgs {
     width: number;
     height: number;
     cutoutUrl?: string | null;
+    /** The photo the outline was drawn on; when set, the cutout PNG and matte are redrawn from the edited path. */
+    photoUrl?: string | null;
     user?: unknown;
 }
 
 /**
- * Build the cutout SVG document, upload it to Drive, re-read spatial_masks from Supabase,
+ * Redraw the cutout PNG and matte from the path (when `photoUrl` is given), build the cutout SVG document, upload it to Drive, re-read spatial_masks from Supabase,
  * and prepend a new head entry to `spatial_masks['angle_' + angleIndex]` keeping all prior versions.
  */
 export async function saveMaskSvgToDb({
@@ -205,17 +245,30 @@ export async function saveMaskSvgToDb({
     width,
     height,
     cutoutUrl,
+    photoUrl,
     user,
 }: SaveMaskSvgArgs): Promise<{ savedRow: InventoryRow; uploadedUrl: string }> {
+    if (!pathD.trim()) throw new Error('Outline path is empty; nothing was saved');
+    let newCutoutUrl: string | null = null;
+    let newMatteUrl: string | null = null;
+    let cutoutSource = cutoutUrl;
+    if (photoUrl) {
+        const { cutout, matte } = await cutoutAndMatteFromPath(photoUrl, pathD, fillRule, width, height);
+        newCutoutUrl = await uploadCleanedImage(cutout, `cutout_${row.id}_a${angleIndex}.png`, user);
+        if (!newCutoutUrl) throw new Error('Cutout upload to Drive returned no URL; nothing was saved');
+        newMatteUrl = await uploadCleanedImage(matte, `matte_${row.id}_a${angleIndex}.png`, user);
+        if (!newMatteUrl) throw new Error('Matte upload to Drive returned no URL; nothing was saved');
+        cutoutSource = cutout;
+    }
     // Without a loadable cutout the SVG is written as the outline alone.
-    const cleanHref = cutoutUrl ? await cutoutPngDataUrl(cutoutUrl) : null;
+    const cleanHref = cutoutSource ? await cutoutPngDataUrl(cutoutSource) : null;
     const svgMarkup = buildCutoutSvgMarkup(pathD, width, height, cleanHref, fillRule);
     if (!svgMarkup) throw new Error('Outline path is empty; nothing was saved');
 
     const newSvgUrl = await uploadCleanedImage(svgDataUrl(svgMarkup), `outline_${row.id}_a${angleIndex}.svg`, user);
     if (!newSvgUrl) throw new Error('Upload to Drive returned no URL; nothing was saved');
 
-    const { masks, generatedSvgUrl } = await freshMasks(row);
+    const { masks, generatedSvgUrl, generatedPngUrl } = await freshMasks(row);
     const angleKey = `angle_${angleIndex}`;
     const existingList = Array.isArray(masks[angleKey]) ? [...(masks[angleKey] as unknown[])] : [];
     // Angle 0's outline may live only in generated_svg_url: record it as the previous head before this save overwrites it.
@@ -223,11 +276,17 @@ export async function saveMaskSvgToDb({
         const first = existingList[0] && typeof existingList[0] === 'object' ? (existingList[0] as Record<string, any>) : {};
         existingList.splice(0, 1, { ...first, svg: generatedSvgUrl });
     }
+    // Likewise its cutout may live only in generated_png_url: keep it on the previous head so a rollback brings it back.
+    if (angleIndex === 0 && generatedPngUrl && existingList[0] && typeof existingList[0] === 'object' && !(existingList[0] as Record<string, any>).mask) {
+        existingList.splice(0, 1, { ...(existingList[0] as Record<string, any>), mask: generatedPngUrl });
+    }
     const oldHead = existingList[0] && typeof existingList[0] === 'object' ? (existingList[0] as Record<string, any>) : {};
 
     const newHead: Record<string, any> = {
         ...oldHead,
         svg: newSvgUrl,
+        ...(newCutoutUrl ? { mask: newCutoutUrl } : {}),
+        ...(newMatteUrl ? { matte: newMatteUrl } : {}),
         pathD,
         fillRule,
         width,
@@ -239,6 +298,7 @@ export async function saveMaskSvgToDb({
     const columns: InventoryUpdate = {
         spatial_masks: masks as Json,
         ...(angleIndex === 0 ? { generated_svg_url: newSvgUrl } : {}),
+        ...(angleIndex === 0 && newCutoutUrl ? { generated_png_url: newCutoutUrl } : {}),
     };
 
     const rowId = String(row.id || '');
@@ -269,6 +329,10 @@ export async function rollbackMaskSvgInDb(
     const [oldHead, nextHead, ...rest] = list;
     masks[angleKey] = [nextHead, ...rest, oldHead];
 
+    const nextMask =
+        nextHead && typeof nextHead === 'object' && typeof (nextHead as Record<string, any>).mask === 'string'
+            ? ((nextHead as Record<string, any>).mask as string)
+            : undefined;
     const nextSvg =
         nextHead && typeof nextHead === 'object' && typeof (nextHead as Record<string, any>).svg === 'string'
             ? ((nextHead as Record<string, any>).svg as string)
@@ -277,6 +341,7 @@ export async function rollbackMaskSvgInDb(
     const columns: InventoryUpdate = {
         spatial_masks: masks as Json,
         ...(angleIndex === 0 && nextSvg ? { generated_svg_url: nextSvg } : {}),
+        ...(angleIndex === 0 && nextMask ? { generated_png_url: nextMask } : {}),
     };
 
     const rowId = String(row.id || '');
