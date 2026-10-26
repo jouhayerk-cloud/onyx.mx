@@ -218,6 +218,9 @@ const parseMasks = (raw: unknown): Record<string, unknown> => {
     return {};
 };
 
+/** Outline versions kept per photo angle in spatial_masks; the newest is [0]. */
+const MASK_HISTORY = 10;
+
 const svgDataUrl = (svg: string) => `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
 
 /**
@@ -407,13 +410,18 @@ export async function buildAiPatch(
                     : same && prev!.width && prev!.height ? { width: prev!.width, height: prev!.height } : undefined;
                 // `mask` stays the cutout image, which is what every existing
                 // angle entry holds and what the readers draw.
-                masks[`angle_${photo.index}`] = [{
+                const entry = {
                     mask: cutout || matte,
                     ...(matte ? { matte } : {}),
                     ...(svg ? { svg } : {}),
                     ...(layers ? { layers } : {}),
                     ...(dims || {}),
-                }];
+                };
+                // Older versions are kept behind the new head (readers use [0]), so an
+                // ImageCanvas outline edit survives a re-run and can be restored there.
+                // A re-save of the same cutout replaces the head instead of stacking a copy.
+                const older = Array.isArray(prevList) ? prevList.filter(v => v && typeof v === 'object').slice(same ? 1 : 0) : [];
+                masks[`angle_${photo.index}`] = [entry, ...older].slice(0, MASK_HISTORY);
                 masksChanged = true;
             }
             if (photo.index === heroIndex) {
