@@ -5,8 +5,9 @@ import { tr } from '../../lib/i18n';
 import { iopaintInpaint, IopaintServiceError } from '../../lib/ai/providers/iopaintService';
 import { CanvasViewport, clientToImagePoint, type ViewportTransform } from './CanvasViewport';
 
-const STROKE_HISTORY = 10; // full-resolution ImageData snapshots: ~48 MB each on a 12 MP photo
+const STROKE_HISTORY = 10; // alpha-only snapshots, 1 byte per pixel: ~12 MB each on a 12 MP photo
 const PASS_COLOR = 'rgba(14, 165, 233, 0.48)';
+const PASS_RGB = [14, 165, 233]; // PASS_COLOR without its alpha: the colour every snapshot is restored in
 
 export interface CleanupBrushStageProps {
     /** The current pass as a data: URL. The next IOPaint pass runs on it. */
@@ -15,12 +16,15 @@ export interface CleanupBrushStageProps {
     /** A pass came back from IOPaint; the parent decides what it replaces. */
     onPassComplete: (newImageDataUrl: string) => void;
     onError: (message: string) => void;
+    /** IOPaint did not answer; the parent shows its start banner. */
+    onOffline: () => void;
 }
 
 /** Fit the image inside the stage with no upscaling, centred. */
 function fitTransform(stage: HTMLElement | null, w: number, h: number): ViewportTransform {
     if (!stage || !w || !h) return { scale: 1, tx: 0, ty: 0 };
     const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) return { scale: 1, tx: 0, ty: 0 };
     const scale = Math.min(r.width / w, r.height / h, 1);
     return { scale, tx: (r.width - w * scale) / 2, ty: (r.height - h * scale) / 2 };
 }
@@ -29,9 +33,9 @@ function fitTransform(stage: HTMLElement | null, w: number, h: number): Viewport
  * The cleanup brush: paint over clutter on the photo, then Run inpaint sends the paint as a binary mask (white =
  * erase) to IOPaint at the photo's exact pixel size. The result is a new pass, and painting starts again on top of it.
  */
-export function CleanupBrushStage({ baseImageUrl, serviceOnline, onPassComplete, onError }: CleanupBrushStageProps) {
+export function CleanupBrushStage({ baseImageUrl, serviceOnline, onPassComplete, onError, onOffline }: CleanupBrushStageProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const drawing = useRef<{ id: number; last: { x: number; y: number }; before: ImageData } | null>(null);
+    const drawing = useRef<{ id: number; last: { x: number; y: number }; before: Uint8Array } | null>(null);
     const abortRef = useRef<AbortController | null>(null);
     const [size, setSize] = useState({ w: 0, h: 0 });
     const [transform, setTransform] = useState<ViewportTransform>({ scale: 1, tx: 0, ty: 0 });
@@ -40,15 +44,17 @@ export function CleanupBrushStage({ baseImageUrl, serviceOnline, onPassComplete,
     const [panMode, setPanMode] = useState(false);
     const [busy, setBusy] = useState(false);
     // Stroke history: a snapshot of the mask before each stroke (undo) and before each undo (redo).
-    const [undo, setUndo] = useState<ImageData[]>([]);
-    const [redo, setRedo] = useState<ImageData[]>([]);
+    const [undo, setUndo] = useState<Uint8Array[]>([]);
+    const [redo, setRedo] = useState<Uint8Array[]>([]);
 
-    // A new pass is a new photo: its mask starts empty and its history starts over.
+    // A new pass is a new photo: its mask starts empty, its history starts over, and an inpaint still running on the old one is cancelled.
     useEffect(() => {
         const c = canvasRef.current;
         c?.getContext('2d')?.clearRect(0, 0, c.width, c.height);
         setUndo([]);
         setRedo([]);
+        drawing.current = null;
+        return () => abortRef.current?.abort();
     }, [baseImageUrl]);
 
     const stageEl = () => canvasRef.current?.closest('[data-canvas-stage]') as HTMLElement | null;
@@ -66,13 +72,19 @@ export function CleanupBrushStage({ baseImageUrl, serviceOnline, onPassComplete,
     };
 
     const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        // A second finger is a pinch, not a stroke: the stroke the first finger started is taken back.
+        if (drawing.current && e.pointerId !== drawing.current.id) {
+            cancelStroke();
+            return;
+        }
         if (panMode || busy || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
         const canvas = e.currentTarget;
         const ctx = canvas.getContext('2d');
         const el = stageEl();
-        if (!ctx || !el) return;
+        const before = snapshot();
+        if (!ctx || !el || !before) return;
         const p = clientToImagePoint(e.clientX, e.clientY, el, transform);
-        drawing.current = { id: e.pointerId, last: p, before: ctx.getImageData(0, 0, canvas.width, canvas.height) };
+        drawing.current = { id: e.pointerId, last: p, before };
         canvas.setPointerCapture(e.pointerId);
         paint(ctx, p, p);
     };
@@ -96,14 +108,41 @@ export function CleanupBrushStage({ baseImageUrl, serviceOnline, onPassComplete,
         setRedo([]);
     };
 
-    const snapshot = () => {
-        const c = canvasRef.current;
-        return c?.getContext('2d')?.getImageData(0, 0, c.width, c.height) ?? null;
+    const onCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        if (drawing.current?.id === e.pointerId) cancelStroke();
     };
 
-    const restore = (img: ImageData) => {
+    /** The mask's alpha, one byte per pixel. Null while the photo has no size yet. */
+    const snapshot = (): Uint8Array | null => {
         const c = canvasRef.current;
-        c?.getContext('2d')?.putImageData(img, 0, 0);
+        const ctx = c?.getContext('2d');
+        if (!c || !ctx || !c.width || !c.height) return null;
+        const px = ctx.getImageData(0, 0, c.width, c.height).data;
+        const alpha = new Uint8Array(c.width * c.height);
+        for (let i = 0; i < alpha.length; i++) alpha[i] = px[i * 4 + 3];
+        return alpha;
+    };
+
+    const restore = (alpha: Uint8Array) => {
+        const c = canvasRef.current;
+        const ctx = c?.getContext('2d');
+        if (!c || !ctx) return;
+        const img = ctx.createImageData(c.width, c.height);
+        for (let i = 0; i < alpha.length; i++) {
+            img.data[i * 4] = PASS_RGB[0];
+            img.data[i * 4 + 1] = PASS_RGB[1];
+            img.data[i * 4 + 2] = PASS_RGB[2];
+            img.data[i * 4 + 3] = alpha[i];
+        }
+        ctx.putImageData(img, 0, 0);
+    };
+
+    /** Drop the stroke in progress and put the mask back as it was before it. No undo entry. */
+    const cancelStroke = () => {
+        const d = drawing.current;
+        if (!d) return;
+        restore(d.before);
+        drawing.current = null;
     };
 
     const undoStroke = () => {
@@ -151,7 +190,10 @@ export function CleanupBrushStage({ baseImageUrl, serviceOnline, onPassComplete,
             d[i + 3] = 255;
         }
         octx.putImageData(img, 0, 0);
-        return out.toDataURL('image/png');
+        const url = out.toDataURL('image/png');
+        out.width = 0; // release the temporary canvas now, not at some later GC
+        out.height = 0;
+        return url;
     };
 
     const runInpaint = async () => {
@@ -161,9 +203,12 @@ export function CleanupBrushStage({ baseImageUrl, serviceOnline, onPassComplete,
         setBusy(true);
         try {
             const out = await iopaintInpaint(baseImageUrl, binaryMaskDataUrl(), { signal: ctrl.signal });
-            onPassComplete(out);
+            if (!ctrl.signal.aborted) onPassComplete(out);
         } catch (e) {
-            if (!(e instanceof IopaintServiceError && e.code === 'aborted')) onError((e as Error)?.message || tr('Inpaint failed'));
+            if (!(e instanceof IopaintServiceError && e.code === 'aborted')) {
+                if (e instanceof IopaintServiceError && e.code === 'offline') onOffline();
+                onError((e as Error)?.message || tr('Inpaint failed'));
+            }
         } finally {
             abortRef.current = null;
             setBusy(false);
@@ -224,8 +269,11 @@ export function CleanupBrushStage({ baseImageUrl, serviceOnline, onPassComplete,
                     onLoad={(e) => {
                         const w = e.currentTarget.naturalWidth;
                         const h = e.currentTarget.naturalHeight;
-                        setSize({ w, h });
-                        setTransform(fitTransform(e.currentTarget.closest('[data-canvas-stage]') as HTMLElement | null, w, h));
+                        // A pass has the same size as the photo it replaces: keep the zoom and pan the user set.
+                        if (w !== size.w || h !== size.h) {
+                            setSize({ w, h });
+                            setTransform(fitTransform(e.currentTarget.closest('[data-canvas-stage]') as HTMLElement | null, w, h));
+                        }
                     }} />
                 <canvas
                     ref={canvasRef}
@@ -235,7 +283,7 @@ export function CleanupBrushStage({ baseImageUrl, serviceOnline, onPassComplete,
                     onPointerDown={onDown}
                     onPointerMove={onMove}
                     onPointerUp={onUp}
-                    onPointerCancel={onUp} />
+                    onPointerCancel={onCancel} />
             </CanvasViewport>
         </div>
     );

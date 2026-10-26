@@ -205,6 +205,13 @@ export function MaskVectorStage({
     const fit = () => setTransform(fitTransform(stageEl(), stageW, stageH));
 
     const onSvgPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+        // A second finger is a pinch: a node drag the first finger started is taken back, with no undo entry.
+        const drag = dragRef.current;
+        if (drag && e.pointerId !== drag.pointerId) {
+            dragRef.current = null;
+            if (drag.moved) setSubpaths(drag.before);
+            return;
+        }
         if (panMode || saving || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
         const el = stageEl();
         if (!el || !subpaths.length) return;

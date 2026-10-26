@@ -33,7 +33,7 @@ import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { DetectTypes, InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, extractFileId, resizeImage, generateVideoThumbnail } from '../../lib/utils';
+import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, extractFileId, resizeImage, generateVideoThumbnail, isVideoFile } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
 import { MediaOriginBadge, MediaOriginNote, mediaOriginOf } from './ItemMediaPanel';
 
@@ -392,8 +392,9 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
             title={tr("Edit in ImageCanvas")}
             onClick={(e) => {
               e.stopPropagation();
-              // Angle 0 is the first raw still; the cleaned PNG sits in front of it in this gallery.
-              setImageCanvasTarget({ itemId: String(item.data.id || item.row), angleIndex: cleanedUrl ? Math.max(0, activeMediaIndex - 1) : activeMediaIndex });
+              // Angles count the stills only, as ImageCanvas does: videos take none, and the cleaned PNG sits in front of angle 0.
+              const stillsBefore = mediaUrls.slice(0, activeMediaIndex).filter(u => !isVideoFile(u)).length;
+              setImageCanvasTarget({ itemId: String(item.data.id || item.row), angleIndex: Math.max(0, stillsBefore - (cleanedUrl ? 1 : 0)) });
               setActiveView('image-canvas');
             }}>
             <Pipette size={14} />

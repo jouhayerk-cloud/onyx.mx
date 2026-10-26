@@ -83,6 +83,7 @@ export async function iopaintInpaint(imageDataUrl: string, maskDataUrl: string, 
             signal,
         });
     } catch (e) {
+        healthCache = null; // the next health check must ask the server again, not trust the cached "online"
         if (opts.signal?.aborted) throw new IopaintServiceError('aborted', 'Cancelled');
         if (timeout.aborted) throw new IopaintServiceError('timeout', 'IOPaint timed out');
         throw new IopaintServiceError('offline', (e as Error)?.message || 'IOPaint is unreachable');
@@ -90,7 +91,14 @@ export async function iopaintInpaint(imageDataUrl: string, maskDataUrl: string, 
     if (res.status === 503) throw new IopaintServiceError('busy', 'IOPaint is busy');
     if (!res.ok) throw new IopaintServiceError('http', `IOPaint answered ${res.status}`);
     // The answer is the PNG bytes themselves, not JSON.
-    const blob = await res.blob();
+    let blob: Blob;
+    try {
+        blob = await res.blob();
+    } catch (e) {
+        if (opts.signal?.aborted) throw new IopaintServiceError('aborted', 'Cancelled');
+        if (timeout.aborted) throw new IopaintServiceError('timeout', 'IOPaint timed out');
+        throw new IopaintServiceError('bad-response', (e as Error)?.message || 'IOPaint returned no image');
+    }
     if (!blob.size) throw new IopaintServiceError('bad-response', 'IOPaint returned no image');
     const dataUrl = await blobToDataUrl(blob);
     if (!dataUrl.startsWith('data:image/')) throw new IopaintServiceError('bad-response', 'IOPaint returned no image');

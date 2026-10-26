@@ -14,7 +14,7 @@ import {
 import {LoadingIndicator} from '../../components/LoadingIndicator';
 import { Key } from '../../components/ui';
 import { Pipette } from 'lucide-react';
-import { imageCache, fetchImageBatch } from '../../lib/utils';
+import { imageCache, fetchImageBatch, isVideoFile } from '../../lib/utils';
 import { tr } from '../../lib/i18n';
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -186,6 +186,10 @@ export function ItemMediaPanel() {
       ?.split(',')
       .map((s) => s.trim())
       .filter(Boolean) || [];
+  // ImageCanvas counts angles over the stills only, so videos take no angle here either.
+  const stills = mediaUrls.filter((u) => !isVideoFile(u));
+
+  useEffect(() => { setAngleIndex(0); }, [selectedItemData?.id, selectedRow]);
 
   const handleThumbnailClick = (dataUrl: string) => {
     setImageSrc(dataUrl);
@@ -227,7 +231,7 @@ export function ItemMediaPanel() {
             key={index}
             url={url}
             origin="raw"
-            onClick={(dataUrl) => { setAngleIndex(index); handleThumbnailClick(dataUrl); }}
+            onClick={(dataUrl) => { if (stills.includes(url)) setAngleIndex(stills.indexOf(url)); handleThumbnailClick(dataUrl); }}
           />
         ))}
       </div>

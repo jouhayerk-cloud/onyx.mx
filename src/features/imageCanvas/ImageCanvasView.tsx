@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { Copy, Eraser, PenTool, RotateCcw, Save, Undo2 } from 'lucide-react';
 import { imageCanvasTargetAtom, inventoryAtom, userAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
-import { extractFileId, fetchImageBatch, getCleanImageUrl, imageCache, normalizeInventoryData } from '../../lib/utils';
+import { extractFileId, fetchImageBatch, getCleanImageUrl, normalizeInventoryData } from '../../lib/utils';
 import { mediaOf } from '../../lib/ai/run';
 import { toPipelineItem } from '../../lib/ai/item';
 import { resolve826TypeId } from '../../lib/taxonomy/onyx826';
@@ -24,16 +24,15 @@ import { tr } from '../../lib/i18n';
 
 const PASS_HISTORY = 10;
 
-/** The photo as a data: URL. Drive files go through the app's batch loader, so the canvas is never tainted. */
+/**
+ * The photo as a data: URL at full resolution. Drive files go through the app's batch loader, so the canvas is never tainted.
+ * Never read imageCache here: the catalog grid stores 512px letterboxed thumbnails under the same file id.
+ */
 async function loadPhotoDataUrl(url: string): Promise<string> {
     const fileId = extractFileId(url);
     if (fileId) {
-        const cached = imageCache.get(fileId);
-        if (cached) return cached;
         const d = await fetchImageBatch(fileId);
-        const dataUrl = `data:${d.mimeType};base64,${d.base64}`;
-        imageCache.set(fileId, dataUrl);
-        return dataUrl;
+        return `data:${d.mimeType};base64,${d.base64}`;
     }
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${tr('The photo could not be loaded')} (${res.status})`);
@@ -97,7 +96,7 @@ export function ImageCanvasView() {
     const inventory = useAtomValue(inventoryAtom);
     const user = useAtomValue(userAtom);
     const itemId = target?.itemId ?? '';
-    const angleIndex = target?.angleIndex ?? 0;
+    const requestedAngle = target?.angleIndex ?? 0;
 
     const [tool, setTool] = useState<'brush' | 'vector'>('brush');
     const [query, setQuery] = useState('');
@@ -111,6 +110,11 @@ export function ImageCanvasView() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
+    // The clean that the last save just wrote: the photo reload it causes must not start the passes over.
+    const savedUrl = useRef<string | null>(null);
+    // The item on screen now, read by save and restore results that land after the item may have changed.
+    const liveItemId = useRef(itemId);
+    liveItemId.current = itemId;
 
     const checkService = (force = false) => {
         setService('checking');
@@ -135,6 +139,7 @@ export function ImageCanvasView() {
     }, [itemId]);
 
     const stills = useMemo(() => (row ? mediaOf(normalizeInventoryData(row)).filter(m => !m.isVideo) : []), [row]);
+    const angleIndex = Math.min(requestedAngle, Math.max(0, stills.length - 1));
     const sourceUrl = stills[angleIndex]?.url ?? null;
     const clean = row && sourceUrl ? cleanedPhotoState(row, sourceUrl) : {};
     const mask = useMemo(() => (row ? maskOutlineState(row, angleIndex) : { hasPrevOutline: false }), [row, angleIndex]);
@@ -149,6 +154,9 @@ export function ImageCanvasView() {
 
     // The working image: loaded whenever the photo or the source changes. Passes start over with it.
     useEffect(() => {
+        const kept = loadUrl !== null && loadUrl === savedUrl.current;
+        savedUrl.current = null;
+        if (kept) return;
         setPass(null);
         setPassHistory([]);
         if (!loadUrl) return;
@@ -213,15 +221,19 @@ export function ImageCanvasView() {
 
     const save = async () => {
         if (!row || !sourceUrl || !pass) return;
+        const id = String(row.id);
         setSaving(true);
         setError(null);
         setMessage(null);
         try {
-            const { savedRow } = await saveCleanedPhotoToDb({ row, angleIndex, sourceUrl, dataUrl: pass, user });
+            const { savedRow, uploadedUrl } = await saveCleanedPhotoToDb({ row, angleIndex, sourceUrl, dataUrl: pass, user });
+            if (liveItemId.current !== id) return;
+            savedUrl.current = uploadedUrl;
+            setSource('cleaned');
             setRow(savedRow as Record<string, any>);
             setMessage(tr('Saved to Drive and to the inventory row.'));
         } catch (e) {
-            setError((e as Error)?.message || tr('Save failed'));
+            if (liveItemId.current === id) setError((e as Error)?.message || tr('Save failed'));
         } finally {
             setSaving(false);
         }
@@ -229,16 +241,18 @@ export function ImageCanvasView() {
 
     const restorePrevious = async () => {
         if (!row || !sourceUrl) return;
+        const id = String(row.id);
         setSaving(true);
         setError(null);
         setMessage(null);
         try {
             const saved = await rollbackCleanedPhotoInDb(row, sourceUrl, user);
+            if (liveItemId.current !== id) return;
             setRow(saved as Record<string, any>);
             setSource('cleaned');
             setMessage(tr('Restored the previous clean version.'));
         } catch (e) {
-            setError((e as Error)?.message || tr('Restore failed'));
+            if (liveItemId.current === id) setError((e as Error)?.message || tr('Restore failed'));
         } finally {
             setSaving(false);
         }
@@ -256,6 +270,7 @@ export function ImageCanvasView() {
         height: number;
     }) => {
         if (!row || !sourceUrl) return;
+        const id = String(row.id);
         setSaving(true);
         setError(null);
         setMessage(null);
@@ -271,10 +286,11 @@ export function ImageCanvasView() {
                 cutoutUrl: mask.cutoutUrl,
                 user,
             });
+            if (liveItemId.current !== id) return;
             setRow(savedRow as Record<string, any>);
             setMessage(tr('Saved outline to Drive and to the inventory row.'));
         } catch (e) {
-            setError((e as Error)?.message || tr('Save failed'));
+            if (liveItemId.current === id) setError((e as Error)?.message || tr('Save failed'));
         } finally {
             setSaving(false);
         }
@@ -282,15 +298,17 @@ export function ImageCanvasView() {
 
     const restorePreviousOutline = async () => {
         if (!row) return;
+        const id = String(row.id);
         setSaving(true);
         setError(null);
         setMessage(null);
         try {
             const saved = await rollbackMaskSvgInDb(row, angleIndex, user);
+            if (liveItemId.current !== id) return;
             setRow(saved as Record<string, any>);
             setMessage(tr('Restored the previous outline version.'));
         } catch (e) {
-            setError((e as Error)?.message || tr('Restore failed'));
+            if (liveItemId.current === id) setError((e as Error)?.message || tr('Restore failed'));
         } finally {
             setSaving(false);
         }
@@ -307,29 +325,32 @@ export function ImageCanvasView() {
     return (
         <div className="ui-root flex h-full min-h-0 flex-col gap-3 p-3">
             <div className="liquid-surface flex flex-wrap items-center gap-2 rounded-md p-2">
-                <Input
-                    type="search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={tr('Find an item')}
-                    aria-label={tr('Find an item')}
-                    className="w-48" />
-                {matches.map(m => (
-                    <Key key={String(m.data.id || m.row)} size="sm" variant="quiet" onClick={() => pickItem(String(m.data.id || m.row))}>
-                        {m.label}
-                    </Key>
-                ))}
-                {row && <ItemTag item={row} />}
-                {stills.map((m, i) => (
-                    <Thumb
-                        key={m.url}
-                        src={m.url}
-                        kind="photo"
-                        size="md"
-                        current={i === angleIndex}
-                        title={`${tr('Photo')} ${i + 1}`}
-                        onClick={() => setTarget({ itemId, angleIndex: i })} />
-                ))}
+                {/* Disabled while a save or restore is in flight: its result belongs to the item on screen now. */}
+                <fieldset disabled={saving} className="contents">
+                    <Input
+                        type="search"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={tr('Find an item')}
+                        aria-label={tr('Find an item')}
+                        className="w-48" />
+                    {matches.map(m => (
+                        <Key key={String(m.data.id || m.row)} size="sm" variant="quiet" onClick={() => pickItem(String(m.data.id || m.row))}>
+                            {m.label}
+                        </Key>
+                    ))}
+                    {row && <ItemTag item={row} />}
+                    {stills.map((m, i) => (
+                        <Thumb
+                            key={m.url}
+                            src={m.url}
+                            kind="photo"
+                            size="md"
+                            current={i === angleIndex}
+                            title={`${tr('Photo')} ${i + 1}`}
+                            onClick={() => setTarget({ itemId, angleIndex: i })} />
+                    ))}
+                </fieldset>
                 <span className="flex-1" />
                 <StatusPill state={serviceState.state} label={serviceState.label} />
             </div>
@@ -339,6 +360,7 @@ export function ImageCanvasView() {
                     size="sm"
                     label={tr('Tool')}
                     value={tool}
+                    disabled={saving}
                     onChange={v => setTool(v as "vector" | "brush")}
                     options={[
                         { value: 'brush', label: tr('Cleanup Brush'), icon: <Eraser size={14} /> },
@@ -348,6 +370,7 @@ export function ImageCanvasView() {
                     size="sm"
                     label={tr('Source')}
                     value={showCleaned ? 'cleaned' : 'original'}
+                    disabled={saving}
                     onChange={(v) => setSource(v)}
                     options={[
                         { value: 'cleaned', label: tr('Cleaned'), disabled: !clean.cleanedUrl },
@@ -404,7 +427,8 @@ export function ImageCanvasView() {
                         baseImageUrl={pass}
                         serviceOnline={service === 'online'}
                         onPassComplete={onPassComplete}
-                        onError={setError} />
+                        onError={setError}
+                        onOffline={() => setService('offline')} />
                 ) : !error ? (
                     <div className="flex flex-1 items-center justify-center"><LoadingIndicator /></div>
                 ) : null}
