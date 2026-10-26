@@ -1671,7 +1671,7 @@ export const UnifiedInventoryView = () => {
         const vendorKeys = Object.keys(vendors).sort((a, b) => b.length - a.length);
 
         return items.map(item => {
-            const d = item?.data || item || {};
+            const d: Record<string, any> = item?.data || item || {};
             const itemIdStr = String(d.itemId || d.item_id || '');
             const itemIdLower = itemIdStr.toLowerCase();
             const normalizedItemId = itemIdLower.replace(/[^a-z0-9]/g, '');
@@ -1878,8 +1878,8 @@ export const UnifiedInventoryView = () => {
 
     displayItemsRef.current = displayItems;
 
-    const totalCount = useMemo(() => displayItems.reduce((acc, i) => acc + (parseInt(i?.data?.quantity ?? i?.quantity) || 1), 0), [displayItems]);
-    const totalValueMXN = useMemo(() => displayItems.reduce((acc, i) => acc + ((parseInt(i?.data?.price ?? i?.price) || 0) * (parseInt(i?.data?.quantity ?? i?.quantity) || 1)), 0), [displayItems]);
+    const totalCount = useMemo(() => displayItems.reduce((acc, i) => acc + (parseInt(String(i?.data?.quantity ?? i?.quantity)) || 1), 0), [displayItems]);
+    const totalValueMXN = useMemo(() => displayItems.reduce((acc, i) => acc + ((parseInt(String(i?.data?.price ?? (i as Record<string, any>)?.price)) || 0) * (parseInt(String(i?.data?.quantity ?? i?.quantity)) || 1)), 0), [displayItems]);
 
     // Atomic update to derived stats atom: one render per data change
     useEffect(() => {
@@ -2251,7 +2251,7 @@ export const UnifiedInventoryView = () => {
                         ) : (
                             <>
                             {displayItems.slice(0, galleryLimit).map(item => {
-                                const itemData = item?.data || item || {};
+                                const itemData: Record<string, any> = item?.data || item || {};
                                 const mediaCount = ((itemData.generatedPngUrl ? itemData.generatedPngUrl + ',' : '') + (itemData.mediaUrls || '')).split(',').map((u: string) => u.trim()).filter(Boolean).length;
                                 const isLarge = mediaCount >= 1 && mediaCount < 10;
                                 const isFull = mediaCount >= 10;
