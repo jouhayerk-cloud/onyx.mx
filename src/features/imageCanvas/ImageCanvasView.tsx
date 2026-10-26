@@ -7,9 +7,10 @@ import { extractFileId, fetchImageBatch, getCleanImageUrl, normalizeInventoryDat
 import { mediaOf } from '../../lib/ai/run';
 import { toPipelineItem } from '../../lib/ai/item';
 import { resolve826TypeId } from '../../lib/taxonomy/onyx826';
-import { blobToDataUrl, iopaintHealth, IOPAINT_START_CMD } from '../../lib/ai/providers/iopaintService';
+import { iopaintHealth, IOPAINT_START_CMD } from '../../lib/ai/providers/iopaintService';
 import {
     cleanedPhotoState,
+    loadPhotoDataUrl,
     maskOutlineState,
     rollbackCleanedPhotoInDb,
     rollbackMaskSvgInDb,
@@ -23,21 +24,6 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { tr } from '../../lib/i18n';
 
 const PASS_HISTORY = 10;
-
-/**
- * The photo as a data: URL at full resolution. Drive files go through the app's batch loader, so the canvas is never tainted.
- * Never read imageCache here: the catalog grid stores 512px letterboxed thumbnails under the same file id.
- */
-async function loadPhotoDataUrl(url: string): Promise<string> {
-    const fileId = extractFileId(url);
-    if (fileId) {
-        const d = await fetchImageBatch(fileId);
-        return `data:${d.mimeType};base64,${d.base64}`;
-    }
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${tr('The photo could not be loaded')} (${res.status})`);
-    return blobToDataUrl(await res.blob());
-}
 
 function decodeBase64Utf8(base64: string): string {
     const clean = base64.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '');
@@ -412,6 +398,9 @@ export function ImageCanvasView() {
                         <MaskVectorStage
                             baseImageUrl={pass}
                             svgTextOrD={svgText}
+                            fallbackWidth={mask.width}
+                            fallbackHeight={mask.height}
+                            fallbackFillRule={mask.fillRule}
                             cutoutUrl={mask.cutoutUrl}
                             matteUrl={mask.matteUrl}
                             isMirror={isMirror}

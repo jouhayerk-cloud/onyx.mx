@@ -27,6 +27,7 @@ import {
     serializeSubpathsToD,
     smoothSubpath,
     type EditableSubpath,
+    type ParsedSvgOutline,
 } from './svgPathEditor';
 
 const HISTORY_CAP = 40;
@@ -37,6 +38,10 @@ type BackdropMode = 'photo' | 'cutout' | 'matte';
 export interface MaskVectorStageProps {
     baseImageUrl: string;
     svgTextOrD: string;
+    /** The outline's own size and fill rule, used when svgTextOrD is a bare `d` string. */
+    fallbackWidth?: number;
+    fallbackHeight?: number;
+    fallbackFillRule?: 'nonzero' | 'evenodd';
     cutoutUrl?: string | null;
     matteUrl?: string | null;
     isMirror?: boolean;
@@ -63,6 +68,9 @@ const round1 = (n: number): number => Math.round(n * 10) / 10;
 export function MaskVectorStage({
     baseImageUrl,
     svgTextOrD,
+    fallbackWidth,
+    fallbackHeight,
+    fallbackFillRule,
     cutoutUrl,
     matteUrl,
     isMirror = false,
@@ -86,9 +94,21 @@ export function MaskVectorStage({
     const [backdrop, setBackdrop] = useState<BackdropMode>('photo');
     const [panMode, setPanMode] = useState(false);
 
+    const parseOutline = (text: string): ParsedSvgOutline => {
+        const parsed = extractOutlineFromSvg(
+            text,
+            fallbackWidth || photoSize.w || 1000,
+            fallbackHeight || photoSize.h || 1000,
+            isMirror,
+        );
+        // A bare `d` has no fill rule of its own: keep the one the outline was saved with.
+        const bare = !/<(?:svg|path)\b/i.test(text);
+        return bare && fallbackFillRule ? { ...parsed, fillRule: fallbackFillRule } : parsed;
+    };
+
     const initialParsed = useMemo(
-        () => extractOutlineFromSvg(svgTextOrD, photoSize.w || 1000, photoSize.h || 1000, isMirror),
-        [svgTextOrD, photoSize.w, photoSize.h, isMirror],
+        () => parseOutline(svgTextOrD),
+        [svgTextOrD, photoSize.w, photoSize.h, isMirror, fallbackWidth, fallbackHeight, fallbackFillRule],
     );
 
     const [subpaths, setSubpaths] = useState<EditableSubpath[]>(initialParsed.subpaths);
@@ -101,13 +121,13 @@ export function MaskVectorStage({
 
     // Reset editor state when the stored SVG outline or mirror flag changes.
     useEffect(() => {
-        const parsed = extractOutlineFromSvg(svgTextOrD, photoSize.w || 1000, photoSize.h || 1000, isMirror);
+        const parsed = parseOutline(svgTextOrD);
         setSubpaths(parsed.subpaths);
         setFillRule(parsed.fillRule);
         setUndo([]);
         setRedo([]);
         setSelected(parsed.subpaths[0] ? { subpathId: parsed.subpaths[0].id, nodeIndex: null } : null);
-    }, [svgTextOrD, isMirror]);
+    }, [svgTextOrD, isMirror, fallbackWidth, fallbackHeight, fallbackFillRule]);
 
     // Ensure backdrop falls back to 'photo' when cutout/matte is absent on the current angle.
     useEffect(() => {
@@ -138,6 +158,9 @@ export function MaskVectorStage({
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key !== 'Delete' && e.key !== 'Backspace') return;
             if (saving || !selected || selected.nodeIndex === null) return;
+            // Only while focus is on the stage: a toolbar button or dialog keeps its own Delete and Backspace.
+            const active = document.activeElement;
+            if (!active || !stageEl()?.contains(active)) return;
             const target = e.target as HTMLElement | null;
             const tag = target?.tagName?.toLowerCase();
             if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
@@ -159,12 +182,22 @@ export function MaskVectorStage({
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [saving, selected, subpaths]);
 
+    // After undo or redo the selected node may be gone: keep it only if it still exists in that subpath.
+    const clampSelection = (restored: EditableSubpath[]) =>
+        setSelected(sel => {
+            if (!sel || sel.nodeIndex === null) return sel;
+            const count = restored.find(sp => sp.id === sel.subpathId)?.nodes.length ?? 0;
+            if (sel.nodeIndex < count) return sel;
+            return { ...sel, nodeIndex: count > 0 ? count - 1 : null };
+        });
+
     const handleUndo = () => {
         const last = undo[undo.length - 1];
         if (!last) return;
         setUndo(u => u.slice(0, -1));
         setRedo(r => [...r, subpaths].slice(-HISTORY_CAP));
         setSubpaths(last);
+        clampSelection(last);
     };
 
     const handleRedo = () => {
@@ -173,6 +206,7 @@ export function MaskVectorStage({
         setRedo(r => r.slice(0, -1));
         setUndo(u => [...u, subpaths].slice(-HISTORY_CAP));
         setSubpaths(next);
+        clampSelection(next);
     };
 
     const handleSmooth = () => {
@@ -204,14 +238,28 @@ export function MaskVectorStage({
 
     const fit = () => setTransform(fitTransform(stageEl(), stageW, stageH));
 
+    // Fit only when the base photo or the outline size changes: a backdrop switch keeps the user's zoom and pan.
+    useEffect(() => {
+        fit();
+    }, [baseImageUrl, stageW, stageH]);
+
+    // A drag taken back (pointercancel, or a second pointer on the stage) returns to where it started, with no undo entry.
+    const cancelNodeDrag = () => {
+        const d = dragRef.current;
+        if (!d) return;
+        dragRef.current = null;
+        if (d.moved) setSubpaths(d.before);
+    };
+
     const onSvgPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-        // A second finger is a pinch: a node drag the first finger started is taken back, with no undo entry.
+        // A second finger is a pinch: a node drag the first finger started is taken back.
         const drag = dragRef.current;
         if (drag && e.pointerId !== drag.pointerId) {
-            dragRef.current = null;
-            if (drag.moved) setSubpaths(drag.before);
+            cancelNodeDrag();
             return;
         }
+        // The node under this press already started its drag.
+        if (drag) return;
         if (panMode || saving || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
         const el = stageEl();
         if (!el || !subpaths.length) return;
@@ -252,7 +300,7 @@ export function MaskVectorStage({
 
     const onNodePointerDown = (e: React.PointerEvent<SVGCircleElement>, subpathId: string, nodeIndex: number) => {
         if (panMode || saving || !e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
-        e.stopPropagation();
+        // No stopPropagation: CanvasViewport must see every press to track a pinch.
 
         if (mode === 'delete') {
             const sp = subpaths.find(s => s.id === subpathId);
@@ -308,6 +356,10 @@ export function MaskVectorStage({
         if (d.moved) {
             pushHistory(d.before);
         }
+    };
+
+    const onNodePointerCancel = (e: React.PointerEvent<SVGCircleElement>) => {
+        if (dragRef.current?.pointerId === e.pointerId) cancelNodeDrag();
     };
 
     const scale = Math.max(transform.scale, 0.05);
@@ -403,7 +455,9 @@ export function MaskVectorStage({
                 ground={backdrop === 'matte' ? 'black' : 'checker'}
                 transform={transform}
                 onTransformChange={setTransform}
-                panMode={panMode}>
+                panMode={panMode}
+                onSecondPointer={cancelNodeDrag}
+                tabIndex={0}>
                 <img
                     src={activeImageSrc}
                     alt=""
@@ -418,9 +472,6 @@ export function MaskVectorStage({
                                 setPhotoSize({ w: nw, h: nh });
                             }
                         }
-                        const w = initialParsed.width || e.currentTarget.naturalWidth || stageW;
-                        const h = initialParsed.height || e.currentTarget.naturalHeight || stageH;
-                        setTransform(fitTransform(e.currentTarget.closest('[data-canvas-stage]') as HTMLElement | null, w, h));
                     }} />
                 <svg
                     ref={svgRef}
@@ -486,11 +537,12 @@ export function MaskVectorStage({
                                         cy={node.y}
                                         r={hitRadius}
                                         fill="transparent"
+                                        pointerEvents={mode === 'add' ? 'none' : 'auto'}
                                         style={{ cursor: panMode ? 'grab' : mode === 'delete' ? 'pointer' : 'move' }}
                                         onPointerDown={(e) => onNodePointerDown(e, sp.id, idx)}
                                         onPointerMove={onNodePointerMove}
                                         onPointerUp={onNodePointerUp}
-                                        onPointerCancel={onNodePointerUp} />
+                                        onPointerCancel={onNodePointerCancel} />
                                 </g>
                             );
                         }),

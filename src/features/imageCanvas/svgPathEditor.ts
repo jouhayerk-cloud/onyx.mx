@@ -115,32 +115,40 @@ function sampleCubicBezier(
     }
 }
 
-function simplifySubpathNodes(nodes: SubpathNode[], closed: boolean): SubpathNode[] {
-    if (nodes.length === 0) return [];
-    const cleaned: SubpathNode[] = [];
+/** Round to 0.1 px and drop points within 0.05 px of the previous kept point. */
+function cleanNodes(nodes: SubpathNode[]): SubpathNode[] {
+    const out: SubpathNode[] = [];
     for (const pt of nodes) {
-        const prev = cleaned[cleaned.length - 1];
+        const prev = out[out.length - 1];
         if (!prev || Math.hypot(pt.x - prev.x, pt.y - prev.y) > 0.05) {
-            cleaned.push({ x: round1(pt.x), y: round1(pt.y) });
+            out.push({ x: round1(pt.x), y: round1(pt.y) });
         }
     }
+    return out;
+}
+
+function simplifySubpathNodes(nodes: SubpathNode[], closed: boolean, simplify: boolean): SubpathNode[] {
+    if (nodes.length === 0) return [];
+    const cleaned = cleanNodes(nodes);
     if (closed) {
+        // A last node on top of the first adds nothing; never pop below 3 nodes.
         while (
-            cleaned.length > 1 &&
+            cleaned.length > 3 &&
             Math.hypot(cleaned[cleaned.length - 1].x - cleaned[0].x, cleaned[cleaned.length - 1].y - cleaned[0].y) <= 0.5
         ) {
             cleaned.pop();
         }
-        if (cleaned.length <= 3) return cleaned;
+        if (!simplify || cleaned.length <= 3) return cleaned;
         const loop = [...cleaned, cleaned[0]];
         const simplified = simplifyContourPoints(loop, RDP_TOLERANCE);
-        const withoutDup = simplified.slice(0, -1).map(p => ({ x: round1(p.x), y: round1(p.y) }));
+        const withoutDup = cleanNodes(simplified.slice(0, -1));
         if (withoutDup.length >= 3) return withoutDup;
-        const mid = Math.floor(cleaned.length / 2);
+        // cleaned has 4+ nodes here, so these three indices are always distinct.
+        const oneThird = Math.floor(cleaned.length / 3);
         const twoThirds = Math.floor((cleaned.length * 2) / 3);
-        return [cleaned[0], cleaned[mid], cleaned[twoThirds]];
+        return [cleaned[0], cleaned[oneThird], cleaned[twoThirds]];
     }
-    if (cleaned.length <= 2) return cleaned;
+    if (!simplify || cleaned.length <= 2) return cleaned;
     return simplifyContourPoints(cleaned, RDP_TOLERANCE).map(p => ({ x: round1(p.x), y: round1(p.y) }));
 }
 
@@ -154,6 +162,7 @@ export function extractOutlineFromSvg(
     fallbackW = 1000,
     fallbackH = 1000,
     isMirror = false,
+    simplify = true,
 ): ParsedSvgOutline {
     const raw = (svgTextOrD || '').trim();
     const isSvgDoc = /<(?:svg|path)\b/i.test(raw);
@@ -166,8 +175,9 @@ export function extractOutlineFromSvg(
     const d = isSvgDoc ? extractPathDFromSvg(raw) : raw;
 
     const tokens = d.match(/[MmLlHhVvCcSsQqTtAaZz]|[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) || [];
-    const rawSubpaths: { nodes: SubpathNode[]; closed: boolean }[] = [];
-    let current: { nodes: SubpathNode[]; closed: boolean } | null = null;
+    // `curved` is set by any C/S/Q/T/A command; a subpath without one is an editable polyline.
+    const rawSubpaths: { nodes: SubpathNode[]; closed: boolean; curved: boolean }[] = [];
+    let current: { nodes: SubpathNode[]; closed: boolean; curved: boolean } | null = null;
 
     let curX = 0;
     let curY = 0;
@@ -179,7 +189,7 @@ export function extractOutlineFromSvg(
 
     const pushPt = (x: number, y: number) => {
         if (!current) {
-            current = { nodes: [], closed: false };
+            current = { nodes: [], closed: false, curved: false };
             rawSubpaths.push(current);
         }
         const prev = current.nodes[current.nodes.length - 1];
@@ -217,6 +227,7 @@ export function extractOutlineFromSvg(
         if (i >= tokens.length || isCmdToken(tokens[i])) {
             continue;
         }
+        if (current && /[CcSsQqTtAa]/.test(cmd)) current.curved = true;
 
         switch (cmd) {
             case 'M':
@@ -227,7 +238,7 @@ export function extractOutlineFromSvg(
                 curY = cmd === 'm' ? curY + ny : ny;
                 startX = curX;
                 startY = curY;
-                current = { nodes: [{ x: curX, y: curY }], closed: false };
+                current = { nodes: [{ x: curX, y: curY }], closed: false, curved: false };
                 rawSubpaths.push(current);
                 lastCtrlX = curX;
                 lastCtrlY = curY;
@@ -369,7 +380,9 @@ export function extractOutlineFromSvg(
                     sp.nodes[sp.nodes.length - 1].x - sp.nodes[0].x,
                     sp.nodes[sp.nodes.length - 1].y - sp.nodes[0].y,
                 ) <= 1);
-        const simplified = simplifySubpathNodes(sp.nodes, isClosed);
+        // Editor-saved polylines (M/L/H/V/Z, at most 400 nodes) come back exactly as saved.
+        const polyline = !sp.curved && sp.nodes.length <= 400;
+        const simplified = simplifySubpathNodes(sp.nodes, isClosed, simplify && !polyline);
         if (simplified.length >= (isClosed ? 3 : 2)) {
             subpaths.push({
                 id: `subpath_${subpaths.length}`,
@@ -501,6 +514,9 @@ export function smoothSubpath(subpath: EditableSubpath): EditableSubpath {
     return { ...subpath, closed: false, nodes: next };
 }
 
+const xmlAttr = (v: string): string =>
+    v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 /**
  * Reproduce the SVG document format built by `cutoutSvgDocument` in `src/lib/catalogHubPipeline.ts`
  * (same element ids, fill, opacity, optional cutout image, and dual stroke) so every existing reader keeps working.
@@ -519,7 +535,8 @@ export function buildCutoutSvgMarkup(
     const w = Math.max(1, Math.round(width || 1000));
     const h = Math.max(1, Math.round(height || 1000));
     const pathId = fillRule === 'evenodd' ? 'frame' : 'outline';
-    const href = (cutoutHref || '').trim();
+    const href = xmlAttr((cutoutHref || '').trim());
+    const dAttr = xmlAttr(d);
     const image = href
         ? `<image xlink:href="${href}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none"/>`
         : '';
@@ -527,10 +544,10 @@ export function buildCutoutSvgMarkup(
 
     return (
         `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
-        `<path id="${pathId}" d="${d}" fill="#7a8a8c" fill-opacity="0.22" fill-rule="${fillRule}"/>` +
+        `<path id="${pathId}" d="${dAttr}" fill="#7a8a8c" fill-opacity="0.22" fill-rule="${fillRule}"/>` +
         image +
-        `<path d="${d}" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="${sw * 2}" stroke-linejoin="round" stroke-linecap="round"/>` +
-        `<path d="${d}" fill="none" stroke="#0b6f7c" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>` +
+        `<path d="${dAttr}" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="${sw * 2}" stroke-linejoin="round" stroke-linecap="round"/>` +
+        `<path d="${dAttr}" fill="none" stroke="#0b6f7c" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>` +
         `</svg>`
     );
 }

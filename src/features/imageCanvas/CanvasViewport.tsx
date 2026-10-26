@@ -12,6 +12,10 @@ export interface CanvasViewportProps {
     onTransformChange: (next: ViewportTransform) => void;
     /** True when 1-finger drag should pan instead of drawing. */
     panMode: boolean;
+    /** Called when a second pointer goes down anywhere on the stage, as a pinch starts. */
+    onSecondPointer?: () => void;
+    /** Focus target for keyboard handlers that belong to the stage. */
+    tabIndex?: number;
     children: React.ReactNode;
 }
 
@@ -33,7 +37,7 @@ type Gesture =
  * Pan and zoom stage for the image tools. Wheel zooms about the cursor; two fingers pinch and pan; one finger pans
  * in panMode or a middle-button drag pans. Children (the brush) draw with the remaining single pointer.
  */
-export function CanvasViewport({ naturalWidth, naturalHeight, ground = 'none', transform, onTransformChange, panMode, children }: CanvasViewportProps) {
+export function CanvasViewport({ naturalWidth, naturalHeight, ground = 'none', transform, onTransformChange, panMode, onSecondPointer, tabIndex, children }: CanvasViewportProps) {
     usePinchZoomRegion();
     const stageRef = useRef<HTMLDivElement>(null);
     const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -74,6 +78,7 @@ export function CanvasViewport({ naturalWidth, naturalHeight, ground = 'none', t
         if (pointers.current.size === 2) {
             gesture.current = { kind: 'pinch', dist: distance(), mid: midpoint(), base: transform };
             e.currentTarget.setPointerCapture?.(e.pointerId);
+            onSecondPointer?.();
         } else if (pointers.current.size === 1 && (panMode || e.button === 1)) {
             gesture.current = { kind: 'pan', startX: e.clientX, startY: e.clientY, base: transform };
             e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -105,6 +110,7 @@ export function CanvasViewport({ naturalWidth, naturalHeight, ground = 'none', t
         <div
             ref={stageRef}
             data-canvas-stage
+            tabIndex={tabIndex}
             className={cx('relative min-h-0 flex-1 overflow-hidden touch-none select-none', ground === 'checker' && 'ui-checker', ground === 'black' && 'ui-black')}
             style={{ cursor: panMode ? 'grab' : undefined }}
             onPointerDown={onPointerDown}

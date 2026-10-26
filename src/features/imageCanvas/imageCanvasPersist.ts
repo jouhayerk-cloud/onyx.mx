@@ -1,8 +1,11 @@
 import { saveAiPatch, type InventoryRow, type InventoryUpdate } from '../../lib/ai/persist';
 import type { Json } from '../../lib/database.types';
 import { uploadCleanedImage } from '../../lib/bgReplace';
-import { getCleanImageUrl } from '../../lib/utils';
+import { extractFileId, fetchImageBatch, getCleanImageUrl, loadImage } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
+import { canvasToDataUrl } from '../../lib/workers/imageWorkerClient';
+import { blobToDataUrl } from '../../lib/ai/providers/iopaintService';
+import { tr } from '../../lib/i18n';
 import { buildCutoutSvgMarkup } from './svgPathEditor';
 
 /**
@@ -13,6 +16,37 @@ import { buildCutoutSvgMarkup } from './svgPathEditor';
 const PREV_PREFIX = '_prev_clean:';
 
 const svgDataUrl = (svg: string) => `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+
+/**
+ * The photo as a data: URL at full resolution. Drive files go through the app's batch loader, so the canvas is never tainted.
+ * Never read imageCache here: the catalog grid stores 512px letterboxed thumbnails under the same file id.
+ */
+export async function loadPhotoDataUrl(url: string): Promise<string> {
+    // A data: URL can contain '/d/' runs that extractFileId would mistake for a Drive id.
+    const fileId = url.startsWith('data:') ? null : extractFileId(url);
+    if (fileId) {
+        const d = await fetchImageBatch(fileId);
+        return `data:${d.mimeType};base64,${d.base64}`;
+    }
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${tr('The photo could not be loaded')} (${res.status})`);
+    return blobToDataUrl(await res.blob());
+}
+
+/** The cutout as a PNG data: URL, at most 1024px on its long side; null when it cannot be loaded. */
+async function cutoutPngDataUrl(url: string): Promise<string | null> {
+    try {
+        const img = await loadImage(await loadPhotoDataUrl(url));
+        const scale = Math.min(1, 1024 / Math.max(img.naturalWidth, img.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        return await canvasToDataUrl(canvas, 'image/png');
+    } catch {
+        return null;
+    }
+}
 
 const urlOrUndef = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 
@@ -173,16 +207,22 @@ export async function saveMaskSvgToDb({
     cutoutUrl,
     user,
 }: SaveMaskSvgArgs): Promise<{ savedRow: InventoryRow; uploadedUrl: string }> {
-    const cleanHref = cutoutUrl ? (getCleanImageUrl(cutoutUrl) || cutoutUrl) : null;
+    // Without a loadable cutout the SVG is written as the outline alone.
+    const cleanHref = cutoutUrl ? await cutoutPngDataUrl(cutoutUrl) : null;
     const svgMarkup = buildCutoutSvgMarkup(pathD, width, height, cleanHref, fillRule);
     if (!svgMarkup) throw new Error('Outline path is empty; nothing was saved');
 
     const newSvgUrl = await uploadCleanedImage(svgDataUrl(svgMarkup), `outline_${row.id}_a${angleIndex}.svg`, user);
     if (!newSvgUrl) throw new Error('Upload to Drive returned no URL; nothing was saved');
 
-    const { masks } = await freshMasks(row);
+    const { masks, generatedSvgUrl } = await freshMasks(row);
     const angleKey = `angle_${angleIndex}`;
-    const existingList = Array.isArray(masks[angleKey]) ? (masks[angleKey] as unknown[]) : [];
+    const existingList = Array.isArray(masks[angleKey]) ? [...(masks[angleKey] as unknown[])] : [];
+    // Angle 0's outline may live only in generated_svg_url: record it as the previous head before this save overwrites it.
+    if (angleIndex === 0 && generatedSvgUrl && !(existingList[0] as Record<string, any> | undefined)?.svg) {
+        const first = existingList[0] && typeof existingList[0] === 'object' ? (existingList[0] as Record<string, any>) : {};
+        existingList.splice(0, 1, { ...first, svg: generatedSvgUrl });
+    }
     const oldHead = existingList[0] && typeof existingList[0] === 'object' ? (existingList[0] as Record<string, any>) : {};
 
     const newHead: Record<string, any> = {
