@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
-import { getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
+import { DEFAULT_EXCHANGE_RATE } from './consts';
+import { calculateCodesAndPrices, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { getVendorColor } from './excelStyles';
@@ -97,11 +98,29 @@ function drawFormattedTagCode(
     doc.setFontSize(activeFontSize);
     doc.setTextColor(20, 20, 20);
 
+    // Sectioned formatting: Vendor Book regular (EM826), Item index landed code bold (29OLE), Retail acq code regular (3183MND)
+    let part1 = barcode; // Vendor Book (regular)
+    let part2 = '';      // Item index landed code (bold)
+    const vbMatch = barcode.match(/^([A-Za-z]+[-]?\d{3}[-]?)(.*)$/);
+    if (vbMatch) {
+        part1 = vbMatch[1];
+        part2 = vbMatch[2];
+    } else {
+        const altMatch = barcode.match(/^([A-Za-z]+)(.*)$/);
+        if (altMatch) {
+            part1 = altMatch[1];
+            part2 = altMatch[2];
+        }
+    }
+    const part3 = suffix; // Retail acquisition code e.g. -3183MND (regular)
+
     doc.setFont('helvetica', 'normal');
-    const wBarcode = doc.getTextWidth(barcode);
+    const w1 = part1 ? doc.getTextWidth(part1) : 0;
     doc.setFont('helvetica', 'bold');
-    const wSuffix = suffix ? doc.getTextWidth(suffix) : 0;
-    const totalMeasured = wBarcode + wSuffix;
+    const w2 = part2 ? doc.getTextWidth(part2) : 0;
+    doc.setFont('helvetica', 'normal');
+    const w3 = part3 ? doc.getTextWidth(part3) : 0;
+    const totalMeasured = w1 + w2 + w3;
 
     let startX = x;
     if (targetWidth && targetWidth > totalMeasured) {
@@ -109,14 +128,19 @@ function drawFormattedTagCode(
     }
 
     let currX = startX;
-    if (barcode) {
+    if (part1) {
         doc.setFont('helvetica', 'normal');
-        doc.text(barcode, currX, y);
-        currX += wBarcode;
+        doc.text(part1, currX, y);
+        currX += w1;
     }
-    if (suffix) {
+    if (part2) {
         doc.setFont('helvetica', 'bold');
-        doc.text(suffix, currX, y);
+        doc.text(part2, currX, y);
+        currX += w2;
+    }
+    if (part3) {
+        doc.setFont('helvetica', 'normal');
+        doc.text(part3, currX, y);
     }
 }
 
@@ -3228,6 +3252,91 @@ async function drawCatalogSummaryPages(
  * - Title, clean specifications, dimensions, weight, badges, barcodes, QR, and retail price.
  * - NO gallery images, NO generated descriptions, NO shopify titles, NO classifications.
  */
+interface TitleChunk {
+    text: string;
+    bold: boolean;
+}
+
+interface MeasuredWordToken {
+    word: string;
+    bold: boolean;
+    w: number;
+}
+
+function measureStructuredTitle(
+    doc: any,
+    chunks: TitleChunk[],
+    maxW: number,
+    fontSize: number = 10.2,
+    lineHeight: number = 4.0
+): { lines: MeasuredWordToken[][]; totalH: number } {
+    doc.setFontSize(fontSize);
+    const tokens: MeasuredWordToken[] = [];
+    for (const chunk of chunks) {
+        if (!chunk.text) continue;
+        const words = chunk.text.split(/(\s+)/);
+        for (const w of words) {
+            if (!w) continue;
+            doc.setFont('helvetica', chunk.bold ? 'bold' : 'normal');
+            const tokenW = doc.getTextWidth(w);
+            tokens.push({ word: w, bold: chunk.bold, w: tokenW });
+        }
+    }
+
+    const lines: MeasuredWordToken[][] = [];
+    let currentLine: MeasuredWordToken[] = [];
+    let currentLineW = 0;
+
+    for (const t of tokens) {
+        const isSpace = /^\s+$/.test(t.word);
+        if (currentLineW + t.w > maxW && currentLine.length > 0) {
+            while (currentLine.length > 0 && /^\s+$/.test(currentLine[currentLine.length - 1].word)) {
+                currentLine.pop();
+            }
+            if (currentLine.length > 0) {
+                lines.push(currentLine);
+            }
+            currentLine = isSpace ? [] : [t];
+            currentLineW = isSpace ? 0 : t.w;
+        } else {
+            currentLine.push(t);
+            currentLineW += t.w;
+        }
+    }
+    if (currentLine.length > 0) {
+        while (currentLine.length > 0 && /^\s+$/.test(currentLine[currentLine.length - 1].word)) {
+            currentLine.pop();
+        }
+        if (currentLine.length > 0) {
+            lines.push(currentLine);
+        }
+    }
+
+    const totalH = lines.length <= 1 ? 3.6 : (lines.length - 1) * lineHeight + 3.6;
+    return { lines, totalH };
+}
+
+function drawMeasuredTitle(
+    doc: any,
+    lines: MeasuredWordToken[][],
+    startX: number,
+    startY: number,
+    lineHeight: number = 4.0
+) {
+    let curY = startY;
+    for (let l = 0; l < lines.length; l++) {
+        const line = lines[l];
+        let curX = startX;
+        for (const t of line) {
+            doc.setFont('helvetica', t.bold ? 'bold' : 'normal');
+            doc.setTextColor(15, 23, 42); // slate-900
+            doc.text(t.word, curX, curY);
+            curX += t.w;
+        }
+        curY += lineHeight;
+    }
+}
+
 function drawCompactColorBubbles(
     doc: any,
     colors: ExtractedColorInfo[],
@@ -3288,7 +3397,7 @@ async function drawCatalogCompactPage(
         const rowY = startY + i * rowH;
         const itemDataObj = item.data || item;
         const norm = normalizeInventoryData(itemDataObj);
-        const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, 18.5, '1') || {};
+        const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
         const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
         // 1. GRAPHICS BLOCK (Left): Cutout PNG(s) + Axo (Frameless, vertically centered in row)
@@ -3397,35 +3506,66 @@ async function drawCatalogCompactPage(
         const mimX = blockX + (totalCodesW - mimW) / 2;
         doc.text(mimText, mimX, mimY);
 
-        // 3. MIDDLE INFORMATION BLOCK: Large readable text, vertically centered with images
+        // 3. MIDDLE INFORMATION BLOCK: Typographically styled & vertically centered with item images
         const infoX = axoSecX + axoSecW + 3.2;
         const infoW = blockX - infoX - 3.0; // ~95mm width
 
-        // Large Deterministic Title (10.2pt Bold Slate-900 - readable from afar)
-        const mainTitleStr = buildDeterministicTitle(norm, itemDataObj, true);
-        doc.setFontSize(10.2);
-        doc.setFont('helvetica', 'bold');
+        // Build sectioned chunks: Quantity regular, Shape Type Bold, Color material regular, sizes cm bold, sizes imperial regular
+        const qtyWord = formatQuantityText(norm.quantity || 1);
+        const rawShape = (norm.shape || (itemDataObj ? itemDataObj.Shape : '') || '').trim();
+        const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
+        let shape = rawShape;
+        if (!shape && norm.shortDescription && cleanType !== cleanSingleTypeName(norm.shortDescription)) {
+            shape = norm.shortDescription.trim();
+        }
+        const shapeTypeParts = [shape, cleanType].filter(Boolean);
+        const shapeTypeStr = Array.from(new Set(shapeTypeParts)).join(' ').replace(/\s+/g, ' ').trim().toUpperCase() || 'SCULPTURAL FORM';
+
+        const color = (norm.color || (itemDataObj ? itemDataObj.Color : '') || '').trim();
+        const material = (norm.material || (itemDataObj ? itemDataObj.Material : '') || 'Mexican Onyx').trim();
+        const colorMatParts = [color, material].filter(Boolean);
+        const colorMatStr = Array.from(new Set(colorMatParts)).join(' ').replace(/\s+/g, ' ').trim().toUpperCase();
+
+        const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+        const dImp = cmToImperial(norm.lengthCm || norm.length_cm) || (norm.lengthInches ? `${norm.lengthInches}"` : '');
+        const wImp = cmToImperial(norm.widthCm || norm.width_cm) || (norm.widthInches ? `${norm.widthInches}"` : '');
+        const hImp = cmToImperial(norm.heightCm || norm.height_cm) || (norm.heightInches ? `${norm.heightInches}"` : '');
+        const dimsImperial = [dImp, wImp, hImp].filter(Boolean).join(' × ').toUpperCase();
+
+        // Compact title: fields separated by spaces only. Qty regular, shape+type bold,
+        // colour+material regular, cm bold, imperial regular.
+        const titleChunks: TitleChunk[] = [
+            { text: qtyWord, bold: false },
+            { text: ' ', bold: false },
+            { text: shapeTypeStr, bold: true },
+        ];
+        if (colorMatStr) titleChunks.push({ text: ' ' + colorMatStr, bold: false });
+        if (dimsMetric) titleChunks.push({ text: ' ', bold: false }, { text: dimsMetric, bold: true });
+        if (dimsImperial) titleChunks.push({ text: dimsMetric ? ` (${dimsImperial})` : ` ${dimsImperial}`, bold: false });
+
+        // Measure and layout structured title
+        const titleFontSize = 10.2;
         const titleLineH = 4.0;
-        const splitTitle = doc.splitTextToSize(mainTitleStr, infoW);
-        const titleLines = splitTitle.slice(0, 2);
+        const measuredTitle = measureStructuredTitle(doc, titleChunks, infoW, titleFontSize, titleLineH);
+        const displayLines = measuredTitle.lines.slice(0, 2); // 2 lines max for clean spacing
+        const actualTitleH = displayLines.length <= 1 ? 3.6 : (displayLines.length - 1) * titleLineH + 3.6;
 
         const extractedColors = getItemExtractedColors(norm, itemDataObj);
         const wtKg = parseFloat(norm.weightKg || '0');
 
         // Dynamically compute total height of middle info block to align center height of item images
-        const titleBlockH = (titleLines.length - 1) * titleLineH + 3.6;
         const colorBlockH = extractedColors.length > 0 ? 5.2 : 0;
         const wtBlockH = wtKg > 0 ? 3.0 : 0;
-        const infoTotalH = titleBlockH + (extractedColors.length > 0 ? 2.8 : 0) + colorBlockH + (wtKg > 0 ? 2.4 : 0) + wtBlockH;
+        const infoTotalH = actualTitleH + (extractedColors.length > 0 ? 2.8 + colorBlockH : 0) + (wtKg > 0 ? 2.4 + wtBlockH : 0);
 
-        // Vertically center middle info block with image height
+        // Vertically center middle info block with image center height
         const infoStartY = rowY + (rowH - infoTotalH) / 2 + 3.2;
 
-        doc.setTextColor(15, 23, 42);
-        doc.text(titleLines, infoX, infoStartY);
-        let currInfoY = infoStartY + (titleLines.length - 1) * titleLineH + 4.2;
+        // Render structured title (Quantity regular, Shape Type Bold, Color material regular, sizes cm bold, sizes imperial regular)
+        drawMeasuredTitle(doc, displayLines, infoX, infoStartY, titleLineH);
+        let currInfoY = infoStartY + (displayLines.length - 1) * titleLineH + 4.4;
 
-        // Color Glass Indicators (8.8pt bold, 4mm orbs - readable from afar)
+        // Color Glass Indicators (8.8pt bold, 4mm orbs - readable from afar, colors bold)
         if (extractedColors.length > 0) {
             drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, currInfoY, infoW);
             currInfoY += 5.2;
