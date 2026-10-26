@@ -61,6 +61,7 @@ export const PROCESS_META: Record<ProcessId, ProcessMeta> = {
     product_type:       { short: 'Ty', label: 'Type', hint: 'Classify the product type',        group: 'text' },
     variation_donor:    { short: 'Dn', label: 'From similar', hint: 'Write the text by varying the most similar item', group: 'text' },
     img_clean:          { short: 'P',  label: 'Clean PNG', hint: 'Clean the photo and replace the background',   group: 'image' },
+    img_enhance:        { short: 'E',  label: 'Enhance', hint: 'Re-clean the cleaned photo: mirror reflections, pieces at the edges', group: 'image' },
     image_segmentation: { short: 'M',  label: 'Mask', hint: 'Cut the piece out and trace its outline (mask and SVG)',        group: 'image' },
     hex_map:            { short: 'H',  label: 'Hex map', hint: 'Sample the 60x60 colour map',     group: 'image' },
     video_proc:         { short: 'V',  label: 'Video', hint: 'Analyse the video',       group: 'image' },

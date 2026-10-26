@@ -246,6 +246,7 @@ export async function buildAiPatch(
         product_type: !!result.genType,
         hex_map: !!result.hexMap?.hexString || result.photos.some(p => !!p.hexString),
         img_clean: result.photos.some(p => !!p.cleanedUrl),
+        img_enhance: result.photos.some(p => !!p.cleanedUrl),
         image_segmentation: result.photos.some(p => !!(p.cutoutUrl || p.matteUrl || p.outlineSvg || p.segmentation)),
         video_proc: !!result.videoMap,
         variation_donor: !!(result.title || result.html),
@@ -363,13 +364,16 @@ export async function buildAiPatch(
     }
 
     // ── cleaned photos ──
-    if (want('img_clean')) {
+    if (want('img_clean') || want('img_enhance')) {
         for (const photo of result.photos) {
             if (!photo.cleanedUrl) continue;
             const url = await ensureUploaded(photo.cleanedUrl, `clean_${rowId}_a${photo.index}.png`, `Clean photo ${photo.index + 1}`);
             // Keyed by the CLEANED source url: the form UnifiedInventoryView
             // looks up, and the form every existing entry uses.
-            if (url) map[getCleanImageUrl(photo.sourceUrl) || photo.sourceUrl] = url;
+            const key = getCleanImageUrl(photo.sourceUrl) || photo.sourceUrl;
+            // The cleaned photo it replaces is kept under a hidden (underscore) key, so it can be restored.
+            if (url && map[key] && map[key] !== url) map[`_prev_clean:${key}`] = map[key];
+            if (url) map[key] = url;
         }
     }
 

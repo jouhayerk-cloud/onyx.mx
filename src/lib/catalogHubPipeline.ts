@@ -1,5 +1,5 @@
 import { processVideoWithGemini } from './videoAI';
-import { replaceBackground, uploadCleanedImage, bgCacheKey, isLightRoomKey, type BgQuality, type BgRoom } from './bgReplace';
+import { replaceBackground, enhanceCleanup, uploadCleanedImage, bgCacheKey, isLightRoomKey, type BgQuality, type BgRoom } from './bgReplace';
 import { supabase } from './supabase';
 import {
     getCleanImageUrl,
@@ -70,6 +70,8 @@ export interface BatchOp {
     /** @deprecated Pass `processes` instead. Honoured only when `processes` is absent. */
     forceRegenerateDescription?: boolean;
     forceRecleanImage?: boolean;
+    /** img_enhance: the cleaned frame to start from when this run does not clean it first. */
+    enhanceSourceUrl?: string;
     needsVariation?: boolean;
     result?: {
         description?: string;
@@ -503,7 +505,42 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
         // whether or not they asked; keep that, and add nothing to bgreplace.
         const segment = explicit ? wants('image_segmentation') : (!op.skipImageProcessing && mode !== 'bgreplace');
 
-        if (!isVideo && (cleanImage || segment)) {
+        const enhance = explicit && wants('img_enhance');
+        const isMirrorItem = resolve826TypeId(item.type, item.shape) === 'mirror' || /mirror|espejo/i.test(`${item.type || ''} ${item.shape || ''}`);
+        let enhanceTried = false;
+
+        /** Enhance Cleanup: a second clean-room pass over an already-cleaned frame; replaces the cleaned photo. */
+        const doEnhance = async (src: string | undefined) => {
+            enhanceTried = true;
+            if (!src) {
+                mark('img_enhance', 'failed', new Error('No clean-room photo yet: run Background Clean first'));
+                logOp(op.id, '[ FAIL ] Enhance Cleanup: no clean-room photo to start from');
+                return;
+            }
+            try {
+                updateOp(op.id, { progress: 55, stepLabel: 'Enhancing cleanup...' });
+                const { dataUrl, modelUsed } = await checkAbort(op.id, enhanceCleanup(
+                    getCleanImageUrl(src) || src,
+                    { shape: item.shape, material: item.material, description: item.type },
+                    { quality: bgQuality, room: bgRoom, isMirror: isMirrorItem, onLog: (m) => logOp(op.id, m), signal: cancel.signal },
+                ));
+                const publicUrl = await checkAbort(op.id, uploadCleanedImage(dataUrl, `${op.id}_enhanced_${bgCacheKey(imageUrl, bgQuality, bgRoom)}.png`, user));
+                result.cleanedUrl = publicUrl;
+                // Same room key as a clean of this photo, so the colour sampler still knows dark from light.
+                result.cleanedKey = bgCacheKey(imageUrl, bgQuality, bgRoom);
+                result.sources = { ...result.sources, img_enhance: modelUsed };
+                mark('img_enhance', 'done');
+                emit();
+                logOp(op.id, `[  OK  ] Enhanced clean-room photo stored (${modelUsed}${isMirrorItem ? ', mirror' : ''})`);
+            } catch (err) {
+                if (cancelTokens.current[op.id]) throw new AiCancelledError();
+                mark('img_enhance', 'failed', err);
+                logOp(op.id, `[ FAIL ] Enhance Cleanup failed: ${aiErrorMessage(err)}`);
+                console.error(err);
+            }
+        };
+
+        if (!isVideo && (cleanImage || segment || enhance)) {
             const cutoutLabel = (c: Cutout) => c.segmentation.method || mode;
 
             /** Store a cutout: uploaded PNG, matte, outline. Any failure here is the image stage failing. */
@@ -665,7 +702,7 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                                 replaceBackground(
                                     imageUrl,
                                     { shape: item.shape, material: item.material, description: item.type },
-                                    { quality: bgQuality, room: bgRoom, onLog: (m) => logOp(op.id, m), signal: cancel.signal },
+                                    { quality: bgQuality, room: bgRoom, isMirror: isMirrorItem, onLog: (m) => logOp(op.id, m), signal: cancel.signal },
                                 ),
                                 // No overall timeout here: each model attempt has
                                 // its own (AI_MODELS.bgReplace), and a timeout at
@@ -688,6 +725,8 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                         }
                     }
                 }
+                // After the clean, before the cutout, so the cutout is cut from the enhanced frame.
+                if (enhance) await doEnhance(cleanImage && result.cleanedUrl ? result.cleanedUrl : op.enhanceSourceUrl || result.cleanedUrl);
                 if (segment) {
                     // A cutout of the cleaned frame when there is one: the
                     // dark room separates far better than cardboard and studio
@@ -833,6 +872,9 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                     console.error(err);
                 }
             }
+            // Cut-out modes: the frame they clean is a transparent cutout, not a room, so
+            // Enhance works from the saved clean-room photo instead.
+            if (enhance && !enhanceTried) await doEnhance(op.enhanceSourceUrl);
             if (imageFailed) emit();
         } else if (!isVideo) {
             logOp(op.id, '[ SKIP ] Image processing skipped');

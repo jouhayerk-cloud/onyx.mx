@@ -1,5 +1,5 @@
 export interface CatalogProcess {
-    id: 'img_clean' | 'title_desc' | 'marketing_desc' | 'dominant_colors'
+    id: 'img_clean' | 'img_enhance' | 'title_desc' | 'marketing_desc' | 'dominant_colors'
       | 'hex_map' | 'product_type' | 'video_proc' | 'variation_donor' | 'image_segmentation';
     label: string;              // English. UI strings in this app are English.
     writes: readonly string[];  // REAL column names only — grep them first
@@ -16,6 +16,18 @@ export const CATALOG_PROCESSES: readonly CatalogProcess[] = [
         requiresMedia: true,
         requiresVideo: false,
         defaultChecked: true
+    },
+    {
+        // Second pass on the CLEANED photo (not the original): clears mirror
+        // reflections and neighbouring pieces / clutter at the frame edges, square
+        // 1:1. Replaces the shown cleaned photo; the previous one is kept under
+        // processed_media_urls["_prev_clean:<source>"].
+        id: 'img_enhance',
+        label: 'Enhance Cleanup (mirrors & edges)',
+        writes: ['processed_media_urls'],
+        requiresMedia: true,
+        requiresVideo: false,
+        defaultChecked: false
     },
     {
         id: 'title_desc',

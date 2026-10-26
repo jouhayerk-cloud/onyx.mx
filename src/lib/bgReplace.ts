@@ -53,7 +53,8 @@ import {
  * atmospheric, raise colorExtractor's threshold in the same commit -- but note
  * that raising it costs dark stone, which is why the prompt moved instead.
  */
-export const BG_PROMPT_VERSION = 'dark-room-v7';
+// v8 (26 Oct 2026): output is always a square 1:1 frame, the room extended around the piece.
+export const BG_PROMPT_VERSION = 'dark-room-v8';
 
 /**
  * The light room is its own prompt line with its own version. bgCacheKey leaves
@@ -70,7 +71,7 @@ export const BG_PROMPT_VERSION = 'dark-room-v7';
  * check a few white and cream pieces first, where a light backdrop has the
  * least contrast with the stone edge.
  */
-export const BG_LIGHT_PROMPT_VERSION = 'light-room-v1';
+export const BG_LIGHT_PROMPT_VERSION = 'light-room-v2'; // v2: square 1:1 frame, as dark-room-v8
 
 export type BgQuality = '1K' | '2K';
 
@@ -81,24 +82,6 @@ export type BgRoom = 'dark' | 'light';
  * The model chain lives in lib/ai/models.ts as AI_MODELS.bgReplace, with the
  * reasoning for the order.
  */
-
-/** Ratios the image models accept. Snapping to one stops silent reframing. */
-const SUPPORTED_RATIOS: [string, number][] = [
-    ['1:1', 1], ['3:2', 3 / 2], ['2:3', 2 / 3], ['3:4', 3 / 4],
-    ['4:3', 4 / 3], ['4:5', 4 / 5], ['5:4', 5 / 4], ['9:16', 9 / 16], ['16:9', 16 / 9],
-];
-
-export const nearestAspectRatio = (width: number, height: number): string => {
-    if (!width || !height) return '1:1';
-    const target = width / height;
-    let best = SUPPORTED_RATIOS[0];
-    let bestDelta = Infinity;
-    for (const candidate of SUPPORTED_RATIOS) {
-        const delta = Math.abs(Math.log(candidate[1] / target));
-        if (delta < bestDelta) { bestDelta = delta; best = candidate; }
-    }
-    return best[0];
-};
 
 /**
  * Downscale on the long edge only.
@@ -193,11 +176,14 @@ const ROOMS: Record<BgRoom, { roomName: string; envDesc: string; bgDesc: string 
  * background lighter, raise that threshold in the same commit -- but it costs
  * dark stone, which is why the wording moved instead.
  */
-export function buildRoomPrompt(subject: BgSubject, room: BgRoom = 'dark'): string {
+export function buildRoomPrompt(subject: BgSubject, room: BgRoom = 'dark', isMirror = false): string {
     const piece = [subject.material, subject.shape].filter(Boolean).join(' ').trim()
         || 'natural stone artisan piece';
     const detail = subject.description ? ` (${subject.description})` : '';
     const r = ROOMS[room];
+    // "Add nothing new: no ... reflections" alone left the workshop reflected in
+    // mirror glass; for mirrors the glass gets a reflection to DRAW instead.
+    const mirror = isMirror ? `\n${mirrorGlassLine(r.roomName)}` : '';
 
     return `Replace ONLY the background of this photograph. The subject is a handmade ${piece}${detail} in natural Mexican stone.
 
@@ -215,9 +201,54 @@ Replace the surroundings with an ${r.envDesc}:
 - Add a soft contact shadow where the piece meets the floor, consistent with the existing lighting direction.
 - Remove all props, packing material, cardboard, pallets, tools, people, hands, text and watermarks.
 - Remove any power cord, plug, extension cord or power strip visible in the shot, including where a cord runs off the piece toward a wall outlet. A cord is not part of the stone even when the piece is a lamp photographed while lit.
-- Add nothing new: no furniture, plants, decor, reflections or text.
+- Add nothing new: no furniture, plants, decor, reflections or text.${mirror}
 
-Keep the original framing, crop, scale and camera angle. Output the full scene at the same aspect ratio.`;
+${SQUARE_FRAME}`;
+}
+
+/**
+ * What the mirror glass shows, for both passes: a reflection of the NEW empty
+ * room, written as something to draw. The glass reflected the workshop in the
+ * original photo, and an empty prompt slot left that reflection in place.
+ */
+const mirrorGlassLine = (roomName: string) =>
+    `- The mirror glass reflects only the new empty ${roomName}: a soft, even studio reflection, a smooth gradient with one gentle diagonal highlight. Paint that soft reflection over the whole glass, in place of the workshop, people, the camera, windows, lights and other pieces it showed in the original photograph. The stone frame around the glass and its edge against the glass stay exactly as they are.`;
+
+/**
+ * Every clean-room image is a square 1:1 frame. Phrased as a scene to draw
+ * (the room extended around the piece), not as rules, for the reason above.
+ */
+const SQUARE_FRAME = `Keep the camera angle, and keep the piece at its photographed size and proportions. Output a square 1:1 image: the whole piece in frame and centred, with the empty room extended around it to fill the square. The piece is never stretched, squashed or cropped.`;
+
+/**
+ * Second pass, run on an already-cleaned frame: the clean pass leaves a
+ * reflected room in mirror glass, and neighbouring pieces or clutter at the
+ * frame edges when items were photographed close together. Same fidelity
+ * clauses as the room prompt, and the same rule for writing it: describe what
+ * to draw (more empty room, a soft studio reflection), not what to avoid.
+ */
+export function buildEnhancePrompt(subject: BgSubject, room: BgRoom = 'dark', isMirror = false): string {
+    const piece = [subject.material, subject.shape].filter(Boolean).join(' ').trim()
+        || 'natural stone artisan piece';
+    const detail = subject.description ? ` (${subject.description})` : '';
+    const r = ROOMS[room];
+    const mirror = isMirror ? `\n${mirrorGlassLine(r.roomName)}` : '';
+
+    return `This is a studio photograph of a handmade ${piece}${detail} in natural Mexican stone, already standing in an ${r.envDesc}. Finish the photograph so the piece stands alone in a clean room.
+
+Keep the piece exactly as photographed:
+- Reproduce it pixel-for-pixel. Do not restyle, retouch, straighten, recolour, relight or "improve" it.
+- Its natural veining, mineral banding and dark or near-black patches are STONE, not dirt or shadow. Preserve every one at its original tone.
+- Its rough, unpolished, chipped or bark-like outer edges are part of the piece. Never smooth, trim or tidy them.
+- If any part is translucent or lit from within, preserve that glow and its exact colour.
+- Keep every component: bases, arms, fittings, hardware, mirror glass and each separate piece in a set.
+
+Finish the room:
+- Around the piece, ${r.bgDesc}
+- Wherever another object is still visible -- a second piece, part of a neighbouring item, a wall edge, cardboard, a cord, a tool or any clutter, especially along the edges of the frame -- continue the empty ${r.roomName} over it.
+- Keep the soft contact shadow where the piece meets the floor.${mirror}
+
+${SQUARE_FRAME}`;
 }
 
 const extractImagePart = (response: any): { data: string; mimeType: string } | null => {
@@ -307,17 +338,69 @@ async function generateImageOnce(
  * and model gave every attempt its own full timeout and could hold that slot
  * for twelve minutes per photo.
  */
-export async function replaceBackground(
+export function replaceBackground(
     imageUrl: string,
     subject: BgSubject,
-    opts: { quality?: BgQuality; room?: BgRoom; onLog?: (msg: string) => void; signal?: AbortSignal } = {},
+    opts: BgOptions = {},
+): Promise<BgResult> {
+    return runImageEdit(imageUrl, buildRoomPrompt(subject, opts.room ?? 'dark', !!opts.isMirror), opts, 'Background replaced');
+}
+
+/**
+ * The Enhance Cleanup pass: starts from an already-cleaned frame (not the
+ * original photo) and clears what the clean pass leaves behind -- the room
+ * reflected in mirror glass, neighbouring pieces and clutter at the frame edges.
+ */
+export function enhanceCleanup(
+    cleanedUrl: string,
+    subject: BgSubject,
+    opts: BgOptions = {},
+): Promise<BgResult> {
+    return runImageEdit(cleanedUrl, buildEnhancePrompt(subject, opts.room ?? 'dark', !!opts.isMirror), opts, 'Cleanup enhanced');
+}
+
+export interface BgOptions { quality?: BgQuality; room?: BgRoom; isMirror?: boolean; onLog?: (msg: string) => void; signal?: AbortSignal }
+
+/**
+ * Pads a non-square result to a square with the median colour of its outer
+ * border, centring the frame. Only the fallback path (models that reject
+ * imageConfig) can return a non-square image; this keeps every clean-room
+ * output 1:1 without stretching anything.
+ */
+async function padToSquare(dataUrl: string): Promise<string> {
+    const img = await loadImage(dataUrl);
+    const w = img.width, h = img.height;
+    if (Math.abs(w - h) <= Math.max(w, h) * 0.01) return dataUrl;
+    const side = Math.max(w, h);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = side;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0);
+    const px = ctx.getImageData(0, 0, w, h).data;
+    const border: number[][] = [];
+    const take = (x: number, y: number) => { const i = (y * w + x) * 4; border.push([px[i], px[i + 1], px[i + 2]]); };
+    for (let x = 0; x < w; x += 4) { take(x, 0); take(x, h - 1); }
+    for (let y = 0; y < h; y += 4) { take(0, y); take(w - 1, y); }
+    const med = [0, 1, 2].map(c => border.map(p => p[c]).sort((a, b) => a - b)[border.length >> 1] ?? 0);
+    ctx.clearRect(0, 0, side, side);
+    ctx.fillStyle = `rgb(${med[0]},${med[1]},${med[2]})`;
+    ctx.fillRect(0, 0, side, side);
+    ctx.drawImage(img, Math.round((side - w) / 2), Math.round((side - h) / 2));
+    return canvasToDataUrl(canvas, 'image/png');
+}
+
+async function runImageEdit(
+    imageUrl: string,
+    prompt: string,
+    opts: BgOptions,
+    doneLabel: string,
 ): Promise<BgResult> {
     const { quality = '2K', room = 'dark', onLog, signal } = opts;
     if (!getGeminiKey()) throw new AiKeyMissingError();
 
     const source = await loadImageForGeneration(imageUrl);
-    const aspectRatio = nearestAspectRatio(source.width, source.height);
-    const prompt = buildRoomPrompt(subject, room);
+    const aspectRatio = '1:1';
 
     const requestParts = [
         { inlineData: { mimeType: source.mimeType, data: source.data } },
@@ -351,9 +434,9 @@ export async function replaceBackground(
                             throw new AiResponseError(`Model returned no image${finish ? ` (${finish})` : ''}`);
                         }
 
-                        onLog?.(`[  OK  ] Background replaced via ${model}`);
+                        onLog?.(`[  OK  ] ${doneLabel} via ${model}`);
                         return {
-                            dataUrl: `data:${image.mimeType};base64,${image.data}`,
+                            dataUrl: await padToSquare(`data:${image.mimeType};base64,${image.data}`),
                             modelUsed: model,
                             aspectRatio,
                             room,

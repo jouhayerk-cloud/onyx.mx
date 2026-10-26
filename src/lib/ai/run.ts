@@ -328,7 +328,7 @@ export type RunAction =
 
 export const TEXT_PROCESSES: readonly ProcessId[] = ['title_desc', 'marketing_desc', 'dominant_colors', 'product_type'];
 /** Run on every still photo (extracts hex map, background clean, and segmentation for all states e.g. lights on/off). */
-export const IMAGE_PROCESSES: readonly ProcessId[] = ['img_clean', 'image_segmentation', 'hex_map'];
+export const IMAGE_PROCESSES: readonly ProcessId[] = ['img_clean', 'img_enhance', 'image_segmentation', 'hex_map'];
 /** Run once, on the hero photo: text descriptors belong to the item, not to individual photos. */
 export const HERO_PROCESSES: readonly ProcessId[] = [...TEXT_PROCESSES];
 
@@ -341,6 +341,7 @@ const STAGES: readonly (readonly ProcessId[])[] = [
     ['video_proc'],
     ['variation_donor', ...TEXT_PROCESSES],
     ['img_clean'],
+    ['img_enhance'],
     ['image_segmentation'],
     ['hex_map'],
 ];
@@ -381,6 +382,7 @@ export function providerForProcess(p: ProcessId, mode: ProcessingMode, donorPath
     if (TEXT_PROCESSES.includes(p) || p === 'variation_donor' || (donorPath && p !== 'hex_map')) {
         return getRoute('content').provider;
     }
+    if (p === 'img_enhance') return 'gemini';
     if (p === 'img_clean') {
         if (mode === 'bgreplace') return 'gemini';
         if (mode === 'auto') return 'gemini';
@@ -714,6 +716,10 @@ function makeBatchOp(item: RunItem, opId: string, p: { kind: 'photo' | 'donor'; 
         // Asked for again means done again: without this, bgreplace finds its
         // own cache key and only logs "Background already replaced".
         forceRecleanImage: processes.includes('img_clean'),
+        // Enhance starts from the photo's current cleaned frame: this session's, else the saved one.
+        enhanceSourceUrl: processes.includes('img_enhance')
+            ? (base?.result?.cleanedUrl || item.stored.photos[p.index]?.cleanedUrl)
+            : undefined,
         needsVariation: p.kind === 'donor',
         result: { ...(base?.result || {}) },
     };
