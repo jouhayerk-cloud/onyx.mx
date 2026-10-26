@@ -3,7 +3,6 @@ import { DEFAULT_EXCHANGE_RATE } from './consts';
 import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { getVendorColor } from './excelStyles';
 import { generateAxonometricDataUrl, resolveItemColor, normalizeHexMapTexture, parseHexMapString } from './axonometric';
 import { trackDocumentJob } from '../features/print/jobTracking';
 
@@ -48,12 +47,13 @@ function tagPageUrl(tagId: string): string {
 }
 
 /**
- * QR for catalog pages. Error correction H recovers ~30% of modules (the vendor
- * dot hides ~6%, print/scan blur takes the rest); margin 1 keeps a quiet zone next
- * to the barcode; 400 px keeps module edges sharp in print.
+ * QR for PDF pages. Nothing is drawn over the code, so level M (~15% recovery) is
+ * enough, and it keeps the grid small: a tag-page URL is 33x33 modules at M vs 41x41
+ * at H, i.e. ~24% bigger modules at the same printed size, which is what fast and
+ * small-size scans need. margin 2 is the quiet zone; 400 px keeps edges sharp.
  */
 function tagQrDataUrl(data: string): Promise<string> {
-    return QRCode.toDataURL(data, { errorCorrectionLevel: 'H', margin: 1, width: 400, color: { dark: '#141414', light: '#ffffff' } });
+    return QRCode.toDataURL(data, { errorCorrectionLevel: 'M', margin: 2, width: 400, color: { dark: '#000000', light: '#ffffff' } });
 }
 
 function drawFormattedTagCode(
@@ -463,7 +463,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     let qrDataUrl = '';
     const barcode = codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || '—';
     try {
-        qrDataUrl = await QRCode.toDataURL(barcode.replace(/\s+/g, ''), { errorCorrectionLevel: 'H', margin: 0, width: 200, color: { dark: '#141414', light: '#ffffff' } });
+        qrDataUrl = await tagQrDataUrl(barcode.replace(/\s+/g, ''));
     } catch (e) { console.error('QR code err', e); }
 
     let barDataUrl = '';
@@ -483,14 +483,6 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     let currentX = M + 4;
     if (qrDataUrl) {
         doc.addImage(qrDataUrl, 'PNG', currentX, row1Y, qrSize, qrSize);
-        const tagVColor = getVendorColor(barcode);
-        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
-        const qrCenterX = currentX + qrSize / 2;
-        const qrCenterY = row1Y + qrSize / 2;
-        doc.setFillColor(255, 255, 255);
-        doc.circle(qrCenterX, qrCenterY, 2.2, 'F');
-        doc.setFillColor(tagHexColor);
-        doc.circle(qrCenterX, qrCenterY, 1.8, 'F');
         currentX += qrSize + 4;
     }
     
@@ -1936,14 +1928,6 @@ async function drawCatalogHubPagePortrait(
 
     if (qrDataUrl) {
         doc.addImage(qrDataUrl, 'PNG', qrX, topY, qrSize, qrSize);
-        const tagVColor = getVendorColor(barcode);
-        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
-        const qrCenterX = qrX + qrSize / 2;
-        const qrCenterY = topY + qrSize / 2;
-        doc.setFillColor(255, 255, 255);
-        doc.circle(qrCenterX, qrCenterY, 1.4, 'F');
-        doc.setFillColor(tagHexColor);
-        doc.circle(qrCenterX, qrCenterY, 0.95, 'F');
     }
 
     // TAGID + Retail + Acquisition Code line: EXACT same width as [ Barcode ] [ QR ]
@@ -2333,14 +2317,6 @@ async function drawCatalogHubPageLandscapeGrid(
 
     if (qrDataUrl) {
         doc.addImage(qrDataUrl, 'PNG', qrX, topY, qrSize, qrSize);
-        const tagVColor = getVendorColor(barcode);
-        const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
-        const qrCenterX = qrX + qrSize / 2;
-        const qrCenterY = topY + qrSize / 2;
-        doc.setFillColor(255, 255, 255);
-        doc.circle(qrCenterX, qrCenterY, 1.4, 'F');
-        doc.setFillColor(tagHexColor);
-        doc.circle(qrCenterX, qrCenterY, 0.95, 'F');
     }
 
     // TAGID + Retail + Acquisition Code line: EXACT same width as [ Barcode ] [ QR ]
@@ -3507,14 +3483,6 @@ async function drawCatalogCompactPage(
         } catch (e) {}
         if (qrDataUrl) {
             doc.addImage(qrDataUrl, 'PNG', qrX, codesY, qrSize, qrSize);
-            const tagVColor = getVendorColor(barcode);
-            const tagHexColor = tagVColor.startsWith('FF') ? '#' + tagVColor.substring(2) : '#' + tagVColor;
-            const qrCenterX = qrX + qrSize / 2;
-            const qrCenterY = codesY + qrSize / 2;
-            doc.setFillColor(255, 255, 255);
-            doc.circle(qrCenterX, qrCenterY, qrSize * 0.138, 'F');
-            doc.setFillColor(tagHexColor);
-            doc.circle(qrCenterX, qrCenterY, qrSize * 0.087, 'F');
         }
 
         // TagID + Retail + Acquisition Code, fitted to the block width (sectioned weights)
