@@ -3763,22 +3763,6 @@ function catalogSortKey(item: CatalogArtifact): { vendor: string; type: string; 
     return { vendor, type: t.type.toUpperCase(), sizeRank: t.sizeRank, shape, tag };
 }
 
-interface CompactRun { vendor: string; vendorName: string; type: string; items: CatalogArtifact[] }
-
-/** Sorted items split into runs that each start a new page: a new vendor or a new type (shapes do not break). */
-function compactRuns(sorted: CatalogArtifact[]): CompactRun[] {
-    const runs: CompactRun[] = [];
-    for (const it of sorted) {
-        const k = catalogSortKey(it);
-        const last = runs[runs.length - 1];
-        if (last && last.vendor === k.vendor && last.type === k.type) { last.items.push(it); continue; }
-        // Full vendor names are confidential: exports use the vendor code (full names only in payments).
-        const vendorName = k.vendor || 'Vendor';
-        runs.push({ vendor: k.vendor, vendorName, type: toTitleCase(k.type.toLowerCase()), items: [it] });
-    }
-    return runs;
-}
-
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid'; logo?: string; exportType?: 'regular' | 'catalog' },
@@ -3989,26 +3973,27 @@ export async function exportCatalogPdf(
     const totalItems = results.length;
     let processedCount = 0;
 
-    /** Compact pages: a new page at every vendor and type change, an optional summary at the start of each vendor. */
+    /** Compact pages: items fill every page in sorted order (no vendor or type breaks); per-vendor summaries come first. */
     const renderCompactRuns = async (vendorSummaries: boolean) => {
         const itemsPerPage = isCompactGrid ? 6 : 9;
-        const runs = compactRuns(results);
-        const totalPages = runs.reduce((n, r) => n + Math.ceil(r.items.length / itemsPerPage), 0);
-        let done = 0;
-        for (let r = 0; r < runs.length; r++) {
-            const run = runs[r];
-            if (vendorSummaries && (r === 0 || runs[r - 1].vendor !== run.vendor)) {
-                onProgress?.(Math.round(10 + (done / totalPages) * 85), `Summary ${run.vendorName}...`);
-                await drawCatalogSummaryPages(doc, runs.filter(x => x.vendor === run.vendor).flatMap(x => x.items), M, PW, PH, addPage, isLandscape, config.title, run.vendorName);
+        if (vendorSummaries) {
+            const byVendor = new Map<string, CatalogArtifact[]>();
+            for (const it of results) {
+                const v = catalogSortKey(it).vendor || 'Vendor';
+                byVendor.set(v, [...(byVendor.get(v) || []), it]);
             }
-            for (let start = 0; start < run.items.length; start += itemsPerPage) {
-                addPage();
-                done++;
-                onProgress?.(Math.round(10 + (done / totalPages) * 85), `Rendering compact page ${done}/${totalPages}...`);
-                await yieldToUi();
-                if (isCompactGrid) await drawCatalogCompactGridPage(doc, run.items, start, M, PW, PH);
-                else await drawCatalogCompactPage(doc, run.items, start, itemsPerPage, M, PW, PH);
+            for (const [v, list] of byVendor) {
+                onProgress?.(8, `Summary ${v}...`);
+                await drawCatalogSummaryPages(doc, list, M, PW, PH, addPage, isLandscape, config.title, v);
             }
+        }
+        const totalPages = Math.ceil(results.length / itemsPerPage);
+        for (let page = 0; page < totalPages; page++) {
+            addPage();
+            onProgress?.(Math.round(10 + ((page + 1) / totalPages) * 85), `Rendering compact page ${page + 1}/${totalPages}...`);
+            await yieldToUi();
+            if (isCompactGrid) await drawCatalogCompactGridPage(doc, results, page * itemsPerPage, M, PW, PH);
+            else await drawCatalogCompactPage(doc, results, page * itemsPerPage, itemsPerPage, M, PW, PH);
         }
     };
 
