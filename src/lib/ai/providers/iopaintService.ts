@@ -3,6 +3,11 @@
  * Images go only to this address, never anywhere else. Callers catch IopaintServiceError and show the message.
  */
 export const IOPAINT_URL = 'http://127.0.0.1:8080';
+/** The same server through Tailscale Serve (tailnet only), for the iPad and other devices signed into the tailnet. */
+export const IOPAINT_TAILSCALE_URL = 'https://g7.tail2a809e.ts.net/iopaint';
+const IOPAINT_BASES = [IOPAINT_URL, IOPAINT_TAILSCALE_URL];
+/** The address the last health check reached; inpaint calls go there. */
+let activeBase = IOPAINT_URL;
 export const IOPAINT_START_CMD = 'C:\\Jouhayerk\\swarm\\tools\\iopaint-venv\\Scripts\\iopaint.exe start --model lama --device cuda --port 8080';
 
 export interface IopaintHealth { ok: boolean; model: string }
@@ -14,13 +19,16 @@ const HEALTH_TTL = 30_000;
 export async function iopaintHealth(force = false): Promise<IopaintHealth | null> {
     if (!force && healthCache && Date.now() - healthCache.at < HEALTH_TTL) return healthCache.value;
     let value: IopaintHealth | null = null;
-    try {
-        const res = await fetch(`${IOPAINT_URL}/api/v1/model`, { signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-            const j = await res.json();
-            if (j && typeof j.name === 'string') value = { ok: true, model: j.name };
-        }
-    } catch { /* not reachable */ }
+    // This PC first, then Tailscale (an iPad's 127.0.0.1 is the iPad itself)
+    for (const base of IOPAINT_BASES) {
+        try {
+            const res = await fetch(`${base}/api/v1/model`, { signal: AbortSignal.timeout(base === IOPAINT_URL ? 2000 : 4000) });
+            if (res.ok) {
+                const j = await res.json();
+                if (j && typeof j.name === 'string') { value = { ok: true, model: j.name }; activeBase = base; break; }
+            }
+        } catch { /* not reachable at this address */ }
+    }
     healthCache = { at: Date.now(), value };
     return value;
 }
@@ -65,7 +73,7 @@ export async function iopaintInpaint(imageDataUrl: string, maskDataUrl: string, 
     const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
     let res: Response;
     try {
-        res = await fetch(`${IOPAINT_URL}/api/v1/inpaint`, {
+        res = await fetch(`${activeBase}/api/v1/inpaint`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
