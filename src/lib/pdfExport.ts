@@ -5,7 +5,7 @@ import QRCode from 'qrcode';
 import { getVendorColor } from './excelStyles';
 import JsBarcode from 'jsbarcode';
 import { generateAxonometricDataUrl, resolveItemColor, normalizeHexMapTexture, parseHexMapString } from './axonometric';
-import { hexMapShades, liftBandColor, resolveStonePaletteRaw } from './canonicalColors';
+import { boostAquaBandInMap, hexMapShades, liftBandColor, resolveStonePaletteRaw } from './canonicalColors';
 import { trackDocumentJob } from '../features/print/jobTracking';
 
 // We accept a generalized artifact structure so different modules can use it
@@ -3414,6 +3414,7 @@ function compactTitleChunks(norm: any, itemDataObj: any): TitleChunk[] {
  */
 function drawStoneBand(doc: any, norm: any, itemDataObj: any, x: number, y: number, w: number, h: number, dir: 'horizontal' | 'vertical') {
     let shades = hexMapShades(parseHexMapString(extractItemHexString(itemDataObj) || extractItemHexString(norm)));
+    shades = boostAquaBandInMap(shades);
     if (!shades.length) {
         const palette = resolveStonePaletteRaw({ color: norm.color || itemDataObj.color, material: norm.material || itemDataObj.material });
         shades = palette.gradientColors.length ? palette.gradientColors : [palette.primary];

@@ -528,8 +528,17 @@ export function hexMapShades(hexes: readonly string[], n = 6): string[] {
         bin.c++; bin.r += r; bin.g += g; bin.b += b;
         bins.set(k, bin);
     }
-    const top = [...bins.values()].sort((a, b) => b.c - a.c).slice(0, n)
-        .map(x => [x.r / x.c, x.g / x.c, x.b / x.c])
+    const ranked = [...bins.values()].sort((a, b) => b.c - a.c);
+    const avg = (x: { c: number; r: number; g: number; b: number }) => [x.r / x.c, x.g / x.c, x.b / x.c];
+    const hexOf = (c: number[]) => '#' + c.map(x => Math.round(x).toString(16).padStart(2, '0')).join('');
+    const picked = ranked.slice(0, n);
+    // Aqua Serpentine: keep the sage-teal band in the bar even when it is not among the most common shades.
+    const total = ranked.reduce((t, x) => t + x.c, 0);
+    if (!picked.some(x => isAquaBand(hexOf(avg(x))))) {
+        const aqua = ranked.find(x => isAquaBand(hexOf(avg(x))) && x.c >= Math.max(2, total * 0.02));
+        if (aqua && picked.length) picked[picked.length - 1] = aqua;
+    }
+    const top = picked.map(avg)
         .sort((a, b) => (b[0] * 0.299 + b[1] * 0.587 + b[2] * 0.114) - (a[0] * 0.299 + a[1] * 0.587 + a[2] * 0.114));
     if (top.length < 2) return [];
     return top.map(c => '#' + c.map(x => Math.round(x).toString(16).padStart(2, '0')).join('').toUpperCase());
@@ -561,4 +570,50 @@ export function liftBandColor(hex: string): string {
     };
     if (s === 0) return '#' + Math.round(l * 255).toString(16).padStart(2, '0').repeat(3).toUpperCase();
     return ('#' + ch(h + 1 / 3) + ch(h) + ch(h - 1 / 3)).toUpperCase();
+}
+
+const toHsl = (hex: string): [number, number, number] | null => {
+    const m = /^#?([0-9a-f]{6})/i.exec(hex.trim());
+    if (!m) return null;
+    const v = parseInt(m[1], 16);
+    const r = ((v >> 16) & 255) / 255, g = ((v >> 8) & 255) / 255, b = (v & 255) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+    if (max === min) return [0, 0, l];
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return [h * 60, s, l];
+};
+
+const fromHsl = (h: number, s: number, l: number): string => {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q, hh = h / 360;
+    const ch = (t: number) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        const x = t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p;
+        return Math.round(x * 255).toString(16).padStart(2, '0');
+    };
+    return ('#' + ch(hh + 1 / 3) + ch(hh) + ch(hh - 1 / 3)).toUpperCase();
+};
+
+/** Aqua Serpentine's sage-teal band (#88A271, #657C5D, #819B6A): hue 70-140°, saturation 0.08-0.55, lightness 0.22-0.72. */
+export function isAquaBand(hex: string): boolean {
+    const hsl = toHsl(hex);
+    if (!hsl) return false;
+    const [h, s, l] = hsl;
+    return h >= 70 && h <= 140 && s >= 0.08 && s <= 0.55 && l >= 0.22 && l <= 0.72;
+}
+
+/** Vibrance for the aqua band: saturation x1.7 (+0.05, max 0.7), hue nudged 20° toward teal (max 160°). Other colours unchanged. */
+export function boostAquaBand(hex: string): string {
+    if (!isAquaBand(hex)) return hex;
+    const [h, s, l] = toHsl(hex)!;
+    return fromHsl(Math.min(160, h + 20), Math.min(0.7, s * 1.7 + 0.05), l);
+}
+
+/** Boosts the aqua band in a hex map only when the band is really there: at least 5% of the non-background cells. */
+export function boostAquaBandInMap(hexes: readonly string[]): string[] {
+    const stone = hexes.filter(h => !/^#?f{6}$/i.test(h.trim()));
+    const share = stone.length ? stone.filter(isAquaBand).length / stone.length : 0;
+    return share >= 0.05 ? hexes.map(boostAquaBand) : [...hexes];
 }
