@@ -3708,19 +3708,24 @@ async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], st
         const metaH = (extractedColors.length ? sCap * 1.3 + 2.0 : 0) + (wtKg > 0 ? sCap + 1.0 : 0);
 
         let cutoutH = 0;
-        const cutUrl = getItemCutoutPngs(item)[0];
-        if (cutUrl) {
+        // Up to 3 cutouts side by side: getItemCutoutPngs already gives one per unit when the quantity and photos allow.
+        const cutouts: { dataUrl: string; w: number; h: number }[] = [];
+        for (const u of getItemCutoutPngs(item).slice(0, 3)) {
             try {
-                const c = await loadImgData(cutUrl, 400, true);
-                if (c && c.dataUrl && c.w && c.h) {
-                    const boxH = Math.max(8, midH - metaH - 2.0);
-                    const aspect = c.w / c.h;
-                    let cw = rw, ch = rw / aspect;
-                    if (ch > boxH) { ch = boxH; cw = boxH * aspect; }
-                    doc.addImage(c.dataUrl, 'PNG', rx + (rw - cw) / 2, midTop + (boxH - ch) / 2, cw, ch);
-                    cutoutH = boxH + 2.0;
-                }
+                const c = await loadImgData(u, 400, true);
+                if (c && c.dataUrl && c.w && c.h) cutouts.push({ dataUrl: c.dataUrl, w: c.w, h: c.h });
             } catch (e) {}
+        }
+        if (cutouts.length) {
+            const boxH = Math.max(8, midH - metaH - 2.0);
+            const slotW = (rw - (cutouts.length - 1) * 1.0) / cutouts.length;
+            cutouts.forEach((c, k) => {
+                const aspect = c.w / c.h;
+                let cw = slotW, ch = slotW / aspect;
+                if (ch > boxH) { ch = boxH; cw = boxH * aspect; }
+                doc.addImage(c.dataUrl, 'PNG', rx + k * (slotW + 1.0) + (slotW - cw) / 2, midTop + (boxH - ch) / 2, cw, ch);
+            });
+            cutoutH = boxH + 2.0;
         }
 
         // Colours and weight sit under the cutout, or centred in the column without one.
