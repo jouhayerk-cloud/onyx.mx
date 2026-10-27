@@ -30,6 +30,8 @@
  */
 
 import { classifyItem, GEOMETRIES, GEOMETRY_LABELS, type Geometry } from './geometry';
+import { canonicalType } from './canonicalType';
+import { parseShapeText } from '../features/entry/hairline/variantOptions';
 
 export interface SmartFilterChild {
     label: string;
@@ -196,12 +198,20 @@ export const matchesSelection = (
 export const rowMatchesMaterialColor = (d: any, selected: string[] | undefined): boolean =>
     matchesSelection(selected, readMaterial(d), readColor(d));
 
-/** Shape counterpart. The parent is the item's geometry LABEL rather than its
- *  raw class, because that label is what buildGeometryTree puts on the chip and
- *  therefore what a stored selection key holds — matching on the class would
- *  silently never hit. */
-export const rowMatchesShape = (d: any, selected: string[] | undefined): boolean =>
-    matchesSelection(selected, GEOMETRY_LABELS[classifyItem(d).geom], readShapeText(d));
+/** The Add Entry Type of a row: parent = canonical Type label (bounded set), child = its sub-shape option value
+ *  (wine rack: the hole count). Same resolver as Add Entry (canonicalType + parseShapeText). ['', ''] for a row with no usable Type. */
+export const typeShapeOf = (d: any): [string, string] => {
+    const read = canonicalType(d?.shortDescription ?? d?.short_description ?? '', d?.shape ?? '');
+    if (read.personal || !read.label) return ['', ''];
+    const child = read.id === 'wine-rack' ? String(read.holes ?? '') : (parseShapeText(read.id, d?.shape).primary ?? '');
+    return [read.label, child];
+};
+
+/** Type filter (stored in inventoryShapeFilterAtom): keys are "Type" or "Type>option". */
+export const rowMatchesShape = (d: any, selected: string[] | undefined): boolean => {
+    const [t, c] = typeShapeOf(d);
+    return matchesSelection(selected, t, c);
+};
 
 /**
  * Toggling a parent clears its children. Leaving them behind would make the

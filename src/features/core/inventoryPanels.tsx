@@ -8,9 +8,10 @@ import {
 } from 'lucide-react';
 import { tr } from '../../lib/i18n';
 import { CONTENT_FILTERS, countContent, type ContentKey } from '../../lib/aiContent';
-import { buildGeometryTree, buildMaterialColorTree, toggleKey, type SmartFilterNode } from '../../lib/smartFilters';
-import { GEOMETRIES, GEOMETRY_LABELS, type Geometry } from '../../lib/geometry';
-import { GeometryIcon } from './shapeIcons';
+import { buildMaterialColorTree, toggleKey, childKey, typeShapeOf, type SmartFilterNode } from '../../lib/smartFilters';
+import { buildTypeLibrary } from '../../lib/typeLibrary';
+import { ShapeFigure } from '../entry/hairline/ShapeFigure';
+import { subShapesFor } from '../entry/hairline/variantOptions';
 import { vendors } from '../../lib/consts';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 
@@ -36,7 +37,55 @@ import {
     inventoryShapeFilterAtom
 } from '../../lib/atoms';
 
-const LABEL_TO_GEOMETRY = new Map<string, Geometry>(GEOMETRIES.map(g => [GEOMETRY_LABELS[g], g]));
+/** Add Entry's Type hairlines as a filter: one button per Type (tap again to clear), then the sub-shapes of each selected Type. */
+const TypeFilterGroup: React.FC<{ rows: any[]; selected: string[]; onToggle: (key: string) => void }> = ({ rows, selected, onToggle }) => {
+    const flat = React.useMemo(() => rows.map(r => r?.data ?? r), [rows]);
+    const library = React.useMemo(() => buildTypeLibrary(flat, []), [flat]);
+    // Sub-shape counts per "Type>option", from the same resolver the filter uses.
+    const childCounts = React.useMemo(() => {
+        const m = new Map<string, number>();
+        for (const d of flat) {
+            if (d?.is_hidden) continue;
+            const [t, c] = typeShapeOf(d);
+            if (t && c) m.set(childKey(t, c), (m.get(childKey(t, c)) ?? 0) + 1);
+        }
+        return m;
+    }, [flat]);
+    const sel = new Set(selected);
+    const btn = (key: string, label: string, count: number, fig: React.ReactNode, on: boolean) => (
+        <button
+            key={key}
+            type="button"
+            onClick={() => onToggle(key)}
+            aria-pressed={on}
+            aria-label={`${label} (${count})`}
+            title={`${label} (${count})`}
+            disabled={count === 0 && !on}
+            className="utb-control utb-type-chip"
+        >
+            <span className="utb-type-fig">{fig}</span>
+            <span className="utb-type-count tabular-nums">{count}</span>
+        </button>
+    );
+    return (
+        <div className="flex items-center gap-1.5 shrink-0" role="group" aria-label={tr('Type')}>
+            {library.filter(e => e.count > 0).map(e => (
+                <React.Fragment key={e.key}>
+                    {btn(e.label, e.label, e.count,
+                        <ShapeFigure family={e.family} isMirror={e.isMirror} typeId={e.id} dims={e.dims} holes={e.holes[0]} active={sel.has(e.label)} className="ssr-scroller-svg" />,
+                        sel.has(e.label))}
+                    {sel.has(e.label) && subShapesFor(e.id).options.map(o => {
+                        const k = childKey(e.label, o.value);
+                        const n = childCounts.get(k) ?? 0;
+                        return btn(k, `${e.label} ${tr(o.label)}`, n,
+                            <ShapeFigure family={e.family} typeId={e.id} variant={o.value} dims={e.dims} holes={e.id === 'wine-rack' ? Number(o.value) : undefined} active={sel.has(k)} className="ssr-scroller-svg" />,
+                            sel.has(k));
+                    })}
+                </React.Fragment>
+            ))}
+        </div>
+    );
+};
 
 const SmartFilterGroup: React.FC<{
     title: string;
@@ -238,7 +287,6 @@ export const InventorySmartFiltersPanel: React.FC = () => {
     const [materialColorSel, setMaterialColorSel] = useAtom(inventoryMaterialColorFilterAtom);
     const inventoryRows = useAtomValue(inventoryAtom);
 
-    const shapeTree = React.useMemo(() => buildGeometryTree(inventoryRows || []), [inventoryRows]);
     const materialColorTree = React.useMemo(() => buildMaterialColorTree(inventoryRows || []), [inventoryRows]);
 
     const totalSmartCount = (materialColorSel || []).length + (shapeSel || []).length;
@@ -281,27 +329,21 @@ export const InventorySmartFiltersPanel: React.FC = () => {
                     onClick={() => setShapeFilterOpen(!shapeFilterOpen)}
                     aria-pressed={shapeFilterOpen}
                     className="utb-control utb-smart-deploy"
-                    title={tr("Shape — sub filter")}
-                    aria-label={tr("Shape — sub filter")}
+                    title={tr("Type filter")}
+                    aria-label={tr("Type filter")}
                 >
                     <Shapes size={14} strokeWidth={2.4} className="shrink-0" />
-                    <span>{tr("Shape")}</span>
+                    <span>{tr("Type")}</span>
                     {(shapeSel || []).length > 0 && (
                         <span className="utb-count-badge tabular-nums">{(shapeSel || []).length}</span>
                     )}
                 </button>
 
                 {shapeFilterOpen && (
-                    <SmartFilterGroup
-                        title={tr("Shape — Sub Filter")}
-                        tree={shapeTree}
-                        selected={shapeSel}
+                    <TypeFilterGroup
+                        rows={inventoryRows || []}
+                        selected={shapeSel || []}
                         onToggle={(k: string) => setShapeSel(prev => toggleKey(prev || [], k))}
-                        onClear={() => setShapeSel([])}
-                        renderIcon={(node) => {
-                            const geom = LABEL_TO_GEOMETRY.get(node.label);
-                            return geom ? <GeometryIcon geom={geom} size={13} strokeWidth={2.4} /> : null;
-                        }}
                     />
                 )}
             </div>

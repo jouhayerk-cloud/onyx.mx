@@ -990,3 +990,9 @@ html:root:root:root .smd-card.smd-card .utb-filters-panel .utb-vendor-chip.utb-v
 
 /* the clear button inside the Search field stays a small round button on a phone too (the 44px control rule made it a big ring) */
 .utb-search-container .utb-control.utb-icon-only { width: 32px; height: 32px; min-height: 0; padding: 0; flex-shrink: 0; }
+
+/* Type filter: Add Entry hairline figures as filter buttons */
+.utb-type-chip { flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; gap: 1px; width: 48px; height: 52px; padding: 3px 2px; }
+.utb-type-chip:disabled { opacity: 0.35; }
+.utb-type-fig { display: block; width: 36px; height: 30px; }
+.utb-type-count { font-size: 10px; line-height: 1; opacity: 0.7; }
