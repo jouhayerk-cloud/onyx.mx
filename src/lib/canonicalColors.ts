@@ -144,10 +144,10 @@ export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
         secondary: '#E0A04A',
         gradientColors: ['#C8862E', '#E0A04A', '#9A5E1C', '#F0C27A', '#7A4512', '#F6D9A6'],
     },
-    tehuacan: { // shades of white; a second colour in the colour field is mixed in, see tehuacanWith
+    tehuacan: { // shades of white and gray; a second colour in the colour field is mixed in, see tehuacanWith
         primary: '#FFFFFF',
-        secondary: '#F4F1EA',
-        gradientColors: ['#FFFFFF', '#F4F1EA', '#E6E1D6', '#FAF8F3', '#D9D4C8', '#FFFFFF'],
+        secondary: '#C9C9C6',
+        gradientColors: ['#FFFFFF', '#C9C9C6', '#F4F1EA', '#9C9C99', '#E6E3DC', '#B3B3B0'],
     },
     nacar: { // db hex maps, 52 items
         primary: '#6e4b33',
