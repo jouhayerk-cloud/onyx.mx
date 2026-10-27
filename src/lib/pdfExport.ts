@@ -2854,7 +2854,9 @@ async function drawCatalogSummaryPages(
     addPage: () => void,
     isLandscape: boolean,
     catalogTitle?: string,
-    heading?: string
+    heading?: string,
+    /** Shared between calls so several summaries flow down the same pages; null starts a new page. */
+    cursor: { y: number | null } = { y: null }
 ) {
     await yieldToUi(true);
 
@@ -2956,69 +2958,45 @@ async function drawCatalogSummaryPages(
     const grandTotalWeightLbs = grandTotalWeightKg * 2.20462;
     const grandTotalTypes = sortedTypeGroups.length;
 
-    // Page 1 of Summary
-    addPage();
-
     // Clean display title (guarding against "Catalog Catalog")
     let displayTitle = (catalogTitle || 'ONYX COLLECTION').trim();
     if (/^catalog\s+catalog$/i.test(displayTitle) || displayTitle.toLowerCase() === 'catalog') {
         displayTitle = 'ONYX COLLECTION';
     }
-
-    // Heading: the vendor (or the catalog title), the catalog title under it when a vendor leads, date and counts right.
     const title = heading || displayTitle;
-    const titleY = isLandscape ? 15 : 18;
-    doc.setFontSize(isLandscape ? 15 : 17);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(title, M, titleY);
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    if (heading) doc.text(displayTitle, M, titleY + 5);
-
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    doc.text(dateStr, PW - M, titleY, { align: 'right' });
-    doc.text(`${totalItems} items · ${grandTotalUnits} units · ${grandTotalTypes} types`, PW - M, titleY + 5, { align: 'right' });
 
-    const divY = titleY + 8;
-
-    // 4 KPI Summary Cards (Compact Totals Top Panel)
-    const cardY = divY + 2.0;
-    const cardH = isLandscape ? 11.5 : 12.5;
-    const gap = 3.0;
-    const cardW = (fullW - 3 * gap) / 4;
-
-    const kpis = [
-        { label: 'Items', val: `${totalItems}`, sub: '' },
-        { label: 'Units', val: `${grandTotalUnits}`, sub: '' },
-        { label: 'Weight', val: `${Math.round(grandTotalWeightKg).toLocaleString()} kg`, sub: `${Math.round(grandTotalWeightLbs).toLocaleString()} lbs` },
-        { label: 'Types', val: `${grandTotalTypes}`, sub: `${sortedShapesByFreq.length} shapes` },
-    ];
-
-    // Tone-step cards, no outlines.
-    kpis.forEach((kpi, idx) => {
-        const cx = M + idx * (cardW + gap);
-        doc.setFillColor(244, 246, 249);
-        doc.roundedRect(cx, cardY, cardW, cardH, 1.2, 1.2, 'F');
-
-        doc.setFontSize(6.8);
+    // A summary page carries the catalog title and date once, small; sections then follow each other down it.
+    const startPage = (): number => {
+        addPage();
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(71, 85, 105);
+        doc.text(displayTitle, M, 11);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 116, 139);
-        doc.text(kpi.label, cx + 3.0, cardY + 4.0);
-
-        doc.setFontSize(isLandscape ? 10.5 : 11.5);
+        doc.text(dateStr, PW - M, 11, { align: 'right' });
+        return 16;
+    };
+    // One line per section: the name, then its counts (weight only when known).
+    const sectionLine = (y: number, cont = false) => {
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
-        doc.text(kpi.val, cx + 3.0, cardY + 8.8);
+        const name = cont ? `${title} (cont.)` : title;
+        doc.text(name, M, y + 4.5);
+        const nameW = doc.getTextWidth(name);
+        if (cont) return;
+        const facts = [`${totalItems} items`, `${grandTotalUnits} units`, `${grandTotalTypes} types`];
+        if (grandTotalWeightKg > 0) facts.push(`${Math.round(grandTotalWeightKg).toLocaleString()} kg (${Math.round(grandTotalWeightLbs).toLocaleString()} lbs)`);
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(facts.join(' · '), M + nameW + 4, y + 4.5);
+    };
 
-        if (kpi.sub) {
-            doc.setFontSize(6.8);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(100, 116, 139);
-            doc.text(kpi.sub, cx + cardW - 3.0, cardY + 8.8, { align: 'right' });
-        }
-    });
+    let sectionY = cursor.y;
+    if (sectionY === null || sectionY + 40 > PH - 20) sectionY = startPage();
+    sectionLine(sectionY);
 
     // Compute column widths with generous space for Colors & Sizes
     const colTypeW = isLandscape ? 50 : 42;
@@ -3075,7 +3053,7 @@ async function drawCatalogSummaryPages(
         doc.text('Weight', xWeight + colWeightW - 3, startY + 5.8, { align: 'right' });
     };
 
-    let tableY = cardY + cardH + 3.0;
+    let tableY = sectionY + 7.5;
     drawTableHeader(tableY);
     let rowY = tableY + headerH;
     const baseMinRowH = 14.5; // Row height ensuring prominent 13mm hairline figures
@@ -3118,13 +3096,9 @@ async function drawCatalogSummaryPages(
 
         // Page break check with dynamic row height
         if (rowY + currRowH > PH - 20) {
-            addPage();
-            doc.setFontSize(10.5);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(15, 23, 42);
-            doc.text(`${title} (cont.)`, M, isLandscape ? 16 : 20);
-
-            tableY = isLandscape ? 22 : 27;
+            const y = startPage();
+            sectionLine(y, true);
+            tableY = y + 7.5;
             drawTableHeader(tableY);
             rowY = tableY + headerH;
         }
@@ -3220,8 +3194,7 @@ async function drawCatalogSummaryPages(
 
     // Grand Totals Row (NO RETAIL)
     if (rowY + 9.0 > PH - 22) {
-        addPage();
-        rowY = isLandscape ? 20 : 24;
+        rowY = startPage();
     }
 
     const totalRowH = 8.5;
@@ -3266,6 +3239,7 @@ async function drawCatalogSummaryPages(
         : `${Math.round(grandTotalWeightKg).toLocaleString()} kg`;
     doc.text(totalWtStr, xWeight + colWeightW - 3, rowY + 5.5, { align: 'right' });
 
+    cursor.y = rowY + totalRowH + 8;
     await yieldToUi(true);
 }
 
@@ -4014,9 +3988,10 @@ export async function exportCatalogPdf(
                 const v = catalogSortKey(it).vendor || 'Vendor';
                 byVendor.set(v, [...(byVendor.get(v) || []), it]);
             }
+            const cursor = { y: null as number | null };
             for (const [v, list] of byVendor) {
                 onProgress?.(8, `Summary ${v}...`);
-                await drawCatalogSummaryPages(doc, list, M, PW, PH, addPage, isLandscape, config.title, v);
+                await drawCatalogSummaryPages(doc, list, M, PW, PH, addPage, isLandscape, config.title, v, cursor);
             }
         }
         const totalPages = Math.ceil(results.length / itemsPerPage);
