@@ -3755,7 +3755,9 @@ function catalogSortKey(item: CatalogArtifact): { vendor: string; type: string; 
     const norm = normalizeInventoryData(d);
     const codes: any = item.codes || {};
     const tag = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || norm.vendorId || '').trim().toUpperCase();
-    const vendor = (norm.vendorId || (tag.includes('-') ? tag.split('-')[0] : tag.match(/^[A-Z]+/)?.[0]) || '').toUpperCase();
+    // The vendor is the tag's leading letters ("EM" in "EM826 29OLE -3183MND", "RF" in "RF-038"). Cutting at the
+    // first "-" made every displayed tag its own vendor, so each item got its own page and summary.
+    const vendor = (norm.vendorId || tag.match(/^[A-Z]+/)?.[0] || '').toUpperCase();
     const t = catalogTypeOf(norm, d);
     const shape = (norm.shape || t.rest || '').toUpperCase();
     return { vendor, type: t.type.toUpperCase(), sizeRank: t.sizeRank, shape, tag };
@@ -3793,10 +3795,18 @@ export async function exportCatalogPdf(
     const exportType = config.exportType || 'regular';
 
     // Every catalog format exports sorted by vendor / type / shape (then tag).
+    // Types come in the summary's order: most units first within each vendor, then by name.
+    const unitsByVendorType = new Map<string, number>();
+    for (const r of results) {
+        const k = catalogSortKey(r);
+        const qty = parseInt(normalizeInventoryData(r.data || r).quantity || '1', 10) || 1;
+        unitsByVendorType.set(`${k.vendor}|${k.type}`, (unitsByVendorType.get(`${k.vendor}|${k.type}`) || 0) + qty);
+    }
+    const units = (k: { vendor: string; type: string }) => unitsByVendorType.get(`${k.vendor}|${k.type}`) || 0;
     results = [...results].sort((a, b) => {
         const kA = catalogSortKey(a);
         const kB = catalogSortKey(b);
-        return kA.vendor.localeCompare(kB.vendor) || kA.type.localeCompare(kB.type) || kA.sizeRank - kB.sizeRank || kA.shape.localeCompare(kB.shape) || kA.tag.localeCompare(kB.tag);
+        return kA.vendor.localeCompare(kB.vendor) || units(kB) - units(kA) || kA.type.localeCompare(kB.type) || kA.sizeRank - kB.sizeRank || kA.shape.localeCompare(kB.shape) || kA.tag.localeCompare(kB.tag);
     });
 
     // Warm every image before drawing. A grid page only ever draws the first
