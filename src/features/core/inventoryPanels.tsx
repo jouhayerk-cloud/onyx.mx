@@ -64,11 +64,10 @@ const TypeFilterGroup: React.FC<{ rows: any[]; selected: string[]; onToggle: (ke
             className="utb-control utb-type-chip"
         >
             <span className="utb-type-fig">{fig}</span>
-            <span className="utb-type-count tabular-nums">{count}</span>
         </button>
     );
     return (
-        <div className="flex items-center gap-1.5 shrink-0" role="group" aria-label={tr('Type')}>
+        <div className="utb-type-group flex items-center shrink-0" role="group" aria-label={tr('Type')}>
             {library.filter(e => e.count > 0).map(e => (
                 <React.Fragment key={e.key}>
                     {btn(e.label, e.label, e.count,
