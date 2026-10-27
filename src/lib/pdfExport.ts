@@ -3419,6 +3419,23 @@ function compactTitleChunks(norm: any, itemDataObj: any): TitleChunk[] {
     return titleChunks;
 }
 
+/** The item's stone palette as equal swatches, with a hairline so white stones stay visible on white paper. */
+function drawStoneBand(doc: any, norm: any, itemDataObj: any, x: number, y: number, w: number, h: number, dir: 'horizontal' | 'vertical') {
+    const palette = resolveStonePalette({ color: norm.color || itemDataObj.color, material: norm.material || itemDataObj.material });
+    const shades = palette.gradientColors.length ? palette.gradientColors : [palette.primary];
+    const step = (dir === 'horizontal' ? w : h) / shades.length;
+    shades.forEach((hex, k) => {
+        const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+        const n = m ? parseInt(m[1], 16) : 0xcccccc;
+        doc.setFillColor((n >> 16) & 255, (n >> 8) & 255, n & 255);
+        if (dir === 'horizontal') doc.rect(x + k * step, y, step + 0.05, h, 'F');
+        else doc.rect(x, y + k * step, w, step + 0.05, 'F');
+    });
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.2);
+    doc.rect(x, y, w, h, 'S');
+}
+
 async function drawCatalogCompactPage(
     doc: any,
     items: CatalogArtifact[],
@@ -3427,15 +3444,15 @@ async function drawCatalogCompactPage(
     M: number,
     PW: number,
     PH: number,
-    header?: { vendor: string; type: string; title?: string }
+    _catalogTitle?: string
 ) {
     const pageItems = items.slice(startIndex, startIndex + itemsPerPage);
 
-    // Frameless list under a vendor / type heading; rows are separated by space, not rules.
-    const startY = header ? drawCompactPageHeader(doc, header, M, PW) : 9.0;
+    // Clean frameless high-density layout: 9 items per page, reduced margins since footer is removed
+    const startY = 9.0;
     const bottomLimit = PH - 6.0; // Clear bottom edge (no footer on compact item pages)
     const availH = bottomLimit - startY;
-    const rowH = availH / itemsPerPage; // ~34mm for 8 items
+    const rowH = availH / itemsPerPage; // ~31.3mm for 9 items
 
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
@@ -3488,7 +3505,7 @@ async function drawCatalogCompactPage(
 
         // Axo Element (1:1, nearly full row height)
         const axoSecX = cutoutSecX + cutoutSecW + GAP;
-        const axoSecW = Math.min(32.0, rowH - 2.0);
+        const axoSecW = Math.min(30.0, rowH - 1.0);
         const axoSecH = axoSecW;
         const axoSecY = rowY + (rowH - axoSecH) / 2;
         try {
@@ -3567,6 +3584,8 @@ async function drawCatalogCompactPage(
         const firstBaseline = rowY + (rowH - infoH) / 2 + capH;
         drawMeasuredTitle(doc, titleLines, infoX, firstBaseline, lineH, fontPt);
 
+        drawStoneBand(doc, norm, itemDataObj, M - 5.5, rowY + 2.5, 3.0, rowH - 5.0, 'vertical');
+
         if (hasDetailLine) {
             const detailBaseline = firstBaseline + (titleLines.length - 1) * lineH + detailLineH;
             const titleRight = infoX + Math.min(infoW, Math.max(0, ...titleLines.map(measuredLineWidth)));
@@ -3582,6 +3601,12 @@ async function drawCatalogCompactPage(
                 doc.text(wtText, wtX, detailBaseline);
             }
         }
+        // Frameless Subtle Hairline Row Divider (Except after last item)
+        if (i < pageItems.length - 1) {
+            doc.setDrawColor(226, 232, 240); // slate-200 hairline
+            doc.setLineWidth(0.15);
+            doc.line(M, rowY + rowH, PW - M, rowY + rowH);
+        }
     }
 }
 
@@ -3590,9 +3615,9 @@ async function drawCatalogCompactPage(
  * swatch band, the compact title, a large axo beside the cutout, colours and weight, then the codes block
  * (MADE IN MEXICO + barcode + QR, tag ID full width). Vendor colour appears only in the QR eyes.
  */
-async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], startIndex: number, M: number, PW: number, PH: number, header?: { vendor: string; type: string; title?: string }) {
+async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], startIndex: number, M: number, PW: number, PH: number) {
     const COLS = 3, ROWS = 2, GUT = 5;
-    const top = header ? drawCompactPageHeader(doc, header, M, PW) : 8, bottom = PH - 8;
+    const top = 8, bottom = PH - 8;
     const cellW = (PW - 2 * M - (COLS - 1) * GUT) / COLS;
     const cellH = (bottom - top - (ROWS - 1) * GUT) / ROWS;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
@@ -3617,21 +3642,9 @@ async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], st
         doc.roundedRect(x, y, cellW, cellH, 3, 3, 'FD');
 
         // Stone colour band: the palette's shades as equal swatches across the top.
-        const palette = resolveStonePalette({ color: norm.color || itemDataObj.color, material: norm.material || itemDataObj.material });
-        const shades = palette.gradientColors.length ? palette.gradientColors : [palette.primary];
         const bandH = 6.5;
         const bandY = y + PAD;
-        const swW = innerW / shades.length;
-        shades.forEach((hex, k) => {
-            const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-            const n = m ? parseInt(m[1], 16) : 0xcccccc;
-            doc.setFillColor((n >> 16) & 255, (n >> 8) & 255, n & 255);
-            doc.rect(ix + k * swW, bandY, swW + 0.05, bandH, 'F');
-        });
-        // A hairline keeps white stones' bands visible on white paper.
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.2);
-        doc.rect(ix, bandY, innerW, bandH, 'S');
+        drawStoneBand(doc, norm, itemDataObj, ix, bandY, innerW, bandH, 'horizontal');
 
         // Title (compact runs), up to 3 lines.
         const fontPt = 11.5;
@@ -3737,7 +3750,9 @@ function catalogSortKey(item: CatalogArtifact): { vendor: string; type: string; 
     const codes: any = item.codes || {};
     const tag = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || norm.vendorId || '').trim().toUpperCase();
     const vendor = (norm.vendorId || (tag.includes('-') ? tag.split('-')[0] : tag.match(/^[A-Z]+/)?.[0]) || '').toUpperCase();
-    const type = (resolveCleanProductType(norm, d, norm.shape) || 'STONE PIECE').toUpperCase();
+    const clean = resolveCleanProductType(norm, d, norm.shape) || 'STONE PIECE';
+    // The canonical Type, as Add Entry and the Type filter use: "Bowls", "Large Bowl" and "Bowl" are one Type.
+    const type = (canonicalType(clean, norm.shape).label || clean).toUpperCase();
     const shape = (norm.shape || norm.shortDescription || '').toUpperCase();
     return { vendor, type, shape, tag };
 }
@@ -3755,25 +3770,6 @@ function compactRuns(sorted: CatalogArtifact[]): CompactRun[] {
         runs.push({ vendor: k.vendor, vendorName, type: toTitleCase(k.type.toLowerCase()), items: [it] });
     }
     return runs;
-}
-
-/** Page heading for compact pages: vendor in bold and type at the same size, catalog title small on the right. Returns where content starts. */
-function drawCompactPageHeader(doc: any, header: { vendor: string; type: string; title?: string }, M: number, PW: number): number {
-    const baseline = 14;
-    doc.setFontSize(15);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(header.vendor, M, baseline);
-    const vw = doc.getTextWidth(header.vendor);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(header.type, M + vw + 3, baseline);
-    if (header.title) {
-        doc.setFontSize(9);
-        doc.setTextColor(148, 163, 184);
-        doc.text(header.title, PW - M, baseline, { align: 'right' });
-    }
-    return baseline + 6;
 }
 
 export async function exportCatalogPdf(
@@ -3980,7 +3976,7 @@ export async function exportCatalogPdf(
 
     /** Compact pages: a new page at every vendor and type change, an optional summary at the start of each vendor. */
     const renderCompactRuns = async (vendorSummaries: boolean) => {
-        const itemsPerPage = isCompactGrid ? 6 : 8;
+        const itemsPerPage = isCompactGrid ? 6 : 9;
         const runs = compactRuns(results);
         const totalPages = runs.reduce((n, r) => n + Math.ceil(r.items.length / itemsPerPage), 0);
         let done = 0;
@@ -3990,14 +3986,13 @@ export async function exportCatalogPdf(
                 onProgress?.(Math.round(10 + (done / totalPages) * 85), `Summary ${run.vendorName}...`);
                 await drawCatalogSummaryPages(doc, runs.filter(x => x.vendor === run.vendor).flatMap(x => x.items), M, PW, PH, addPage, isLandscape, config.title, run.vendorName);
             }
-            const header = { vendor: run.vendorName, type: run.type, title: config.title };
             for (let start = 0; start < run.items.length; start += itemsPerPage) {
                 addPage();
                 done++;
                 onProgress?.(Math.round(10 + (done / totalPages) * 85), `Rendering compact page ${done}/${totalPages}...`);
                 await yieldToUi();
-                if (isCompactGrid) await drawCatalogCompactGridPage(doc, run.items, start, M, PW, PH, header);
-                else await drawCatalogCompactPage(doc, run.items, start, itemsPerPage, M, PW, PH, header);
+                if (isCompactGrid) await drawCatalogCompactGridPage(doc, run.items, start, M, PW, PH);
+                else await drawCatalogCompactPage(doc, run.items, start, itemsPerPage, M, PW, PH);
             }
         }
     };
