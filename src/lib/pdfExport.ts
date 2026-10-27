@@ -2868,6 +2868,8 @@ async function drawCatalogSummaryPages(
         typeCanonId: string;
         shapeCounts: Map<string, number>;
         colorsSet: Set<string>;
+        /** One item per distinct stone colour, for the colour bars. */
+        stones: Map<string, { norm: any; d: any }>;
         sizesSet: Set<string>;
         itemCount: number;
         totalUnits: number;
@@ -2920,6 +2922,7 @@ async function drawCatalogSummaryPages(
                 typeCanonId: canon.id || cleanType.toLowerCase().replace(/\s+/g, '-'),
                 shapeCounts: new Map<string, number>(),
                 colorsSet: new Set<string>(),
+                stones: new Map(),
                 sizesSet: new Set<string>(),
                 itemCount: 0,
                 totalUnits: 0,
@@ -2933,6 +2936,8 @@ async function drawCatalogSummaryPages(
         grp.totalWeightKg += (wt * qty);
         grp.shapeCounts.set(cleanShape, (grp.shapeCounts.get(cleanShape) || 0) + qty);
         if (colorMatStr) grp.colorsSet.add(colorMatStr);
+        const stoneKey = (colorName || matName).toLowerCase();
+        if (stoneKey && !grp.stones.has(stoneKey)) grp.stones.set(stoneKey, { norm, d });
         if (dimsMetric) grp.sizesSet.add(dimsMetric);
     }
 
@@ -3022,14 +3027,16 @@ async function drawCatalogSummaryPages(
     const colItemsW = isLandscape ? 10.0 : 8.5;
     const colUnitsW = isLandscape ? 10.0 : 8.5;
     const colWeightW = isLandscape ? 28.0 : 21.0;
-    const remW = Math.max(30, fullW - (colTypeW + totalShapesW + colItemsW + colUnitsW + colWeightW));
+    const colStoneW = isLandscape ? 20.0 : 16.0;
+    const remW = Math.max(30, fullW - (colTypeW + totalShapesW + colStoneW + colItemsW + colUnitsW + colWeightW));
     const colColorsW = Math.round(remW * 0.52);
     const colSizesW = remW - colColorsW;
 
     // Coordinate helpers
     const xType = M;
     const xShapes = xType + colTypeW;
-    const xColors = xShapes + totalShapesW;
+    const xStone = xShapes + totalShapesW;
+    const xColors = xStone + colStoneW;
     const xSizes = xColors + colColorsW;
     const xItems = xSizes + colSizesW;
     const xUnits = xItems + colItemsW;
@@ -3060,6 +3067,7 @@ async function drawCatalogSummaryPages(
         doc.setFontSize(6.8);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(71, 85, 105);
+        doc.text('Stone', xStone + 1.5, startY + 5.8);
         doc.text('Colors', xColors + 2.5, startY + 5.8);
         doc.text('Sizes', xSizes + 2.5, startY + 5.8);
         doc.text('Items', xItems + colItemsW - 2, startY + 5.8, { align: 'right' });
@@ -3171,6 +3179,11 @@ async function drawCatalogSummaryPages(
                 doc.setTextColor(203, 213, 225);
                 doc.text('-', sx + shapeColW / 2, midBaselineY, { align: 'center' });
             }
+        });
+
+        // Stone colour bars, one per distinct colour in this type (as on the compact rows).
+        Array.from(group.stones.values()).slice(0, Math.floor(colStoneW / 3.2)).forEach((st, k) => {
+            drawStoneBand(doc, st.norm, st.d, xStone + 1.5 + k * 3.2, rowY + 2.5, 2.4, currRowH - 5.0, 'vertical');
         });
 
         // 3. COLORS & MATERIAL (Vertically centered, wrapping into new lines)
