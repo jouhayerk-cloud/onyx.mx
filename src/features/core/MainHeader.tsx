@@ -2751,9 +2751,8 @@ export function MainHeader() {
 
             // 5. VENDOR WORKBOOKS (INDIVIDUAL SHEETS)
             Object.entries(vendorGroups).forEach(([vid, items]) => {
-                // Determine sheet name (full vendor name if possible)
-                const vMeta = (vendors as any)[vid];
-                const sheetName = (vMeta?.name || vid).substring(0, 25);
+                // Full vendor names are confidential: exports use the vendor code (full names only in payments).
+                const sheetName = vid.substring(0, 25);
                 const vendorColor = getVendorColor(vid);
                 const contrastColor = getContrastColor(vendorColor);
 
@@ -3019,8 +3018,8 @@ export function MainHeader() {
                 });
                 if (maxImages > 10) maxImages = 10; // Cap at 10
 
-                const vMeta = (vendors as any)[vid];
-                const sheetName = (vMeta?.name || vid).substring(0, 25);
+                // Full vendor names are confidential: exports use the vendor code (full names only in payments).
+                const sheetName = vid.substring(0, 25);
                 const vendorColor = getVendorColor(vid);
 
                 const vSheet = workbook.addWorksheet(sheetName, { properties: { tabColor: { argb: vendorColor } } });
@@ -3046,7 +3045,7 @@ export function MainHeader() {
                     }
                 }
                 
-                vSheet.getRow(1).getCell(1).value = vMeta?.name || vid;
+                vSheet.getRow(1).getCell(1).value = vid;
                 vSheet.getRow(1).getCell(1).font = { bold: true };
                 vSheet.getRow(2).getCell(1).value = vid;
                 vSheet.getRow(2).getCell(1).font = { bold: true };
@@ -3942,9 +3941,6 @@ export function MainHeader() {
                 // Luisa), TE as "Tereso" (Tellez Taller), and no entry at all for
                 // RF or IH -- 49 items between them, which fell back to printing
                 // the bare two-letter code as the vendor name.
-                const vendorMapping: Record<string, string> = Object.fromEntries(
-                    Object.entries(vendors).map(([code, v]) => [code, v.name])
-                );
                 const tagId = calc.bookBarcode || norm.book_barcode || norm.itemId || String(item.row) || '';
                 
                 const matchPrefix = tagId.match(/^[A-Za-z]+/);
@@ -3952,8 +3948,8 @@ export function MainHeader() {
                 
                 const rawVendorId = String(norm.vendor_id || extractedPrefix || '').toUpperCase();
                 
-                const vendorName = vendorMapping[rawVendorId] || 
-                                   rawVendorId;
+                // Full vendor names are confidential: exports use the vendor code (full names only in payments).
+                const vendorName = rawVendorId;
                 
                 const cost = calc.bookLanded || '';
                 

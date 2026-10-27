@@ -40,7 +40,7 @@ import {
     InventoryVersionAtom,
     userAtom,
 } from '../../lib/atoms';
-import { DEFAULT_EXCHANGE_RATE, vendors } from '../../lib/consts';
+import { DEFAULT_EXCHANGE_RATE } from '../../lib/consts';
 import {
     getCleanImageUrl,
     collectAllImages,
@@ -331,7 +331,8 @@ function buildExportContext(items: readonly RunItem[]) {
         // A stored barcode is printed on a label and is never recomputed.
         const tag = resolveItemTag(itemData);
         const tagId = tag.barcode || normData.itemId || '';
-        const vendorName = (vendors as Record<string, { name: string }>)[tag.vendor]?.name || tag.vendor || 'Art of Decor';
+        // Full vendor names are confidential: exports use the vendor code (full names only in payments).
+        const vendorName = tag.vendor || 'Art of Decor';
 
         const stills = stillsOf(it);
         const combinedMaskUrls = stills.map(p => p.stored.cleanedUrl || p.stored.cutoutUrl || p.sourceUrl).filter(Boolean) as string[];

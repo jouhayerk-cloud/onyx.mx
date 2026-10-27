@@ -86,7 +86,6 @@ vendors.forEach((vendor, i) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6.5);
     doc.setTextColor(60, 60, 60);
-    doc.text(vendor.name.toUpperCase(), x + 0.12, y + cardHeight * 0.84);
 
     doc.setFont("courier", "bold");
     doc.setFontSize(7);

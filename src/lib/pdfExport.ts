@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { DEFAULT_EXCHANGE_RATE, vendors } from './consts';
+import { DEFAULT_EXCHANGE_RATE } from './consts';
 import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import { getVendorColor } from './excelStyles';
@@ -3772,7 +3772,8 @@ function compactRuns(sorted: CatalogArtifact[]): CompactRun[] {
         const k = catalogSortKey(it);
         const last = runs[runs.length - 1];
         if (last && last.vendor === k.vendor && last.type === k.type) { last.items.push(it); continue; }
-        const vendorName = toTitleCase(((vendors as Record<string, { name: string }>)[k.vendor]?.name || k.vendor || 'Vendor').toLowerCase());
+        // Full vendor names are confidential: exports use the vendor code (full names only in payments).
+        const vendorName = k.vendor || 'Vendor';
         runs.push({ vendor: k.vendor, vendorName, type: toTitleCase(k.type.toLowerCase()), items: [it] });
     }
     return runs;
