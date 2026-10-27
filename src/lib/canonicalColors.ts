@@ -109,10 +109,10 @@ export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
         secondary: '#515b70',
         gradientColors: ['#6a728b', '#515b70', '#968993', '#576475', '#b5a9b3', '#cbb1b0'],
     },
-    talan: { // db hex maps, 55 items
-        primary: '#b2b3ad',
-        secondary: '#cecfcc',
-        gradientColors: ['#b2b3ad', '#cecfcc', '#93928e', '#a9a798', '#c6c6b9', '#6e6957'],
+    talan: { // shades of green with earthy bands: the db hex maps for Green Talan were mostly room background
+        primary: '#4F7A3A',
+        secondary: '#6B8F4E',
+        gradientColors: ['#4F7A3A', '#6B8F4E', '#2F4F2A', '#8FA86A', '#5C4A2E', '#A9BF8A'],
     },
     cherryBlossom: { // db hex maps, 5 items
         primary: '#b2b0ac',
@@ -139,15 +139,15 @@ export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
         secondary: '#d2eef9',
         gradientColors: ['#f2d3b0', '#d2eef9', '#e9f8fa', '#adb0b2', '#cfcfcd', '#f4e4cd'],
     },
-    amber: { // db hex maps, 51 items
-        primary: '#b3a993',
-        secondary: '#b6b4aa',
-        gradientColors: ['#b3a993', '#b6b4aa', '#cfc7b3', '#8d7351', '#ad9470', '#726853'],
+    amber: { // shades of amber: the db hex maps mix in the White-Amber items' whites and grays
+        primary: '#C8862E',
+        secondary: '#E0A04A',
+        gradientColors: ['#C8862E', '#E0A04A', '#9A5E1C', '#F0C27A', '#7A4512', '#F6D9A6'],
     },
-    tehuacan: { // db hex maps, 33 items
-        primary: '#b4b3a9',
-        secondary: '#95918d',
-        gradientColors: ['#b4b3a9', '#95918d', '#d0c8b6', '#b0a695', '#f2d4b0', '#c9b8ac'],
+    tehuacan: { // shades of white; a second colour in the colour field is mixed in, see tehuacanWith
+        primary: '#FFFFFF',
+        secondary: '#F4F1EA',
+        gradientColors: ['#FFFFFF', '#F4F1EA', '#E6E1D6', '#FAF8F3', '#D9D4C8', '#FFFFFF'],
     },
     nacar: { // db hex maps, 52 items
         primary: '#6e4b33',
@@ -159,10 +159,10 @@ export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
         secondary: '#534639',
         gradientColors: ['#363129', '#534639', '#6c6653', '#575548', '#6e5849', '#f8d0ce'],
     },
-    serpentine: { // db hex maps, 55 items
-        primary: '#b2b3ad',
-        secondary: '#cecfcc',
-        gradientColors: ['#b2b3ad', '#cecfcc', '#93928e', '#a9a798', '#c6c6b9', '#6e6957'],
+    serpentine: { // same stone as talan
+        primary: '#4F7A3A',
+        secondary: '#6B8F4E',
+        gradientColors: ['#4F7A3A', '#6B8F4E', '#2F4F2A', '#8FA86A', '#5C4A2E', '#A9BF8A'],
     },
     galaxy: { // db hex maps, 4 items
         primary: '#ceb390',
@@ -214,10 +214,10 @@ export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
         secondary: '#d1d0c9',
         gradientColors: ['#b3b3ab', '#d1d0c9', '#cac6b8', '#ada897', '#97958d', '#908876'],
     },
-    gray: {
-        primary: '#94A3B8',
-        secondary: '#64748B',
-        gradientColors: ['#94A3B8', '#CBD5E1', '#64748B', '#94A3B8'],
+    gray: { // neutral grays
+        primary: '#9A9A96',
+        secondary: '#BDBDB8',
+        gradientColors: ['#9A9A96', '#BDBDB8', '#6F6F6B', '#D4D4CF'],
     },
     orange: { // shades of orange: the db hex maps for Orange were mostly room background
         primary: '#E8742A',
@@ -241,6 +241,17 @@ function normalizeText(str: string): string {
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
+}
+
+/** White Tehuacan shades with the second colour of `colorField` (the words besides Tehuacan) worked in. */
+function tehuacanWith(colorField: string): StonePalette {
+    const base = CANONICAL_STONE_PALETTES.tehuacan;
+    const rest = normalizeText(colorField).replace(/tehuacan/g, ' ').replace(/w/g, ' ').trim();
+    const other = rest ? resolveRawStonePalette(rest) : null;
+    if (!other || other === CANONICAL_STONE_PALETTES.default || other === base) return base;
+    const w = base.gradientColors;
+    const o = other.gradientColors;
+    return { primary: w[0], secondary: o[0], gradientColors: [w[0], o[0], w[1], o[1], w[2], o[2]] };
 }
 
 /**
@@ -269,6 +280,11 @@ function resolveRawStonePalette(itemOrText: any): StonePalette {
     }
 
     const t = normalizeText(rawText);
+
+    // Tehuacan is a white stone: its palette is white shades plus the other colour the
+    // colour field names ("Tehuacan Amber", "Tehuacan W Green"), or white alone.
+    const colorField = typeof itemOrText === 'string' ? itemOrText : String(itemOrText.color || '');
+    if (normalizeText(colorField).includes('tehuacan')) return tehuacanWith(colorField);
 
     // 0. Aqua Serpentine (specific mineral variety with turquoise & terracotta bands)
     if (
