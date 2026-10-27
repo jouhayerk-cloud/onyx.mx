@@ -999,10 +999,18 @@ html:root:root:root .smd-card.smd-card .utb-filters-panel .utb-vendor-chip.utb-v
 
 /* Smart filters open inside the Filters card: the card grows and the hairline Type figures get bigger. */
 .utb-filters-panel--smart { gap: 8px; }
-.utb-type-group { gap: 2px; }
-.utb-filters-panel--smart .utb-type-chip { width: 92px; height: 84px; padding: 4px; }
-.utb-filters-panel--smart .utb-type-fig { width: 84px; height: 76px; }
+.utb-type-group { gap: 0; align-items: stretch; }
+.utb-filters-panel--smart .utb-type-chip { width: 84px; height: auto; padding: 1px; gap: 0; }
+.utb-filters-panel--smart .utb-type-fig { width: 80px; height: 68px; }
+.utb-type-name { font-size: 10.5px; line-height: 1.15; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* One colour for every figure, high contrast on the glass; the pressed chip is told apart by its background. */
 .utb-type-chip, .utb-type-chip[aria-pressed="true"] { color: var(--lq-ink, #fff) !important; }
 .utb-type-chip .utb-type-fig * { stroke: currentColor !important; }
 .utb-type-fig > svg { display: block; width: 100%; height: 100%; }
+/* Grow on hover; pressed chips keep their background. */
+.utb-type-chip { transition: transform 160ms ease, background-color 160ms ease; transform-origin: center bottom; }
+.utb-type-chip:not(:disabled):hover { transform: scale(1.14); z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .utb-type-chip { transition: none; } .utb-type-chip:not(:disabled):hover { transform: none; } }
+.utb-type-subgroup { display: flex; flex-direction: column; gap: 1px; margin: 0 4px; padding: 2px 4px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--lq-ink, #fff) 22%, transparent); background: color-mix(in srgb, var(--lq-ink, #fff) 5%, transparent); }
+.utb-type-subtitle { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--lq-ink, #fff); padding-left: 4px; }
+.utb-type-subrow { display: flex; gap: 0; }

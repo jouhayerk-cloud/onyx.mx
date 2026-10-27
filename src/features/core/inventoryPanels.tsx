@@ -52,7 +52,7 @@ const TypeFilterGroup: React.FC<{ rows: any[]; selected: string[]; onToggle: (ke
         return m;
     }, [flat]);
     const sel = new Set(selected);
-    const btn = (key: string, label: string, count: number, fig: React.ReactNode, on: boolean) => (
+    const btn = (key: string, label: string, name: string, count: number, fig: React.ReactNode, on: boolean) => (
         <button
             key={key}
             type="button"
@@ -64,22 +64,31 @@ const TypeFilterGroup: React.FC<{ rows: any[]; selected: string[]; onToggle: (ke
             className="utb-control utb-type-chip"
         >
             <span className="utb-type-fig">{fig}</span>
+            <span className="utb-type-name">{name}</span>
         </button>
     );
     return (
         <div className="utb-type-group flex items-center shrink-0" role="group" aria-label={tr('Type')}>
             {library.filter(e => e.count > 0).map(e => (
                 <React.Fragment key={e.key}>
-                    {btn(e.label, e.label, e.count,
+                    {btn(e.label, e.label, e.label, e.count,
                         <ShapeFigure family={e.family} isMirror={e.isMirror} typeId={e.id} dims={e.dims} holes={e.holes[0]} active={sel.has(e.label)} className="ssr-scroller-svg" />,
                         sel.has(e.label))}
-                    {sel.has(e.label) && subShapesFor(e.id).options.map(o => {
-                        const k = childKey(e.label, o.value);
-                        const n = childCounts.get(k) ?? 0;
-                        return btn(k, `${e.label} ${tr(o.label)}`, n,
-                            <ShapeFigure family={e.family} typeId={e.id} variant={o.value} dims={e.dims} holes={e.id === 'wine-rack' ? Number(o.value) : undefined} active={sel.has(k)} className="ssr-scroller-svg" />,
-                            sel.has(k));
-                    })}
+                    {/* The selected Type's sub-shapes, grouped under its name. */}
+                    {sel.has(e.label) && (
+                        <div className="utb-type-subgroup" role="group" aria-label={`${e.label} ${tr('shapes')}`}>
+                            <span className="utb-type-subtitle">{e.label}</span>
+                            <div className="utb-type-subrow">
+                                {subShapesFor(e.id).options.map(o => {
+                                    const k = childKey(e.label, o.value);
+                                    const n = childCounts.get(k) ?? 0;
+                                    return btn(k, `${e.label} ${tr(o.label)}`, tr(o.label), n,
+                                        <ShapeFigure family={e.family} typeId={e.id} variant={o.value} dims={e.dims} holes={e.id === 'wine-rack' ? Number(o.value) : undefined} active={sel.has(k)} className="ssr-scroller-svg" />,
+                                        sel.has(k));
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </React.Fragment>
             ))}
         </div>
