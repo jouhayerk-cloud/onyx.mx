@@ -3629,34 +3629,39 @@ async function drawCatalogCompactPage(
  * swatch band, the compact title, a large axo beside the cutout, colours and weight, then the codes block
  * (MADE IN MEXICO + barcode + QR, tag ID full width). Vendor colour appears only in the QR eyes.
  */
-async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], startIndex: number, M: number, PW: number, PH: number) {
-    const COLS = 3, ROWS = 2, GUT = 5;
+async function drawCatalogCompactGridPage(
+    doc: any, items: CatalogArtifact[], startIndex: number, M: number, PW: number, PH: number,
+    logos: { rareEarth: LogoData | null; artOfDecor: LogoData | null; onyx: LogoData | null } = { rareEarth: null, artOfDecor: null, onyx: null },
+) {
+    // Panels abut like a sheet of labels; dotted cut guides mark every edge.
+    const COLS = 3, ROWS = 2;
     const top = 8, bottom = PH - 8;
-    const cellW = (PW - 2 * M - (COLS - 1) * GUT) / COLS;
-    const cellH = (bottom - top - (ROWS - 1) * GUT) / ROWS;
+    const cellW = (PW - 2 * M) / COLS;
+    const cellH = (bottom - top) / ROWS;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
-    const PAD = 4, GAP = 1.0;
+    const PAD = 3, GAP = 0.8;
     const innerW = cellW - 2 * PAD;
     const pageItems = items.slice(startIndex, startIndex + COLS * ROWS);
 
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.2);
+    doc.setLineDashPattern([0.6, 1.2], 0);
+    for (let c = 0; c <= COLS; c++) doc.line(M + c * cellW, top - 4, M + c * cellW, bottom + 4);
+    for (let r = 0; r <= ROWS; r++) doc.line(M - 4, top + r * cellH, PW - M + 4, top + r * cellH);
+    doc.setLineDashPattern([], 0);
+
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
-        const x = M + (i % COLS) * (cellW + GUT);
-        const y = top + Math.floor(i / COLS) * (cellH + GUT);
+        const x = M + (i % COLS) * cellW;
+        const y = top + Math.floor(i / COLS) * cellH;
         const ix = x + PAD;
         const itemDataObj = item.data || item;
         const norm = normalizeInventoryData(itemDataObj);
         const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
         const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
-        // Panel: white label with a hairline edge and soft corners.
-        doc.setFillColor(255, 255, 255);
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(x, y, cellW, cellH, 3, 3, 'FD');
-
         // Stone colour band: the palette's shades as equal swatches across the top.
-        const bandH = 6.5;
+        const bandH = 4.5;
         const bandY = y + PAD;
         drawStoneBand(doc, norm, itemDataObj, ix, bandY, innerW, bandH, 'horizontal');
 
@@ -3666,7 +3671,7 @@ async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], st
         const descH = fontPt * PT * DESC;
         const lineH = capH + descH + GAP;
         const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), innerW, fontPt).slice(0, 3);
-        const firstBaseline = bandY + bandH + 3.0 + capH;
+        const firstBaseline = bandY + bandH + 2.2 + capH;
         drawMeasuredTitle(doc, titleLines, ix, firstBaseline, lineH, fontPt);
         const titleBottom = firstBaseline + (titleLines.length - 1) * lineH + descH;
 
@@ -3682,11 +3687,20 @@ async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], st
         const tagPt = 15.0;
         const tagCap = 13.0 * PT * CAP;
         const codesH = qrSize + CODE_GAP * 1.5 + tagCap;
-        const codesY = y + cellH - PAD - codesH;
-
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.2);
-        doc.line(ix, codesY - 2.0, ix + innerW, codesY - 2.0);
+        // Branding bar along the bottom: Rare Earth Gallery, Art of Decor, Onyx in equal slots.
+        const brandH = 6.0;
+        const brandY = y + cellH - PAD - brandH;
+        const slotW = innerW / 3;
+        [[logos.rareEarth, 1], [logos.artOfDecor, 1], [logos.onyx, 0.6]].forEach(([logo, scale], k) => {
+            const lg = logo as LogoData | null;
+            if (!lg) return;
+            // shortcut: Onyx has no horizontal logo yet, so the small mark sits centred at 60% height; swap when it exists.
+            const maxH = brandH * (scale as number), maxW = slotW - 2;
+            let lw = maxH * lg.aspectRatio, lh = maxH;
+            if (lw > maxW) { lw = maxW; lh = maxW / lg.aspectRatio; }
+            doc.addImage(lg.dataUrl, 'PNG', ix + k * slotW + (slotW - lw) / 2, brandY + (brandH - lh) / 2, lw, lh);
+        });
+        const codesY = brandY - 2.0 - codesH;
 
         doc.setFontSize(mimPt);
         doc.setTextColor(12, 12, 12);
@@ -3703,8 +3717,8 @@ async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], st
         drawFormattedTagCode(doc, codes, ix, codesY + codesH, tagPt, false, itemDataObj, innerW, tagPt);
 
         // Middle: large axo on the left; cutout, colours and weight on the right.
-        const midTop = titleBottom + 2.5;
-        const midBottom = codesY - 4.0;
+        const midTop = titleBottom + 1.8;
+        const midBottom = codesY - 2.0;
         const midH = Math.max(10, midBottom - midTop);
         const axoS = Math.min(midH, innerW * 0.56);
         try {
@@ -4010,7 +4024,7 @@ export async function exportCatalogPdf(
             addPage();
             onProgress?.(Math.round(10 + ((page + 1) / totalPages) * 85), `Rendering compact page ${page + 1}/${totalPages}...`);
             await yieldToUi();
-            if (isCompactGrid) await drawCatalogCompactGridPage(doc, results, page * itemsPerPage, M, PW, PH);
+            if (isCompactGrid) await drawCatalogCompactGridPage(doc, results, page * itemsPerPage, M, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo, onyx: onyxLogo });
             else await drawCatalogCompactPage(doc, results, page * itemsPerPage, itemsPerPage, M, PW, PH);
         }
     };
