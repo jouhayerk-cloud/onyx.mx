@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { DEFAULT_EXCHANGE_RATE } from './consts';
+import { DEFAULT_EXCHANGE_RATE, vendors } from './consts';
 import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import { getVendorColor } from './excelStyles';
@@ -2853,7 +2853,8 @@ async function drawCatalogSummaryPages(
     PH: number,
     addPage: () => void,
     isLandscape: boolean,
-    catalogTitle?: string
+    catalogTitle?: string,
+    heading?: string
 ) {
     await yieldToUi(true);
 
@@ -2958,65 +2959,59 @@ async function drawCatalogSummaryPages(
         displayTitle = 'ONYX COLLECTION';
     }
 
-    // Title & Header block (Compact Top Panel)
-    doc.setFontSize(isLandscape ? 13 : 15);
+    // Heading: the vendor (or the catalog title), the catalog title under it when a vendor leads, date and counts right.
+    const title = heading || displayTitle;
+    const titleY = isLandscape ? 15 : 18;
+    doc.setFontSize(isLandscape ? 15 : 17);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(displayTitle, M, isLandscape ? 15 : 18);
-
-    doc.setFontSize(isLandscape ? 7.0 : 7.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(100, 116, 139);
-    doc.text('EXECUTIVE SPECIFICATION MANIFEST • AGGREGATED BY PRODUCT TYPE & SHAPE', M, isLandscape ? 19.5 : 23);
-
-    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
-    doc.setFontSize(7.0);
+    doc.text(title, M, titleY);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text(`DATE: ${dateStr}`, PW - M, isLandscape ? 15 : 18, { align: 'right' });
-    doc.text(`${totalItems} ITEMS  •  ${grandTotalUnits} UNITS  •  ${grandTotalTypes} PRODUCT TYPES`, PW - M, isLandscape ? 19.5 : 23, { align: 'right' });
+    if (heading) doc.text(displayTitle, M, titleY + 5);
 
-    // Hairline Header Divider
-    const divY = isLandscape ? 22.5 : 26;
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.2);
-    doc.line(M, divY, PW - M, divY);
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    doc.text(dateStr, PW - M, titleY, { align: 'right' });
+    doc.text(`${totalItems} items · ${grandTotalUnits} units · ${grandTotalTypes} types`, PW - M, titleY + 5, { align: 'right' });
+
+    const divY = titleY + 8;
 
     // 4 KPI Summary Cards (Compact Totals Top Panel)
     const cardY = divY + 2.0;
-    const cardH = isLandscape ? 11.5 : 13.5;
+    const cardH = isLandscape ? 11.5 : 12.5;
     const gap = 3.0;
     const cardW = (fullW - 3 * gap) / 4;
 
     const kpis = [
-        { label: 'TOTAL ITEMS', val: `${totalItems}`, sub: 'CATALOG LINE ITEMS' },
-        { label: 'TOTAL QUANTITY', val: `${grandTotalUnits}`, sub: 'AGGREGATE PIECES' },
-        { label: 'TOTAL ESTIMATED WEIGHT', val: `${Math.round(grandTotalWeightKg).toLocaleString()} kg`, sub: `${Math.round(grandTotalWeightLbs).toLocaleString()} lbs` },
-        { label: 'PRODUCT TYPES', val: `${grandTotalTypes}`, sub: `${sortedShapesByFreq.length} SHAPE FAMILIES` },
+        { label: 'Items', val: `${totalItems}`, sub: '' },
+        { label: 'Units', val: `${grandTotalUnits}`, sub: '' },
+        { label: 'Weight', val: `${Math.round(grandTotalWeightKg).toLocaleString()} kg`, sub: `${Math.round(grandTotalWeightLbs).toLocaleString()} lbs` },
+        { label: 'Types', val: `${grandTotalTypes}`, sub: `${sortedShapesByFreq.length} shapes` },
     ];
 
+    // Tone-step cards, no outlines.
     kpis.forEach((kpi, idx) => {
         const cx = M + idx * (cardW + gap);
-        doc.setFillColor(252, 253, 255);
+        doc.setFillColor(244, 246, 249);
         doc.roundedRect(cx, cardY, cardW, cardH, 1.2, 1.2, 'F');
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.2);
-        doc.roundedRect(cx, cardY, cardW, cardH, 1.2, 1.2, 'S');
 
-        doc.setFontSize(5.5);
-        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setFont('helvetica', 'normal');
         doc.setTextColor(100, 116, 139);
-        doc.text(kpi.label, cx + 3.0, cardY + 3.8);
+        doc.text(kpi.label, cx + 3.0, cardY + 4.0);
 
-        doc.setFontSize(isLandscape ? 9.5 : 10.5);
+        doc.setFontSize(isLandscape ? 10.5 : 11.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
-        doc.text(kpi.val, cx + 3.0, cardY + 8.2);
+        doc.text(kpi.val, cx + 3.0, cardY + 8.8);
 
-        doc.setFontSize(5.0);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(148, 163, 184);
-        doc.text(kpi.sub, cx + 3.0, cardY + 11.2);
+        if (kpi.sub) {
+            doc.setFontSize(6.8);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 116, 139);
+            doc.text(kpi.sub, cx + cardW - 3.0, cardY + 8.8, { align: 'right' });
+        }
     });
 
     // Compute column widths with generous space for Colors & Sizes
@@ -3042,17 +3037,13 @@ async function drawCatalogSummaryPages(
     const headerH = 8.5;
 
     const drawTableHeader = (startY: number) => {
-        doc.setFillColor(248, 250, 252);
+        doc.setFillColor(238, 241, 245);
         doc.rect(M, startY, fullW, headerH, 'F');
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.25);
-        doc.line(M, startY, PW - M, startY);
-        doc.line(M, startY + headerH, PW - M, startY + headerH);
 
         doc.setFontSize(6.8);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(71, 85, 105);
-        doc.text('PRODUCT TYPE', xType + 3.5, startY + 5.8);
+        doc.text('Type', xType + 3.5, startY + 5.8);
 
         // Shape Column Headers: text only, NO hairline icons per user requirement
         shapeColumns.forEach((sName, sIdx) => {
@@ -3068,11 +3059,11 @@ async function drawCatalogSummaryPages(
         doc.setFontSize(6.8);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(71, 85, 105);
-        doc.text('COLORS & MATERIAL', xColors + 2.5, startY + 5.8);
-        doc.text('SIZES', xSizes + 2.5, startY + 5.8);
-        doc.text('ITEMS', xItems + colItemsW - 2, startY + 5.8, { align: 'right' });
-        doc.text('UNITS', xUnits + colUnitsW - 2, startY + 5.8, { align: 'right' });
-        doc.text(isLandscape ? 'WEIGHT (KG / LBS)' : 'WEIGHT', xWeight + colWeightW - 3, startY + 5.8, { align: 'right' });
+        doc.text('Colors', xColors + 2.5, startY + 5.8);
+        doc.text('Sizes', xSizes + 2.5, startY + 5.8);
+        doc.text('Items', xItems + colItemsW - 2, startY + 5.8, { align: 'right' });
+        doc.text('Units', xUnits + colUnitsW - 2, startY + 5.8, { align: 'right' });
+        doc.text('Weight', xWeight + colWeightW - 3, startY + 5.8, { align: 'right' });
     };
 
     let tableY = cardY + cardH + 3.0;
@@ -3122,10 +3113,7 @@ async function drawCatalogSummaryPages(
             doc.setFontSize(10.5);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(15, 23, 42);
-            doc.text('EXECUTIVE SPECIFICATION MANIFEST • GROUPED BY TYPE (CONTINUED)', M, isLandscape ? 16 : 20);
-            doc.setDrawColor(226, 232, 240);
-            doc.setLineWidth(0.2);
-            doc.line(M, isLandscape ? 19 : 24, PW - M, isLandscape ? 19 : 24);
+            doc.text(`${title} (cont.)`, M, isLandscape ? 16 : 20);
 
             tableY = isLandscape ? 22 : 27;
             drawTableHeader(tableY);
@@ -3134,7 +3122,7 @@ async function drawCatalogSummaryPages(
 
         // Alternating row background
         if (i % 2 === 1) {
-            doc.setFillColor(253, 254, 255);
+            doc.setFillColor(247, 249, 251);
             doc.rect(M, rowY, fullW, currRowH, 'F');
         }
 
@@ -3213,11 +3201,6 @@ async function drawCatalogSummaryPages(
         const wtStr = isLandscape ? `${wtKgFmt} (${wtLbsFmt})` : wtKgFmt;
         doc.text(wtStr, xWeight + colWeightW - 3, midBaselineY, { align: 'right' });
 
-        // Hairline divider at bottom of this expanded row
-        doc.setDrawColor(241, 245, 249);
-        doc.setLineWidth(0.18);
-        doc.line(M, rowY + currRowH, PW - M, rowY + currRowH);
-
         rowY += currRowH;
     }
 
@@ -3228,17 +3211,13 @@ async function drawCatalogSummaryPages(
     }
 
     const totalRowH = 8.5;
-    doc.setFillColor(248, 250, 252);
+    doc.setFillColor(238, 241, 245);
     doc.rect(M, rowY, fullW, totalRowH, 'F');
-    doc.setDrawColor(203, 213, 225);
-    doc.setLineWidth(0.25);
-    doc.line(M, rowY, PW - M, rowY);
-    doc.line(M, rowY + totalRowH, PW - M, rowY + totalRowH);
 
     doc.setFontSize(7.2);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(`GRAND TOTALS  (${grandTotalTypes} TYPES • ${totalItems} ITEMS)`, xType + 3.5, rowY + 5.5);
+    doc.text('Total', xType + 3.5, rowY + 5.5);
 
     // Sum per shape column
     shapeColumns.forEach((sName, sIdx) => {
@@ -3448,15 +3427,15 @@ async function drawCatalogCompactPage(
     M: number,
     PW: number,
     PH: number,
-    _catalogTitle?: string
+    header?: { vendor: string; type: string; title?: string }
 ) {
     const pageItems = items.slice(startIndex, startIndex + itemsPerPage);
 
-    // Clean frameless high-density layout: 9 items per page, reduced margins since footer is removed
-    const startY = 9.0;
+    // Frameless list under a vendor / type heading; rows are separated by space, not rules.
+    const startY = header ? drawCompactPageHeader(doc, header, M, PW) : 9.0;
     const bottomLimit = PH - 6.0; // Clear bottom edge (no footer on compact item pages)
     const availH = bottomLimit - startY;
-    const rowH = availH / itemsPerPage; // ~31.3mm for 9 items
+    const rowH = availH / itemsPerPage; // ~34mm for 8 items
 
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
@@ -3509,7 +3488,7 @@ async function drawCatalogCompactPage(
 
         // Axo Element (1:1, nearly full row height)
         const axoSecX = cutoutSecX + cutoutSecW + GAP;
-        const axoSecW = Math.min(30.0, rowH - 1.0);
+        const axoSecW = Math.min(32.0, rowH - 2.0);
         const axoSecH = axoSecW;
         const axoSecY = rowY + (rowH - axoSecH) / 2;
         try {
@@ -3603,12 +3582,6 @@ async function drawCatalogCompactPage(
                 doc.text(wtText, wtX, detailBaseline);
             }
         }
-        // Frameless Subtle Hairline Row Divider (Except after last item)
-        if (i < pageItems.length - 1) {
-            doc.setDrawColor(226, 232, 240); // slate-200 hairline
-            doc.setLineWidth(0.15);
-            doc.line(M, rowY + rowH, PW - M, rowY + rowH);
-        }
     }
 }
 
@@ -3617,9 +3590,9 @@ async function drawCatalogCompactPage(
  * swatch band, the compact title, a large axo beside the cutout, colours and weight, then the codes block
  * (MADE IN MEXICO + barcode + QR, tag ID full width). Vendor colour appears only in the QR eyes.
  */
-async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], startIndex: number, M: number, PW: number, PH: number) {
+async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], startIndex: number, M: number, PW: number, PH: number, header?: { vendor: string; type: string; title?: string }) {
     const COLS = 3, ROWS = 2, GUT = 5;
-    const top = 8, bottom = PH - 8;
+    const top = header ? drawCompactPageHeader(doc, header, M, PW) : 8, bottom = PH - 8;
     const cellW = (PW - 2 * M - (COLS - 1) * GUT) / COLS;
     const cellH = (bottom - top - (ROWS - 1) * GUT) / ROWS;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
@@ -3757,6 +3730,52 @@ async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], st
     }
 }
 
+/** The vendor / type / shape / tag an item sorts and page-breaks by. */
+function catalogSortKey(item: CatalogArtifact): { vendor: string; type: string; shape: string; tag: string } {
+    const d = item.data || item;
+    const norm = normalizeInventoryData(d);
+    const codes: any = item.codes || {};
+    const tag = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || norm.vendorId || '').trim().toUpperCase();
+    const vendor = (norm.vendorId || (tag.includes('-') ? tag.split('-')[0] : tag.match(/^[A-Z]+/)?.[0]) || '').toUpperCase();
+    const type = (resolveCleanProductType(norm, d, norm.shape) || 'STONE PIECE').toUpperCase();
+    const shape = (norm.shape || norm.shortDescription || '').toUpperCase();
+    return { vendor, type, shape, tag };
+}
+
+interface CompactRun { vendor: string; vendorName: string; type: string; items: CatalogArtifact[] }
+
+/** Sorted items split into runs that each start a new page: a new vendor or a new type (shapes do not break). */
+function compactRuns(sorted: CatalogArtifact[]): CompactRun[] {
+    const runs: CompactRun[] = [];
+    for (const it of sorted) {
+        const k = catalogSortKey(it);
+        const last = runs[runs.length - 1];
+        if (last && last.vendor === k.vendor && last.type === k.type) { last.items.push(it); continue; }
+        const vendorName = toTitleCase(((vendors as Record<string, { name: string }>)[k.vendor]?.name || k.vendor || 'Vendor').toLowerCase());
+        runs.push({ vendor: k.vendor, vendorName, type: toTitleCase(k.type.toLowerCase()), items: [it] });
+    }
+    return runs;
+}
+
+/** Page heading for compact pages: vendor in bold and type at the same size, catalog title small on the right. Returns where content starts. */
+function drawCompactPageHeader(doc: any, header: { vendor: string; type: string; title?: string }, M: number, PW: number): number {
+    const baseline = 14;
+    doc.setFontSize(15);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(header.vendor, M, baseline);
+    const vw = doc.getTextWidth(header.vendor);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(header.type, M + vw + 3, baseline);
+    if (header.title) {
+        doc.setFontSize(9);
+        doc.setTextColor(148, 163, 184);
+        doc.text(header.title, PW - M, baseline, { align: 'right' });
+    }
+    return baseline + 6;
+}
+
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid'; logo?: string; exportType?: 'regular' | 'catalog' },
@@ -3773,34 +3792,12 @@ export async function exportCatalogPdf(
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
 
-    // Canonical ordering by vendor / type / shape for compact and grid catalogs
-    if (config.method === 'compact' || config.method === 'compactGrid' || config.method === 'grid') {
-        results = [...results].sort((a, b) => {
-            const dA = a.data || a;
-            const dB = b.data || b;
-            const normA = normalizeInventoryData(dA);
-            const normB = normalizeInventoryData(dB);
-            const codesA: any = a.codes || {};
-            const codesB: any = b.codes || {};
-
-            const tagA = (codesA.bookBarcodeDisplay || codesA.bookBarcode || codesA.bookTagId || normA.itemId || normA.vendorId || '').trim().toUpperCase();
-            const tagB = (codesB.bookBarcodeDisplay || codesB.bookBarcode || codesB.bookTagId || normB.itemId || normB.vendorId || '').trim().toUpperCase();
-
-            const vA = (normA.vendorId || (tagA.includes('-') ? tagA.split('-')[0] : tagA.match(/^[A-Z]+/)?.[0]) || '').toUpperCase();
-            const vB = (normB.vendorId || (tagB.includes('-') ? tagB.split('-')[0] : tagB.match(/^[A-Z]+/)?.[0]) || '').toUpperCase();
-            if (vA !== vB) return vA.localeCompare(vB);
-
-            const typeA = (resolveCleanProductType(normA, dA, normA.shape) || 'STONE PIECE').toUpperCase();
-            const typeB = (resolveCleanProductType(normB, dB, normB.shape) || 'STONE PIECE').toUpperCase();
-            if (typeA !== typeB) return typeA.localeCompare(typeB);
-
-            const shapeA = (normA.shape || normA.shortDescription || '').toUpperCase();
-            const shapeB = (normB.shape || normB.shortDescription || '').toUpperCase();
-            if (shapeA !== shapeB) return shapeA.localeCompare(shapeB);
-
-            return tagA.localeCompare(tagB);
-        });
-    }
+    // Every catalog format exports sorted by vendor / type / shape (then tag).
+    results = [...results].sort((a, b) => {
+        const kA = catalogSortKey(a);
+        const kB = catalogSortKey(b);
+        return kA.vendor.localeCompare(kB.vendor) || kA.type.localeCompare(kB.type) || kA.shape.localeCompare(kB.shape) || kA.tag.localeCompare(kB.tag);
+    });
 
     // Warm every image before drawing. A grid page only ever draws the first
     // three of an item, so do not pay to decode the rest.
@@ -3981,27 +3978,39 @@ export async function exportCatalogPdf(
     const totalItems = results.length;
     let processedCount = 0;
 
-    if (exportType === 'catalog') {
-        // 1. Executive Summary & Specification Sheets (Hairline metrics & manifest)
-        onProgress?.(5, 'Generating Executive Summary...');
-        await yieldToUi(true);
-        await drawCatalogSummaryPages(doc, results, M, PW, PH, addPage, isLandscape, config.title);
-        await yieldToUi(true);
-
-        // 2. Item Catalog Pages
-        if (isCompactMode) {
-            // COMPACT CATALOG: High-density 9 items per sheet, clean frameless design
-            const itemsPerPage = isCompactGrid ? 6 : 9;
-            const totalPages = Math.ceil(totalItems / itemsPerPage);
-            for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
-                addPage();
-                const startIdx = pageIdx * itemsPerPage;
-                onProgress?.(Math.round(10 + ((pageIdx + 1) / totalPages) * 85), `Rendering Compact Sheet ${pageIdx + 1}/${totalPages}...`);
-                await yieldToUi();
-                if (isCompactGrid) await drawCatalogCompactGridPage(doc, results, startIdx, M, PW, PH);
-                else await drawCatalogCompactPage(doc, results, startIdx, itemsPerPage, M, PW, PH, config.title);
+    /** Compact pages: a new page at every vendor and type change, an optional summary at the start of each vendor. */
+    const renderCompactRuns = async (vendorSummaries: boolean) => {
+        const itemsPerPage = isCompactGrid ? 6 : 8;
+        const runs = compactRuns(results);
+        const totalPages = runs.reduce((n, r) => n + Math.ceil(r.items.length / itemsPerPage), 0);
+        let done = 0;
+        for (let r = 0; r < runs.length; r++) {
+            const run = runs[r];
+            if (vendorSummaries && (r === 0 || runs[r - 1].vendor !== run.vendor)) {
+                onProgress?.(Math.round(10 + (done / totalPages) * 85), `Summary ${run.vendorName}...`);
+                await drawCatalogSummaryPages(doc, runs.filter(x => x.vendor === run.vendor).flatMap(x => x.items), M, PW, PH, addPage, isLandscape, config.title, run.vendorName);
             }
+            const header = { vendor: run.vendorName, type: run.type, title: config.title };
+            for (let start = 0; start < run.items.length; start += itemsPerPage) {
+                addPage();
+                done++;
+                onProgress?.(Math.round(10 + (done / totalPages) * 85), `Rendering compact page ${done}/${totalPages}...`);
+                await yieldToUi();
+                if (isCompactGrid) await drawCatalogCompactGridPage(doc, run.items, start, M, PW, PH, header);
+                else await drawCatalogCompactPage(doc, run.items, start, itemsPerPage, M, PW, PH, header);
+            }
+        }
+    };
+
+    if (exportType === 'catalog') {
+        if (isCompactMode) {
+            // Compact: a summary per vendor (no general one), then that vendor's pages.
+            await renderCompactRuns(true);
         } else {
+            onProgress?.(5, 'Generating summary...');
+            await yieldToUi(true);
+            await drawCatalogSummaryPages(doc, results, M, PW, PH, addPage, isLandscape, config.title);
+            await yieldToUi(true);
             for (let i = 0; i < results.length; i++) {
                 const item = results[i];
                 const imgs = getItemImages(item);
@@ -4030,16 +4039,7 @@ export async function exportCatalogPdf(
     } else {
         // --- COMPACT OR ONE IMAGE PER PAGE ---
         if (isCompactMode) {
-            const itemsPerPage = isCompactGrid ? 6 : 9;
-            const totalPages = Math.ceil(totalItems / itemsPerPage);
-            for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
-                addPage();
-                const startIdx = pageIdx * itemsPerPage;
-                onProgress?.(Math.round(5 + ((pageIdx + 1) / totalPages) * 90), `Rendering Compact Sheet ${pageIdx + 1}/${totalPages}...`);
-                await yieldToUi();
-                if (isCompactGrid) await drawCatalogCompactGridPage(doc, results, startIdx, M, PW, PH);
-                else await drawCatalogCompactPage(doc, results, startIdx, itemsPerPage, M, PW, PH, config.title);
-            }
+            await renderCompactRuns(false);
         } else for (let i = 0; i < results.length; i++) {
             const item = results[i];
             const imgs = getItemImages(item);
