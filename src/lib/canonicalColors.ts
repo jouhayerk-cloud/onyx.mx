@@ -87,140 +87,147 @@ export interface StonePalette {
     gradientColors: string[];
 }
 
-// Palettes below marked "photo-extracted" come from real item photos: hue-weighted
-// k-means on the actual pixels (same technique as the vein-mask colour extraction),
-// per-photo background excluded, sorted by saturation so the stone's characteristic
-// hue leads the array. See swarm/artifacts/colorMap/stone_color_map.json and
-// extract_stone_colors.py for the method and the full shade lists (more than 6 per
-// colour in most cases -- gradientColors below keeps only the first 6).
+// Palettes marked "db hex maps" are built from every hex map stored in the database
+// (spatial_points, all photo angles), grouped by the palette each item's colour resolves
+// to: #FFFFFF cutout background, the dark-room gray and the light-room creams excluded,
+// cells binned at 8 levels per channel, the 6 most frequent bins kept, most frequent first.
+// The table is swarm/artifacts/colorMap/db_hex_palettes.json. Palettes without that mark
+// had no hex maps behind them and keep their hand-picked shades.
 export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
-    aquaSerpentine: { // photo-extracted, 18 real shades sampled
-        primary: '#432a16',
-        secondary: '#332a17',
-        gradientColors: ['#432a16', '#332a17', '#664f33', '#907a53', '#564534', '#a28a67'],
+    aquaSerpentine: { // db hex maps, 31 items
+        primary: '#8d7151',
+        secondary: '#6e5233',
+        gradientColors: ['#8d7151', '#6e5233', '#756950', '#938970', '#ac9270', '#6e5a47'],
     },
-    aqua: { // photo-extracted, 28 real shades sampled
-        primary: '#825f2f',
-        secondary: '#5b4424',
-        gradientColors: ['#825f2f', '#5b4424', '#0c0e19', '#d0b675', '#a1885e', '#67503d'],
+    aqua: { // db hex maps, 21 items
+        primary: '#fccf90',
+        secondary: '#d0ccb4',
+        gradientColors: ['#fccf90', '#d0ccb4', '#cdcfca', '#e9d9ca', '#fed275', '#f3d2b0'],
     },
-    zebra: {
-        primary: '#0F172A',
-        secondary: '#FFFFFF',
-        gradientColors: ['#0F172A', '#334155', '#CBD5E1', '#FFFFFF', '#64748B', '#0F172A'],
+    zebra: { // db hex maps, 12 items
+        primary: '#6a728b',
+        secondary: '#515b70',
+        gradientColors: ['#6a728b', '#515b70', '#968993', '#576475', '#b5a9b3', '#cbb1b0'],
     },
-    talan: { // photo-extracted (Green Talan), 40 real shades sampled
-        primary: '#b55b29',
-        secondary: '#564f1d',
-        gradientColors: ['#b55b29', '#564f1d', '#211b0d', '#958b48', '#7a763c', '#533f29'],
+    talan: { // db hex maps, 55 items
+        primary: '#b2b3ad',
+        secondary: '#cecfcc',
+        gradientColors: ['#b2b3ad', '#cecfcc', '#93928e', '#a9a798', '#c6c6b9', '#6e6957'],
     },
-    cherryBlossom: { // photo-extracted, lit (backlit) state -- real blues AND rust/pink,
-                      // see Cherry Blossom.lit in stone_color_map.json for all 52 shades.
-                      // "Cherry Blue" and "Cherry Pink" are the same stone, not separate.
-        primary: '#7d3807',
-        secondary: '#a35c10',
-        gradientColors: ['#7d3807', '#a35c10', '#d2a135', '#6f361e', '#1d274e', '#191f3d'],
+    cherryBlossom: { // db hex maps, 5 items
+        primary: '#b2b0ac',
+        secondary: '#97938d',
+        gradientColors: ['#b2b0ac', '#97938d', '#aba59a', '#a59a91', '#d2ae71', '#ebcd90'],
     },
-    ice: {
-        primary: '#BAE6FD',
-        secondary: '#CBD5E1',
-        gradientColors: ['#BAE6FD', '#E0F2FE', '#FFFFFF', '#94A3B8', '#FFFFFF'],
+    ice: { // db hex maps, 54 items
+        primary: '#f4d5af',
+        secondary: '#f0e7cf',
+        gradientColors: ['#f4d5af', '#f0e7cf', '#eeeeeb', '#d6ccb2', '#f8cd95', '#d4b391'],
     },
     cloud: {
         primary: '#FFFFFF',
         secondary: '#CBD5E1',
         gradientColors: ['#FFFFFF', '#F8FAFC', '#E2E8F0', '#CBD5E1', '#FFFFFF'],
     },
-    emperor: {
-        primary: '#78350F',
-        secondary: '#A8A29E',
-        gradientColors: ['#78350F', '#92400E', '#D6D3D1', '#A8A29E', '#78350F'],
+    emperor: { // db hex maps, 4 items
+        primary: '#facdb1',
+        secondary: '#f9d4c9',
+        gradientColors: ['#facdb1', '#f9d4c9', '#f0b4ab', '#8f7271', '#ac928f', '#d0b5ac'],
     },
-    tehuacanGray: { // photo-extracted, 20 real shades sampled
-        primary: '#261b17',
-        secondary: '#867a6a',
-        gradientColors: ['#261b17', '#867a6a', '#362e2b', '#b4a995', '#a39987', '#756d64'],
+    tehuacanGray: { // db hex maps, 15 items
+        primary: '#f2d3b0',
+        secondary: '#d2eef9',
+        gradientColors: ['#f2d3b0', '#d2eef9', '#e9f8fa', '#adb0b2', '#cfcfcd', '#f4e4cd'],
     },
-    amber: { // photo-extracted, 32 real shades sampled
-        primary: '#3c1b08',
-        secondary: '#b6811e',
-        gradientColors: ['#3c1b08', '#b6811e', '#955b22', '#7e471e', '#845b23', '#9c6e34'],
+    amber: { // db hex maps, 51 items
+        primary: '#b3a993',
+        secondary: '#b6b4aa',
+        gradientColors: ['#b3a993', '#b6b4aa', '#cfc7b3', '#8d7351', '#ad9470', '#726853'],
     },
-    tehuacan: { // photo-extracted, 13 real shades sampled
-        primary: '#856d52',
-        secondary: '#9e8b6f',
-        gradientColors: ['#856d52', '#9e8b6f', '#534a3c', '#716654', '#b19f84', '#8b7d69'],
+    tehuacan: { // db hex maps, 33 items
+        primary: '#b4b3a9',
+        secondary: '#95918d',
+        gradientColors: ['#b4b3a9', '#95918d', '#d0c8b6', '#b0a695', '#f2d4b0', '#c9b8ac'],
     },
-    nacar: {
-        primary: '#FFFFFF',
-        secondary: '#FEF3C7',
-        gradientColors: ['#FFFFFF', '#FEF3C7', '#E0F2FE', '#FCE7F3', '#FFFFFF'],
+    nacar: { // db hex maps, 52 items
+        primary: '#6e4b33',
+        secondary: '#693226',
+        gradientColors: ['#6e4b33', '#693226', '#ebd2af', '#8e7053', '#ccb390', '#d3d0cc'],
     },
-    pink: { // photo-extracted (Pink Serpentine; plain "Pink" source photos were unreadable HEIC)
-        primary: '#0a0910',
-        secondary: '#1a1b24',
-        gradientColors: ['#0a0910', '#1a1b24', '#454958', '#af9892', '#6d6e7f', '#8e868b'],
+    pink: { // db hex maps, 31 items
+        primary: '#363129',
+        secondary: '#534639',
+        gradientColors: ['#363129', '#534639', '#6c6653', '#575548', '#6e5849', '#f8d0ce'],
     },
-    serpentine: { // photo-extracted (Green Talan), same real stone as talan above
-        primary: '#b55b29',
-        secondary: '#564f1d',
-        gradientColors: ['#b55b29', '#564f1d', '#211b0d', '#958b48', '#7a763c', '#533f29'],
+    serpentine: { // db hex maps, 55 items
+        primary: '#b2b3ad',
+        secondary: '#cecfcc',
+        gradientColors: ['#b2b3ad', '#cecfcc', '#93928e', '#a9a798', '#c6c6b9', '#6e6957'],
     },
-    galaxy: { // photo-extracted, unlit/ambient state (lit backlit state is brighter gold --
-              // see Galaxy.lit in stone_color_map.json if a backlit variant is ever wired up)
-        primary: '#a57e52',
-        secondary: '#3b3124',
-        gradientColors: ['#a57e52', '#3b3124', '#5d4d39', '#796653', '#4e4436', '#a08b70'],
+    galaxy: { // db hex maps, 4 items
+        primary: '#ceb390',
+        secondary: '#b0926d',
+        gradientColors: ['#ceb390', '#b0926d', '#d5c7ae', '#6e5036', '#948e8b', '#6b584c'],
     },
-    red: { // photo-extracted (Red Pyramid), 16 real shades sampled
-        primary: '#ce921a',
-        secondary: '#2e1e0e',
-        gradientColors: ['#ce921a', '#2e1e0e', '#1c120a', '#0b0804', '#77562c', '#d6c070'],
+    red: { // db hex maps, 7 items
+        primary: '#8e736f',
+        secondary: '#ffef05',
+        gradientColors: ['#8e736f', '#ffef05', '#73655b', '#f89008', '#ac8996', '#ab6d6f'],
     },
-    multicolor: { // photo-extracted (Rainbow), unlit/ambient state
-        primary: '#ab8c32',
-        secondary: '#9d7b3a',
-        gradientColors: ['#ab8c32', '#9d7b3a', '#6b5328', '#150d08', '#d0b750', '#4d331e'],
+    multicolor: { // db hex maps, 8 items
+        primary: '#cdb152',
+        secondary: '#cbb66d',
+        gradientColors: ['#cdb152', '#cbb66d', '#969289', '#8e8777', '#af954f', '#e7d26f'],
     },
-    gold: {
-        primary: '#FDE047',
-        secondary: '#D97706',
-        gradientColors: ['#FDE047', '#F59E0B', '#D97706', '#FEF08A'],
+    gold: { // db hex maps, 9 items
+        primary: '#f7cdaa',
+        secondary: '#fff492',
+        gradientColors: ['#f7cdaa', '#fff492', '#f0b691', '#8f6f53', '#b1908a', '#efac6e'],
     },
     silver: {
         primary: '#E2E8F0',
         secondary: '#94A3B8',
         gradientColors: ['#E2E8F0', '#CBD5E1', '#94A3B8', '#FFFFFF'],
     },
-    blue: { // photo-extracted (Blue Argentina), 23 real shades sampled
-        primary: '#113b44',
-        secondary: '#2f1e0d',
-        gradientColors: ['#113b44', '#2f1e0d', '#462d1a', '#5f492e', '#20373a', '#69553e'],
+    blue: { // db hex maps, 12 items
+        primary: '#334e4f',
+        secondary: '#4d564f',
+        gradientColors: ['#334e4f', '#4d564f', '#526b6a', '#6e6755', '#514836', '#2f3733'],
     },
-    purple: {
-        primary: '#8B5CF6',
-        secondary: '#6D28D9',
-        gradientColors: ['#8B5CF6', '#A78BFA', '#6D28D9', '#C4B5FD'],
+    purple: { // db hex maps, 29 items
+        primary: '#8d8f8f',
+        secondary: '#768a8b',
+        gradientColors: ['#8d8f8f', '#768a8b', '#576a70', '#737571', '#aeaead', '#d1fdf7'],
     },
-    brown: {
-        primary: '#D97706',
-        secondary: '#78350F',
-        gradientColors: ['#D97706', '#B45309', '#78350F', '#F59E0B'],
+    brown: { // db hex maps, 1 items
+        primary: '#6e4e15',
+        secondary: '#554d28',
+        gradientColors: ['#6e4e15', '#554d28', '#503821', '#895606', '#743617', '#f68c00'],
     },
-    black: {
-        primary: '#334155',
-        secondary: '#1E293B',
-        gradientColors: ['#334155', '#475569', '#1E293B', '#64748B'],
+    black: { // db hex maps, 3 items
+        primary: '#6f7589',
+        secondary: '#898891',
+        gradientColors: ['#6f7589', '#898891', '#d5ccd6', '#5c6374', '#9496ad', '#5b5d6d'],
     },
-    white: {
-        primary: '#FFFFFF',
-        secondary: '#E2E8F0',
-        gradientColors: ['#FFFFFF', '#F8FAFC', '#E2E8F0', '#FFFFFF'],
+    white: { // db hex maps, 17 items
+        primary: '#b3b3ab',
+        secondary: '#d1d0c9',
+        gradientColors: ['#b3b3ab', '#d1d0c9', '#cac6b8', '#ada897', '#97958d', '#908876'],
     },
     gray: {
         primary: '#94A3B8',
         secondary: '#64748B',
         gradientColors: ['#94A3B8', '#CBD5E1', '#64748B', '#94A3B8'],
+    },
+    orange: { // shades of orange: the db hex maps for Orange were mostly room background
+        primary: '#E8742A',
+        secondary: '#F29A4A',
+        gradientColors: ['#E8742A', '#F29A4A', '#C85A1E', '#F7B26E', '#A4471A', '#FBCB94'],
+    },
+    yellow: { // shades of yellow
+        primary: '#F7C934',
+        secondary: '#FFE14D',
+        gradientColors: ['#F7C934', '#FFE14D', '#E0A91C', '#FFD966', '#C98E12', '#FFF0A0'],
     },
     default: {
         primary: '#71717A',
@@ -383,6 +390,13 @@ function resolveRawStonePalette(itemOrText: any): StonePalette {
     // 10. Tehuacán (General white stone)
     if (t.includes('tehuacan')) {
         return CANONICAL_STONE_PALETTES.tehuacan;
+    }
+
+    if (t.includes('orange') || t.includes('naranja')) {
+        return CANONICAL_STONE_PALETTES.orange;
+    }
+    if (t.includes('yellow') || t.includes('amarillo')) {
+        return CANONICAL_STONE_PALETTES.yellow;
     }
 
     // Metals & Other Colors
