@@ -4,7 +4,7 @@ import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportIm
 import QRCode from 'qrcode';
 import { getVendorColor } from './excelStyles';
 import JsBarcode from 'jsbarcode';
-import { generateAxonometricDataUrl, resolveItemColor, normalizeHexMapTexture, parseHexMapString } from './axonometric';
+import { generateAxonometricDataUrl, resolveItemColor, resolveStonePalette, normalizeHexMapTexture, parseHexMapString } from './axonometric';
 import { trackDocumentJob } from '../features/print/jobTracking';
 
 // We accept a generalized artifact structure so different modules can use it
@@ -2695,9 +2695,9 @@ export function endImageSession() {
 function catalogWantedImages(
     results: CatalogArtifact[],
     exportType: string,
-    method: 'grid' | 'single' | 'compact',
+    method: 'grid' | 'single' | 'compact' | 'compactGrid',
 ): string[] {
-    if (method === 'compact') return [];
+    if (method === 'compact' || method === 'compactGrid') return [];
     return results.flatMap(r => {
         const list = getItemImages(r);
         if (exportType === 'catalog') {
@@ -3402,6 +3402,44 @@ function drawCompactColorBubbles(
     return curX - 3.0 - startX;
 }
 
+/**
+ * The compact title runs: qty + shape/type bold, colour/material regular; sizes start their own line,
+ * cm bold, imperial regular. Shared by the compact list and the compact grid.
+ */
+function compactTitleChunks(norm: any, itemDataObj: any): TitleChunk[] {
+    const qtyNum = String(parseInt(String(norm.quantity), 10) || 1); // compact shows the number; grid keeps the word
+    const rawShape = (norm.shape || (itemDataObj ? itemDataObj.Shape : '') || '').trim();
+    const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
+    let shape = rawShape;
+    if (!shape && norm.shortDescription && cleanType !== cleanSingleTypeName(norm.shortDescription)) {
+        shape = norm.shortDescription.trim();
+    }
+    const shapeTypeParts = [shape, cleanType].filter(Boolean);
+    const shapeTypeStr = toTitleCase(Array.from(new Set(shapeTypeParts)).join(' ').replace(/\s+/g, ' ').trim()) || 'Sculptural Form';
+
+    const color = (norm.color || (itemDataObj ? itemDataObj.Color : '') || '').trim();
+    const material = (norm.material || (itemDataObj ? itemDataObj.Material : '') || 'Mexican Onyx').trim();
+    const colorMatParts = [color, material].filter(Boolean);
+    const colorMatStr = toTitleCase(Array.from(new Set(colorMatParts)).join(' ').replace(/\s+/g, ' ').trim());
+
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+    const dImp = cmToImperial(norm.lengthCm || norm.length_cm) || (norm.lengthInches ? `${norm.lengthInches}"` : '');
+    const wImp = cmToImperial(norm.widthCm || norm.width_cm) || (norm.widthInches ? `${norm.widthInches}"` : '');
+    const hImp = cmToImperial(norm.heightCm || norm.height_cm) || (norm.heightInches ? `${norm.heightInches}"` : '');
+    const dimsImperial = [dImp, wImp, hImp].filter(Boolean).join(' × ').toUpperCase();
+
+    const titleChunks: TitleChunk[] = [
+        { text: qtyNum, bold: true },
+        { text: ' ', bold: false },
+        { text: shapeTypeStr, bold: true },
+    ];
+    if (colorMatStr) titleChunks.push({ text: ' ' + colorMatStr, bold: false });
+    if (dimsMetric || dimsImperial) titleChunks.push({ text: '\n', bold: false });
+    if (dimsMetric) titleChunks.push({ text: dimsMetric, bold: true });
+    if (dimsImperial) titleChunks.push({ text: dimsMetric ? ` (${dimsImperial})` : dimsImperial, bold: false });
+    return titleChunks;
+}
+
 async function drawCatalogCompactPage(
     doc: any,
     items: CatalogArtifact[],
@@ -3532,37 +3570,7 @@ async function drawCatalogCompactPage(
         const infoX = axoSecX + axoSecW + GAP;
         const infoW = blockX - infoX - 2 * GAP;
 
-        const qtyNum = String(parseInt(String(norm.quantity), 10) || 1); // compact shows the number; grid keeps the word
-        const rawShape = (norm.shape || (itemDataObj ? itemDataObj.Shape : '') || '').trim();
-        const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
-        let shape = rawShape;
-        if (!shape && norm.shortDescription && cleanType !== cleanSingleTypeName(norm.shortDescription)) {
-            shape = norm.shortDescription.trim();
-        }
-        const shapeTypeParts = [shape, cleanType].filter(Boolean);
-        const shapeTypeStr = toTitleCase(Array.from(new Set(shapeTypeParts)).join(' ').replace(/\s+/g, ' ').trim()) || 'Sculptural Form';
-
-        const color = (norm.color || (itemDataObj ? itemDataObj.Color : '') || '').trim();
-        const material = (norm.material || (itemDataObj ? itemDataObj.Material : '') || 'Mexican Onyx').trim();
-        const colorMatParts = [color, material].filter(Boolean);
-        const colorMatStr = toTitleCase(Array.from(new Set(colorMatParts)).join(' ').replace(/\s+/g, ' ').trim());
-
-        const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
-        const dImp = cmToImperial(norm.lengthCm || norm.length_cm) || (norm.lengthInches ? `${norm.lengthInches}"` : '');
-        const wImp = cmToImperial(norm.widthCm || norm.width_cm) || (norm.widthInches ? `${norm.widthInches}"` : '');
-        const hImp = cmToImperial(norm.heightCm || norm.height_cm) || (norm.heightInches ? `${norm.heightInches}"` : '');
-        const dimsImperial = [dImp, wImp, hImp].filter(Boolean).join(' × ').toUpperCase();
-
-        // Qty + shape/type bold, colour/material regular; sizes start their own line, cm bold, imperial regular.
-        const titleChunks: TitleChunk[] = [
-            { text: qtyNum, bold: true },
-            { text: ' ', bold: false },
-            { text: shapeTypeStr, bold: true },
-        ];
-        if (colorMatStr) titleChunks.push({ text: ' ' + colorMatStr, bold: false });
-        if (dimsMetric || dimsImperial) titleChunks.push({ text: '\n', bold: false });
-        if (dimsMetric) titleChunks.push({ text: dimsMetric, bold: true });
-        if (dimsImperial) titleChunks.push({ text: dimsMetric ? ` (${dimsImperial})` : dimsImperial, bold: false });
+        const titleChunks = compactTitleChunks(norm, itemDataObj);
 
         const fontPt = 11.5;
         const capH = fontPt * PT * CAP;
@@ -3604,9 +3612,154 @@ async function drawCatalogCompactPage(
     }
 }
 
+/**
+ * CompactGrid: 3 x 2 packing-label panels per landscape A4 page. Each panel: the item's stone colours as a
+ * swatch band, the compact title, a large axo beside the cutout, colours and weight, then the codes block
+ * (MADE IN MEXICO + barcode + QR, tag ID full width). Vendor colour appears only in the QR eyes.
+ */
+async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], startIndex: number, M: number, PW: number, PH: number) {
+    const COLS = 3, ROWS = 2, GUT = 5;
+    const top = 8, bottom = PH - 8;
+    const cellW = (PW - 2 * M - (COLS - 1) * GUT) / COLS;
+    const cellH = (bottom - top - (ROWS - 1) * GUT) / ROWS;
+    const PT = 0.3528, CAP = 0.72, DESC = 0.21;
+    const PAD = 4, GAP = 1.0;
+    const innerW = cellW - 2 * PAD;
+    const pageItems = items.slice(startIndex, startIndex + COLS * ROWS);
+
+    for (let i = 0; i < pageItems.length; i++) {
+        const item = pageItems[i];
+        const x = M + (i % COLS) * (cellW + GUT);
+        const y = top + Math.floor(i / COLS) * (cellH + GUT);
+        const ix = x + PAD;
+        const itemDataObj = item.data || item;
+        const norm = normalizeInventoryData(itemDataObj);
+        const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
+        const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
+
+        // Panel: white label with a hairline edge and soft corners.
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, y, cellW, cellH, 3, 3, 'FD');
+
+        // Stone colour band: the palette's shades as equal swatches across the top.
+        const palette = resolveStonePalette({ color: norm.color || itemDataObj.color, material: norm.material || itemDataObj.material });
+        const shades = palette.gradientColors.length ? palette.gradientColors : [palette.primary];
+        const bandH = 6.5;
+        const bandY = y + PAD;
+        const swW = innerW / shades.length;
+        shades.forEach((hex, k) => {
+            const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+            const n = m ? parseInt(m[1], 16) : 0xcccccc;
+            doc.setFillColor((n >> 16) & 255, (n >> 8) & 255, n & 255);
+            doc.rect(ix + k * swW, bandY, swW + 0.05, bandH, 'F');
+        });
+        // A hairline keeps white stones' bands visible on white paper.
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.2);
+        doc.rect(ix, bandY, innerW, bandH, 'S');
+
+        // Title (compact runs), up to 3 lines.
+        const fontPt = 11.5;
+        const capH = fontPt * PT * CAP;
+        const descH = fontPt * PT * DESC;
+        const lineH = capH + descH + GAP;
+        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), innerW, fontPt).slice(0, 3);
+        const firstBaseline = bandY + bandH + 3.0 + capH;
+        drawMeasuredTitle(doc, titleLines, ix, firstBaseline, lineH, fontPt);
+        const titleBottom = firstBaseline + (titleLines.length - 1) * lineH + descH;
+
+        // Codes block, pinned to the panel bottom.
+        const CODE_GAP = 0.8;
+        const qrSize = 15.0;
+        const leftW = innerW - qrSize - CODE_GAP;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const mimPt = Math.min(9.5, 10 * leftW / doc.getTextWidth('MADE IN MEXICO'));
+        const mimCap = mimPt * PT * CAP;
+        const barTop = mimCap + CODE_GAP * 1.5;
+        const tagPt = 15.0;
+        const tagCap = 13.0 * PT * CAP;
+        const codesH = qrSize + CODE_GAP * 1.5 + tagCap;
+        const codesY = y + cellH - PAD - codesH;
+
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.2);
+        doc.line(ix, codesY - 2.0, ix + innerW, codesY - 2.0);
+
+        doc.setFontSize(mimPt);
+        doc.setTextColor(12, 12, 12);
+        doc.text('MADE IN MEXICO', ix, codesY + mimCap);
+        try {
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 34, lineColor: '#141414' });
+            doc.addImage(canvas.toDataURL('image/png'), 'PNG', ix, codesY + barTop, leftW, qrSize - barTop);
+        } catch (e) {}
+        try {
+            const qr = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode)); // plain tag ID, as the compact list
+            if (qr) doc.addImage(qr, 'PNG', ix + leftW + CODE_GAP, codesY, qrSize, qrSize);
+        } catch (e) {}
+        drawFormattedTagCode(doc, codes, ix, codesY + codesH, tagPt, false, itemDataObj, innerW, tagPt);
+
+        // Middle: large axo on the left; cutout, colours and weight on the right.
+        const midTop = titleBottom + 2.5;
+        const midBottom = codesY - 4.0;
+        const midH = Math.max(10, midBottom - midTop);
+        const axoS = Math.min(midH, innerW * 0.56);
+        try {
+            const axo = await getAdvancedAxoDataUrl(norm, itemDataObj);
+            if (axo) drawAxoContain(doc, axo, ix, midTop + (midH - axoS) / 2, axoS, axoS, 0.98);
+        } catch (e) {}
+
+        const rx = ix + axoS + 2.5;
+        const rw = ix + innerW - rx;
+        const smallPt = 10;
+        const sCap = smallPt * PT * CAP;
+        const extractedColors = getItemExtractedColors(norm, itemDataObj);
+        const wtKg = parseFloat(norm.weightKg || '0');
+        const metaH = (extractedColors.length ? sCap * 1.3 + 2.0 : 0) + (wtKg > 0 ? sCap + 1.0 : 0);
+
+        let cutoutH = 0;
+        const cutUrl = getItemCutoutPngs(item)[0];
+        if (cutUrl) {
+            try {
+                const c = await loadImgData(cutUrl, 400, true);
+                if (c && c.dataUrl && c.w && c.h) {
+                    const boxH = Math.max(8, midH - metaH - 2.0);
+                    const aspect = c.w / c.h;
+                    let cw = rw, ch = rw / aspect;
+                    if (ch > boxH) { ch = boxH; cw = boxH * aspect; }
+                    doc.addImage(c.dataUrl, 'PNG', rx + (rw - cw) / 2, midTop + (boxH - ch) / 2, cw, ch);
+                    cutoutH = boxH + 2.0;
+                }
+            } catch (e) {}
+        }
+
+        // Colours and weight sit under the cutout, or centred in the column without one.
+        let metaY = cutoutH ? midTop + cutoutH : midTop + (midH - metaH) / 2;
+        if (extractedColors.length) {
+            metaY += sCap * 1.3;
+            drawCompactColorBubbles(doc, extractedColors.slice(0, 3), rx, metaY, rw, smallPt);
+            metaY += 2.0;
+        }
+        if (wtKg > 0) {
+            metaY += sCap;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(smallPt);
+            doc.setTextColor(30, 41, 59);
+            const kg = `${Math.round(wtKg)} kg`;
+            doc.text(kg, rx, metaY);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(71, 85, 105);
+            doc.text(` ${Math.round(wtKg * 2.20462)} lbs`, rx + doc.getTextWidth(kg), metaY);
+        }
+    }
+}
+
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
-    config: { title: string; method: 'grid' | 'single' | 'compact'; logo?: string; exportType?: 'regular' | 'catalog' },
+    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid'; logo?: string; exportType?: 'regular' | 'catalog' },
     onProgress?: (p: number, s: string) => void,
     output: 'download' | 'blob' = 'download',
     onStats?: (stats: CatalogExportStats) => void,
@@ -3621,7 +3774,7 @@ export async function exportCatalogPdf(
     const exportType = config.exportType || 'regular';
 
     // Canonical ordering by vendor / type / shape for compact and grid catalogs
-    if (config.method === 'compact' || config.method === 'grid') {
+    if (config.method === 'compact' || config.method === 'compactGrid' || config.method === 'grid') {
         results = [...results].sort((a, b) => {
             const dA = a.data || a;
             const dB = b.data || b;
@@ -3690,8 +3843,10 @@ export async function exportCatalogPdf(
     // Grid method triggers horizontal landscape layout with multiple images per page
     // Single method triggers vertical portrait layout with one single image per sheet
     // Compact method triggers vertical portrait layout with 9 compact items per page
-    const isCompactMode = config.method === 'compact';
-    const isLandscape = config.method === 'grid';
+    // CompactGrid: the compact catalog as 6 packing-label panels per landscape page
+    const isCompactGrid = config.method === 'compactGrid';
+    const isCompactMode = config.method === 'compact' || isCompactGrid;
+    const isLandscape = config.method === 'grid' || isCompactGrid;
     const PW = isLandscape ? 297 : 210;
     const PH = isLandscape ? 210 : 297;
     const M = 12;
@@ -3708,7 +3863,7 @@ export async function exportCatalogPdf(
     const footer = (doc: any) => { 
         globalPageNum++; 
         
-        if (config.method === 'compact') {
+        if (isCompactMode) {
             // Only first summary page gets full footer with logos and page count; all item pages have NO footer
             if (globalPageNum === 1) {
                 doc.setDrawColor(228, 228, 231);
@@ -3836,14 +3991,15 @@ export async function exportCatalogPdf(
         // 2. Item Catalog Pages
         if (isCompactMode) {
             // COMPACT CATALOG: High-density 9 items per sheet, clean frameless design
-            const itemsPerPage = 9;
+            const itemsPerPage = isCompactGrid ? 6 : 9;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
                 addPage();
                 const startIdx = pageIdx * itemsPerPage;
                 onProgress?.(Math.round(10 + ((pageIdx + 1) / totalPages) * 85), `Rendering Compact Sheet ${pageIdx + 1}/${totalPages}...`);
                 await yieldToUi();
-                await drawCatalogCompactPage(doc, results, startIdx, itemsPerPage, M, PW, PH, config.title);
+                if (isCompactGrid) await drawCatalogCompactGridPage(doc, results, startIdx, M, PW, PH);
+                else await drawCatalogCompactPage(doc, results, startIdx, itemsPerPage, M, PW, PH, config.title);
             }
         } else {
             for (let i = 0; i < results.length; i++) {
@@ -3874,14 +4030,15 @@ export async function exportCatalogPdf(
     } else {
         // --- COMPACT OR ONE IMAGE PER PAGE ---
         if (isCompactMode) {
-            const itemsPerPage = 9;
+            const itemsPerPage = isCompactGrid ? 6 : 9;
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
                 addPage();
                 const startIdx = pageIdx * itemsPerPage;
                 onProgress?.(Math.round(5 + ((pageIdx + 1) / totalPages) * 90), `Rendering Compact Sheet ${pageIdx + 1}/${totalPages}...`);
                 await yieldToUi();
-                await drawCatalogCompactPage(doc, results, startIdx, itemsPerPage, M, PW, PH, config.title);
+                if (isCompactGrid) await drawCatalogCompactGridPage(doc, results, startIdx, M, PW, PH);
+                else await drawCatalogCompactPage(doc, results, startIdx, itemsPerPage, M, PW, PH, config.title);
             }
         } else for (let i = 0; i < results.length; i++) {
             const item = results[i];
