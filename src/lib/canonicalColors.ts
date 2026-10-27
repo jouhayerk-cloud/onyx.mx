@@ -236,6 +236,9 @@ export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
     },
 };
 
+/** Enhanced primary hex -> raw palette, so a caller that kept only resolveItemColor's hex still gets the whole palette. */
+const PALETTE_BY_PRIMARY = new Map<string, StonePalette>();
+
 function normalizeText(str: string): string {
     return String(str || '')
         .toLowerCase()
@@ -251,13 +254,19 @@ function tehuacanWith(colorField: string): StonePalette {
     if (!other || other === CANONICAL_STONE_PALETTES.default || other === base) return base;
     const w = base.gradientColors;
     const o = other.gradientColors;
-    return { primary: w[0], secondary: o[0], gradientColors: [w[0], o[0], w[1], o[1], w[2], o[2]] };
+    // Primary is white with a 15% tint of the second colour, so each mix has its own hex.
+    const mix = (a: string, b: string, k: number) => '#' + [1, 3, 5].map(i => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - k) + parseInt(b.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('').toUpperCase();
+    const primary = /^#[0-9a-f]{6}$/i.test(o[0]) ? mix('#FFFFFF', o[0], 0.15) : w[0];
+    return { primary, secondary: o[0], gradientColors: [primary, o[0], w[1], o[1], w[2], o[2]] };
 }
 
 /**
  * Resolves a full StonePalette from an item object, string name, or hex color code.
  */
 function resolveRawStonePalette(itemOrText: any): StonePalette {
+    if (!PALETTE_BY_PRIMARY.size) {
+        for (const pal of Object.values(CANONICAL_STONE_PALETTES)) PALETTE_BY_PRIMARY.set(enhanceStonePalette(pal).primary.toUpperCase(), pal);
+    }
     if (!itemOrText) return CANONICAL_STONE_PALETTES.default;
 
     // Direct palette object already passed
@@ -280,167 +289,184 @@ function resolveRawStonePalette(itemOrText: any): StonePalette {
     }
 
     const t = normalizeText(rawText);
+    // Whole words only: a substring test matched "red" inside "squared" and "ice" inside "price".
+    const has = (word: string) => {
+        for (let i = t.indexOf(word); i >= 0; i = t.indexOf(word, i + 1)) {
+            const before = t[i - 1];
+            const after = t[i + word.length];
+            if ((!before || !/[a-z0-9]/.test(before)) && (!after || !/[a-z0-9]/.test(after))) return true;
+        }
+        return false;
+    };
 
     // Tehuacan is a white stone: its palette is white shades plus the other colour the
     // colour field names ("Tehuacan Amber", "Tehuacan W Green"), or white alone.
     const colorField = typeof itemOrText === 'string' ? itemOrText : String(itemOrText.color || '');
-    if (normalizeText(colorField).includes('tehuacan')) return tehuacanWith(colorField);
+    // A hex the app handed out earlier (resolveItemColor, passed on to the axo renderer) maps back to its full palette.
+    const known = PALETTE_BY_PRIMARY.get(colorField.trim().toUpperCase());
+    if (known) return known;
+    if (/(^|[^a-z])tehuacan([^a-z]|$)/.test(normalizeText(colorField))) return tehuacanWith(colorField);
+    // The colour field decides when it names a stone; shape and description words only break a tie.
+    if (typeof itemOrText === 'object' && colorField.trim() && !colorField.trim().startsWith('#')) {
+        const own = resolveRawStonePalette(colorField);
+        if (own !== CANONICAL_STONE_PALETTES.default) return own;
+    }
 
     // 0. Aqua Serpentine (specific mineral variety with turquoise & terracotta bands)
     if (
-        (t.includes('aqua') || t.includes('teal') || t.includes('turquesa') || t.includes('turquoise')) &&
-        (t.includes('serpentine') || t.includes('serpentina'))
+        (has('aqua') || has('teal') || has('turquesa') || has('turquoise')) &&
+        (has('serpentine') || has('serpentina'))
     ) {
         return CANONICAL_STONE_PALETTES.aquaSerpentine;
     }
 
     // 0b. Zebra (black and white banded)
-    if (t.includes('zebra') || t.includes('cebra')) {
+    if (has('zebra') || has('cebra')) {
         return CANONICAL_STONE_PALETTES.zebra;
     }
 
     // 0c. Emperor / Brown Calcite
-    if (t.includes('emperor') || t.includes('emperador')) {
+    if (has('emperor') || has('emperador')) {
         return CANONICAL_STONE_PALETTES.emperor;
     }
 
     // 0d. Ice / Cristaline
-    if (t.includes('ice') || t.includes('hielo') || t.includes('cristaline') || t.includes('cristalino')) {
+    if (has('ice') || has('hielo') || has('cristaline') || has('cristalino')) {
         return CANONICAL_STONE_PALETTES.ice;
     }
 
     // 0e. Cloud
-    if (t.includes('cloud') || t.includes('nube')) {
+    if (has('cloud') || has('nube')) {
         return CANONICAL_STONE_PALETTES.cloud;
     }
 
     // 0f. Talan / Queretaro (deep green & earthy brown)
-    if (t.includes('talan') || t.includes('queretaro')) {
+    if (has('talan') || has('queretaro')) {
         return CANONICAL_STONE_PALETTES.talan;
     }
 
     // 0g. Cherry Blossom ("Cherry Blue" and "Cherry Pink" in the DB taxonomy are the same
     // stone, not separate colours -- owner correction, 24 Oct 2026). Must come before the
     // generic pink/blue checks below, which would otherwise catch "cherry pink"/"cherry blue".
-    if (t.includes('cherry')) {
+    if (has('cherry')) {
         return CANONICAL_STONE_PALETTES.cherryBlossom;
     }
 
     // 1. Aqua
     if (
-        t.includes('aqua') || t.includes('teal') || t.includes('turquesa') || t.includes('turquoise') ||
-        t.includes('#2dd4bf') || t.includes('#0d9488')
+        has('aqua') || has('teal') || has('turquesa') || has('turquoise') ||
+        has('#2dd4bf') || has('#0d9488')
     ) {
         return CANONICAL_STONE_PALETTES.aqua;
     }
 
     // 2. Multicolor / Rainbow
     if (
-        t.includes('multicolor') || t.includes('rainbow') || t.includes('arcoiris') ||
-        t.includes('assorted') || t.includes('surtido') || t.includes('cosmic') || t.includes('cosmico')
+        has('multicolor') || has('rainbow') || has('arcoiris') ||
+        has('assorted') || has('surtido') || has('cosmic') || has('cosmico')
     ) {
         return CANONICAL_STONE_PALETTES.multicolor;
     }
 
     // 3. Tehuacán Gray (prioritize over generic Tehuacán and generic Gray)
     if (
-        t.includes('tehuacan gray') || t.includes('tehuacan gris') ||
-        t.includes('gray tehuacan') || t.includes('gris tehuacan') ||
-        t.includes('tehuacan ice') || t.includes('tehuacan rim') ||
-        t.includes('large gray rim') || t.includes('small gray rim')
+        has('tehuacan gray') || has('tehuacan gris') ||
+        has('gray tehuacan') || has('gris tehuacan') ||
+        has('tehuacan ice') || has('tehuacan rim') ||
+        has('large gray rim') || has('small gray rim')
     ) {
         return CANONICAL_STONE_PALETTES.tehuacanGray;
     }
 
     // 4. Ámbar / Cristaline Amber / Tehuacán Amber (prioritize over generic Tehuacán)
     if (
-        t.includes('amber') || t.includes('ambar') ||
-        t.includes('miel') || t.includes('honey') || t.includes('caramel') ||
-        t.includes('#f59e0b') || t.includes('#ea580c')
+        has('amber') || has('ambar') ||
+        has('miel') || has('honey') || has('caramel') ||
+        has('#f59e0b') || has('#ea580c')
     ) {
         return CANONICAL_STONE_PALETTES.amber;
     }
 
     // 5. Nácar / Pearlescent
     if (
-        t.includes('nacar') || t.includes('pearlescent') || t.includes('pearl') ||
-        t.includes('perla') || t.includes('iridescent') || t.includes('iridiscente')
+        has('nacar') || has('pearlescent') || has('pearl') ||
+        has('perla') || has('iridescent') || has('iridiscente')
     ) {
         return CANONICAL_STONE_PALETTES.nacar;
     }
 
     // 6. Pink / Pink Serpentine
     if (
-        t.includes('pink') || t.includes('rosa') || t.includes('rose') ||
-        t.includes('#f472b6') || t.includes('#ec4899') || t.includes('#fda4af')
+        has('pink') || has('rosa') || has('rose') ||
+        has('#f472b6') || has('#ec4899') || has('#fda4af')
     ) {
         return CANONICAL_STONE_PALETTES.pink;
     }
 
     // 7. Serpentine / Green Talan (prioritize over generic green)
     if (
-        t.includes('talan') || t.includes('serpentine') || t.includes('serpentina')
+        has('talan') || has('serpentine') || has('serpentina')
     ) {
         return CANONICAL_STONE_PALETTES.serpentine;
     }
 
     // 8. Galaxy / Black Zebra (prioritize over generic black)
     if (
-        t.includes('galaxy') || t.includes('galaxia') ||
-        t.includes('black zebra') || t.includes('zebra') || t.includes('cebra') ||
-        t.includes('obsidian') || t.includes('obsidiana')
+        has('galaxy') || has('galaxia') ||
+        has('black zebra') || has('zebra') || has('cebra') ||
+        has('obsidian') || has('obsidiana')
     ) {
         return CANONICAL_STONE_PALETTES.galaxy;
     }
 
     // 9. Red / Red Pyramid / Jasper
     if (
-        t.includes('pyramid') || t.includes('piramide') ||
-        t.includes('jasper') || t.includes('jaspe') ||
-        t.includes('red') || t.includes('rojo') || t.includes('rubi') || t.includes('ruby') ||
-        t.includes('#ef4444') || t.includes('#b45309')
+        has('pyramid') || has('piramide') ||
+        has('jasper') || has('jaspe') ||
+        has('red') || has('rojo') || has('rubi') || has('ruby') ||
+        has('#ef4444') || has('#b45309')
     ) {
         return CANONICAL_STONE_PALETTES.red;
     }
 
     // 10. Tehuacán (General white stone)
-    if (t.includes('tehuacan')) {
+    if (has('tehuacan')) {
         return CANONICAL_STONE_PALETTES.tehuacan;
     }
 
-    if (t.includes('orange') || t.includes('naranja')) {
+    if (has('orange') || has('naranja')) {
         return CANONICAL_STONE_PALETTES.orange;
     }
-    if (t.includes('yellow') || t.includes('amarillo')) {
+    if (has('yellow') || has('amarillo')) {
         return CANONICAL_STONE_PALETTES.yellow;
     }
 
     // Metals & Other Colors
-    if (t.includes('gold') || t.includes('brass') || t.includes('laton') || t.includes('dorado') || t.includes('oro') || t.includes('#fde047')) {
+    if (has('gold') || has('brass') || has('laton') || has('dorado') || has('oro') || has('#fde047')) {
         return CANONICAL_STONE_PALETTES.gold;
     }
-    if (t.includes('silver') || t.includes('chrome') || t.includes('steel') || t.includes('aluminum') || t.includes('plata') || t.includes('acero') || t.includes('#e2e8f0')) {
+    if (has('silver') || has('chrome') || has('steel') || has('aluminum') || has('plata') || has('acero') || has('#e2e8f0')) {
         return CANONICAL_STONE_PALETTES.silver;
     }
-    if (t.includes('blue') || t.includes('azul') || t.includes('#3b82f6')) {
+    if (has('blue') || has('azul') || has('#3b82f6')) {
         return CANONICAL_STONE_PALETTES.blue;
     }
-    if (t.includes('purple') || t.includes('violet') || t.includes('morado') || t.includes('amethyst') || t.includes('cuarzo') || t.includes('#8b5cf6')) {
+    if (has('purple') || has('violet') || has('morado') || has('amethyst') || has('cuarzo') || has('#8b5cf6')) {
         return CANONICAL_STONE_PALETTES.purple;
     }
-    if (t.includes('green') || t.includes('verde') || t.includes('emerald') || t.includes('esmeralda') || t.includes('#10b981')) {
+    if (has('green') || has('verde') || has('emerald') || has('esmeralda') || has('#10b981')) {
         return CANONICAL_STONE_PALETTES.serpentine;
     }
-    if (t.includes('brown') || t.includes('wood') || t.includes('walnut') || t.includes('oak') || t.includes('madera') || t.includes('cafe') || t.includes('marron') || t.includes('chocolate') || t.includes('emperador')) {
+    if (has('brown') || has('wood') || has('walnut') || has('oak') || has('madera') || has('cafe') || has('marron') || has('chocolate') || has('emperador')) {
         return CANONICAL_STONE_PALETTES.brown;
     }
-    if (t.includes('black') || t.includes('nero') || t.includes('dark') || t.includes('negro') || t.includes('#334155')) {
+    if (has('black') || has('nero') || has('dark') || has('negro') || has('#334155')) {
         return CANONICAL_STONE_PALETTES.black;
     }
-    if (t.includes('white') || t.includes('blanco') || t.includes('clear') || t.includes('transparent') || t.includes('#ffffff')) {
+    if (has('white') || has('blanco') || has('clear') || has('transparent') || has('#ffffff')) {
         return CANONICAL_STONE_PALETTES.white;
     }
-    if (t.includes('grey') || t.includes('gray') || t.includes('gris') || t.includes('concrete') || t.includes('cement') || t.includes('#94a3b8') || t.includes('#a1a1aa')) {
+    if (has('grey') || has('gray') || has('gris') || has('concrete') || has('cement') || has('#94a3b8') || has('#a1a1aa')) {
         return CANONICAL_STONE_PALETTES.gray;
     }
 
@@ -467,7 +493,10 @@ function resolveRawStonePalette(itemOrText: any): StonePalette {
  * enhanced with rich saturation, radiant highlights, and vivid chroma.
  */
 export function resolveStonePalette(itemOrText: any): StonePalette {
-    return enhanceStonePalette(resolveRawStonePalette(itemOrText));
+    const raw = resolveRawStonePalette(itemOrText);
+    const enhanced = enhanceStonePalette(raw);
+    PALETTE_BY_PRIMARY.set(enhanced.primary.toUpperCase(), raw);
+    return enhanced;
 }
 
 export function resolveItemColor(itemOrText: any): string {
