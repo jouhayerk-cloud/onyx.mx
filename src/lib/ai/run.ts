@@ -65,6 +65,7 @@ import {
     type AiPatch,
     type InventoryRow,
     type ProcessId,
+    type SaveProgress,
 } from './persist';
 
 export type { ProcessId } from './persist';
@@ -242,6 +243,8 @@ export interface RunItem {
     /** Derived: unsavedRun, or edits made since the last save. */
     dirty: boolean;
     saving: boolean;
+    /** While saving: uploads done of total and the current step, for the progress bar. */
+    saveProgress?: SaveProgress;
     rejected: boolean;
     interrupted?: RunInterrupt;
     warnings: string[];
@@ -318,6 +321,7 @@ export type RunAction =
     | { type: 'manual-cutout'; itemId: string; index: number; dataUrl: string; at: number }
     | { type: 'reset'; itemId: string; row?: any }
     | { type: 'save-start'; itemId: string }
+    | { type: 'save-progress'; itemId: string; progress: SaveProgress }
     | { type: 'save-done'; itemId: string; outcome: SaveOutcome; savedRow?: InventoryRow | null; patch?: AiPatch; processes?: ProcessId[] }
     | { type: 'saving'; value: boolean }
     | { type: 'run-error'; error: RunError | null };
@@ -1390,13 +1394,16 @@ export function runReducer(state: RunState, action: RunAction): RunState {
             });
 
         case 'save-start':
-            return withItem(state, action.itemId, it => ({ ...it, saving: true }));
+            return withItem(state, action.itemId, it => ({ ...it, saving: true, saveProgress: { done: 0, total: 0, step: 'Reading the stored item' } }));
+
+        case 'save-progress':
+            return withItem(state, action.itemId, it => (it.saving ? { ...it, saveProgress: action.progress } : it));
 
         case 'save-done':
             return withItem(state, action.itemId, it => {
                 const { outcome } = action;
                 const lines = outcome.warnings.map(w => `[ WARN ] ${w}`);
-                let next: RunItem = { ...it, saving: false, warnings: outcome.warnings };
+                let next: RunItem = { ...it, saving: false, saveProgress: undefined, warnings: outcome.warnings };
                 if (outcome.outcome === 'saved' || outcome.outcome === 'incomplete') {
                     next = absorbSaved(next, action.patch);
                     if (action.savedRow) next = refreshRow(next, action.savedRow, false);
@@ -1974,8 +1981,11 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
             const { data: stored, error: readErr } = await supabase.from('inventory').select('*').eq('id', it.rowId).maybeSingle();
             if (readErr) throw new Error(`Could not read the stored row: ${readErr.message}`);
             if (!stored) throw new Error('The item is no longer in the database');
-            const patch = await buildAiPatch(result, stored as any, processes, { user });
+            const onProgress = (progress: SaveProgress) => store.dispatch({ type: 'save-progress', itemId: it.id, progress });
+            const patch = await buildAiPatch(result, stored as any, processes, { user, onProgress });
             if (isEmptyPatch(patch)) return { outcome: { ...base, outcome: 'empty', warnings: patch.warnings } };
+            const uploads = store.getState().items[it.id]?.saveProgress;
+            onProgress({ done: uploads?.total ?? 0, total: uploads?.total ?? 0, step: 'Writing to the database' });
             const savedRow = await saveAiPatch(it.rowId, patch, { user });
             const columns = Object.keys(patch.columns);
             return {
@@ -1987,7 +1997,7 @@ export function useAiRun(options: UseAiRunOptions): UseAiRun {
         } catch (err) {
             return { outcome: { ...base, outcome: 'failed', error: aiErrorMessage(err) } };
         }
-    }, []);
+    }, [store]);
 
     const save = useCallback(async (target: SaveTarget): Promise<SaveOutcome[]> => {
         const st = store.getState();

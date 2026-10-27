@@ -230,11 +230,18 @@ const svgDataUrl = (svg: string) => `data:image/svg+xml;base64,${btoa(unescape(e
  * and spatial_masks are the merge base). `processes` is what the user ticked.
  * Uploads happen here, so call it at save time, not when the run finishes.
  */
+/** Where a save is: `done` of `total` uploads finished, `step` names the one in flight. */
+export interface SaveProgress {
+    done: number;
+    total: number;
+    step: string;
+}
+
 export async function buildAiPatch(
     result: AiItemResult,
     existingRow: Partial<InventoryRow> & Record<string, any>,
     processes: ReadonlySet<ProcessId>,
-    opts: { user?: unknown } = {},
+    opts: { user?: unknown; onProgress?: (p: SaveProgress) => void } = {},
 ): Promise<AiPatch> {
     const columns: InventoryUpdate = {};
     const segmentations: SegmentationResult[] = [];
@@ -259,10 +266,21 @@ export async function buildAiPatch(
     // A donor run fills the same four text fields as the photo processes.
     const donor = want('variation_donor');
 
+    // An estimate for the progress bar: every data: URL the result holds. A process
+    // left unticked skips its uploads, so the count can end below the total.
+    const isData = (u?: string) => !!u && u.startsWith('data:');
+    let uploadTotal = (isData(result.axoIconUrl) ? 1 : 0) + (isData(result.hexMap?.bitmapUrl) ? 1 : 0);
+    for (const p of result.photos) {
+        uploadTotal += [p.cleanedUrl, p.cutoutUrl, p.matteUrl, p.bitmapUrl].filter(isData).length;
+        if (!p.svgUrl && p.outlineSvg) uploadTotal++;
+    }
+    let uploadsDone = 0;
+
     /** Upload a data: URL; pass an http URL through; null when the upload failed. */
     const ensureUploaded = async (url: string | undefined, name: string, what: string): Promise<string | null> => {
         if (!url) return null;
         if (!url.startsWith('data:')) return url;
+        opts.onProgress?.({ done: uploadsDone, total: Math.max(uploadTotal, uploadsDone + 1), step: `Uploading ${what}` });
         try {
             return await uploadCleanedImage(url, name, opts.user);
         } catch (err: any) {
@@ -270,6 +288,8 @@ export async function buildAiPatch(
             warnings.push(msg);
             failedUploads.push(msg);
             return null;
+        } finally {
+            uploadsDone++;
         }
     };
 

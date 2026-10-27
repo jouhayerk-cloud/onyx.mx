@@ -692,6 +692,16 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
     }, [states]);
 
     const runningNow = useMemo(() => all.find(it => states.get(it.id) === 'running'), [all, states]);
+    // The item a save is writing now, and how far its uploads are.
+    const savingNow = all.find(it => it.saving);
+    const saveStepOf = (it: RunItem) => {
+        const p = it.saveProgress;
+        if (!p) return tr('Saving');
+        return p.total ? `${tr(p.step)} · ${trf('{done} of {total} files', { done: p.done, total: p.total })}` : tr(p.step);
+    };
+    const savePercent = savingNow?.saveProgress?.total
+        ? (savingNow.saveProgress.done / savingNow.saveProgress.total) * 100
+        : undefined;
 
     const searchText = useMemo(() => {
         const m = new Map<string, string>();
@@ -1157,6 +1167,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                 )}
 
                 {it.stage && <p className="hub-stage ui-tnum">{it.stage} · {Math.round(it.progress)}%</p>}
+                {it.saving && <p className="hub-stage ui-tnum" role="status" aria-live="polite">{saveStepOf(it)}</p>}
 
                 <Field group label={tr('Log')}>
                     {logs.length
@@ -1415,9 +1426,13 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                 <HubProgress
                     counts={counts}
                     total={all.length}
-                    percent={run.isRunning ? run.progress : undefined}
+                    percent={run.isRunning ? run.progress : savingNow ? savePercent ?? 0 : undefined}
                     eta={run.isRunning ? etaLabel(run.etaMs) : undefined}
-                    working={runningNow ? { name: `${runningNow.label} ${nameOf(runningNow)}`, step: runningNow.stage } : undefined}
+                    working={runningNow
+                        ? { name: `${runningNow.label} ${nameOf(runningNow)}`, step: runningNow.stage }
+                        : savingNow
+                            ? { name: `${tr('Saving')} ${savingNow.label} ${nameOf(savingNow)}`, step: saveStepOf(savingNow) }
+                            : undefined}
                     actions={<>
                         <Key size="sm" variant="quiet" icon={<RotateCcw size={12} />} disabled={!failedCount || run.isRunning}
                             onClick={handleRetryFailed}>
