@@ -4,7 +4,7 @@ import type { AxoMirrorClass } from './axoMirrors';
 import type { AxoExtraClass } from './axoExtra';
 import { classifyGeometry } from './geometry';
 import type { Geometry } from './geometry';
-import { resolveStonePalette, resolveItemColor, enhanceStoneColor, boostAquaBandInMap } from './canonicalColors';
+import { resolveStonePalette, resolveItemColor, enhanceStoneColor } from './canonicalColors';
 import type { StonePalette } from './canonicalColors';
 
 export { resolveStonePalette, resolveItemColor };
@@ -236,8 +236,7 @@ export function normalizeHexMapTexture(
         }
     }
 
-    // Aqua Serpentine's teal band gets extra vibrance before the general stone enhancement.
-    return boostAquaBandInMap(result).map(enhanceStoneColor);
+    return result.map(enhanceStoneColor);
 }
 
 /**

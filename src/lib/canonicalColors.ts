@@ -604,11 +604,11 @@ export function isAquaBand(hex: string): boolean {
     return h >= 70 && h <= 140 && s >= 0.08 && s <= 0.55 && l >= 0.22 && l <= 0.72;
 }
 
-/** Vibrance for the aqua band: saturation x1.7 (+0.05, max 0.7), hue nudged 20° toward teal (max 160°). Other colours unchanged. */
+/** Vibrance for the aqua band in colour bars: saturation x1.3 (+0.03, max 0.55), hue nudged 8° toward teal (max 150°). Other colours unchanged. */
 export function boostAquaBand(hex: string): string {
     if (!isAquaBand(hex)) return hex;
     const [h, s, l] = toHsl(hex)!;
-    return fromHsl(Math.min(160, h + 20), Math.min(0.7, s * 1.7 + 0.05), l);
+    return fromHsl(Math.min(150, h + 8), Math.min(0.55, s * 1.3 + 0.03), l);
 }
 
 /** Boosts the aqua band in a hex map only when the band is really there: at least 5% of the non-background cells. */
