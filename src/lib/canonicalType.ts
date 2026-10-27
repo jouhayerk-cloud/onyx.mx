@@ -186,3 +186,25 @@ export function isPersonalType(rawType: string | null | undefined): boolean {
  * 11  'Panel Pair'          -                   -> wall-panel  'Wall Panel'          -      false
  * 12  'sofa bed'            -                   -> null        'Sofa Bed'            -      false
  */
+
+const SIZE_RANK: Record<string, number> = { 'extra large': 0, large: 1, big: 1, grande: 1, medium: 2, mediano: 2, small: 3, chico: 3, mini: 4 };
+const SIZE_RE = new RegExp(`\\b(${Object.keys(SIZE_RANK).join('|')})\\b`, 'g');
+const SHAPE_WORD_RE = /\b(round|rounded|squared|square|rectangular|oval|circular|free ?form|organic|irregular|tall|wide|low)\b/g;
+
+const pluralType = (t: string) => /s$/i.test(t) ? t : /[^aeiou]y$/i.test(t) ? t.slice(0, -1) + 'ies' : /(sh|ch|x)$/i.test(t) ? t + 'es' : t + 's';
+
+/**
+ * An item's Type for sorting, page breaks and summaries, with sizes and shapes folded in:
+ * "Large Round Bowl", "Small Bowl" and "Bowl" are all "Bowls". `sizeRank` orders large, medium, small;
+ * `rest` holds the size and shape words the type text carried, for the summary's shape columns.
+ */
+export function foldCatalogType(clean: string, shape?: string | null): { type: string; sizeRank: number; rest: string } {
+    const lower = clean.toLowerCase();
+    const sizeText = `${lower} ${String(shape || '').toLowerCase()}`;
+    const size = Object.keys(SIZE_RANK).find(w => new RegExp(`\\b${w}\\b`).test(sizeText));
+    const stripped = lower.replace(SIZE_RE, ' ').replace(SHAPE_WORD_RE, ' ').replace(/\s+/g, ' ').trim();
+    const base = canonicalType(stripped || clean, shape).label || titleCase(stripped || clean);
+    const kept = new Set(stripped.split(' '));
+    const rest = lower.split(/\s+/).filter(w => w && !kept.has(w)).join(' ');
+    return { type: pluralType(base), sizeRank: size ? SIZE_RANK[size] : 5, rest };
+}

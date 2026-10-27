@@ -674,7 +674,7 @@ import { buildFamilyFigure } from '../features/entry/hairline/figures/familyFigu
 import type { FigurePart } from '../features/entry/hairline/types';
 import { classifyGeometry } from './geometry';
 import { motifFor } from './shapeTypeLibrary';
-import { canonicalType } from './canonicalType';
+import { canonicalType, foldCatalogType } from './canonicalType';
 
 const hairlineIconCache = new Map<string, string>();
 
@@ -2885,8 +2885,9 @@ async function drawCatalogSummaryPages(
         const wt = parseFloat(norm.weightKg || '0') || 0;
 
         const rawShape = (norm.shape || d.shape || d.Shape || '').trim();
-        const cleanType = resolveCleanProductType(norm, d, rawShape) || 'STONE PIECE';
-        const cleanShape = normalizeSummaryShape(rawShape || (norm.shortDescription && norm.shortDescription !== cleanType ? norm.shortDescription : ''));
+        const typed = catalogTypeOf(norm, d);
+        const cleanType = typed.type;
+        const cleanShape = normalizeSummaryShape(rawShape || typed.rest);
 
         distinctTypesSet.add(cleanType);
         shapeFrequencyMap.set(cleanShape, (shapeFrequencyMap.get(cleanShape) || 0) + qty);
@@ -3743,18 +3744,21 @@ async function drawCatalogCompactGridPage(doc: any, items: CatalogArtifact[], st
     }
 }
 
+/** An item's catalog Type (sizes and shapes folded in, see foldCatalogType) from its resolved product type. */
+function catalogTypeOf(norm: any, d: any): { type: string; sizeRank: number; rest: string } {
+    return foldCatalogType(resolveCleanProductType(norm, d, norm.shape) || 'Stone Piece', norm.shape);
+}
+
 /** The vendor / type / shape / tag an item sorts and page-breaks by. */
-function catalogSortKey(item: CatalogArtifact): { vendor: string; type: string; shape: string; tag: string } {
+function catalogSortKey(item: CatalogArtifact): { vendor: string; type: string; sizeRank: number; shape: string; tag: string } {
     const d = item.data || item;
     const norm = normalizeInventoryData(d);
     const codes: any = item.codes || {};
     const tag = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || norm.vendorId || '').trim().toUpperCase();
     const vendor = (norm.vendorId || (tag.includes('-') ? tag.split('-')[0] : tag.match(/^[A-Z]+/)?.[0]) || '').toUpperCase();
-    const clean = resolveCleanProductType(norm, d, norm.shape) || 'STONE PIECE';
-    // The canonical Type, as Add Entry and the Type filter use: "Bowls", "Large Bowl" and "Bowl" are one Type.
-    const type = (canonicalType(clean, norm.shape).label || clean).toUpperCase();
-    const shape = (norm.shape || norm.shortDescription || '').toUpperCase();
-    return { vendor, type, shape, tag };
+    const t = catalogTypeOf(norm, d);
+    const shape = (norm.shape || t.rest || '').toUpperCase();
+    return { vendor, type: t.type.toUpperCase(), sizeRank: t.sizeRank, shape, tag };
 }
 
 interface CompactRun { vendor: string; vendorName: string; type: string; items: CatalogArtifact[] }
@@ -3792,7 +3796,7 @@ export async function exportCatalogPdf(
     results = [...results].sort((a, b) => {
         const kA = catalogSortKey(a);
         const kB = catalogSortKey(b);
-        return kA.vendor.localeCompare(kB.vendor) || kA.type.localeCompare(kB.type) || kA.shape.localeCompare(kB.shape) || kA.tag.localeCompare(kB.tag);
+        return kA.vendor.localeCompare(kB.vendor) || kA.type.localeCompare(kB.type) || kA.sizeRank - kB.sizeRank || kA.shape.localeCompare(kB.shape) || kA.tag.localeCompare(kB.tag);
     });
 
     // Warm every image before drawing. A grid page only ever draws the first
