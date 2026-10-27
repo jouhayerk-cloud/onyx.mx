@@ -534,3 +534,31 @@ export function hexMapShades(hexes: readonly string[], n = 6): string[] {
     if (top.length < 2) return [];
     return top.map(c => '#' + c.map(x => Math.round(x).toString(16).padStart(2, '0')).join('').toUpperCase());
 }
+
+/** A gentle lift for printed colour bars: saturation x1.15 (+0.03) and lightness x1.04 (+0.02), far milder than enhanceStoneColor. */
+export function liftBandColor(hex: string): string {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) return hex;
+    const v = parseInt(m[1], 16);
+    const r = ((v >> 16) & 255) / 255, g = ((v >> 8) & 255) / 255, b = (v & 255) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    let l = (max + min) / 2;
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+        h /= 6;
+        s = Math.min(1, s * 1.15 + 0.03);
+    }
+    l = Math.min(0.97, l * 1.04 + 0.02);
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    const ch = (t: number) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        const x = t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p;
+        return Math.round(x * 255).toString(16).padStart(2, '0');
+    };
+    if (s === 0) return '#' + Math.round(l * 255).toString(16).padStart(2, '0').repeat(3).toUpperCase();
+    return ('#' + ch(h + 1 / 3) + ch(h) + ch(h - 1 / 3)).toUpperCase();
+}
