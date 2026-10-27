@@ -4,7 +4,6 @@ import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import { 
     InventorySearchPanel,
     InventoryViewPanel,
-    InventorySmartFiltersPanel,
     InventoryFiltersPanel,
     InventoryPanelsRegistrar
 } from './inventoryPanels';
@@ -701,8 +700,8 @@ export const UniversalToolsBar: React.FC = () => {
     if (islandEnabled) {
         if (isInventory && isInvSearchOpen) docks.push(<SubmenuCard key="inv-search" id="inv-search" title={tr("Search")} hideTitle onClose={() => setIsInvSearchOpen(false)}>{renderInvSearch()}</SubmenuCard>);
         if (isInventory && isInvViewSliderOpen) docks.push(<SubmenuCard key="inv-view" id="inv-view" title={tr("View")} hideTitle onClose={() => setIsInvViewSliderOpen(false)}>{renderInvView()}</SubmenuCard>);
-        if (isInventory && isInvFiltersOpen) docks.push(<SubmenuCard key="inv-filters" id="inv-filters" title={tr("Filters")} hideTitle onClose={() => setIsInvFiltersOpen(false)}><InventoryFiltersPanel /></SubmenuCard>);
-        if (isInventory && smartOpen) docks.push(<SubmenuCard key="inv-smart" id="inv-smart" title={tr("Smart Filters")} onClose={() => setSmartOpen(false)}><InventorySmartFiltersPanel /></SubmenuCard>);
+        // Smart filters live inside the Filters card (its Smart toggle), so opening them from elsewhere opens that card.
+        if (isInventory && (isInvFiltersOpen || smartOpen)) docks.push(<SubmenuCard key="inv-filters" id="inv-filters" title={tr("Filters")} hideTitle onClose={() => { setIsInvFiltersOpen(false); setSmartOpen(false); }}><InventoryFiltersPanel /></SubmenuCard>);
         if (isInventory && isSelectionMode && !isPackModalActive) docks.push(<SubmenuCard key="inv-select" id="inv-select" title={tr("Batch Management")} headless onClose={() => setIsSelectionMode(false)}>{renderInvSelection()}</SubmenuCard>);
         if (isFinance && isFinSearchOpen) docks.push(<SubmenuCard key="fin-search" id="fin-search" title={tr("Search Payments")} onClose={() => setIsFinSearchOpen(false)}>{renderFinSearch()}</SubmenuCard>);
         if (isFinance && isFinFiltersOpen) docks.push(<SubmenuCard key="fin-filters" id="fin-filters" title={tr("Filters")} onClose={() => setIsFinFiltersOpen(false)}>{renderFinFilters()}</SubmenuCard>);
@@ -743,11 +742,7 @@ export const UniversalToolsBar: React.FC = () => {
 
             {!islandEnabled && isFinUpcomingOpen && isFinance && renderFinUpcoming("animate-in slide-in-from-top duration-500 overflow-hidden bg-amber-500/5")}
 
-            {!islandEnabled && isInventory && smartOpen && (
-                <InventorySmartFiltersPanel />
-            )}
-
-            {!islandEnabled && isInventory && isInvFiltersOpen && (
+            {!islandEnabled && isInventory && (isInvFiltersOpen || smartOpen) && (
                 renderInvFilters()
             )}
 

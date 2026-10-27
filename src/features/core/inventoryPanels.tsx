@@ -393,21 +393,29 @@ export const InventoryFiltersPanel: React.FC = () => {
     const [invVendorFilter, setInvVendorFilter] = useAtom(inventoryVendorFilterAtom);
     const activeVendors = useAtomValue(activeVendorsAtom);
     const inventoryRows = useAtomValue(inventoryAtom);
+    const [smartOpen, setSmartOpen] = useAtom(isInventorySmartFiltersOpenAtom);
+    const [typeSel, setTypeSel] = useAtom(inventoryShapeFilterAtom);
+    const [materialColorSel, setMaterialColorSel] = useAtom(inventoryMaterialColorFilterAtom);
+    const toggleSmart = () => setSmartOpen(!smartOpen);
 
     const isStatusActive = invStatusFilter !== 'All';
     const aiActiveCount = (contentSel || []).length;
     const isVendorActive = !invVendorFilter.includes('All');
     const vendorActiveCount = isVendorActive ? invVendorFilter.length : 0;
-    const totalActiveCount = (isStatusActive ? 1 : 0) + aiActiveCount + vendorActiveCount;
+    // Material / Colour has no control here any more: an old selection still counts, so Clear can drop it.
+    const smartCount = (typeSel || []).length + (materialColorSel || []).length;
+    const totalActiveCount = (isStatusActive ? 1 : 0) + aiActiveCount + vendorActiveCount + smartCount;
 
     const handleClearAll = () => {
         setInvStatusFilter('All');
         setContentSel([]);
         setInvVendorFilter(['All']);
+        setTypeSel([]);
+        setMaterialColorSel([]);
     };
 
     return (
-        <div className="utb-filters-panel">
+        <div className={`utb-filters-panel ${smartOpen ? 'utb-filters-panel--smart' : ''}`}>
             <div className="utb-row">
                 <div className="utb-scroll-row">
                     {STATUS_FILTERS.map(s => {
@@ -434,6 +442,17 @@ export const InventoryFiltersPanel: React.FC = () => {
                     })}
 
                 </div>
+
+                <button
+                    onClick={toggleSmart}
+                    aria-pressed={smartOpen}
+                    aria-label={tr("Smart Filters")}
+                    title={tr("Smart Filters")}
+                    className="utb-control utb-smart-deploy shrink-0"
+                >
+                    <Shapes size={14} strokeWidth={2.4} />
+                    <span className="utb-label-desktop">{tr("Type")}</span>
+                </button>
 
                 <button
                     onClick={handleClearAll}
@@ -484,6 +503,18 @@ export const InventoryFiltersPanel: React.FC = () => {
                     })}
                 </div>
             </div>
+
+            {smartOpen && (
+                <div className="utb-row">
+                    <div className="utb-scroll-row">
+                        <TypeFilterGroup
+                            rows={inventoryRows || []}
+                            selected={typeSel || []}
+                            onToggle={(k: string) => setTypeSel(prev => toggleKey(prev || [], k))}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
