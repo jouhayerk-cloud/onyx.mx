@@ -4,7 +4,8 @@ import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportIm
 import QRCode from 'qrcode';
 import { getVendorColor } from './excelStyles';
 import JsBarcode from 'jsbarcode';
-import { generateAxonometricDataUrl, resolveItemColor, resolveStonePalette, normalizeHexMapTexture, parseHexMapString } from './axonometric';
+import { generateAxonometricDataUrl, resolveItemColor, normalizeHexMapTexture, parseHexMapString } from './axonometric';
+import { hexMapShades, resolveStonePaletteRaw } from './canonicalColors';
 import { trackDocumentJob } from '../features/print/jobTracking';
 
 // We accept a generalized artifact structure so different modules can use it
@@ -3407,10 +3408,16 @@ function compactTitleChunks(norm: any, itemDataObj: any): TitleChunk[] {
     return titleChunks;
 }
 
-/** The item's stone palette as equal swatches, with a hairline so white stones stay visible on white paper. */
+/**
+ * The item's stone shades as equal swatches: its own hex map when it has one, else the canonical palette
+ * (unboosted). A hairline keeps white stones visible on white paper.
+ */
 function drawStoneBand(doc: any, norm: any, itemDataObj: any, x: number, y: number, w: number, h: number, dir: 'horizontal' | 'vertical') {
-    const palette = resolveStonePalette({ color: norm.color || itemDataObj.color, material: norm.material || itemDataObj.material });
-    const shades = palette.gradientColors.length ? palette.gradientColors : [palette.primary];
+    let shades = hexMapShades(parseHexMapString(extractItemHexString(itemDataObj) || extractItemHexString(norm)));
+    if (!shades.length) {
+        const palette = resolveStonePaletteRaw({ color: norm.color || itemDataObj.color, material: norm.material || itemDataObj.material });
+        shades = palette.gradientColors.length ? palette.gradientColors : [palette.primary];
+    }
     const step = (dir === 'horizontal' ? w : h) / shades.length;
     shades.forEach((hex, k) => {
         const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());

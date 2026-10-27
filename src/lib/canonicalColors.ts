@@ -502,3 +502,35 @@ export function resolveStonePalette(itemOrText: any): StonePalette {
 export function resolveItemColor(itemOrText: any): string {
     return resolveStonePalette(itemOrText).primary;
 }
+
+/** The palette before enhanceStonePalette's saturation boost, for print where the boost reads too strong. */
+export function resolveStonePaletteRaw(itemOrText: any): StonePalette {
+    return resolveRawStonePalette(itemOrText);
+}
+
+/**
+ * An item's own stone shades from its hex map: the `n` most common colours (cells binned at 8 levels per channel,
+ * averaged), lightest first. Skips the cutout background (#FFFFFF), the dark-room gray and the light-room creams,
+ * the same background the db palettes exclude. Empty when fewer than 2 shades remain.
+ */
+export function hexMapShades(hexes: readonly string[], n = 6): string[] {
+    const bins = new Map<number, { c: number; r: number; g: number; b: number }>();
+    for (const h of hexes) {
+        const m = /^#?([0-9a-f]{6})/i.exec(h.trim());
+        if (!m) continue;
+        const v = parseInt(m[1], 16);
+        const r = (v >> 16) & 255, g = (v >> 8) & 255, b = v & 255;
+        if (r === 255 && g === 255 && b === 255) continue;
+        if (Math.abs(r - 109) <= 14 && Math.abs(g - 108) <= 14 && Math.abs(b - 114) <= 14) continue;
+        if (r >= 244 && g >= 232 && b >= 165) continue;
+        const k = ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5);
+        const bin = bins.get(k) ?? { c: 0, r: 0, g: 0, b: 0 };
+        bin.c++; bin.r += r; bin.g += g; bin.b += b;
+        bins.set(k, bin);
+    }
+    const top = [...bins.values()].sort((a, b) => b.c - a.c).slice(0, n)
+        .map(x => [x.r / x.c, x.g / x.c, x.b / x.c])
+        .sort((a, b) => (b[0] * 0.299 + b[1] * 0.587 + b[2] * 0.114) - (a[0] * 0.299 + a[1] * 0.587 + a[2] * 0.114));
+    if (top.length < 2) return [];
+    return top.map(c => '#' + c.map(x => Math.round(x).toString(16).padStart(2, '0')).join('').toUpperCase());
+}
