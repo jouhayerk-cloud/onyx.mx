@@ -190,6 +190,16 @@ function loadSdrDataUrl(imageUrl: string): Promise<string> {
     });
 }
 
+/** The cut-out PNG stored in spatial_masks for photo `index` (angle_N head), or null. */
+function storedAngleCutout(row: any, index: number): string | null {
+    let masks = row?.spatial_masks ?? row?.spatialMasks ?? row?.data?.spatial_masks ?? row?.data?.spatialMasks;
+    if (typeof masks === 'string') { try { masks = JSON.parse(masks); } catch { return null; } }
+    const list = masks && typeof masks === 'object' ? (masks as Record<string, unknown>)[`angle_${index}`] : null;
+    const head = Array.isArray(list) ? list[0] as Record<string, unknown> | undefined : undefined;
+    const url = head && typeof head.mask === 'string' ? head.mask : null;
+    return url ? (getCleanImageUrl(url) || url) : null;
+}
+
 /** Contour of a cutout's opaque area, in that image's pixels. */
 async function traceCutout(cutoutUrl: string, tolerance: number) {
     const maskImg = await loadImage(cutoutUrl);
@@ -894,7 +904,10 @@ export const processSingleItem = async (op: BatchOp, ctx: PipelineContext) => {
                 // be measured as the stone. The cut-out (transparent
                 // backdrop), else the original photo, instead.
                 const lightFrame = isLightRoomKey(result.cleanedKey, imageUrl);
-                const colorSource = segWhite || (!lightFrame && getCleanImageUrl(result.cleanedUrl)) || getCleanImageUrl(result.cutoutUrl) || imageUrl;
+                // A cut-out comes first, this run's or the one stored for this photo: its transparent backdrop means
+                // only stone is measured. The dark-room clean frame let the room's edges into the map.
+                const storedCutout = storedAngleCutout(op.item, op.imageIndex || 0);
+                const colorSource = segWhite || getCleanImageUrl(result.cutoutUrl) || storedCutout || (!lightFrame && getCleanImageUrl(result.cleanedUrl)) || imageUrl;
                 const bitmapRes = await generateBitmapAndHexMap(colorSource, 60, 60, 80, 149, 61, 199, item.material, item.shape, item.vendorColor);
                 // generateBitmapAndHexMap never throws: on a load failure, a
                 // CORS refusal or its timeout it returns an all-#FFFFFF grid,
