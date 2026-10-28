@@ -3,6 +3,8 @@ export declare class Gradient {
     /** Accepts a CSS selector or the canvas element itself, and optionally the four palette colours (hex). */
     initGradient(target: string | HTMLCanvasElement, colors?: string[]): this;
     triggerBurst(): void;
+    setTargetColors(hexes: string[]): void;
+    applyColorsNow(): void;
     connect(): Promise<void>;
     disconnect(): void;
     play(): void;

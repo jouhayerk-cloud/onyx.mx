@@ -1,59 +1,52 @@
 import React, { useEffect, useRef } from 'react';
 import { useAtomValue } from 'jotai';
 import { Gradient } from '../lib/LiquidGradientMesh';
-import { performanceModeAtom, themeAtom } from '../lib/atoms';
+import { performanceModeAtom, themeAtom, visibleInventoryAtom } from '../lib/atoms';
+import { gradientSlotsFromShades } from '../lib/canonicalColors';
+import { itemShades, hasHexMap } from '../lib/itemShades';
 import '../styles/liquid-gradient.css';
+
+// The background's theme colours (the --onyx-bg-* overrides they once read were never defined).
+const THEME_COLORS = {
+    talan: ['#1e2120', '#222627', '#2f3f40', '#4a3d2c'], // dark mineral slate, slate, subtle teal wave, warm bronze
+    aqua: ['#EEE8DB', '#9DC3C4', '#CBAE73', '#69584D'],  // cream / bone, slate aqua, muted gold, dusty taupe
+};
 
 export const LiquidOnyxBackground: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const gradientRef = useRef<any>(null);
     const performanceMode = useAtomValue(performanceModeAtom);
     const theme = useAtomValue(themeAtom);
-
+    const rows = useAtomValue(visibleInventoryAtom);
+    // The palette library: every visible item that has a hex map, in a shuffled ring the clicks walk through.
+    const palettesRef = useRef<string[][]>([]);
+    const nextRef = useRef(0);
     useEffect(() => {
-        if (!canvasRef.current) return;
+        const list: string[][] = [];
+        for (const r of rows) {
+            const d: any = (r as any)?.data || r;
+            const sh = d && hasHexMap(d) ? itemShades(d) : null;
+            if (sh && sh.length >= 4) list.push(sh);
+        }
+        for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+        palettesRef.current = list;
+        nextRef.current = 0;
+    }, [rows]);
 
-        const style = getComputedStyle(document.body);
-        const getHex = (cssVal: string, fallback: string) => {
-            const val = cssVal.includes('var(') || cssVal.includes('color-mix') ? cssVal : style.getPropertyValue(cssVal).trim();
-            if (!val) return fallback;
-            if (val.startsWith('#')) return val;
-            const ctx = document.createElement("canvas").getContext("2d");
-            if (ctx) {
-                ctx.fillStyle = val;
-                return ctx.fillStyle;
-            }
-            return fallback;
-        };
+    // The theme's own colours: the first frame, and the fallback before any hex maps load.
+    const themeRef = useRef(theme);
+    themeRef.current = theme;
 
-        const palettes = {
-            talan: { // Dark Stone (Dark Mode)
-                c1: getHex('--onyx-bg-1-dark', '#1e2120'), // Less dark mineral slate
-                c2: getHex('--onyx-bg-2-dark', '#222627'), // Refined slate stone
-                c3: getHex('--onyx-bg-3-dark', '#2f3f40'), // Visible subtle teal wave
-                c4: getHex('--onyx-bg-4-dark', '#4a3d2c'), // Warm bronze amber highlight
-            },
-            aqua: { // Coastal Stone (Light Mode)
-                c1: getHex('--onyx-bg-1-light', '#EEE8DB'), // Soft Cream/Bone
-                c2: getHex('--onyx-bg-2-light', '#9DC3C4'), // Desaturated Slate/Aqua
-                c3: getHex('--onyx-bg-3-light', '#CBAE73'), // Muted Warm Gold
-                c4: getHex('--onyx-bg-4-light', '#69584D'), // Dusty Taupe/Brown
-            }
-        };
-
-        const activePalette = theme === 'talan' ? palettes.talan : palettes.aqua;
-
+    // One Gradient for the app's lifetime: a theme change recolours it in place, because a rebuild per theme or
+    // language switch left the old WebGL context alive (iOS Safari allows only a handful). No loseContext() on
+    // cleanup: React StrictMode remounts on the same canvas, and a lost context there never draws again.
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
         const gradient = new Gradient();
         gradientRef.current = gradient;
-        
-        // Pass colors directly to bypass the buggy CSS variable polling in LiquidGradientMesh
-        gradient.initGradient(canvasRef.current, [
-            activePalette.c1,
-            activePalette.c2,
-            activePalette.c3,
-            activePalette.c4
-        ]);
-        
+        gradient.initGradient(canvas, THEME_COLORS[themeRef.current === 'talan' ? 'talan' : 'aqua']);
+
         // The library's own init path is two requestAnimationFrame hops deep
         // (connect() schedules one, which schedules the mesh/animate setup).
         // Pausing synchronously here used to race that and always win --
@@ -63,10 +56,16 @@ export const LiquidOnyxBackground: React.FC = () => {
         // first render actually lands, then stop the animation loop.
         requestAnimationFrame(() => requestAnimationFrame(() => gradient.pause()));
 
+        const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
         const handleClick = () => {
-            if (typeof gradient.triggerBurst === 'function') {
-                gradient.triggerBurst();
+            // Next item's palette (none loaded yet: the theme colours stay).
+            const lib = palettesRef.current;
+            if (lib.length) {
+                const slots = gradientSlotsFromShades(lib[nextRef.current++ % lib.length], themeRef.current === 'talan');
+                if (slots.length) gradient.setTargetColors?.(slots);
             }
+            if (reducedMotion?.matches) gradient.applyColorsNow?.();
+            else gradient.triggerBurst?.();
         };
         window.addEventListener('click', handleClick);
 
@@ -74,8 +73,19 @@ export const LiquidOnyxBackground: React.FC = () => {
             gradient.pause();
             gradient.disconnect();
             window.removeEventListener('click', handleClick);
+            gradientRef.current = null;
         };
-    }, [theme]); // Re-initialize when theme changes
+    }, []);
+
+    // Theme switch: the theme's colours, at once, on the same Gradient.
+    const firstTheme = useRef(true);
+    useEffect(() => {
+        if (firstTheme.current) { firstTheme.current = false; return; }
+        const g = gradientRef.current;
+        if (!g) return;
+        g.setTargetColors?.(THEME_COLORS[theme === 'talan' ? 'talan' : 'aqua']);
+        g.applyColorsNow?.();
+    }, [theme]);
 
     // Performance mode is handled by the initial pause and burst logic now.
 

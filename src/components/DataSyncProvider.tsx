@@ -45,20 +45,24 @@ export const DataSyncProvider: React.FC = () => {
         let currentInventoryDocs: any[] = [];
         let currentProductionDocs: any[] = [];
 
+        // An unchanged document keeps its record object across syncs (same RxDB revision), so the per-row caches
+        // keyed by that object (hex maps, colour bars, memoised rows) survive instead of being rebuilt every sync.
+        const recordCache = new Map<string, { rev: string; rec: any }>();
+        const toRecord = (doc: any, source: 'inventory' | 'production') => {
+            const key = `${source}:${doc.primary ?? doc.id}`;
+            const rev = String(doc.revision ?? '');
+            const hit = recordCache.get(key);
+            if (hit && rev && hit.rev === rev) return hit.rec;
+            const x = doc.toJSON();
+            const rec = { ...x, source, row: x.id, data: normalizeInventoryData(x) };
+            recordCache.set(key, { rev, rec });
+            return rec;
+        };
+
         const updateInventoryAtom = () => {
             const allRecords = [
-                ...currentInventoryDocs.map(x => ({
-                    ...x,
-                    source: 'inventory',
-                    row: x.id,
-                    data: normalizeInventoryData(x)
-                })),
-                ...currentProductionDocs.map(x => ({
-                    ...x,
-                    source: 'production',
-                    row: x.id,
-                    data: normalizeInventoryData(x)
-                }))
+                ...currentInventoryDocs.map(x => toRecord(x, 'inventory')),
+                ...currentProductionDocs.map(x => toRecord(x, 'production'))
             ];
 
             const storeStatuses = ['available', 'avaiable', 'catalog', 'store', 'market'];
@@ -93,7 +97,7 @@ export const DataSyncProvider: React.FC = () => {
                     is_hidden: { $ne: true } 
                 } 
             }).$.subscribe((docs: any[]) => {
-                currentInventoryDocs = docs.map(d => d.toJSON());
+                currentInventoryDocs = docs;
                 updateInventoryAtom();
                 setIsInitialSyncComplete(true);
                 setIsSyncing(false);
@@ -106,7 +110,7 @@ export const DataSyncProvider: React.FC = () => {
                     is_hidden: { $ne: true } 
                 } 
             }).$.subscribe((docs: any[]) => {
-                currentProductionDocs = docs.map(d => d.toJSON());
+                currentProductionDocs = docs;
                 updateInventoryAtom();
             })
         );

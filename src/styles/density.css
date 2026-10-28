@@ -1948,3 +1948,22 @@ html.style-slab .inv-scope .inv-grid.inv-row.is-open:not(:hover) {
 @media (prefers-reduced-transparency: reduce) {
     .inv-drawer[style*="--glow-a"]::before, .inv-row.is-open::before { display: none; }
 }
+
+/* GEN off: the tile keeps only its header (check and store colours), at its own size. */
+.inv-dflow > .inv-gen.inv-gen--min { flex: 0 1 auto; min-height: 0; align-self: flex-start; }
+.inv-gen--min .inv-gen-scroll { position: static; overflow: visible; padding: 0; }
+
+/* ── Settings > Performance: Max ──────────────────────────────────────────
+   Lighter glass inside inventory rows, open panels, cards and sheets: one
+   blur per surface (the surface's own), none on what sits inside it, and the
+   row at the 18px row blur instead of the 30px .glass-sm one. The gradient
+   halves its burst frames (LiquidGradientMesh). Off by default; it may read
+   slightly flatter, which is the trade. */
+html.performance-mode-active :is(.inv-row, .inv-drawer, .inv-card, .inv-sheet) * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+html.performance-mode-active.style-slab .inv-scope .inv-grid.inv-row:is(*, :hover, .is-open) {
+    -webkit-backdrop-filter: blur(18px) saturate(1.4) !important;
+    backdrop-filter: blur(18px) saturate(1.4) !important;
+}

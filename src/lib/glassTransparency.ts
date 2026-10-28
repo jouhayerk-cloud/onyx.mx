@@ -6,9 +6,11 @@
  *   - Stored in localStorage key: 'onyx_glass_transparency'.
  *   - CSS opacity factor:
  *       100% transparency -> factor = 1.000 (Base full-glass translucency)
- *       50% transparency  -> factor = 1.700 (Half transparency = ~1.7x slab density)
+ *       50% transparency  -> factor = 3.000 (3x the glass fill: clearly more opaque; every surface caps below solid)
  *
- *   Formula: factor = 1.0 + ((100 - transparency) / 50) * 0.7
+ *   Formula: factor = 1.0 + ((100 - transparency) / 50) * 2.0
+ *   Reaches both glass systems: the slab tokens (--slab-glass-*, slab-glass.css) and the Liquid fills
+ *   (--lq-fill-*, tokens.css). It was 1.0-1.7 and only the slab tokens, so the slider barely showed.
  *   Updates: --glass-opacity-factor and --glass-density-mult on document.documentElement
  */
 
@@ -22,7 +24,7 @@ export const MAX_GLASS_TRANSPARENCY = 100;
  */
 export function transparencyToFactor(transparency: number): number {
   const clamped = Math.max(MIN_GLASS_TRANSPARENCY, Math.min(MAX_GLASS_TRANSPARENCY, transparency));
-  return 1.0 + ((MAX_GLASS_TRANSPARENCY - clamped) / (MAX_GLASS_TRANSPARENCY - MIN_GLASS_TRANSPARENCY)) * 0.7;
+  return 1.0 + ((MAX_GLASS_TRANSPARENCY - clamped) / (MAX_GLASS_TRANSPARENCY - MIN_GLASS_TRANSPARENCY)) * 2.0;
 }
 
 /**

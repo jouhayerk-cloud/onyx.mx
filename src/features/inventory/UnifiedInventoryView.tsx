@@ -52,6 +52,7 @@ import {
     showInventoryUsdAtom,
     showInventoryPaymentsAtom,
     showInventoryLogisticsAtom,
+    showInventoryGeneratedAtom,
     inventoryHexRangeAtom
 } from '../../lib/atoms';
 import { itemHistogram, rangeShare, RANGE_MIN_SHARE } from '../../lib/hexColorMap';
@@ -62,7 +63,8 @@ import { rowMatchesContent } from '../../lib/aiContent';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages, toTitleCase, extractItemHexString } from '../../lib/utils';
 import { parseHexMapString } from '../../lib/axonometric';
-import { itemBandShades } from '../../lib/canonicalColors';
+import { itemShades } from '../../lib/itemShades';
+import { selectAtom } from 'jotai/utils';
 import { InventoryItemData, UploadedFile, InventoryItem } from '../../lib/Types';
 import { useHybridSearch, QUERY_VECTOR_DIMS } from '../../lib/embeddings/useHybridSearch';
 import type { VectorIndex } from '../../lib/embeddings/vectorIndex';
@@ -147,9 +149,7 @@ const swatchFor = (name: string): string => {
 
 // The item's stone colour bar, from its own hex map (the one the axo texture uses), as the catalogs draw it.
 const StoneBand = ({ data, norm, dir }: { data: any; norm: any; dir: 'h' | 'v' | 'row' }) => {
-    const shades = useMemo(
-        () => itemBandShades(parseHexMapString(extractItemHexString(data) || extractItemHexString(norm)), { color: norm.color, material: norm.material }),
-        [data, norm]);
+    const shades = itemShades(data || norm);
     return (
         <span className={`inv-band inv-band--${dir}`} aria-hidden="true">
             {shades.map((h, i) => <span key={i} style={{ backgroundColor: h }} />)}
@@ -247,7 +247,7 @@ const DriveImage = ({ src, className, ...props }: any) => {
     const imgProps = { ...props };
     if (isIOS) {
         delete imgProps.loading;
-        delete imgProps.decoding;
+        if (!imgProps.decoding) imgProps.decoding = "async";
     } else {
         if (!imgProps.loading) imgProps.loading = "lazy";
         if (!imgProps.decoding) imgProps.decoding = "async";
@@ -352,6 +352,18 @@ function getTextContrast(hex: string): string {
     return yiq >= 128 ? '#000000' : '#ffffff';
 }
 
+// Crate name parts, worked out once per crate for each inventory / crates snapshot (every row's badge asked again).
+const crateCache = new WeakMap<object, WeakMap<object, Map<string, ReturnType<typeof getDynamicCrateIdComponents>>>>();
+const crateParts = (crate: any, docs: any[], inv: any[]) => {
+    let byDocs = crateCache.get(inv);
+    if (!byDocs) { byDocs = new WeakMap(); crateCache.set(inv, byDocs); }
+    let m = byDocs.get(docs);
+    if (!m) { m = new Map(); byDocs.set(docs, m); }
+    let parts = m.get(crate.id);
+    if (!parts) { parts = getDynamicCrateIdComponents(crate, docs, inv); m.set(crate.id, parts); }
+    return parts;
+};
+
 const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isCompact = false }: { crateId: string, itemId: string, logisticsDocs: any[], allInventory: any[], isCompact?: boolean }) => {
     const crate = logisticsDocs?.find((c: any) => c.id === crateId);
     
@@ -380,7 +392,7 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
         );
     }
 
-    const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(crate, logisticsDocs || [], allInventory || []);
+    const { date, vendors: vList, sequence } = crateParts(crate, logisticsDocs || [], allInventory || []);
     // The same composition CratesInventoryView uses, so the badge in a row and
     // the header in the warehouse always read as the same crate.
     const crateName = date ? `${date}${vList.join('')}${sequence}` : (sequence || crate.id?.slice(0, 8).toUpperCase());
@@ -430,25 +442,28 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
 
 const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs, deployedItemsMap, logisticsDocs, allInventory }: any) => {
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
-    const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+    const setSelectedIds = useSetAtom(selectedInventoryIdsAtom);
+    const rowId = item.row ?? item.data?.id;
+    const isSelected = useAtomValue(useMemo(() => selectAtom(selectedInventoryIdsAtom, ids => ids.includes(rowId)), [rowId]));
     const showMxn = useAtomValue(showInventoryMxnAtom);
     const showUsd = useAtomValue(showInventoryUsdAtom);
     const showPay = useAtomValue(showInventoryPaymentsAtom);
     const showLog = useAtomValue(showInventoryLogisticsAtom);
+    const showGen = useAtomValue(showInventoryGeneratedAtom);
 
     const theme = useAtomValue(themeAtom);
     const qrColor = theme === 'aqua' ? '#000000' : '#FFFFFF'; // aqua is the only light theme left
     
     // Store Bag Implementation
-    const [bag, setBag] = useAtom(storeShoppingBagAtom);
-    const inBag = bag.some((b: any) => b.row === item.row);
+    const setBag = useSetAtom(storeShoppingBagAtom);
+    const inBag = useAtomValue(useMemo(() => selectAtom(storeShoppingBagAtom, b => b.some((x: any) => x.row === item.row)), [item.row]));
     const handleToggleBag = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (inBag) {
-            setBag(bag.filter((b: any) => b.row !== item.row));
+            setBag(bag => bag.filter((b: any) => b.row !== item.row));
             toast.error(tr("Removed from Store Bag"), { icon: '🗑️' });
         } else {
-            setBag([...bag, item]);
+            setBag(bag => [...bag, item]);
             toast.success(tr("Added to Store Bag"), { style: { background: 'var(--main-color)', color: '#000' }, icon: '🛍️' });
         }
     };
@@ -557,7 +572,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     // The open row's glow: its own colour-bar shades, lightest / middle / darkest, as tint variables (computed only when open).
     const glowVars = useMemo(() => {
         if (!isExpanded) return undefined;
-        const sh = itemBandShades(parseHexMapString(extractItemHexString(itemData) || extractItemHexString(norm)), { color: norm.color, material: norm.material });
+        const sh = itemShades(itemData || norm);
         return { '--glow-a': sh[0], '--glow-b': sh[Math.floor(sh.length / 2)], '--glow-c': sh[sh.length - 1] } as React.CSSProperties;
     }, [isExpanded, itemData, norm]);
     const cutoutUrls = useMemo(() => listCutoutUrls(itemData, norm, collectAllImages(norm, { dropVideos: true }).length), [itemData, norm]);
@@ -907,7 +922,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     ? <span className="inv-badge" data-tone="paid" title={tr("Title and body agree with the stone, size and quantity on record, and the title fits the export")}><Check size={11} strokeWidth={3} aria-hidden="true" />{tr("Consistent")}</span>
                     : <span className="inv-badge" data-tone="req" title={aiNotes.join('\n')}>{aiNotes.length} {aiNotes.length === 1 ? tr("issue") : tr("issues")}</span>)}
             </h5>
-            {!hasAnyAi ? (
+            {!showGen ? null : !hasAnyAi ? (
                 <p className="inv-ai-empty">{tr("No AI content yet — run the batch processor on this item.")}</p>
             ) : (
                 <div className="inv-ai">
@@ -962,7 +977,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
     // GENERATED as a tile of the open row's gallery flow: each title under its label, full width, the whole body.
     const genTile = (
-        <section className="inv-dtile inv-gen" aria-label={tr("Generated content")}>
+        <section className={`inv-dtile inv-gen${showGen ? '' : ' inv-gen--min'}`} aria-label={tr("Generated content")}>
             {/* The scroller is laid out absolutely, so the tile takes the gallery row's height, not the body's. */}
             <div className="inv-gen-scroll" tabIndex={0}>
             <h5 className="inv-dlbl inv-gen-h">
@@ -972,7 +987,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     : <span className="inv-badge" data-tone="req" title={aiNotes.join('\n')}>{aiNotes.length} {aiNotes.length === 1 ? tr("issue") : tr("issues")}</span>)}
                 {renderColorBubbles('inv-gen-colors')}
             </h5>
-            {!hasAnyAi ? (
+            {!showGen ? null : !hasAnyAi ? (
                 <p className="inv-ai-empty">{tr("No AI content yet — run the batch processor on this item.")}</p>
             ) : (
                 <>
@@ -1102,8 +1117,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     <div className="inv-c-rail flex flex-col items-center justify-center gap-1"
                         onClick={isSelectionMode ? (e) => { e.stopPropagation(); handleToggleSelection(item.row ?? item.data?.id); } : undefined}>
                         {isSelectionMode ? (
-                            <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all ${selectedIds.includes(item.row ?? item.data?.id) ? 'bg-(--main-color) border-(--main-color)' : 'border-white/25'}`}>
-                                {selectedIds.includes(item.row ?? item.data?.id) && <Check size={12} className="text-black" strokeWidth={4} />}
+                            <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'border-white/25'}`}>
+                                {isSelected && <Check size={12} className="text-black" strokeWidth={4} />}
                             </div>
                         ) : (
                             <>
@@ -1261,8 +1276,6 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const ledColor = payStatus ? col : '#38bdf8';
     const payLabel = getPayLabel();
     const payTone = payStatus === 'GREEN' ? 'paid' : payStatus === 'YELLOW' ? 'req' : payStatus === 'RED' ? 'part' : 'new';
-    const rowId = item.row ?? item.data?.id;
-    const isSelected = selectedIds.includes(rowId);
     const sheetIdx = Math.min(modalIdx, Math.max(0, mediaUrls.length - 1));
     const heroIdx = Math.min(cardIdx, Math.max(0, mediaUrls.length - 1));
 
@@ -2114,8 +2127,6 @@ export const UnifiedInventoryView = () => {
         }, 2000);
         return () => clearTimeout(timer);
     }, [items]);
-    const [bgIdx, setBgIdx] = useState(0);
-    useEffect(() => { if (bgMediaUrls.length < 2) return; const i = setInterval(() => setBgIdx(p => (p + 1) % bgMediaUrls.length), 6000); return () => clearInterval(i); }, [bgMediaUrls]);
 
     const toggleExpandCard = useCallback((id: string, stage?: number) => setExpandedCards(prev => {
         const current = prev[id] || 0;
@@ -2250,7 +2261,7 @@ export const UnifiedInventoryView = () => {
                                             }}
                                         >
                                             <div className="inv-cq" style={{
-                                                transform: `scale(${listScale}) translateZ(0)`,
+                                                transform: listScale === 1 ? undefined : `scale(${listScale}) translateZ(0)`,
                                                 transformOrigin: 'top left',
                                                 width: `${100 / listScale}%`,
                                                 backfaceVisibility: 'hidden',

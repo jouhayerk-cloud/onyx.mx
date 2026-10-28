@@ -20,6 +20,7 @@ import {
     showInventoryUsdAtom,
     showInventoryPaymentsAtom,
     showInventoryLogisticsAtom,
+    showInventoryGeneratedAtom,
     isInventoryViewSliderOpenAtom,
     inventoryViewSliderAtom,
     inventoryViewModeAtom,
@@ -223,6 +224,7 @@ export const InventoryViewPanel: React.FC = () => {
     const [showUsd, setShowUsd] = useAtom(showInventoryUsdAtom);
     const [showPay, setShowPay] = useAtom(showInventoryPaymentsAtom);
     const [showLog, setShowLog] = useAtom(showInventoryLogisticsAtom);
+    const [showGen, setShowGen] = useAtom(showInventoryGeneratedAtom);
 
     const handleToggleDensity = () => {
         if (invSlider <= 33) {
@@ -272,6 +274,8 @@ export const InventoryViewPanel: React.FC = () => {
                     title={tr("Show payment details")}><span>{tr("PAY")}</span></button>
                 <button aria-pressed={showLog} onClick={() => setShowLog(!showLog)} className="utb-control utb-sort-chip"
                     title={tr("Show logistics details")}><span>{tr("LOG")}</span></button>
+                <button aria-pressed={showGen} onClick={() => setShowGen(!showGen)} className="utb-control utb-sort-chip"
+                    title={tr("Show generated content: titles, type and body")}><span>{tr("GEN")}</span></button>
             </div>
 
             <div className="utb-divider shrink-0" aria-hidden="true" />

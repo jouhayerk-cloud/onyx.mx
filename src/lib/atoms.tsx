@@ -360,6 +360,8 @@ export const showInventoryUsdAtom = atomWithStorage<boolean>('showInventoryUsd',
 // View bar toggles for the open item's payments table and logistics section.
 export const showInventoryPaymentsAtom = atomWithStorage<boolean>('showInventoryPayments', true);
 export const showInventoryLogisticsAtom = atomWithStorage<boolean>('showInventoryLogistics', true);
+// View bar toggle for the generated copy (Shopify / invoice titles, type, body); its check and colours stay.
+export const showInventoryGeneratedAtom = atomWithStorage<boolean>('showInventoryGenerated', true);
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export type InventoryStatusFilter = 'All' | 'Requested' | 'Paid' | 'Acquired' | 'New' | 'Shipped' | 'Packed' | 'Not Packed' | 'Not Shipped';
 

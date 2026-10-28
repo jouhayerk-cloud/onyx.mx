@@ -5,7 +5,7 @@ import { tr } from '../lib/i18n';
 
 export interface ExportConfig {
     title: string;
-    method: 'grid' | 'single' | 'list' | 'compact' | 'compactGrid';
+    method: 'grid' | 'single' | 'list' | 'compact' | 'compactGrid' | 'largeColor';
     includeImages: boolean;
     notes: string;
     bruteWeight?: string;
@@ -233,7 +233,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                                 9 Per Page
                                             </span>
                                         </div>
-                                        <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'compact' ? 'text-white' : 'text-white/70'}`}>{tr("Compact Catalog")}</p>
+                                        <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'compact' ? 'text-white' : 'text-white/70'}`}>{tr("Ribbon Labels")}</p>
                                         <p className="text-[10px] font-medium text-white/35 mt-0.5">{tr("Multiple items per page · Cutout PNGs & Axo · Barcode & Retail")}</p>
                                     </button>
 
@@ -262,8 +262,37 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                                 6 Per Page
                                             </span>
                                         </div>
-                                        <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'compactGrid' ? 'text-white' : 'text-white/70'}`}>{tr("Compact Grid")}</p>
+                                        <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'compactGrid' ? 'text-white' : 'text-white/70'}`}>{tr("Color Labels")}</p>
                                         <p className="text-[10px] font-medium text-white/35 mt-0.5">{tr("Landscape A4 · Packing-label panels · Stone colours, axo & codes")}</p>
+                                    </button>
+
+                                    <button 
+                                        type="button"
+                                        onClick={() => setConfig({ ...config, method: 'largeColor' })}
+                                        className={`group relative flex flex-col p-4.5 rounded-2xl border transition-all text-left backdrop-blur-xl ${
+                                            config.method === 'largeColor' 
+                                                ? 'bg-(--main-color)/14 border-(--main-color)/50 shadow-[0_0_30px_rgba(var(--main-color),0.22),inset_0_1px_1px_rgba(255,255,255,0.22)]' 
+                                                : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.06]'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between mb-2.5">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors ${
+                                                config.method === 'largeColor' 
+                                                    ? 'bg-(--main-color)/25 border-(--main-color)/40 text-(--main-color)' 
+                                                    : 'bg-white/[0.04] border-white/[0.08] text-white/40'
+                                            }`}>
+                                                <LayoutDashboard size={18} />
+                                            </div>
+                                            <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                                                config.method === 'largeColor'
+                                                    ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
+                                                    : 'bg-white/[0.03] border-white/[0.06] text-white/30'
+                                            }`}>
+                                                4 Per Page
+                                            </span>
+                                        </div>
+                                        <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'largeColor' ? 'text-white' : 'text-white/70'}`}>{tr("Large Color")}</p>
+                                        <p className="text-[10px] font-medium text-white/35 mt-0.5">{tr("Portrait A4 · Large cutout PNG labels · Stone colours, axo & codes")}</p>
                                     </button>
                                 </div>
                             </div>

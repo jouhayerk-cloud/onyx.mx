@@ -118,10 +118,10 @@ html.theme-aqua {
   --lq-filter-control: blur(var(--lq-blur-control)) saturate(1.5);
 
   /* Dark default (Talan / Obsidian) */
-  --lq-fill-surface: rgba(10, 12, 16, 0.14);
-  --lq-fill-panel: rgba(10, 12, 16, 0.22);
-  --lq-fill-control: rgba(255, 255, 255, 0.06);
-  --lq-fill-control-hover: rgba(255, 255, 255, 0.12);
+  --lq-fill-surface: rgba(10, 12, 16, min(0.92, calc(0.14 * var(--glass-opacity-factor, 1))));
+  --lq-fill-panel: rgba(10, 12, 16, min(0.92, calc(0.22 * var(--glass-opacity-factor, 1))));
+  --lq-fill-control: rgba(255, 255, 255, min(0.92, calc(0.06 * var(--glass-opacity-factor, 1))));
+  --lq-fill-control-hover: rgba(255, 255, 255, min(0.92, calc(0.12 * var(--glass-opacity-factor, 1))));
   --lq-rim: rgba(255, 255, 255, 0.22);
   --lq-rim-subtle: rgba(255, 255, 255, 0.12);
   --lq-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0.01) 62%, rgba(255, 255, 255, 0.08) 100%);
@@ -146,10 +146,10 @@ html.theme-aqua {
 
 html.theme-aqua {
   /* Aqua (Light Coastal Stone) */
-  --lq-fill-surface: rgba(255, 255, 255, 0.18);
-  --lq-fill-panel: rgba(255, 255, 255, 0.24);
-  --lq-fill-control: rgba(11, 42, 51, 0.06);
-  --lq-fill-control-hover: rgba(11, 42, 51, 0.12);
+  --lq-fill-surface: rgba(255, 255, 255, min(0.92, calc(0.18 * var(--glass-opacity-factor, 1))));
+  --lq-fill-panel: rgba(255, 255, 255, min(0.92, calc(0.24 * var(--glass-opacity-factor, 1))));
+  --lq-fill-control: rgba(11, 42, 51, min(0.92, calc(0.06 * var(--glass-opacity-factor, 1))));
+  --lq-fill-control-hover: rgba(11, 42, 51, min(0.92, calc(0.12 * var(--glass-opacity-factor, 1))));
   --lq-rim: rgba(11, 42, 51, 0.15);
   --lq-rim-subtle: rgba(11, 42, 51, 0.08);
   --lq-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.18) 38%, rgba(255, 255, 255, 0.04) 62%, rgba(255, 255, 255, 0.25) 100%);
@@ -169,14 +169,14 @@ html.theme-aqua {
 /* Slab glass recipe everywhere (pre-B1, 3d4168ce): SVG refraction is off in every browser */
 @supports (display: block) {
   :root {
-    --lq-fill-surface: rgba(14, 18, 28, 0.16);
-    --lq-fill-panel: rgba(14, 18, 28, 0.22);
+    --lq-fill-surface: rgba(14, 18, 28, min(0.92, calc(0.16 * var(--glass-opacity-factor, 1))));
+    --lq-fill-panel: rgba(14, 18, 28, min(0.92, calc(0.22 * var(--glass-opacity-factor, 1))));
     --lq-rim: var(--slab-glass-rim, rgba(255, 255, 255, 0.22));
     --lq-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.06) 38%, rgba(255, 255, 255, 0.01) 62%, rgba(255, 255, 255, 0.10) 100%);
   }
   html.theme-aqua {
-    --lq-fill-surface: rgba(255, 255, 255, 0.18);
-    --lq-fill-panel: rgba(255, 255, 255, 0.24);
+    --lq-fill-surface: rgba(255, 255, 255, min(0.92, calc(0.18 * var(--glass-opacity-factor, 1))));
+    --lq-fill-panel: rgba(255, 255, 255, min(0.92, calc(0.24 * var(--glass-opacity-factor, 1))));
     --lq-rim: var(--slab-glass-rim, rgba(11, 42, 51, 0.15));
     --lq-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.12) 42%, rgba(255, 255, 255, 0.02) 65%, rgba(255, 255, 255, 0.22) 100%);
   }

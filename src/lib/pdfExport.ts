@@ -2696,9 +2696,9 @@ export function endImageSession() {
 function catalogWantedImages(
     results: CatalogArtifact[],
     exportType: string,
-    method: 'grid' | 'single' | 'compact' | 'compactGrid',
+    method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor',
 ): string[] {
-    if (method === 'compact' || method === 'compactGrid') return [];
+    if (method === 'compact' || method === 'compactGrid' || method === 'largeColor') return [];
     return results.flatMap(r => {
         const list = getItemImages(r);
         if (exportType === 'catalog') {
@@ -3440,11 +3440,15 @@ async function drawCatalogCompactPage(
 ) {
     const pageItems = items.slice(startIndex, startIndex + itemsPerPage);
 
-    // Clean frameless high-density layout: 9 items per page, reduced margins since footer is removed
-    const startY = 9.0;
-    const bottomLimit = PH - 6.0; // Clear bottom edge (no footer on compact item pages)
+    // Unified spacing scale (1.5 / 3.0 / 4.5 mm) and 3-tier typography (title 10.5pt, detail 8.5pt, micro 6.5pt)
+    const S1 = 1.5, S2 = 3.0, S3 = 4.5;
+    const TITLE_PT = 10.5, DETAIL_PT = 8.5, MICRO_PT = 6.5;
+    const PT = 0.3528, CAP = 0.72, DESC = 0.21;
+
+    const startY = 2 * S3; // 9.0 mm
+    const bottomLimit = PH - 2 * S3; // 288.0 mm (symmetric 9.0 mm top/bottom margins)
     const availH = bottomLimit - startY;
-    const rowH = availH / itemsPerPage; // ~31.3mm for 9 items
+    const rowH = availH / itemsPerPage; // 31.0 mm exact per row for 9 items
 
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
@@ -3454,13 +3458,19 @@ async function drawCatalogCompactPage(
         const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
         const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
-        // 1. GRAPHICS BLOCK (Left): Cutout PNG(s) + Axo (Frameless, vertically centered in row)
-        const cutoutSecW = 24.0;
-        const cutoutSecX = M;
+        // 0. LEFT STONE COLOUR BAND: flush to row left edge (M), full row height
+        const bandW = S2; // 3.0 mm
+        drawStoneBand(doc, norm, itemDataObj, M, rowY, bandW, rowH, 'vertical');
+
+        // 1. GRAPHICS BLOCK (Left): Cutout PNG(s) + Axo, vertically centred in row
+        const cutoutSecX = M + bandW + S2; // 18.0 mm
+        const cutoutSecW = 28.5;
         const cutoutUrls = getItemCutoutPngs(item);
         const loadedCutouts: { dataUrl: string; w: number; h: number }[] = [];
-        const maxEachCutW = cutoutUrls.length > 1 ? 11.5 : 24.0;
-        const maxCutH = Math.min(25.5, rowH - 3.5);
+        const maxEachCutW = cutoutUrls.length > 1
+            ? (cutoutSecW - (cutoutUrls.length - 1) * S1) / cutoutUrls.length
+            : cutoutSecW;
+        const maxCutH = rowH - S2; // 28.0 mm
 
         for (const u of cutoutUrls) {
             try {
@@ -3481,23 +3491,17 @@ async function drawCatalogCompactPage(
             } catch (e) {}
         }
 
-        const totalCutW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? 1.0 : 0), 0);
+        const totalCutW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? S1 : 0), 0);
         let currCutX = cutoutSecX + Math.max(0, (cutoutSecW - totalCutW) / 2);
         for (const c of loadedCutouts) {
             const pngY = rowY + (rowH - c.h) / 2;
             doc.addImage(c.dataUrl, 'PNG', currCutX, pngY, c.w, c.h);
-            currCutX += c.w + 1.0;
+            currCutX += c.w + S1;
         }
 
-        // Layout rule for the whole row: 1 mm clear between elements.
-        const GAP = 1.0;
-        const PT = 0.3528; // mm per pt
-        const CAP = 0.72;  // Helvetica cap height, em
-        const DESC = 0.21; // Helvetica descender, em
-
-        // Axo Element (1:1, nearly full row height)
-        const axoSecX = cutoutSecX + cutoutSecW + GAP;
-        const axoSecW = Math.min(30.0, rowH - 1.0);
+        // Axo Element (1:1 aspect ratio, vertically centred)
+        const axoSecX = cutoutSecX + cutoutSecW + S2; // 49.5 mm
+        const axoSecW = Math.min(28.0, rowH - S2);
         const axoSecH = axoSecW;
         const axoSecY = rowY + (rowH - axoSecH) / 2;
         try {
@@ -3507,95 +3511,90 @@ async function drawCatalogCompactPage(
             }
         } catch (e) {}
 
-        // 2. CODES BLOCK (Far Right), proportions from Ramses's codes-block mockup:
-        //   MADE IN MEXICO  [QR]   <- text fitted to the barcode width, cap top = QR top
-        //   barcode         [QR]   <- barcode bottom = QR bottom
-        //   AM826 1NXM -11167LLE   <- fitted to the full block width
-        const totalCodesW = 36.0;
+        // 2. CODES BLOCK (Far Right, flush to PW - M):
+        //   MADE IN MEXICO (micro small caps aligned to barcode left edge) + barcode (leftW) beside QR (qrSize)
+        //   Tag code sized to the barcode width (leftW)
+        const totalCodesW = 40.5;
         const blockX = PW - M - totalCodesW;
-        const CODE_GAP = 0.65;
-        const qrSize = 10.2;
-        const leftW = totalCodesW - qrSize - CODE_GAP;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        const mimPt = Math.min(9.0, 10 * leftW / doc.getTextWidth('MADE IN MEXICO'));
-        const mimCap = mimPt * PT * CAP;
-        const barTop = mimCap + CODE_GAP;
+        const CODE_GAP = S1; // 1.5 mm
+        const qrSize = 12.0;
+        const leftW = totalCodesW - qrSize - CODE_GAP; // 27.0 mm
+        const mimCap = MICRO_PT * PT * CAP;
+        const barTop = mimCap + S1;
         const barH = qrSize - barTop;
-        const tagPt = 12.0; // cap; drawFormattedTagCode shrinks it to the block width
-        const codesH = qrSize + CODE_GAP + 9.4 * PT * CAP;
+        const tagCap = DETAIL_PT * PT * CAP;
+        const codesH = qrSize + S1 + tagCap;
         const codesY = rowY + (rowH - codesH) / 2;
 
-        doc.setFontSize(mimPt);
-        doc.setTextColor(12, 12, 12);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(MICRO_PT);
+        doc.setTextColor(30, 41, 59);
         doc.text('MADE IN MEXICO', blockX, codesY + mimCap);
 
         // Barcode (Code128)
         let barDataUrl: string | null = null;
         try {
             const canvas = document.createElement('canvas');
-            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 26, lineColor: '#141414' });
+            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 28, lineColor: '#141414' });
             barDataUrl = canvas.toDataURL('image/png');
         } catch (e) {}
         if (barDataUrl) {
             doc.addImage(barDataUrl, 'PNG', blockX, codesY + barTop, leftW, barH);
         }
 
-        // QR Code with vendor colour dot, exactly centred
+        // QR Code with vendor colour eyes, top/bottom flush with MADE IN MEXICO + barcode
         const qrX = blockX + leftW + CODE_GAP;
         let qrDataUrl = '';
         try {
-            qrDataUrl = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode)); // compact: plain tag ID
+            qrDataUrl = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode));
         } catch (e) {}
         if (qrDataUrl) {
             doc.addImage(qrDataUrl, 'PNG', qrX, codesY, qrSize, qrSize);
         }
 
-        // TagID + Retail + Acquisition Code, fitted to the block width (sectioned weights)
-        drawFormattedTagCode(doc, codes, blockX, codesY + codesH, tagPt, false, itemDataObj, totalCodesW, tagPt);
+        // TagID + Retail + Acquisition Code, sized to the barcode width (leftW)
+        drawFormattedTagCode(doc, codes, blockX, codesY + codesH, DETAIL_PT, false, itemDataObj, leftW, DETAIL_PT);
 
-        // 3. MIDDLE INFORMATION BLOCK: one font size for title, colours and weight.
-        const infoX = axoSecX + axoSecW + GAP;
-        const infoW = blockX - infoX - 2 * GAP;
+        // 3. MIDDLE INFORMATION BLOCK: 3.0 mm clear of Axo and Codes block, vertically centred
+        const infoX = axoSecX + axoSecW + S2;
+        const infoW = blockX - infoX - S2;
 
         const titleChunks = compactTitleChunks(norm, itemDataObj);
 
-        const fontPt = 11.5;
-        const capH = fontPt * PT * CAP;
-        const descH = fontPt * PT * DESC;
-        const lineH = capH + descH + GAP;
-        const titleLines = measureStructuredTitle(doc, titleChunks, infoW, fontPt).slice(0, 3);
+        const capH = TITLE_PT * PT * CAP;
+        const descH = TITLE_PT * PT * DESC;
+        const lineH = capH + descH + S1;
+        const titleLines = measureStructuredTitle(doc, titleChunks, infoW, TITLE_PT).slice(0, 3);
 
         const extractedColors = getItemExtractedColors(norm, itemDataObj);
         const wtKg = parseFloat(norm.weightKg || '0');
         const hasDetailLine = extractedColors.length > 0 || wtKg > 0;
-        // The colour orbs are a little taller than the caps, so that line gets extra room.
-        const detailLineH = capH * 1.24 + descH + GAP;
+        const detailCapH = DETAIL_PT * PT * CAP;
+        const detailDescH = DETAIL_PT * PT * DESC;
+        const detailLineH = detailCapH * 1.25 + detailDescH + S1;
 
         const infoH = capH + (titleLines.length - 1) * lineH + (hasDetailLine ? detailLineH : 0) + descH;
         const firstBaseline = rowY + (rowH - infoH) / 2 + capH;
-        drawMeasuredTitle(doc, titleLines, infoX, firstBaseline, lineH, fontPt);
-
-        drawStoneBand(doc, norm, itemDataObj, M - 5.5, rowY + 2.5, 3.0, rowH - 5.0, 'vertical');
+        drawMeasuredTitle(doc, titleLines, infoX, firstBaseline, lineH, TITLE_PT);
 
         if (hasDetailLine) {
             const detailBaseline = firstBaseline + (titleLines.length - 1) * lineH + detailLineH;
             const titleRight = infoX + Math.min(infoW, Math.max(0, ...titleLines.map(measuredLineWidth)));
-            const colorsW = drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, detailBaseline, infoW * 0.6, fontPt);
+            const colorsW = drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, detailBaseline, infoW * 0.62, DETAIL_PT);
             if (wtKg > 0) {
                 const wtText = `${Math.round(wtKg)} kg • ${Math.round(wtKg * 2.20462)} lbs`;
-                doc.setFontSize(fontPt);
+                doc.setFontSize(DETAIL_PT);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(71, 85, 105);
                 const wtW = doc.getTextWidth(wtText);
-                // Right-aligned under the end of the title, never over the colours.
-                const wtX = Math.max(infoX + colorsW + 4.0, titleRight - wtW);
+                const wtX = Math.max(infoX + colorsW + S2, titleRight - wtW);
                 doc.text(wtText, wtX, detailBaseline);
             }
         }
-        // Frameless Subtle Hairline Row Divider (Except after last item)
+
+        // Subtle Hairline Row Divider (Except after last item)
         if (i < pageItems.length - 1) {
-            doc.setDrawColor(226, 232, 240); // slate-200 hairline
+            doc.setDrawColor(226, 232, 240);
             doc.setLineWidth(0.15);
             doc.line(M, rowY + rowH, PW - M, rowY + rowH);
         }
@@ -3603,153 +3602,174 @@ async function drawCatalogCompactPage(
 }
 
 /**
- * CompactGrid: 3 x 2 packing-label panels per landscape A4 page. Each panel: the item's stone colours as a
- * swatch band, the compact title, a large axo beside the cutout, colours and weight, then the codes block
- * (MADE IN MEXICO + barcode + QR, tag ID full width). Vendor colour appears only in the QR eyes.
+ * CompactGrid: 3 x 2 packing-label panels per landscape A4 page. Each panel: top horizontal stone colour band
+ * flush to panel edge, compact title, large axo beside up to 3 cutouts + colours + weight, codes block
+ * (MADE IN MEXICO + barcode + QR, tag line sized to barcode width), and thin bottom branding bar.
  */
 async function drawCatalogCompactGridPage(
-    doc: any, items: CatalogArtifact[], startIndex: number, M: number, PW: number, PH: number,
+    doc: any, items: CatalogArtifact[], startIndex: number, _M: number, PW: number, PH: number,
     logos: { rareEarth: LogoData | null; artOfDecor: LogoData | null; onyx: LogoData | null } = { rareEarth: null, artOfDecor: null, onyx: null },
+    layout: { cols: number; rows: number; large: boolean } = { cols: 3, rows: 2, large: false },
 ) {
-    // Panels abut like a sheet of labels; dotted cut guides mark every edge.
-    const COLS = 3, ROWS = 2;
-    const top = 8, bottom = PH - 8;
-    const cellW = (PW - 2 * M) / COLS;
-    const cellH = (bottom - top) / ROWS;
+    // Unified spacing scale (1.5 / 3.0 / 4.5 mm) and 3-tier typography (title 10.5pt, detail 8.5pt, micro 6.5pt)
+    const S1 = 1.5, S2 = 3.0, S3 = 4.5;
+    const TITLE_PT = 10.5, DETAIL_PT = 8.5, MICRO_PT = 6.5;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
-    const PAD = 3, GAP = 0.8;
-    const innerW = cellW - 2 * PAD;
+
+    const COLS = layout.cols, ROWS = layout.rows;
+    const gridX0 = 2 * S2; // 6.0 mm outer horizontal margin
+    const gridY0 = 2 * S2; // 6.0 mm outer vertical margin
+    const cellW = (PW - 2 * gridX0) / COLS; // 95.0 mm
+    const cellH = (PH - 2 * gridY0) / ROWS; // 99.0 mm (equal panel heights)
+    const PAD = S2; // 3.0 mm inner padding
+    const innerW = cellW - 2 * PAD; // 89.0 mm
     const pageItems = items.slice(startIndex, startIndex + COLS * ROWS);
 
+    // Dotted cut guides running edge-to-edge across the sheet
     doc.setDrawColor(148, 163, 184);
     doc.setLineWidth(0.2);
     doc.setLineDashPattern([0.6, 1.2], 0);
-    for (let c = 0; c <= COLS; c++) doc.line(M + c * cellW, top - 4, M + c * cellW, bottom + 4);
-    for (let r = 0; r <= ROWS; r++) doc.line(M - 4, top + r * cellH, PW - M + 4, top + r * cellH);
+    for (let c = 0; c <= COLS; c++) doc.line(gridX0 + c * cellW, 0, gridX0 + c * cellW, PH);
+    for (let r = 0; r <= ROWS; r++) doc.line(0, gridY0 + r * cellH, PW, gridY0 + r * cellH);
     doc.setLineDashPattern([], 0);
 
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
-        const x = M + (i % COLS) * cellW;
-        const y = top + Math.floor(i / COLS) * cellH;
+        const x = gridX0 + (i % COLS) * cellW;
+        const y = gridY0 + Math.floor(i / COLS) * cellH;
         const ix = x + PAD;
         const itemDataObj = item.data || item;
         const norm = normalizeInventoryData(itemDataObj);
         const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
         const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
-        // Stone colour band: the palette's shades as equal swatches across the top.
-        const bandH = 4.5;
-        const bandY = y + PAD;
-        drawStoneBand(doc, norm, itemDataObj, ix, bandY, innerW, bandH, 'horizontal');
+        // 1. Stone colour band: flush to panel top and left/right edges
+        const bandH = S2; // 3.0 mm
+        drawStoneBand(doc, norm, itemDataObj, x, y, cellW, bandH, 'horizontal');
 
-        // Title (compact runs), up to 3 lines.
-        const fontPt = 11.5;
-        const capH = fontPt * PT * CAP;
-        const descH = fontPt * PT * DESC;
-        const lineH = capH + descH + GAP;
-        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), innerW, fontPt).slice(0, 3);
-        const firstBaseline = bandY + bandH + 2.2 + capH;
-        drawMeasuredTitle(doc, titleLines, ix, firstBaseline, lineH, fontPt);
+        // 2. Title (compact runs), up to 3 lines, aligned to shared inner edges
+        const capH = TITLE_PT * PT * CAP;
+        const descH = TITLE_PT * PT * DESC;
+        const lineH = capH + descH + S1;
+        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), innerW, TITLE_PT).slice(0, 3);
+        const firstBaseline = y + bandH + S2 + capH;
+        drawMeasuredTitle(doc, titleLines, ix, firstBaseline, lineH, TITLE_PT);
         const titleBottom = firstBaseline + (titleLines.length - 1) * lineH + descH;
 
-        // Codes block, pinned to the panel bottom.
-        const CODE_GAP = 0.8;
-        const qrSize = 15.0;
-        const leftW = innerW - qrSize - CODE_GAP;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        const mimPt = Math.min(9.5, 10 * leftW / doc.getTextWidth('MADE IN MEXICO'));
-        const mimCap = mimPt * PT * CAP;
-        const barTop = mimCap + CODE_GAP * 1.5;
-        const tagPt = 15.0;
-        const tagCap = 13.0 * PT * CAP;
-        const codesH = qrSize + CODE_GAP * 1.5 + tagCap;
-        // Branding bar along the bottom: Rare Earth Gallery, Art of Decor, Onyx in equal slots.
-        const brandH = 6.0;
+        // 3. Thin branding bar along panel bottom: Rare Earth Gallery and Art of Decor in equal slots
+        const brandH = S3; // 4.5 mm
         const brandY = y + cellH - PAD - brandH;
-        const slotW = innerW / 3;
-        [[logos.rareEarth, 1], [logos.artOfDecor, 1], [logos.onyx, 0.6]].forEach(([logo, scale], k) => {
-            const lg = logo as LogoData | null;
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.15);
+        doc.line(ix, brandY - S1, ix + innerW, brandY - S1);
+        const slotW = innerW / 2;
+        [logos.rareEarth, logos.artOfDecor].forEach((lg, k) => {
             if (!lg) return;
-            // shortcut: Onyx has no horizontal logo yet, so the small mark sits centred at 60% height; swap when it exists.
-            const maxH = brandH * (scale as number), maxW = slotW - 2;
+            const maxH = brandH, maxW = slotW - S2;
             let lw = maxH * lg.aspectRatio, lh = maxH;
             if (lw > maxW) { lw = maxW; lh = maxW / lg.aspectRatio; }
             doc.addImage(lg.dataUrl, 'PNG', ix + k * slotW + (slotW - lw) / 2, brandY + (brandH - lh) / 2, lw, lh);
         });
-        const codesY = brandY - 2.0 - codesH;
 
-        doc.setFontSize(mimPt);
-        doc.setTextColor(12, 12, 12);
+        // 4. Codes block, pinned above the branding bar
+        const CODE_GAP = S2; // 3.0 mm
+        // Large Color: a smaller codes block (the cutouts are the label), barcode capped at 52 mm.
+        const qrSize = layout.large ? 11.0 : 15.0;
+        const leftW = layout.large ? Math.min(52, innerW - qrSize - CODE_GAP) : innerW - qrSize - CODE_GAP; // 71.0 mm
+        const mimCap = MICRO_PT * PT * CAP;
+        const barTop = mimCap + S1;
+        const barH = qrSize - barTop;
+        const tagCap = DETAIL_PT * PT * CAP;
+        const codesH = qrSize + S1 + tagCap;
+        const codesY = brandY - S2 - codesH;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(MICRO_PT);
+        doc.setTextColor(30, 41, 59);
         doc.text('MADE IN MEXICO', ix, codesY + mimCap);
         try {
             const canvas = document.createElement('canvas');
-            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 34, lineColor: '#141414' });
-            doc.addImage(canvas.toDataURL('image/png'), 'PNG', ix, codesY + barTop, leftW, qrSize - barTop);
+            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 32, lineColor: '#141414' });
+            doc.addImage(canvas.toDataURL('image/png'), 'PNG', ix, codesY + barTop, leftW, barH);
         } catch (e) {}
         try {
-            const qr = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode)); // plain tag ID, as the compact list
+            const qr = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode));
             if (qr) doc.addImage(qr, 'PNG', ix + leftW + CODE_GAP, codesY, qrSize, qrSize);
         } catch (e) {}
-        drawFormattedTagCode(doc, codes, ix, codesY + codesH, tagPt, false, itemDataObj, innerW, tagPt);
+        drawFormattedTagCode(doc, codes, ix, codesY + codesH, DETAIL_PT, false, itemDataObj, leftW, TITLE_PT);
 
-        // Middle: large axo on the left; cutout, colours and weight on the right.
-        const midTop = titleBottom + 1.8;
-        const midBottom = codesY - 2.0;
-        const midH = Math.max(10, midBottom - midTop);
-        const axoS = Math.min(midH, innerW * 0.56);
+        // 5. Middle. Color Labels: large axo on the left; up to 3 cutouts, colours and weight on the right.
+        //    Large Color: the cutouts across the full width as the label's main element; under them a strip with
+        //    the axo (small) on the left and the colours and weight beside it.
+        const midTop = titleBottom + S1;
+        const midBottom = codesY - S2;
+        let midH = Math.max(12, midBottom - midTop);
+        const stripH = layout.large ? Math.min(46, midH * 0.38) : 0;
+        if (layout.large) midH -= stripH + S1;
+        const axoS = layout.large ? stripH : Math.min(midH, innerW * 0.48);
+        const axoY = layout.large ? midTop + midH + S1 : midTop + (midH - axoS) / 2;
         try {
             const axo = await getAdvancedAxoDataUrl(norm, itemDataObj);
-            if (axo) drawAxoContain(doc, axo, ix, midTop + (midH - axoS) / 2, axoS, axoS, 0.98);
+            if (axo) drawAxoContain(doc, axo, ix, axoY, axoS, axoS, 0.98);
         } catch (e) {}
 
-        const rx = ix + axoS + 2.5;
+        const rx = layout.large ? ix : ix + axoS + S2; // 3.0 mm clear gap from axo
         const rw = ix + innerW - rx;
-        const smallPt = 10;
-        const sCap = smallPt * PT * CAP;
+        const metaX = layout.large ? ix + axoS + S2 : rx;
+        const metaW = ix + innerW - metaX;
+        const sCap = DETAIL_PT * PT * CAP;
         const extractedColors = getItemExtractedColors(norm, itemDataObj);
         const wtKg = parseFloat(norm.weightKg || '0');
-        const metaH = (extractedColors.length ? sCap * 1.3 + 2.0 : 0) + (wtKg > 0 ? sCap + 1.0 : 0);
+        const metaH = (extractedColors.length ? sCap * 1.25 + S1 : 0) + (wtKg > 0 ? sCap + S1 : 0);
+        const cutBoxH = layout.large ? midH : midH - metaH - S1;
 
         let cutoutH = 0;
-        // Up to 3 cutouts side by side: getItemCutoutPngs already gives one per unit when the quantity and photos allow.
         const cutouts: { dataUrl: string; w: number; h: number }[] = [];
         for (const u of getItemCutoutPngs(item).slice(0, 3)) {
             try {
-                const c = await loadImgData(u, 400, true);
+                const c = await loadImgData(u, layout.large ? 900 : 400, true);
                 if (c && c.dataUrl && c.w && c.h) cutouts.push({ dataUrl: c.dataUrl, w: c.w, h: c.h });
             } catch (e) {}
         }
         if (cutouts.length) {
-            const boxH = Math.max(8, midH - metaH - 2.0);
-            const slotW = (rw - (cutouts.length - 1) * 1.0) / cutouts.length;
+            const boxH = Math.max(10, cutBoxH);
+            // Large Color: a neutral gray ground with a soft top-to-bottom gradient behind the cutouts, so white and
+            // pale stones keep their edge and colour against the page.
+            if (layout.large) {
+                const STEPS = 32;
+                for (let k = 0; k < STEPS; k++) {
+                    const t = k / (STEPS - 1);
+                    doc.setFillColor(Math.round(240 - 26 * t), Math.round(241 - 25 * t), Math.round(243 - 23 * t));
+                    doc.rect(rx, midTop + (boxH * k) / STEPS, rw, boxH / STEPS + 0.05, 'F');
+                }
+            }
+            const slotW = (rw - (cutouts.length - 1) * S1) / cutouts.length;
             cutouts.forEach((c, k) => {
                 const aspect = c.w / c.h;
                 let cw = slotW, ch = slotW / aspect;
                 if (ch > boxH) { ch = boxH; cw = boxH * aspect; }
-                doc.addImage(c.dataUrl, 'PNG', rx + k * (slotW + 1.0) + (slotW - cw) / 2, midTop + (boxH - ch) / 2, cw, ch);
+                doc.addImage(c.dataUrl, 'PNG', rx + k * (slotW + S1) + (slotW - cw) / 2, midTop + (boxH - ch) / 2, cw, ch);
             });
-            cutoutH = boxH + 2.0;
+            cutoutH = boxH + S1;
         }
 
-        // Colours and weight sit under the cutout, or centred in the column without one.
-        let metaY = cutoutH ? midTop + cutoutH : midTop + (midH - metaH) / 2;
+        // Colours and weight sit under the cutout, or centred in the column without one (Large Color: beside the axo).
+        let metaY = layout.large ? axoY + (stripH - metaH) / 2 : cutoutH ? midTop + cutoutH : midTop + (midH - metaH) / 2;
         if (extractedColors.length) {
-            metaY += sCap * 1.3;
-            drawCompactColorBubbles(doc, extractedColors.slice(0, 3), rx, metaY, rw, smallPt);
-            metaY += 2.0;
+            metaY += sCap * 1.25;
+            drawCompactColorBubbles(doc, extractedColors.slice(0, 3), metaX, metaY, metaW, DETAIL_PT);
+            metaY += S1;
         }
         if (wtKg > 0) {
             metaY += sCap;
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(smallPt);
+            doc.setFontSize(DETAIL_PT);
             doc.setTextColor(30, 41, 59);
             const kg = `${Math.round(wtKg)} kg`;
-            doc.text(kg, rx, metaY);
+            doc.text(kg, metaX, metaY);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(71, 85, 105);
-            doc.text(` ${Math.round(wtKg * 2.20462)} lbs`, rx + doc.getTextWidth(kg), metaY);
+            doc.text(` • ${Math.round(wtKg * 2.20462)} lbs`, metaX + doc.getTextWidth(kg), metaY);
         }
     }
 }
@@ -3775,7 +3795,7 @@ function catalogSortKey(item: CatalogArtifact): { vendor: string; type: string; 
 
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
-    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid'; logo?: string; exportType?: 'regular' | 'catalog' },
+    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor'; logo?: string; exportType?: 'regular' | 'catalog' },
     onProgress?: (p: number, s: string) => void,
     output: 'download' | 'blob' = 'download',
     onStats?: (stats: CatalogExportStats) => void,
@@ -3846,8 +3866,10 @@ export async function exportCatalogPdf(
     // Single method triggers vertical portrait layout with one single image per sheet
     // Compact method triggers vertical portrait layout with 9 compact items per page
     // CompactGrid: the compact catalog as 6 packing-label panels per landscape page
+    // LargeColor: the same label as CompactGrid, 4 per portrait page, the cutouts as its main element
+    const isLargeColor = config.method === 'largeColor';
     const isCompactGrid = config.method === 'compactGrid';
-    const isCompactMode = config.method === 'compact' || isCompactGrid;
+    const isCompactMode = config.method === 'compact' || isCompactGrid || isLargeColor;
     const isLandscape = config.method === 'grid' || isCompactGrid;
     const PW = isLandscape ? 297 : 210;
     const PH = isLandscape ? 210 : 297;
@@ -3985,7 +4007,7 @@ export async function exportCatalogPdf(
 
     /** Compact pages: items fill every page in sorted order (no vendor or type breaks); per-vendor summaries come first. */
     const renderCompactRuns = async (vendorSummaries: boolean) => {
-        const itemsPerPage = isCompactGrid ? 6 : 9;
+        const itemsPerPage = isLargeColor ? 4 : isCompactGrid ? 6 : 9;
         if (vendorSummaries) {
             const byVendor = new Map<string, CatalogArtifact[]>();
             for (const it of results) {
@@ -4003,7 +4025,8 @@ export async function exportCatalogPdf(
             addPage();
             onProgress?.(Math.round(10 + ((page + 1) / totalPages) * 85), `Rendering compact page ${page + 1}/${totalPages}...`);
             await yieldToUi();
-            if (isCompactGrid) await drawCatalogCompactGridPage(doc, results, page * itemsPerPage, M, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo, onyx: onyxLogo });
+            if (isCompactGrid || isLargeColor) await drawCatalogCompactGridPage(doc, results, page * itemsPerPage, M, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo, onyx: onyxLogo },
+                isLargeColor ? { cols: 2, rows: 2, large: true } : undefined);
             else await drawCatalogCompactPage(doc, results, page * itemsPerPage, itemsPerPage, M, PW, PH);
         }
     };

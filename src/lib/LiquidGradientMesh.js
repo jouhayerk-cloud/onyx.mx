@@ -305,6 +305,18 @@
                 this.last = now;
                 requestAnimationFrame(this.animate);
             }
+        }), e(this, "colorSlots", () => {
+            // The live colour uniforms: base + one per wave layer. Mutated in place; minigl uploads them every draw.
+            const u = this.uniforms;
+            return u ? [u.u_baseColor.value, ...u.u_waveLayers.value.map(l => l.value.color.value)] : [];
+        }), e(this, "setTargetColors", hexes => {
+            this.targetColors = (hexes || []).map(h => normalizeColor(parseInt(String(h).replace('#', ''), 16)));
+        }), e(this, "applyColorsNow", () => {
+            // Reduced motion: the new palette in one still frame, no burst.
+            const slots = this.colorSlots();
+            (this.targetColors || []).forEach((c, i) => { if (slots[i]) for (let k = 0; k < 3; k++) slots[i][k] = c[k]; });
+            this.targetColors = null;
+            if (this.minigl) this.minigl.render();
         }), e(this, "animate", e => {
           if (!this.shouldSkipFrame(e) || this.isMouseDown || this.conf.playing) {
             let timeDelta = this.last ? Math.min(e - this.last, 1e3 / 15) : 16;
@@ -348,10 +360,24 @@
                 }
             }
 
+            // Ease the colours toward the next palette across the burst (about 1.5 s to settle).
+            if (this.targetColors) {
+                const slots = this.colorSlots();
+                let moving = false;
+                this.targetColors.forEach((c, i) => {
+                    const s = slots[i];
+                    if (!s) return;
+                    for (let k = 0; k < 3; k++) { const d = c[k] - s[k]; if (Math.abs(d) > 0.002) { s[k] += d * 0.06; moving = true; } else s[k] = c[k]; }
+                });
+                if (!moving) this.targetColors = null;
+            }
+
             if (this.burstSpeed > 0.001) {
                 this.t += timeDelta * this.burstSpeed;
                 this.mesh.material.uniforms.u_time.value = this.t;
-                this.minigl.render();
+                // Settings > Performance Max: draw every other burst frame (time still advances every frame).
+                this.oddFrame = !this.oddFrame;
+                if (!(this.oddFrame && document.documentElement.classList.contains('performance-mode-active'))) this.minigl.render();
             }
             this.last = e;
           }

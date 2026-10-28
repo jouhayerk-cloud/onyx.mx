@@ -632,3 +632,21 @@ export function itemBandShades(hexMap: readonly string[], item: { color?: string
     }
     return shades.map(liftBandColor);
 }
+
+/**
+ * An item's colour-bar shades as the background gradient's 4 colour slots (base + 3 wave layers): the shade nearest
+ * the theme's ground as the base, then the rest spread across the waves. Lightness and saturation are clamped per
+ * theme because the gradient shader brightens (x1.25) and saturates (x1.4) what it is given: dark Talan stays deep,
+ * light aqua stays airy. shortcut: clamp ranges set by eye, not measured; tune here.
+ */
+export function gradientSlotsFromShades(shades: readonly string[], dark: boolean): string[] {
+    const hsl = shades.map(toHsl).filter((x): x is [number, number, number] => !!x);
+    if (hsl.length < 2) return [];
+    hsl.sort((a, b) => dark ? a[2] - b[2] : b[2] - a[2]);   // ground-like shade first
+    const pick = [hsl[0], hsl[Math.min(1, hsl.length - 1)], hsl[Math.floor(hsl.length / 2)], hsl[hsl.length - 1]];
+    const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+    return pick.map(([h, s, l], i) => {
+        const [lo, hi] = dark ? (i === 0 ? [0.08, 0.18] : [0.16, 0.4]) : (i === 0 ? [0.82, 0.92] : [0.42, 0.78]);
+        return fromHsl(h, clamp(s, 0, dark ? 0.45 : 0.4), clamp(l, lo, hi));
+    });
+}
