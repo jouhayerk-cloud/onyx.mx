@@ -18,6 +18,8 @@ import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 import {
     showInventoryMxnAtom,
     showInventoryUsdAtom,
+    showInventoryPaymentsAtom,
+    showInventoryLogisticsAtom,
     isInventoryViewSliderOpenAtom,
     inventoryViewSliderAtom,
     inventoryViewModeAtom,
@@ -219,6 +221,8 @@ export const InventoryViewPanel: React.FC = () => {
     const [invSortOrder, setInvSortOrder] = useAtom(inventorySortOrderAtom);
     const [showMxn, setShowMxn] = useAtom(showInventoryMxnAtom);
     const [showUsd, setShowUsd] = useAtom(showInventoryUsdAtom);
+    const [showPay, setShowPay] = useAtom(showInventoryPaymentsAtom);
+    const [showLog, setShowLog] = useAtom(showInventoryLogisticsAtom);
 
     const handleToggleDensity = () => {
         if (invSlider <= 33) {
@@ -264,6 +268,10 @@ export const InventoryViewPanel: React.FC = () => {
                     title={tr("Show MXN price and total")}><span>MXN</span></button>
                 <button aria-pressed={showUsd} onClick={() => setShowUsd(!showUsd)} className="utb-control utb-sort-chip"
                     title={tr("Show USD acquisition, landed and retail")}><span>USD</span></button>
+                <button aria-pressed={showPay} onClick={() => setShowPay(!showPay)} className="utb-control utb-sort-chip"
+                    title={tr("Show payment details")}><span>{tr("PAY")}</span></button>
+                <button aria-pressed={showLog} onClick={() => setShowLog(!showLog)} className="utb-control utb-sort-chip"
+                    title={tr("Show logistics details")}><span>{tr("LOG")}</span></button>
             </div>
 
             <div className="utb-divider shrink-0" aria-hidden="true" />

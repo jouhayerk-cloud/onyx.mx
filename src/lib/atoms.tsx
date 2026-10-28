@@ -357,6 +357,9 @@ export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', tru
 // Inventory View bar toggles: MXN price / total on the rows and cards, USD acquisition / landed / retail in the open item.
 export const showInventoryMxnAtom = atomWithStorage<boolean>('showInventoryMxn', true);
 export const showInventoryUsdAtom = atomWithStorage<boolean>('showInventoryUsd', true);
+// View bar toggles for the open item's payments table and logistics section.
+export const showInventoryPaymentsAtom = atomWithStorage<boolean>('showInventoryPayments', true);
+export const showInventoryLogisticsAtom = atomWithStorage<boolean>('showInventoryLogistics', true);
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export type InventoryStatusFilter = 'All' | 'Requested' | 'Paid' | 'Acquired' | 'New' | 'Shipped' | 'Packed' | 'Not Packed' | 'Not Shipped';
 

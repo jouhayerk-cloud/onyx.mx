@@ -1708,3 +1708,243 @@ html.dark .inv-head-wrap {
     .inv-card--std .inv-mxn-price { display: none; }
 }
 .inv-card-price { margin-left: auto; white-space: nowrap; }
+
+/* ── Open row: one flow of tiles ──────────────────────────────────────────
+   Liquid Onyx, data dense. Three type sizes only: 10px caps labels, 13px
+   text, 14px titles. Every tile is the same glass (control fill, 1px rim,
+   10px radius), so photos, copy and axo read as one gallery:
+
+     [photo][photo][ GENERATED ............ ][ axo | W H L WT | colours | bar ]
+     [ USD · PAYMENTS · LOGISTICS (small foot panel) ]              [actions]
+
+   The flow is justified: photos keep their aspect ratio (--ar) and every
+   tile grows in proportion, so rows fill the width at one height and wrap
+   to the next as the panel narrows. On a phone everything is one column. */
+.inv-row { position: relative; }
+.inv-band--row {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 3px;
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: opacity 0.25s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.inv-band--row { flex-direction: row-reverse; transform-origin: right center; }
+.inv-row:hover > .inv-band--row,
+.inv-row.is-open > .inv-band--row { opacity: 1; transform: scaleX(1); }
+@media (prefers-reduced-motion: reduce) {
+    .inv-band--row { transform: none; transition: opacity 0.2s ease; }
+}
+/* An open row keeps a denser glass than one at rest (hover is denser still). */
+html.style-slab .inv-scope .inv-grid.inv-row.is-open:not(:hover) {
+    background-color: color-mix(in srgb, var(--slab-glass-row) 45%, var(--slab-glass-row-hover)) !important;
+}
+
+/* The open panel's vertical colour bar: its right edge, full height. */
+.inv-dband { grid-area: band; align-self: stretch; display: flex; }
+.inv-dband .inv-band--v { width: 6px; height: auto; min-height: 100%; flex: 1; }
+.inv-gen-colors { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; font-size: 11px; letter-spacing: normal; text-transform: none; }
+
+.inv-dpanel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 6px;
+    grid-template-areas: "flow actions band" "foot actions band";
+    gap: 10px 16px;
+    align-items: start;
+}
+.inv-dflow {
+    --row-h: 168px;
+    grid-area: flow;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+.inv-dflow > .inv-thumb {
+    flex: var(--ar) 1 calc(var(--ar) * var(--row-h));
+    aspect-ratio: var(--ar);
+    width: auto;
+    height: auto;
+    max-height: calc(var(--row-h) * 1.6);
+    align-self: stretch;
+    border-radius: 10px;
+}
+
+.inv-dtile { min-width: 0; }
+/* Only the foot is a panel; axo, copy and colours sit on the drawer itself, set apart by spacing. */
+.inv-dfoot {
+    border-radius: 10px;
+    border: 1px solid var(--lq-rim-subtle, rgb(255 255 255 / 0.12));
+    background-color: var(--lq-fill-control, rgb(255 255 255 / 0.06));
+    backdrop-filter: blur(14px) saturate(1.5);
+    -webkit-backdrop-filter: blur(14px) saturate(1.5);
+}
+.inv-dlbl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 3px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
+}
+
+/* Generated: the widest tile of the flow. */
+.inv-gen {
+    flex: 3 1 380px;
+    position: relative;
+    min-height: var(--row-h);
+}
+.inv-gen-scroll {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 6px 0 4px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+.inv-gen-scroll:focus-visible { outline: 2px solid var(--main-color); outline-offset: 2px; border-radius: 4px; }
+.inv-gen-h { margin-bottom: 0; color: color-mix(in srgb, var(--text-color) 78%, transparent); }
+.inv-gen-f { min-width: 0; }
+.inv-gen-title { margin: 0; font-size: 14px; font-weight: 800; line-height: 1.3; color: var(--text-color); }
+.inv-gen-type { margin: 0; font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--text-color) 82%, transparent); }
+.inv-gen-body {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: pre-line;
+    color: color-mix(in srgb, var(--text-color) 85%, transparent);
+}
+
+/* Axo tile: the figure, its imperial sizes, the store colours, the vertical bar closing the gallery. */
+.inv-dcolors {
+    flex: 0 1 auto;
+    display: flex;
+    min-height: var(--row-h);
+    max-height: calc(var(--row-h) * 1.6);
+}
+.inv-dcolors .inv-axo-side { max-width: none; }
+.inv-daxo {
+    flex: 1.4 1 220px;
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    min-height: var(--row-h);
+    max-height: calc(var(--row-h) * 1.6);
+}
+.inv-daxo .inv-axo-fig { flex: 1 1 0; min-width: 72px; }
+.inv-dims {
+    margin: 0;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+.inv-dims > div { display: flex; align-items: baseline; gap: 6px; }
+.inv-dims dt {
+    width: 18px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
+}
+.inv-dims dd { margin: 0; font-size: 13px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-color); }
+
+/* The foot: a small panel, its three parts side by side, wrapping on narrow widths. */
+.inv-dfoot {
+    grid-area: foot;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px 28px;
+    padding: 8px 12px;
+}
+.inv-dfoot > * { flex: 0 1 auto; min-width: 0; }
+.inv-dfoot > .inv-panel-pay { flex: 1 1 320px; }
+.inv-dfoot .inv-cluster-t { margin-bottom: 4px; font-size: 10px; letter-spacing: 0.12em; }
+.inv-dfoot .inv-cluster-t::after { display: none; }
+.inv-dfoot .inv-stats { grid-template-columns: repeat(3, max-content); gap: 2px 18px; }
+.inv-dfoot .inv-stat-l { font-size: 10px; }
+.inv-dfoot .inv-stat-v { font-size: 13px; }
+.inv-dfoot .inv-pay-table,
+.inv-dfoot .inv-pay-empty { font-size: 12px; }
+.inv-dfoot .inv-cluster--log { margin-left: auto; }
+
+@container inv (max-width: 985px) {
+    .inv-dpanel { grid-template-columns: minmax(0, 1fr) 6px; grid-template-areas: "flow band" "foot band" "actions band"; }
+}
+@container inv (max-width: 685px) {
+    .inv-dflow { --row-h: 120px; }
+    .inv-gen, .inv-daxo { flex-basis: 100%; }
+    .inv-gen { min-height: 260px; }
+    .inv-dcolors { min-height: 0; flex-basis: 100%; }
+    .inv-dfoot { flex-direction: column; gap: 10px; }
+    .inv-dfoot .inv-cluster--log { margin-left: 0; }
+}
+
+/* ── Row and open-panel glass ─────────────────────────────────────────────
+   Hover and open give the row the open panel's own glass (denser slab fill,
+   sheen, 32px blur), so row and panel read as one sheet; hover keeps the
+   convex slab lift. Specificity (0,4,1) outranks the .glass-sm and
+   bg-(--sidebar-bg) sweeps in slab.css / slab-glass.css. */
+html.style-slab .inv-scope .inv-grid.inv-row:hover,
+html.style-slab .inv-scope .inv-grid.inv-row.is-open {
+    background-color: color-mix(in srgb, var(--slab) min(90%, calc(60% * var(--glass-opacity-factor, 1))), transparent) !important;
+    background-image: var(--lq-sheen) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(1.5) !important;
+    backdrop-filter: blur(32px) saturate(1.5) !important;
+}
+html.style-slab .inv-scope .inv-grid.inv-row:hover {
+    box-shadow: var(--slab-raised) !important;
+}
+html.style-slab .inv-scope .inv-grid.inv-row.is-open:not(:hover) {
+    background-color: color-mix(in srgb, var(--slab) min(80%, calc(50% * var(--glass-opacity-factor, 1))), transparent) !important;
+}
+
+/* ── The item's glow ──────────────────────────────────────────────────────
+   An open item is tinted by its own stone: the colour-bar shades (--glow-a
+   lightest, -b middle, -c darkest) as soft light pooling from the top-right
+   corner, where both colour bars start, and down the right edge beside the
+   vertical bar. Transparent overlays on the glass, under the content. */
+.inv-drawer[style*="--glow-a"],
+.inv-row.is-open { isolation: isolate; }
+.inv-drawer[style*="--glow-a"] { position: relative; }
+.inv-drawer[style*="--glow-a"]::before,
+.inv-row.is-open::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(55% 90% at 100% 0%, color-mix(in srgb, var(--glow-a, transparent) 26%, transparent), transparent 72%),
+        radial-gradient(45% 80% at 100% 100%, color-mix(in srgb, var(--glow-c, transparent) 22%, transparent), transparent 70%),
+        linear-gradient(270deg, color-mix(in srgb, var(--glow-b, transparent) 16%, transparent), transparent 38%);
+    animation: inv-glow-in 0.6s ease both;
+}
+.inv-row.is-open::before {
+    background: radial-gradient(40% 160% at 100% 0%, color-mix(in srgb, var(--glow-a, transparent) 24%, transparent), transparent 75%);
+}
+@keyframes inv-glow-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+    .inv-drawer[style*="--glow-a"]::before, .inv-row.is-open::before { animation: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+    .inv-drawer[style*="--glow-a"]::before, .inv-row.is-open::before { display: none; }
+}

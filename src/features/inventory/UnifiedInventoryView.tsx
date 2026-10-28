@@ -50,6 +50,8 @@ import {
     inventoryMaterialColorFilterAtom,
     showInventoryMxnAtom,
     showInventoryUsdAtom,
+    showInventoryPaymentsAtom,
+    showInventoryLogisticsAtom,
     inventoryHexRangeAtom
 } from '../../lib/atoms';
 import { itemHistogram, rangeShare, RANGE_MIN_SHARE } from '../../lib/hexColorMap';
@@ -144,7 +146,7 @@ const swatchFor = (name: string): string => {
 };
 
 // The item's stone colour bar, from its own hex map (the one the axo texture uses), as the catalogs draw it.
-const StoneBand = ({ data, norm, dir }: { data: any; norm: any; dir: 'h' | 'v' }) => {
+const StoneBand = ({ data, norm, dir }: { data: any; norm: any; dir: 'h' | 'v' | 'row' }) => {
     const shades = useMemo(
         () => itemBandShades(parseHexMapString(extractItemHexString(data) || extractItemHexString(norm)), { color: norm.color, material: norm.material }),
         [data, norm]);
@@ -431,6 +433,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const showMxn = useAtomValue(showInventoryMxnAtom);
     const showUsd = useAtomValue(showInventoryUsdAtom);
+    const showPay = useAtomValue(showInventoryPaymentsAtom);
+    const showLog = useAtomValue(showInventoryLogisticsAtom);
 
     const theme = useAtomValue(themeAtom);
     const qrColor = theme === 'aqua' ? '#000000' : '#FFFFFF'; // aqua is the only light theme left
@@ -534,6 +538,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const imperialDims = formatDimensionsImperialOnly(norm.widthCm, norm.heightCm, norm.lengthCm)
         .split(' x ').map(part => part.replace(/ /g, ' ')).join(' × ');
     const imperialWeight = formatWeightImperialOnly(norm.weightKg);
+    const imperialParts: [string, string][] = [
+        ...formatDimensionsImperialOnly(norm.widthCm, norm.heightCm, norm.lengthCm).split(' x ').filter(Boolean)
+            .map((v, i): [string, string] => [['W', 'H', 'L'][i] || '', v]),
+        ...(imperialWeight ? [['WT', imperialWeight] as [string, string]] : []),
+    ];
     const stone = [norm.color, norm.material].filter(Boolean).join(' ');
     const uniqWords = (parts: any[]) => toTitleCase(Array.from(new Set(parts.filter(Boolean).join(' ').split(/\s+/).filter(Boolean).map(w => w.toLowerCase()))).join(' '));
     const titleRuns: { t: string; b: boolean }[] = [
@@ -545,6 +554,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     ];
     const titleText = titleRuns.map(r => r.t).join('');
     const itemData = item?.data || item;
+    // The open row's glow: its own colour-bar shades, lightest / middle / darkest, as tint variables (computed only when open).
+    const glowVars = useMemo(() => {
+        if (!isExpanded) return undefined;
+        const sh = itemBandShades(parseHexMapString(extractItemHexString(itemData) || extractItemHexString(norm)), { color: norm.color, material: norm.material });
+        return { '--glow-a': sh[0], '--glow-b': sh[Math.floor(sh.length / 2)], '--glow-c': sh[sh.length - 1] } as React.CSSProperties;
+    }, [isExpanded, itemData, norm]);
     const cutoutUrls = useMemo(() => listCutoutUrls(itemData, norm, collectAllImages(norm, { dropVideos: true }).length), [itemData, norm]);
     const fmtMoney = (v: any) => {
         if (!showFinancials) return '***';
@@ -800,9 +815,45 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     // sheet has no row to share its fields with, so it shows every one
     // (cards.css reveals the overflow entries there) and adds acquisition USD,
     // which the old modal carried.
+    // USD pricing, shown by the View bar's USD toggle. MXN price and total are on the row / card.
+    const usdSection = showUsd && (
+            <section className="inv-cluster" aria-label={tr("Pricing USD")}>
+                <h5 className="inv-cluster-t">{tr("Pricing USD")}</h5>
+                <div className="inv-stats">
+                    <Stat k="acq" label={tr("Acq. USD")} valueClassName={COL_TEXT.acq}>{fmtMoney(calculated.bookAcquisition)}</Stat>
+                    <Stat k="landed" label={tr("Landed USD")} valueClassName={COL_TEXT.landed}>{fmtMoney(calculated.bookLanded)}</Stat>
+                    <Stat k="retail" label={tr("Retail USD")} valueClassName={COL_TEXT.retail}>{fmtMoney(calculated.bookRetail)}</Stat>
+                </div>
+            </section>
+    );
+    // Shown on a wide row only when the piece is deployed — the row says that with a teal dot alone, and a dot is
+    // not a word. Once the row drops AQ / LD / PACKING, it always shows.
+    const logSection = showLog && (
+        <section className={`inv-cluster inv-cluster--log${deployedInfo ? ' has-status' : ''}`} aria-label={tr("Logistics")}>
+            <h5 className="inv-cluster-t">
+                {tr("Logistics")}
+                {deployedInfo && (
+                    <span className="inv-badge" data-tone="dep" title={deployedTitle}>
+                        <Truck size={11} strokeWidth={2.5} aria-hidden="true" />{tr("Deployed")}
+                    </span>
+                )}
+            </h5>
+            <dl className="inv-spec">
+                <SpecRow k="aq" label={tr("Codes")} overflow>
+                    <span className="inv-code-k">AQ</span><span className={COL_TEXT.aq}>{calculated.bookAqCode || '—'}</span>
+                    <span className="inv-code-k inv-code-k--next">LD</span><span className={COL_TEXT.ld}>{calculated.bookLandCode || '—'}</span>
+                </SpecRow>
+                <SpecRow k="state" label={tr("Crate")} overflow>
+                    {norm.packingStatus === 'Packed'
+                        ? <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
+                        : <span className={COL_TEXT.unpacked}>{tr("UNPACKED")}</span>}
+                </SpecRow>
+            </dl>
+        </section>
+    );
+
     const clusters = (full = false) => {
         const hasAxoOverlay = mediaUrls.length > 0 && (viewMode === 'gallery' || full);
-        const axoInGallery = !full && viewMode === 'list' && mediaUrls.length > 0;
         return (
         <div className="inv-clusters">
             {/* SPECS — the piece's axonometric silhouette beside its
@@ -813,15 +864,13 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 SIZE / WEIGHT column; the imperial ones are always here. */}
             <section className="inv-cluster" aria-label={tr("Specs")}>
                 <h5 className="inv-cluster-t">{tr("Specs")}</h5>
-                {!axoInGallery && <StoneBand data={itemData} norm={norm} dir="h" />}
+                <StoneBand data={itemData} norm={norm} dir="h" />
                 <div className="inv-specs-body">
-                    {!hasAxoOverlay && !axoInGallery && (
+                    {!hasAxoOverlay && (
                         <div className="inv-axo-col">
-                            {!axoInGallery && (
-                                <div className="inv-axo" title={tr("Proportions")} aria-hidden="true">
-                                    <WireframeIcon item={norm} />
-                                </div>
-                            )}
+                            <div className="inv-axo" title={tr("Proportions")} aria-hidden="true">
+                                <WireframeIcon item={norm} />
+                            </div>
                             {renderColorBubbles('inv-axo-bubbles-floating')}
                         </div>
                     )}
@@ -836,42 +885,9 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 </div>
             </section>
 
-            {/* USD pricing, shown by the View bar's USD toggle. MXN price and total are on the row / card. */}
-            {showUsd && (
-                <section className="inv-cluster" aria-label={tr("Pricing USD")}>
-                    <h5 className="inv-cluster-t">{tr("Pricing USD")}</h5>
-                    <div className="inv-stats">
-                        <Stat k="acq" label={tr("Acq. USD")} valueClassName={COL_TEXT.acq}>{fmtMoney(calculated.bookAcquisition)}</Stat>
-                        <Stat k="landed" label={tr("Landed USD")} valueClassName={COL_TEXT.landed}>{fmtMoney(calculated.bookLanded)}</Stat>
-                        <Stat k="retail" label={tr("Retail USD")} valueClassName={COL_TEXT.retail}>{fmtMoney(calculated.bookRetail)}</Stat>
-                    </div>
-                </section>
-            )}
+            {usdSection}
 
-            {/* Shown on a wide row only when the piece is deployed — the
-                row says that with a teal dot alone, and a dot is not a word.
-                Once the row drops AQ / LD / PACKING, it always shows. */}
-            <section className={`inv-cluster inv-cluster--log${deployedInfo ? ' has-status' : ''}`} aria-label={tr("Logistics")}>
-                <h5 className="inv-cluster-t">
-                    {tr("Logistics")}
-                    {deployedInfo && (
-                        <span className="inv-badge" data-tone="dep" title={deployedTitle}>
-                            <Truck size={11} strokeWidth={2.5} aria-hidden="true" />{tr("Deployed")}
-                        </span>
-                    )}
-                </h5>
-                <dl className="inv-spec">
-                    <SpecRow k="aq" label={tr("Codes")} overflow>
-                        <span className="inv-code-k">AQ</span><span className={COL_TEXT.aq}>{calculated.bookAqCode || '—'}</span>
-                        <span className="inv-code-k inv-code-k--next">LD</span><span className={COL_TEXT.ld}>{calculated.bookLandCode || '—'}</span>
-                    </SpecRow>
-                    <SpecRow k="state" label={tr("Crate")} overflow>
-                        {norm.packingStatus === 'Packed'
-                            ? <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsDocs} allInventory={allInventory} isCompact />
-                            : <span className={COL_TEXT.unpacked}>{tr("UNPACKED")}</span>}
-                    </SpecRow>
-                </dl>
-            </section>
+            {logSection}
         </div>
     );
     };
@@ -941,6 +957,45 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     </div>
                 </div>
             )}
+        </section>
+    );
+
+    // GENERATED as a tile of the open row's gallery flow: each title under its label, full width, the whole body.
+    const genTile = (
+        <section className="inv-dtile inv-gen" aria-label={tr("Generated content")}>
+            {/* The scroller is laid out absolutely, so the tile takes the gallery row's height, not the body's. */}
+            <div className="inv-gen-scroll" tabIndex={0}>
+            <h5 className="inv-dlbl inv-gen-h">
+                {tr("Generated")}
+                {hasAiCopy && (aiNotes.length === 0
+                    ? <span className="inv-badge" data-tone="paid" title={tr("Title and body agree with the stone, size and quantity on record, and the title fits the export")}><Check size={11} strokeWidth={3} aria-hidden="true" />{tr("Consistent")}</span>
+                    : <span className="inv-badge" data-tone="req" title={aiNotes.join('\n')}>{aiNotes.length} {aiNotes.length === 1 ? tr("issue") : tr("issues")}</span>)}
+                {renderColorBubbles('inv-gen-colors')}
+            </h5>
+            {!hasAnyAi ? (
+                <p className="inv-ai-empty">{tr("No AI content yet — run the batch processor on this item.")}</p>
+            ) : (
+                <>
+                    {(shopifyTitle || !invoiceTitle) && (
+                        <div className="inv-gen-f"><span className="inv-dlbl">{shopifyTitle ? tr("Shopify Title") : tr("Title")}</span><p className="inv-gen-title">{shopifyTitle || aiTitle || '—'}</p></div>
+                    )}
+                    {invoiceTitle && (
+                        <div className="inv-gen-f"><span className="inv-dlbl">{tr("Invoice Title")}</span><p className="inv-gen-title">{invoiceTitle}</p></div>
+                    )}
+                    <div className="inv-gen-f">
+                        <span className="inv-dlbl">{tr("Type")}</span>
+                        <p className="inv-gen-type">{aiTypePath.length ? aiTypePath.join(' › ') : '—'}</p>
+                    </div>
+                    <div className="inv-gen-f">
+                        <span className="inv-dlbl">{tr("Body")}</span>
+                        {aiBodyText ? <p className="inv-gen-body">{aiBodyText}</p> : <p className="inv-ai-empty">—</p>}
+                    </div>
+                    {aiNotes.length > 0 && (
+                        <ul className="inv-ai-issues">{aiNotes.map((note, i) => <li key={i}>{note}</li>)}</ul>
+                    )}
+                </>
+            )}
+            </div>
         </section>
     );
 
@@ -1025,8 +1080,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         return (
             <div className="flex flex-col gap-0.5">
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-                <div className={`inv-grid inv-row glass-sm overflow-hidden hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isSelectionMode ? 'is-selecting' : ''} ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : ''}`}
-                    onClick={() => onToggleExpand()} style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
+                <div className={`inv-grid inv-row glass-sm overflow-hidden hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isSelectionMode ? 'is-selecting' : ''} ${isExpanded > 0 ? 'is-open ring-1 ring-(--main-color)/30' : ''}`}
+                    onClick={() => onToggleExpand()} style={{ ...glowVars, borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
+
+                    {/* The stone's colour bar, full width along the top of the row; the open panel's vertical bar closes it. */}
+                    <StoneBand data={itemData} norm={norm} dir="row" />
 
                     {/* RAIL — payment + deployment status, or the selection box.
                         The checkbox REPLACES the dots rather than adding a track:
@@ -1085,7 +1143,6 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         deterministic line that wraps, in the catalog titles' bold / regular runs,
                         beside the stone's colour bar. */}
                     <div className="inv-c-title" title={titleText}>
-                        <StoneBand data={itemData} norm={norm} dir="v" />
                         <span className="inv-title">
                             {titleRuns.map((r, i) => r.b ? <b key={i}>{r.t}</b> : <span key={i}>{r.t}</span>)}
                         </span>
@@ -1119,7 +1176,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
                 </div>
                 {isExpanded > 0 && (
-                    <div className="inv-drawer w-full pt-2 pb-2.5 bg-transparent animate-in slide-in-from-top-2 duration-300 min-w-0">
+                    <div className="inv-drawer w-full pt-2 pb-2.5 bg-transparent animate-in slide-in-from-top-2 duration-300 min-w-0" style={glowVars}>
                         {/* THE OPEN-ROW PANEL — a spec sheet for the piece.
 
                             Grouped, not gridded. The values sit in three clusters that
@@ -1141,45 +1198,46 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             medium ones; one column on a phone, toolbar last, in reach
                             of the thumb. */}
                         <div className="inv-drawer-body min-w-0">
-                        <div className={`inv-panel${mediaUrls.length ? '' : ' inv-panel--nomedia'}`}>
-
-                            {mediaUrls.length > 0 && (
-                                <div className="inv-panel-media">
-                                    <div className="inv-thumbs inv-thumbs--grid no-scrollbar">
-                                        {mediaUrls.map((u, i) => (
-                                            <div key={i} role="button" tabIndex={0} className="inv-thumb" title={tr("Open photos")}
-                                                style={{ '--ar': photoRatios[i] || 1 } as React.CSSProperties}
-                                                onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
-                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(i); setShowViewer(true); } }}>
-                                                <DriveImage loading="lazy" src={u} className="w-full h-full object-cover"
-                                                    onLoad={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                                                        const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
-                                                        if (w && h) setPhotoRatios(r => (r[i] === w / h ? r : { ...r, [i]: w / h }));
-                                                    }} />
-                                                {isVideoFile(u) && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80"><Video size={12} /></span>}
-                                            </div>
-                                        ))}
-                                        {/* The axo closes the gallery, its colour bar and store colours stacked beside it. */}
-                                        <div className="inv-thumb inv-thumb--axo" title={tr("Proportions")} style={{ '--ar': 2 } as React.CSSProperties}>
-                                            <div className="inv-axo-fig" aria-hidden="true"><WireframeIcon item={norm} /></div>
-                                            <div className="inv-axo-side">
-                                                {renderColorBubbles()}
-                                                <StoneBand data={itemData} norm={norm} dir="v" />
-                                            </div>
-                                        </div>
+                        <div className="inv-dpanel">
+                            {/* The flow: every clean photo at its own aspect ratio, the axo with its imperial sizes, the
+                                generated copy, then the store colours and the vertical colour bar that close it. */}
+                            <div className="inv-dflow">
+                                {mediaUrls.map((u, i) => (
+                                    <div key={i} role="button" tabIndex={0} className="inv-thumb" title={tr("Open photos")}
+                                        style={{ '--ar': photoRatios[i] || 1 } as React.CSSProperties}
+                                        onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(i); setShowViewer(true); } }}>
+                                        <DriveImage loading="lazy" src={u} className="w-full h-full object-cover"
+                                            onLoad={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                                                const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+                                                if (w && h) setPhotoRatios(r => (r[i] === w / h ? r : { ...r, [i]: w / h }));
+                                            }} />
+                                        {isVideoFile(u) && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80"><Video size={12} /></span>}
                                     </div>
+                                ))}
+                                <div className="inv-dtile inv-daxo" title={tr("Proportions")}>
+                                    <div className="inv-axo-fig" aria-hidden="true"><WireframeIcon item={norm} /></div>
+                                    <dl className="inv-dims" aria-label={tr("Size and weight")}>
+                                        {imperialParts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+                                    </dl>
                                 </div>
+                                {genTile}
+                            </div>
+
+                            {/* The foot: USD, payments and logistics side by side in one small panel at the end. */}
+                            {(showUsd || showPay || showLog) && (
+                            <div className="inv-dtile inv-dfoot">
+                                {usdSection}
+                                {/* Payments always have a section, even when nothing is linked yet — an absent section reads as "not loaded". */}
+                                {showPay && <div className="inv-panel-pay">{renderPaymentHistory()}</div>}
+                                {/* Last, in the bottom corner: shown once the row has dropped its codes / packing columns. */}
+                                {logSection}
+                            </div>
                             )}
 
-                            {clusters()}
-
-                            {aiSection}
-
-                            {/* Payments always have a section, even when nothing is linked
-                                yet — an absent section reads as "not loaded". */}
-                            <div className="inv-panel-pay">{renderPaymentHistory()}</div>
-
                             <div className="inv-actions" role="toolbar" aria-label={tr("Item actions")}>{actionButtons}</div>
+                            {/* The colour bar closes the panel: full height along its right edge, beside the actions. */}
+                            <div className="inv-dband"><StoneBand data={itemData} norm={norm} dir="v" /></div>
                         </div>
 
                         </div>
@@ -1380,7 +1438,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         {aiSection}
                     </div>
 
-                    <div className="inv-panel-pay">{renderPaymentHistory()}</div>
+                    {showPay && <div className="inv-panel-pay">{renderPaymentHistory()}</div>}
                     <button type="button" className="inv-sheet-done" onClick={() => onToggleExpand()}>{tr("Close")}</button>
                 </div>
             </div>
@@ -1444,7 +1502,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
                             {aiSection}
 
-                            <div className="inv-panel-pay">{renderPaymentHistory()}</div>
+                            {showPay && <div className="inv-panel-pay">{renderPaymentHistory()}</div>}
                         </div>
                     </div>
                 </article>
