@@ -1014,3 +1014,55 @@ html:root:root:root .smd-card.smd-card .utb-filters-panel .utb-vendor-chip.utb-v
 .utb-type-subgroup { display: flex; flex-direction: column; gap: 1px; margin: 0 4px; padding: 2px 4px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--lq-ink, #fff) 22%, transparent); background: color-mix(in srgb, var(--lq-ink, #fff) 5%, transparent); }
 .utb-type-subtitle { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--lq-ink, #fff); padding-left: 4px; }
 .utb-type-subrow { display: flex; gap: 0; }
+
+/* ── Colour map (HexColorMapPanel) ──
+   Full width: the spectrum bar of every item's hex map, then the hue x lightness map. */
+.utb-row--full { width: 100%; }
+.hexmap { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; touch-action: none; user-select: none; }
+.hexmap-head { display: flex; align-items: center; gap: 12px; min-height: 28px; font-size: 12px; color: var(--text-color); }
+.hexmap-title { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.7; }
+.hexmap-status { display: flex; align-items: center; gap: 6px; }
+.hexmap-bar {
+    display: flex;
+    width: 100%;
+    /* Grows and shrinks with the panel: thumb-sized on a phone, a real band on a wide screen. */
+    height: clamp(28px, 2.6vw, 48px);
+    border-radius: clamp(4px, 0.5vw, 8px);
+    overflow: hidden;
+    box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--text-color) 25%, transparent);
+}
+.hexmap .hexmap-seg {
+    margin: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    flex-basis: 0;
+    min-width: 1px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    cursor: crosshair;
+    transition: transform 0.12s ease, filter 0.12s ease;
+}
+.hexmap-seg:hover { filter: brightness(1.15); }
+.hexmap-bar:has(.is-on) .hexmap-seg:not(.is-on) { filter: saturate(0.25) brightness(0.55); }
+/* Hex maps are photographed stone: lift them so the filter reads as colour, not as muddy photo pixels. */
+.hexmap-bar, .hexmap-mosaic { filter: saturate(1.45) brightness(1.12) contrast(1.04); }
+.hexmap-mosaic { display: flex; gap: 2px; width: 100%; height: clamp(48px, 5vw, 84px); }
+.hexmap-col { display: flex; flex-direction: column; gap: 2px; flex-basis: 0; min-width: 0; }
+.hexmap .hexmap-cell {
+    box-shadow: none;
+    backdrop-filter: none;
+    flex-basis: 0;
+    min-height: 3px;
+    padding: 0;
+    border: 0;
+    border-radius: 2px;
+    cursor: crosshair;
+    transition: transform 0.12s ease;
+}
+.hexmap-cell:hover { transform: scale(1.25); position: relative; z-index: 1; }
+.hexmap-cell.is-on { opacity: 1 !important; box-shadow: 0 0 0 1.5px var(--text-color); position: relative; z-index: 1; }
+.hexmap-seg:focus-visible,
+.hexmap-cell:focus-visible { outline: 2px solid var(--main-color); outline-offset: 1px; position: relative; z-index: 2; }
+@media (prefers-reduced-motion: reduce) { .hexmap-seg, .hexmap-cell { transition: none; } .hexmap-cell:hover { transform: none; } }

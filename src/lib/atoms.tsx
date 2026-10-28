@@ -4,6 +4,8 @@
 */
 import { atom } from 'jotai';
 import type { PrimitiveAtom } from 'jotai';
+import type { HexRange } from './hexColorMap';
+import { rowWorkbook } from './seasons';
 import type { CatalogProcess } from './catalogHubProcesses';
 /**
  * A nullable primitive atom.
@@ -352,6 +354,9 @@ export const onyxIsTypingAtom = atom<boolean>(false);
 export const onyxApiKeyAtom = atomWithStorage<string>('onyxApiKey', '');
 export const isBotOrbOpenAtom = atom<boolean>(false);
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
+// Inventory View bar toggles: MXN price / total on the rows and cards, USD acquisition / landed / retail in the open item.
+export const showInventoryMxnAtom = atomWithStorage<boolean>('showInventoryMxn', true);
+export const showInventoryUsdAtom = atomWithStorage<boolean>('showInventoryUsd', true);
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export type InventoryStatusFilter = 'All' | 'Requested' | 'Paid' | 'Acquired' | 'New' | 'Shipped' | 'Packed' | 'Not Packed' | 'Not Shipped';
 
@@ -377,6 +382,9 @@ export const isInventoryCategoryFilterOpenAtom = atom<boolean>(false);
  *  "Onyx>Verde" one colour within it. See lib/smartFilters.ts. The shape
  *  counterpart is inventoryShapeFilterAtom, further down. */
 export const inventoryMaterialColorFilterAtom = atomWithStorage<string[]>('inventoryMaterialColorFilter', [], sessionJSONStorage);
+// Colour map filter (lib/hexColorMap): a hue x lightness range of the inventory's hex maps.
+export const inventoryHexRangeAtom = atom<HexRange | null>(null) as PrimitiveAtom<HexRange | null>;
+export const isInventoryHexMapOpenAtom = atom<boolean>(false);
 
 export const inventoryMaterialFilterAtom = atomWithStorage<string>('inventoryMaterialFilter', 'All', sessionJSONStorage);
 export const isInventoryMaterialFilterOpenAtom = atom<boolean>(false);
@@ -926,6 +934,21 @@ export const visibleWorkbooksAtom = atomWithStorage<WorkbookVisibility>(
     'visibleWorkbooks_v1',
     { v825: true, v326: true, v826: true }
 );
+/** The inventory rows in the workbooks toggled ON (825 / 326 / 826), hidden rows left out: what the Vendor, Type and
+ *  Colour filters build their options from, so they only offer what the list can show. */
+export const visibleInventoryAtom = atom((get) => {
+    const vis = get(visibleWorkbooksAtom);
+    return get(inventoryAtom).filter((r: any) => {
+        const d = r?.data || r;
+        return d && !d.is_hidden && vis[rowWorkbook(d)] !== false;
+    });
+});
+/** Vendor prefixes present in the visible workbooks. */
+export const visibleVendorsAtom = atom((get) => {
+    const found = new Set<string>();
+    for (const i of get(visibleInventoryAtom)) { const v = i.data?.itemId?.split('-')[0]; if (v) found.add(v); }
+    return Array.from(found).sort();
+});
 /**
  * Smart-filter bars, split from the single "Tags" disclosure so each one is
  * deployable on its own — the earlier version had one toggle unfolding both

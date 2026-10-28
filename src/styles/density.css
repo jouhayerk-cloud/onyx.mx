@@ -87,22 +87,17 @@
    The fixed px maxima still resolve from the container width alone, so two
    rows of the same width get the same tracks and every column aligns. */
 .inv-scope {
-    --inv-thumb: 44px;
-    --inv-media-h: 32px;
+    --inv-thumb: 56px;
+    --inv-price-w: 84px;
+    --inv-media-h: 44px;
     --inv-gap: 6px;
     --inv-cols:
         22px                        /* rail   */
         2px                         /* edge   */
         var(--inv-thumb)            /* media  */
         124px                       /* tag    */
-        28px                        /* qty    */
-        minmax(200px, 300px)        /* item   */
-        minmax(190px, 260px)        /* color  */
-        minmax(0, 1fr)              /* spacer */
-        104px                       /* size   */
-        58px                        /* weight */
-        76px                        /* price  */
-        84px                        /* total  */
+        minmax(0, 1fr)              /* title: qty shape type colour material sizes weight, total MXN at its end */
+        var(--inv-price-w)          /* price MXN */
         44px                        /* aq     */
         48px                        /* ld     */
         228px;                      /* state  */
@@ -274,7 +269,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    width: 104px;
+    /* A large gallery that follows the list's width (cqi = the row container). */
+    width: clamp(300px, 44cqi, 760px);
     min-width: 0;
 }
 
@@ -1052,9 +1048,8 @@
 @container inv (max-width: 1360px) {
     .inv-grid, .inv-drawer {
         --inv-cols:
-            22px 2px var(--inv-thumb) 124px 28px
-            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
-            104px 58px 76px 84px 44px 68px;
+            22px 2px var(--inv-thumb) 124px minmax(0, 1fr)
+            var(--inv-price-w) 44px 68px;
     }
     .inv-c-state { display: none; }
     .inv-f-state { display: flex; }
@@ -1067,9 +1062,8 @@
 @container inv (max-width: 1145px) {
     .inv-grid, .inv-drawer {
         --inv-cols:
-            22px 2px var(--inv-thumb) 124px 28px
-            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
-            104px 58px 84px 44px 68px;
+            22px 2px var(--inv-thumb) 124px minmax(0, 1fr)
+            44px 68px;
     }
     .inv-c-price { display: none; }
     .inv-f-price { display: flex; }
@@ -1078,44 +1072,20 @@
 @container inv (max-width: 1065px) {
     .inv-grid, .inv-drawer {
         --inv-cols:
-            22px 2px var(--inv-thumb) 124px 28px
-            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
-            104px 58px 44px 68px;
+            22px 2px var(--inv-thumb) 124px minmax(0, 1fr)
+            44px 68px;
     }
     .inv-c-total { display: none; }
     .inv-f-total { display: flex; }
 }
 
-@container inv (max-width: 975px) {
-    .inv-grid, .inv-drawer {
-        --inv-cols:
-            22px 2px var(--inv-thumb) 124px 28px
-            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
-            104px 44px 68px;
-    }
-    .inv-c-weight { display: none; }
-    .inv-fi-weight { display: inline; }
-}
-
 @container inv (max-width: 910px) {
     .inv-grid, .inv-drawer {
         --inv-cols:
-            22px 2px var(--inv-thumb) 124px 28px
-            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr)
-            104px;
+            22px 2px var(--inv-thumb) 124px minmax(0, 1fr);
     }
     .inv-c-aq, .inv-c-ld { display: none; }
     .inv-f-aq { display: flex; }
-}
-
-@container inv (max-width: 785px) {
-    .inv-grid, .inv-drawer {
-        --inv-cols:
-            22px 2px var(--inv-thumb) 124px 28px
-            minmax(200px, 300px) minmax(190px, 260px) minmax(0, 1fr);
-    }
-    .inv-c-size { display: none; }
-    .inv-fi-size { display: block; }
 }
 
 /* ── Phone: the row becomes three lines ──────────────────────────────────
@@ -1142,11 +1112,10 @@
     }
     .inv-head { display: none; }
     .inv-grid.inv-row {
-        grid-template-columns: 2px var(--inv-thumb) auto auto minmax(0, 1fr) auto auto;
+        grid-template-columns: 2px var(--inv-thumb) auto minmax(0, 1fr) auto auto;
         grid-template-areas:
-            "edge media tag   qty   .     aq    ld"
-            "edge media item  item  item  item  item"
-            "edge media color color color size  size";
+            "edge media tag   .     aq    ld"
+            "edge media title title title title";
         column-gap: 6px;
         row-gap: 3px;
         min-height: 66px;
@@ -1167,11 +1136,10 @@
        mode does, which is the one case the fixed template was never meant to
        rule out. */
     .inv-row.is-selecting {
-        grid-template-columns: 20px 2px var(--inv-thumb) auto auto minmax(0, 1fr) auto auto;
+        grid-template-columns: 20px 2px var(--inv-thumb) auto minmax(0, 1fr) auto auto;
         grid-template-areas:
-            "rail edge media tag   qty   .     aq    ld"
-            "rail edge media item  item  item  item  item"
-            "rail edge media color color color size  size";
+            "rail edge media tag   .     aq    ld"
+            "rail edge media title title title title";
     }
     .inv-row.is-selecting > .inv-c-rail {
         display: flex;
@@ -1180,10 +1148,7 @@
     .inv-row > .inv-c-edge    { grid-area: edge; }
     .inv-row > .inv-c-media   { grid-area: media; }
     .inv-row > .inv-c-tag     { grid-area: tag; }
-    .inv-row > .inv-c-qty     { grid-area: qty; font-size: 13px; }
-    .inv-row > .inv-c-qty::before { content: "\00D7"; opacity: 0.55; margin-right: 1px; }
-    .inv-row > .inv-c-item    { grid-area: item; font-size: 14px; }
-    .inv-row > .inv-c-color   { grid-area: color; display: block; font-size: 12px; }
+    .inv-row > .inv-c-title   { grid-area: title; }
     /* The codes carry their own AQ / LD labels here — there is no header. */
     .inv-row > .inv-c-aq      { grid-area: aq; display: block; font-size: 12px; padding-left: 4px; }
     .inv-row > .inv-c-ld      { grid-area: ld; display: block; font-size: 12px; }
@@ -1198,7 +1163,6 @@
     }
     .inv-row > .inv-c-aq::before { content: "AQ"; }
     .inv-row > .inv-c-ld::before { content: "LD"; }
-    .inv-row > .inv-c-size    { grid-area: size; display: block; font-size: 12px; text-align: right; }
     .inv-row > .inv-c-total   { display: none; }
     .inv-mark { height: 16px; margin-left: 4px; }
 
@@ -1230,7 +1194,7 @@
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas: "clusters" "ai" "pay" "actions";
     }
-    .inv-panel-media { width: 88px; }
+    .inv-panel-media { width: clamp(260px, 40cqi, 420px); }
     /* The body gets the full width under the title, type and colours. */
     .inv-ai { grid-template-columns: minmax(0, 1fr); }
     .inv-hero { width: 88px; height: 88px; }
@@ -1260,11 +1224,8 @@
     .inv-panel.inv-panel--nomedia {
         grid-template-areas: "clusters" "ai" "pay" "actions";
     }
-    .inv-panel-media {
-        flex-direction: row;
-        width: auto;
-        overflow-x: auto;
-    }
+    .inv-panel-media { width: auto; }
+    .inv-panel-media .inv-thumbs--grid { --row-h: 110px; }
     .inv-hero { width: 72px; height: 72px; }
     .inv-thumbs {
         display: flex;
@@ -1574,3 +1535,176 @@ html.dark .inv-head-wrap {
         height: 96px;
     }
 }
+
+/* ── Row title, cutout and colour bar ─────────────────────────────────────
+   The identity is one deterministic line, as the catalog titles set it:
+   qty and shape type bold, colour material regular, cm bold, imperial
+   regular, kg bold, lbs regular. It wraps instead of clipping, so the row
+   grows a line rather than hiding the size. */
+.inv-grid > .inv-c-title {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    padding-block: 4px;
+}
+.inv-head > .inv-c-title { padding-block: 0; }
+.inv-title {
+    align-self: center;
+    max-width: 64ch;
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--text-color);
+    overflow-wrap: anywhere;
+}
+.inv-title b { font-weight: 800; }
+.inv-title span { font-weight: 400; }
+
+.inv-band {
+    display: flex;
+    flex: none;
+    overflow: hidden;
+    border-radius: 2px;
+    box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--text-color) 25%, transparent);
+}
+.inv-band > span { flex: 1 1 0; }
+.inv-band--v { flex-direction: column; width: 5px; min-height: 28px; }
+.inv-band--h { width: 100%; max-width: 280px; height: 8px; margin-bottom: 10px; }
+
+/* The cutout floats free on no tile, and lifts on hover. */
+.inv-grid > .inv-c-media--png {
+    overflow: visible;
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.inv-png {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transform-origin: 50% 70%;
+    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.32s ease;
+}
+.inv-png-axo { display: flex; align-items: center; justify-content: center; opacity: 0.85; }
+.inv-png-axo svg, .inv-png-axo img { max-width: 100%; max-height: 100%; }
+.inv-row:hover .inv-png {
+    transform: translateY(-3px) scale(1.28) rotate(-3deg);
+    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.35));
+}
+@media (prefers-reduced-motion: reduce) {
+    .inv-png { transition: none; }
+    .inv-row:hover .inv-png { transform: none; }
+}
+
+/* The open row's photos: every clean image and the axo in one grid, as the catalog
+   grid sets them. The first photo takes a 2x2 block; one photo sits beside its axo. */
+/* Justified rows: every tile keeps its photo's own aspect ratio (--ar, read on load) and grows in
+   proportion to it, so each row fills the width at one height and nothing is cropped to a square. */
+.inv-thumbs--grid {
+    --row-h: 150px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: none;
+    overflow: visible;
+}
+.inv-thumbs--grid::after { content: ''; flex-grow: 999; }
+.inv-thumbs--grid > .inv-thumb {
+    flex: var(--ar) 1 calc(var(--ar) * var(--row-h));
+    aspect-ratio: var(--ar);
+    width: auto;
+    height: auto;
+    border-radius: 6px;
+}
+.inv-thumb--axo {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    padding: 6px;
+    cursor: default;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-color) 12%, transparent);
+}
+.inv-axo-fig { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; }
+.inv-axo-fig svg, .inv-axo-fig img { max-width: 100%; max-height: 100%; }
+.inv-axo-side { flex: none; display: flex; gap: 6px; align-items: stretch; max-width: 55%; }
+.inv-axo-side .inv-band--v { height: 100%; min-height: 0; }
+.inv-axo-side .inv-ai-chips { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: flex-end; justify-content: center; gap: 4px; min-width: 0; overflow: hidden; }
+
+/* Several cutouts (a lamp pair, a set) overlap in the row's image slot. */
+.inv-c-media--png[data-n="2"] .inv-png,
+.inv-c-media--png[data-n="3"] .inv-png { width: auto; min-width: 0; flex: 1 1 0; }
+.inv-c-media--png[data-n="2"] .inv-png + .inv-png,
+.inv-c-media--png[data-n="3"] .inv-png + .inv-png { margin-left: -18%; }
+
+/* ── MXN / USD toggles ────────────────────────────────────────────────────
+   MXN off: the price track closes (its cell stays, empty, so auto-placement
+   never shifts the codes into it) and the title's total stack is not rendered. */
+.inv-scope--nomxn { --inv-price-w: 0px; }
+.inv-scope--nomxn .inv-c-price { visibility: hidden; }
+
+/* MXN price and total. Each is a label and a value.
+   List row: stacked at the end of the title in a fixed-width block, labels
+   left and values right, so the figures form one column down the list (the
+   price line appears only where the row has dropped its PRICE column).
+   Cards and the detail sheet: two side-by-side columns, label over value;
+   stacked on the same side, label | value, on a narrow card or a phone. */
+.inv-mxn-stack {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-content: center;
+    column-gap: 8px;
+    row-gap: 2px;
+    flex: none;
+    margin-left: 14px;
+    align-self: center;
+    line-height: 1.15;
+    color: var(--text-color);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.inv-mxn-cell { display: contents; }
+.inv-mxn-cell small {
+    align-self: center;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
+}
+.inv-mxn-cell b { font-size: 14px; font-weight: 900; text-align: right; }
+/* Pushed to the end of the title track, so every row's figures land in the same column; each label sits on top of
+   its value, and the price sits on top of the total. */
+.inv-grid .inv-mxn-stack { grid-template-columns: 104px; grid-auto-flow: row; row-gap: 6px; margin-left: auto; }
+.inv-grid .inv-mxn-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.inv-grid .inv-mxn-cell small { margin: 0; }
+.inv-grid .inv-mxn-price { display: none; }
+@container inv (max-width: 1145px) {
+    .inv-grid .inv-mxn-price { display: flex; }
+}
+@container inv (max-width: 685px) {
+    .inv-grid .inv-mxn-stack { grid-template-columns: auto; }
+}
+
+.inv-card .inv-mxn-stack,
+.inv-sheet .inv-mxn-stack {
+    grid-template-columns: max-content;
+    grid-auto-flow: row;
+    row-gap: 6px;
+    justify-content: start;
+    margin: 6px 0 0;
+}
+.inv-card .inv-mxn-cell,
+.inv-sheet .inv-mxn-cell { display: flex; flex-direction: column; gap: 2px; }
+.inv-card .inv-mxn-cell b,
+.inv-sheet .inv-mxn-cell b { text-align: left; font-size: 16px; }
+/* The grid card already shows the price on its tag line. */
+.inv-card--std .inv-mxn-price { display: none; }
+@media (max-width: 640px) {
+    .inv-card .inv-mxn-cell b,
+    .inv-sheet .inv-mxn-cell b { font-size: 14px; }
+    .inv-card--std .inv-mxn-price { display: none; }
+}
+.inv-card-price { margin-left: auto; white-space: nowrap; }

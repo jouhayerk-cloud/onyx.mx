@@ -16,6 +16,8 @@ import { vendors } from '../../lib/consts';
 import { islandCommandsEnabledAtom } from '../../lib/toolRegistry';
 
 import {
+    showInventoryMxnAtom,
+    showInventoryUsdAtom,
     isInventoryViewSliderOpenAtom,
     inventoryViewSliderAtom,
     inventoryViewModeAtom,
@@ -28,14 +30,18 @@ import {
     inventoryStatusFilterAtom,
     inventoryContentFilterAtom,
     inventoryVendorFilterAtom,
-    activeVendorsAtom,
+    visibleVendorsAtom,
+    visibleInventoryAtom,
     inventoryAtom,
     isInventorySmartFiltersOpenAtom,
     isInventoryMaterialColorFilterOpenAtom,
     isInventoryShapeFilterOpenAtom,
     inventoryMaterialColorFilterAtom,
-    inventoryShapeFilterAtom
+    inventoryShapeFilterAtom,
+    inventoryHexRangeAtom,
+    isInventoryHexMapOpenAtom
 } from '../../lib/atoms';
+import { HexColorMapPanel } from './HexColorMapPanel';
 
 /** Add Entry's Type hairlines as a filter: one button per Type (tap again to clear), then the sub-shapes of each selected Type. */
 const TypeFilterGroup: React.FC<{ rows: any[]; selected: string[]; onToggle: (key: string) => void }> = ({ rows, selected, onToggle }) => {
@@ -211,6 +217,8 @@ export const InventoryViewPanel: React.FC = () => {
     const [, setInvMode] = useAtom(inventoryViewModeAtom);
     const [invSortKey, setInvSortKey] = useAtom(inventorySortKeyAtom);
     const [invSortOrder, setInvSortOrder] = useAtom(inventorySortOrderAtom);
+    const [showMxn, setShowMxn] = useAtom(showInventoryMxnAtom);
+    const [showUsd, setShowUsd] = useAtom(showInventoryUsdAtom);
 
     const handleToggleDensity = () => {
         if (invSlider <= 33) {
@@ -248,6 +256,15 @@ export const InventoryViewPanel: React.FC = () => {
                 className="utb-view-slider"
                 style={{ ['--utb-fill' as string]: `${invSlider}%` } as React.CSSProperties}
             />
+
+            <div className="utb-divider shrink-0" aria-hidden="true" />
+
+            <div className="utb-view-sort" role="group" aria-label={tr("Pricing")}>
+                <button aria-pressed={showMxn} onClick={() => setShowMxn(!showMxn)} className="utb-control utb-sort-chip"
+                    title={tr("Show MXN price and total")}><span>MXN</span></button>
+                <button aria-pressed={showUsd} onClick={() => setShowUsd(!showUsd)} className="utb-control utb-sort-chip"
+                    title={tr("Show USD acquisition, landed and retail")}><span>USD</span></button>
+            </div>
 
             <div className="utb-divider shrink-0" aria-hidden="true" />
 
@@ -293,7 +310,7 @@ export const InventorySmartFiltersPanel: React.FC = () => {
     const [shapeFilterOpen, setShapeFilterOpen] = useAtom(isInventoryShapeFilterOpenAtom);
     const [shapeSel, setShapeSel] = useAtom(inventoryShapeFilterAtom);
     const [materialColorSel, setMaterialColorSel] = useAtom(inventoryMaterialColorFilterAtom);
-    const inventoryRows = useAtomValue(inventoryAtom);
+    const inventoryRows = useAtomValue(visibleInventoryAtom);
 
     const materialColorTree = React.useMemo(() => buildMaterialColorTree(inventoryRows || []), [inventoryRows]);
 
@@ -399,12 +416,15 @@ export const InventoryFiltersPanel: React.FC = () => {
     const [invStatusFilter, setInvStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const [contentSel, setContentSel] = useAtom(inventoryContentFilterAtom);
     const [invVendorFilter, setInvVendorFilter] = useAtom(inventoryVendorFilterAtom);
-    const activeVendors = useAtomValue(activeVendorsAtom);
-    const inventoryRows = useAtomValue(inventoryAtom);
+    const activeVendors = useAtomValue(visibleVendorsAtom);
+    // Type and vendor options come from the workbooks toggled ON only.
+    const inventoryRows = useAtomValue(visibleInventoryAtom);
     const [smartOpen, setSmartOpen] = useAtom(isInventorySmartFiltersOpenAtom);
     const [typeSel, setTypeSel] = useAtom(inventoryShapeFilterAtom);
     const [materialColorSel, setMaterialColorSel] = useAtom(inventoryMaterialColorFilterAtom);
     const toggleSmart = () => setSmartOpen(!smartOpen);
+    const [hexOpen, setHexOpen] = useAtom(isInventoryHexMapOpenAtom);
+    const [hexRange, setHexRange] = useAtom(inventoryHexRangeAtom);
 
     const isStatusActive = invStatusFilter !== 'All';
     const aiActiveCount = (contentSel || []).length;
@@ -412,7 +432,7 @@ export const InventoryFiltersPanel: React.FC = () => {
     const vendorActiveCount = isVendorActive ? invVendorFilter.length : 0;
     // Material / Colour has no control here any more: an old selection still counts, so Clear can drop it.
     const smartCount = (typeSel || []).length + (materialColorSel || []).length;
-    const totalActiveCount = (isStatusActive ? 1 : 0) + aiActiveCount + vendorActiveCount + smartCount;
+    const totalActiveCount = (isStatusActive ? 1 : 0) + aiActiveCount + vendorActiveCount + smartCount + (hexRange ? 1 : 0);
 
     const handleClearAll = () => {
         setInvStatusFilter('All');
@@ -420,6 +440,7 @@ export const InventoryFiltersPanel: React.FC = () => {
         setInvVendorFilter(['All']);
         setTypeSel([]);
         setMaterialColorSel([]);
+        setHexRange(null);
     };
 
     return (
@@ -460,6 +481,17 @@ export const InventoryFiltersPanel: React.FC = () => {
                 >
                     <Shapes size={14} strokeWidth={2.4} />
                     <span className="utb-label-desktop">{tr("Type")}</span>
+                </button>
+
+                <button
+                    onClick={() => setHexOpen(!hexOpen)}
+                    aria-pressed={hexOpen}
+                    aria-label={tr("Colour map")}
+                    title={tr("Colour map")}
+                    className="utb-control utb-smart-deploy shrink-0"
+                >
+                    <Palette size={14} strokeWidth={2.4} />
+                    <span className="utb-label-desktop">{tr("Color")}</span>
                 </button>
 
                 <button
@@ -521,6 +553,12 @@ export const InventoryFiltersPanel: React.FC = () => {
                             onToggle={(k: string) => setTypeSel(prev => toggleKey(prev || [], k))}
                         />
                     </div>
+                </div>
+            )}
+
+            {hexOpen && (
+                <div className="utb-row utb-row--full">
+                    <HexColorMapPanel />
                 </div>
             )}
         </div>

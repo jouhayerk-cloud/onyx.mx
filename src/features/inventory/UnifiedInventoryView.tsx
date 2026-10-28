@@ -47,14 +47,20 @@ import {
     visibleWorkbooksAtom,
     inventoryShapeFilterAtom,
     inventoryContentFilterAtom,
-    inventoryMaterialColorFilterAtom
+    inventoryMaterialColorFilterAtom,
+    showInventoryMxnAtom,
+    showInventoryUsdAtom,
+    inventoryHexRangeAtom
 } from '../../lib/atoms';
+import { itemHistogram, rangeShare, RANGE_MIN_SHARE } from '../../lib/hexColorMap';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { rowWorkbook } from '../../lib/seasons';
 import { rowMatchesShape, rowMatchesMaterialColor } from '../../lib/smartFilters';
 import { rowMatchesContent } from '../../lib/aiContent';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages, toTitleCase, extractItemHexString } from '../../lib/utils';
+import { parseHexMapString } from '../../lib/axonometric';
+import { itemBandShades } from '../../lib/canonicalColors';
 import { InventoryItemData, UploadedFile, InventoryItem } from '../../lib/Types';
 import { useHybridSearch, QUERY_VECTOR_DIMS } from '../../lib/embeddings/useHybridSearch';
 import type { VectorIndex } from '../../lib/embeddings/vectorIndex';
@@ -91,10 +97,10 @@ const COL_TEXT = {
     size:     'text-[13px] font-mono font-black text-(--text-color)',
     weight:   'text-[13px] font-mono font-bold text-(--text-color)/70',
     price:    'text-[14px] font-black text-(--text-color)',
-    total:    'text-[14px] font-black text-(--main-color)',
+    total:    'text-[14px] font-black text-(--text-color)',
     acq:      'text-[14px] font-black text-cyan-500',
     landed:   'text-[14px] font-black text-yellow-500',
-    retail:   'text-[14px] font-black text-green-500',
+    retail:   'text-[14px] font-black text-(--text-color)',
     aq:       'text-[13px] font-mono font-black text-(--text-color)/75',
     ld:       'text-[13px] font-mono font-black text-yellow-500/90',
     unpacked: 'text-[10px] font-black text-(--text-color)/30 uppercase tracking-[0.15em] leading-none',
@@ -135,6 +141,47 @@ const swatchFor = (name: string): string => {
     const k = name.trim().toLowerCase().replace('grey', 'gray');
     if (k === 'multicolor' || k === 'rainbow') return 'conic-gradient(#dc2626, #eab308, #16a34a, #2563eb, #9333ea, #dc2626)';
     return SWATCHES[k] || 'transparent';
+};
+
+// The item's stone colour bar, from its own hex map (the one the axo texture uses), as the catalogs draw it.
+const StoneBand = ({ data, norm, dir }: { data: any; norm: any; dir: 'h' | 'v' }) => {
+    const shades = useMemo(
+        () => itemBandShades(parseHexMapString(extractItemHexString(data) || extractItemHexString(norm)), { color: norm.color, material: norm.material }),
+        [data, norm]);
+    return (
+        <span className={`inv-band inv-band--${dir}`} aria-hidden="true">
+            {shades.map((h, i) => <span key={i} style={{ backgroundColor: h }} />)}
+        </span>
+    );
+};
+
+// The item's transparent cutout PNGs, by the catalog compact rule (pdfExport getItemCutoutPngs): one per unit when the
+// quantity and the photos allow it, else one; lamps take the lights-on photos (angle 1 and 3) before the lights-off ones.
+// shortcut: a copy of that rule, kept here so the list does not pull jsPDF in; move both to utils if a third caller appears.
+const listCutoutUrls = (data: any, norm: any, photoCount: number): string[] => {
+    let masks = data?.spatial_masks ?? data?.spatialMasks;
+    if (typeof masks === 'string') { try { masks = JSON.parse(masks); } catch { masks = null; } }
+    const at = (i: number): string | null => {
+        const e = masks?.[`angle_${i}`];
+        const x = Array.isArray(e) ? e[0] : e;
+        const u = typeof x === 'string' ? x : (x?.cutoutUrl || x?.mask || x?.pngUrl);
+        return typeof u === 'string' && u ? u : null;
+    };
+    const qty = parseInt(String(norm.quantity), 10) || 1;
+    const max = qty > 1 && photoCount > 1 ? Math.min(qty, photoCount, 3) : 1;
+    const kind = `${norm.shape || ''} ${norm.shortDescription || ''} ${norm.generatedType || ''}`.toLowerCase();
+    const picks = /lamp|lantern|pendant|sconce|light/.test(kind) && photoCount >= 2
+        ? [at(1) || at(0), at(3) || at(2)]
+        : [0, 1, 2, 3, 4, 5].map(at);
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const u of [...picks, norm.generatedPngUrl, data?.generated_png_url, data?.mask_url]) {
+        if (!u || out.length >= max) continue;
+        const id = extractFileId(u) || u;
+        if (!seen.has(id)) { seen.add(id); out.push(u); }
+        if (out.length && picks.every(x => !x)) break; // the generated PNG is one piece, never repeated per unit
+    }
+    return out;
 };
 
 // Building blocks of an open row's panel. `k` names the entry (`inv-f-<k>`).
@@ -382,6 +429,8 @@ const PackedCrateBadge = ({ crateId, itemId, logisticsDocs, allInventory, isComp
 const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs, deployedItemsMap, logisticsDocs, allInventory }: any) => {
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+    const showMxn = useAtomValue(showInventoryMxnAtom);
+    const showUsd = useAtomValue(showInventoryUsdAtom);
 
     const theme = useAtomValue(themeAtom);
     const qrColor = theme === 'aqua' ? '#000000' : '#FFFFFF'; // aqua is the only light theme left
@@ -414,6 +463,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const [showFullBody, setShowFullBody] = useState(false);
     const [isHoveringCard, setIsHoveringCard] = useState(false);
     const [isCutoutModalOpen, setIsCutoutModalOpen] = useState(false);
+    // Each drawer photo's width / height, read on load, so the gallery rows keep every photo's true shape.
+    const [photoRatios, setPhotoRatios] = useState<Record<number, number>>({});
 
 
     const mediaUrls = useMemo(() => {
@@ -484,6 +535,17 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         .split(' x ').map(part => part.replace(/ /g, ' ')).join(' × ');
     const imperialWeight = formatWeightImperialOnly(norm.weightKg);
     const stone = [norm.color, norm.material].filter(Boolean).join(' ');
+    const uniqWords = (parts: any[]) => toTitleCase(Array.from(new Set(parts.filter(Boolean).join(' ').split(/\s+/).filter(Boolean).map(w => w.toLowerCase()))).join(' '));
+    const titleRuns: { t: string; b: boolean }[] = [
+        { t: String(parseInt(String(norm.quantity), 10) || 1), b: true },
+        { t: ' ' + (uniqWords([norm.shape, norm.shortDescription]) || tr("Object")), b: true },
+        ...(stone ? [{ t: ' ' + uniqWords([norm.color, norm.material]), b: false }] : []),
+        ...(metricDimensionsStr ? [{ t: ' ' + metricDimensionsStr.replace(/x/g, '×'), b: true }] : []),
+        ...(metricWeightStr ? [{ t: ' ' + metricWeightStr, b: true }] : []),
+    ];
+    const titleText = titleRuns.map(r => r.t).join('');
+    const itemData = item?.data || item;
+    const cutoutUrls = useMemo(() => listCutoutUrls(itemData, norm, collectAllImages(norm, { dropVideos: true }).length), [itemData, norm]);
     const fmtMoney = (v: any) => {
         if (!showFinancials) return '***';
         const n = Number(v);
@@ -494,6 +556,15 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
         const t = new Date(d);
         return isNaN(t.getTime()) ? String(d) : t.toLocaleDateString(tr("en-US"), { month: 'short', day: 'numeric', year: 'numeric' });
     };
+
+    // MXN price and total, stacked at the end of the title (the price line shows only where the row has no PRICE column).
+    const mxnStack = showMxn && (
+        <span className="inv-mxn-stack inv-num">
+            <span className="inv-mxn-cell inv-mxn-price"><small>{tr("Price MXN")}</small><b>{fmtMoney(itemPriceMXN)}</b></span>
+            <span className="inv-mxn-cell inv-mxn-total"><small>{tr("Total MXN")}</small><b>{fmtMoney(itemTotalMXN)}</b></span>
+        </span>
+    );
+    const mxnPrice = showMxn && <span className={`inv-card-price inv-num ${COL_TEXT.price}`} title={tr("Price MXN")}>{fmtMoney(itemPriceMXN)}</span>;
 
     // The AI copy. Only worked out for an open row: the body needs an HTML
     // parse and the check a full scan, and 480 closed rows need neither.
@@ -677,11 +748,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         {rows.map(({ p, net, fees, total }) => (
                             <div key={p.id} className="payment-row inv-pay">
                                 <span className="font-bold truncate">{p.date ? fmtDate(p.date) : tr("Unknown Date")}</span>
-                                <span className={`text-[11px] font-black uppercase tracking-widest truncate ${p.status === 'Paid' ? 'text-green-500' : p.status === 'Requested' ? 'text-yellow-600' : 'text-sky-500'}`}>{p.status || 'New'}</span>
+                                <span className="text-[11px] font-black uppercase tracking-widest truncate text-(--text-color)/80">{p.status || 'New'}</span>
                                 <span className="inv-r font-mono font-bold text-(--text-color)/70">{Array.isArray(p.related_ids) && p.related_ids.length ? p.related_ids.length : '—'}</span>
                                 <span className="inv-pay-net inv-r font-mono font-bold">{fmtMoney(net)}</span>
-                                <span className="inv-pay-fees inv-r font-mono font-bold text-red-400">{fmtMoney(fees)}</span>
-                                <span className="inv-r font-mono font-black text-(--main-color)">{fmtMoney(total)}</span>
+                                <span className="inv-pay-fees inv-r font-mono font-bold text-(--text-color)/70">{fmtMoney(fees)}</span>
+                                <span className="inv-r font-mono font-black">{fmtMoney(total)}</span>
                             </div>
                         ))}
                         {rows.length > 1 && (
@@ -690,8 +761,8 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                 <span />
                                 <span />
                                 <span className="inv-pay-net inv-r font-mono">{fmtMoney(sum('net'))}</span>
-                                <span className="inv-pay-fees inv-r font-mono text-red-400">{fmtMoney(sum('fees'))}</span>
-                                <span className="inv-r font-mono text-(--main-color)">{fmtMoney(sum('total'))}</span>
+                                <span className="inv-pay-fees inv-r font-mono text-(--text-color)/70">{fmtMoney(sum('fees'))}</span>
+                                <span className="inv-r font-mono">{fmtMoney(sum('total'))}</span>
                             </div>
                         )}
                     </div>
@@ -731,6 +802,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     // which the old modal carried.
     const clusters = (full = false) => {
         const hasAxoOverlay = mediaUrls.length > 0 && (viewMode === 'gallery' || full);
+        const axoInGallery = !full && viewMode === 'list' && mediaUrls.length > 0;
         return (
         <div className="inv-clusters">
             {/* SPECS — the piece's axonometric silhouette beside its
@@ -741,12 +813,15 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 SIZE / WEIGHT column; the imperial ones are always here. */}
             <section className="inv-cluster" aria-label={tr("Specs")}>
                 <h5 className="inv-cluster-t">{tr("Specs")}</h5>
+                {!axoInGallery && <StoneBand data={itemData} norm={norm} dir="h" />}
                 <div className="inv-specs-body">
-                    {!hasAxoOverlay && (
+                    {!hasAxoOverlay && !axoInGallery && (
                         <div className="inv-axo-col">
-                            <div className="inv-axo" title={tr("Proportions")} aria-hidden="true">
-                                <WireframeIcon item={norm} />
-                            </div>
+                            {!axoInGallery && (
+                                <div className="inv-axo" title={tr("Proportions")} aria-hidden="true">
+                                    <WireframeIcon item={norm} />
+                                </div>
+                            )}
                             {renderColorBubbles('inv-axo-bubbles-floating')}
                         </div>
                     )}
@@ -761,18 +836,17 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 </div>
             </section>
 
-            <section className="inv-cluster" aria-label={tr("Pricing")}>
-                <h5 className="inv-cluster-t">{tr("Pricing")}</h5>
-                <div className="inv-stats">
-                    <Stat k="price" label={tr("Price MXN")} overflow valueClassName={COL_TEXT.price}>{fmtMoney(itemPriceMXN)}</Stat>
-                    {/* TOTAL only leaves the row on a phone, where the row
-                        gives its line to COLOR MATERIAL instead. */}
-                    <Stat k="total" label={tr("Total MXN")} overflow valueClassName={COL_TEXT.total}>{fmtMoney(itemTotalMXN)}</Stat>
-                    {full && <Stat k="acq" label={tr("Acq. USD")} valueClassName={COL_TEXT.acq}>{fmtMoney(calculated.bookAcquisition)}</Stat>}
-                    <Stat k="landed" label={tr("Landed USD")} valueClassName={COL_TEXT.landed}>{fmtMoney(calculated.bookLanded)}</Stat>
-                    <Stat k="retail" label={tr("Retail USD")} valueClassName={COL_TEXT.retail}>{fmtMoney(calculated.bookRetail)}</Stat>
-                </div>
-            </section>
+            {/* USD pricing, shown by the View bar's USD toggle. MXN price and total are on the row / card. */}
+            {showUsd && (
+                <section className="inv-cluster" aria-label={tr("Pricing USD")}>
+                    <h5 className="inv-cluster-t">{tr("Pricing USD")}</h5>
+                    <div className="inv-stats">
+                        <Stat k="acq" label={tr("Acq. USD")} valueClassName={COL_TEXT.acq}>{fmtMoney(calculated.bookAcquisition)}</Stat>
+                        <Stat k="landed" label={tr("Landed USD")} valueClassName={COL_TEXT.landed}>{fmtMoney(calculated.bookLanded)}</Stat>
+                        <Stat k="retail" label={tr("Retail USD")} valueClassName={COL_TEXT.retail}>{fmtMoney(calculated.bookRetail)}</Stat>
+                    </div>
+                </section>
+            )}
 
             {/* Shown on a wide row only when the piece is deployed — the
                 row says that with a teal dot alone, and a dot is not a word.
@@ -994,34 +1068,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     {/* EDGE — the payment colour as a hairline down the row. */}
                     <div className="inv-c-edge" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
 
-                    {/* MEDIA */}
-                    <div className="inv-c-media relative bg-black/40 group/listimg isolate"
-                        onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}
-                        onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}
-                        onTouchStart={(e) => { e.stopPropagation(); setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); }}
-                        onTouchMove={(e) => { e.stopPropagation(); setTouchEnd(e.targetTouches[0].clientX); }}
-                        onTouchEnd={(e) => {
-                            e.stopPropagation();
-                            if (!touchStart || !touchEnd) return;
-                            const dist = touchStart - touchEnd;
-                            if (dist > 30) setCardIdx(p => (p + 1) % mediaUrls.length);
-                            if (dist < -30) setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length);
-                        }}>
-                        {mediaUrls[cardIdx] ? <DriveImage loading="lazy" key={cardIdx} src={mediaUrls[cardIdx]} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full opacity-60 flex items-center justify-center mix-blend-screen scale-[1.3]"><WireframeIcon item={norm} /></div>}
-                        {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={12} /></div>}
-
-                        {mediaUrls.length > 1 && (
-                            <>
-                                <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
-                                    className="absolute left-0 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white transition-all drop-shadow-md">
-                                    <ChevronLeft size={12} />
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p + 1) % mediaUrls.length); }}
-                                    className="absolute right-0 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white transition-all drop-shadow-md">
-                                    <ChevronRight size={12} />
-                                </button>
-                            </>
-                        )}
+                    {/* MEDIA — the cutout PNG floating free, or the axo when the piece has no cutout yet.
+                        Not a gallery: the clean photos open with the row, in its panel. */}
+                    <div className={`inv-c-media inv-c-media--png${cutoutUrls.length ? '' : ' is-axo'}`} data-n={cutoutUrls.length}>
+                        {cutoutUrls.length
+                            ? cutoutUrls.map(u => <DriveImage key={u} loading="lazy" src={u} alt="" className="inv-png" />)
+                            : <div className="inv-png inv-png-axo"><WireframeIcon item={norm} /></div>}
                     </div>
 
                     {/* TAG */}
@@ -1029,38 +1081,18 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         {tagKey}
                     </div>
 
-                    {/* QTY — beside the tag rather than beside the money: it is part of
-                        what the line IS ("SU32653OO × 21"), and read before the price
-                        it tells you whether that price is for one piece or a lot. */}
-                    <div className="inv-c-qty inv-cell inv-num inv-r text-[13px] font-mono font-black text-cyan-500">{norm.quantity || 1}</div>
-
-                    {/* Two phrase columns, one line per row — see density.css. Shape and
-                        type read as one name ("HORSES PAINTED WALL PANEL"), colour and
-                        material as one stone ("TEHUACAN WHITE ONYX"), so each pair shares
-                        a column, joined by a space. Within the name the shape stays
-                        heavier than the type, so the word you scan for comes first
-                        at a glance. Each cell clips with an ellipsis and carries a
-                        `title`, so a long value never wraps the row and is never
-                        unreachable. */}
-                    <div className="inv-c-item inv-cell text-[14px] uppercase tracking-tight text-(--text-color)"
-                        title={[norm.shape, norm.shortDescription].filter(Boolean).join(' ')}>
-                        <span className="font-black">{norm.shape || tr("OBJ")}</span>
-                        {norm.shortDescription && <> <span className="font-bold text-(--text-color)/75">{norm.shortDescription}</span></>}
-                    </div>
-                    <div className={`inv-c-color inv-cell ${COL_TEXT.color}`}
-                        title={[norm.color, norm.material].filter(Boolean).join(' ')}>
-                        {[norm.color, norm.material].filter(Boolean).join(' ') || '—'}
+                    {/* TITLE — quantity, shape type, colour material, sizes and weight as one
+                        deterministic line that wraps, in the catalog titles' bold / regular runs,
+                        beside the stone's colour bar. */}
+                    <div className="inv-c-title" title={titleText}>
+                        <StoneBand data={itemData} norm={norm} dir="v" />
+                        <span className="inv-title">
+                            {titleRuns.map((r, i) => r.b ? <b key={i}>{r.t}</b> : <span key={i}>{r.t}</span>)}
+                        </span>
+                        {mxnStack}
                     </div>
 
-                    {/* The gutter between the identity block and the figures — see
-                        density.css. Empty by design. */}
-                    <div className="inv-c-spacer" aria-hidden="true" />
-
-                    <div className={`inv-c-size inv-cell inv-num ${COL_TEXT.size}`} title={metricDimensionsStr || ''}>{metricDimensionsStr || '—'}</div>
-                    <div className={`inv-c-weight inv-cell inv-num inv-r ${COL_TEXT.weight}`}>{metricWeightStr || '—'}</div>
-
-                    <div className={`inv-c-price inv-cell inv-num inv-r ${COL_TEXT.price}`}>{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</div>
-                    <div className={`inv-c-total inv-cell inv-num inv-r ${COL_TEXT.total}`}>{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</div>
+                    <div className={`inv-c-price inv-cell inv-num inv-r ${COL_TEXT.price}`}>{showMxn ? fmtMoney(itemPriceMXN) : ''}</div>
 
                     <div className={`inv-c-aq inv-cell inv-num ${COL_TEXT.aq}`}>{calculated.bookAqCode || '—'}</div>
                     <div className={`inv-c-ld inv-cell inv-num ${COL_TEXT.ld}`}>
@@ -1113,26 +1145,29 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
 
                             {mediaUrls.length > 0 && (
                                 <div className="inv-panel-media">
-                                    <div role="button" tabIndex={0} className="inv-hero"
-                                        title={tr("Open photos")}
-                                        onClick={(e) => { e.stopPropagation(); setViewerIdx(0); setShowViewer(true); }}
-                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(0); setShowViewer(true); } }}>
-                                        <DriveImage loading="lazy" src={mediaUrls[0]} className="w-full h-full object-cover" />
-                                        {isVideoFile(mediaUrls[0]) && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></span>}
-                                        {mediaUrls.length > 1 && <span className="inv-hero-count">{mediaUrls.length}</span>}
-                                    </div>
-                                    {mediaUrls.length > 1 && (
-                                        <div className="inv-thumbs no-scrollbar">
-                                            {mediaUrls.slice(1).map((u, i) => (
-                                                <div key={i} role="button" tabIndex={0} className="inv-thumb"
-                                                    onClick={(e) => { e.stopPropagation(); setViewerIdx(i + 1); setShowViewer(true); }}
-                                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(i + 1); setShowViewer(true); } }}>
-                                                    <DriveImage loading="lazy" src={u} className="w-full h-full object-cover" />
-                                                    {isVideoFile(u) && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80"><Video size={10} /></span>}
-                                                </div>
-                                            ))}
+                                    <div className="inv-thumbs inv-thumbs--grid no-scrollbar">
+                                        {mediaUrls.map((u, i) => (
+                                            <div key={i} role="button" tabIndex={0} className="inv-thumb" title={tr("Open photos")}
+                                                style={{ '--ar': photoRatios[i] || 1 } as React.CSSProperties}
+                                                onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
+                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(i); setShowViewer(true); } }}>
+                                                <DriveImage loading="lazy" src={u} className="w-full h-full object-cover"
+                                                    onLoad={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                                                        const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+                                                        if (w && h) setPhotoRatios(r => (r[i] === w / h ? r : { ...r, [i]: w / h }));
+                                                    }} />
+                                                {isVideoFile(u) && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80"><Video size={12} /></span>}
+                                            </div>
+                                        ))}
+                                        {/* The axo closes the gallery, its colour bar and store colours stacked beside it. */}
+                                        <div className="inv-thumb inv-thumb--axo" title={tr("Proportions")} style={{ '--ar': 2 } as React.CSSProperties}>
+                                            <div className="inv-axo-fig" aria-hidden="true"><WireframeIcon item={norm} /></div>
+                                            <div className="inv-axo-side">
+                                                {renderColorBubbles()}
+                                                <StoneBand data={itemData} norm={norm} dir="v" />
+                                            </div>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             )}
 
@@ -1304,6 +1339,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     <div className="inv-sheet-title">
                         {nameEl('inv-sheet-name', sheetTitleId)}
                         <p className={`inv-sheet-stone ${COL_TEXT.color}`} title={stone}>{stone || '—'}</p>
+                        {mxnStack}
                     </div>
                     <div className="inv-actions inv-sheet-actions" role="toolbar" aria-label={tr("Item actions")}>{actionButtons}</div>
                     <button ref={sheetCloseRef} type="button" className="inv-sheet-close" onClick={() => onToggleExpand()}
@@ -1391,6 +1427,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     {qtyChip}
                                     {payLed}
                                     {cardCodes(false)}
+                                    {mxnPrice}
                                 </div>
                                 <div className="inv-actions inv-sheet-actions" role="toolbar" aria-label={tr("Item actions")}>
                                     {actionButtons}
@@ -1400,6 +1437,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             <div className="inv-xl-title-block">
                                 {nameEl('inv-card-name')}
                                 <p className={`inv-card-stone ${COL_TEXT.color}`} title={stone}>{stone || '—'}</p>
+                                {mxnStack}
                             </div>
 
                             {clusters(true)}
@@ -1456,14 +1494,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         {tagKey}
                         {qtyChip}
                         {payLed}
+                        {mxnPrice}
                     </div>
                     {nameEl('inv-card-name')}
                     <p className={`inv-card-stone ${COL_TEXT.color}`} title={stone}>{stone || '—'}</p>
+                    {mxnStack}
                     <div className="inv-readout">
                         <span className={`inv-ro-v ${COL_TEXT.size}`} title={imperialDims}>{metricDimensionsStr || '—'}</span>
                         <span className={`inv-ro-v inv-r ${COL_TEXT.weight}`} title={imperialWeight}>{metricWeightStr || '—'}</span>
-                        <span className="inv-ro"><span className="inv-ro-l">{tr("Price")}</span><span className={`inv-ro-v ${COL_TEXT.price}`}>{fmtMoney(itemPriceMXN)}</span></span>
-                        <span className="inv-ro inv-r"><span className="inv-ro-l">{tr("Total MXN")}</span><span className={`inv-ro-v ${COL_TEXT.total}`}>{fmtMoney(itemTotalMXN)}</span></span>
                     </div>
                     <div className="inv-card-foot">{cardCodes(true)}</div>
                 </div>
@@ -1496,7 +1534,7 @@ export const UnifiedInventoryView = () => {
     const gridScale = viewMode === 'grid' ? 0.85 + ((viewSlider - 34) / 32) * 0.6 : 1;
     const galleryScale = viewMode === 'gallery' ? 0.9 + ((viewSlider - 67) / 33) * 0.9 : 1;
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
-    const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
+    const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom); const showMxnList = useAtomValue(showInventoryMxnAtom);
     const [itemData, setSelectedItemData] = useAtom(SelectedItemDataAtom); const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
     const [mode, setMode] = useAtom(detailsPanelModeAtom); const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom); const searchTerm = useAtomValue(inventorySearchTermAtom);
@@ -1665,6 +1703,7 @@ export const UnifiedInventoryView = () => {
     const deferredShapeFilter = useDeferredValue(shapeFilter);
     const deferredContentFilter = useDeferredValue(contentFilter);
     const deferredMaterialColorFilter = useDeferredValue(materialColorFilter);
+    const deferredHexRange = useDeferredValue(useAtomValue(inventoryHexRangeAtom));
 
     // Precompute prices, codes, search corpus and sort keys once per data/exchange rate change
     const preparedItems = useMemo(() => {
@@ -1777,6 +1816,7 @@ export const UnifiedInventoryView = () => {
             if (!rowMatchesShape(p.d, deferredShapeFilter)) return false;
             if (!rowMatchesContent(p.d, deferredContentFilter)) return false;
             if (!rowMatchesMaterialColor(p.d, deferredMaterialColorFilter)) return false;
+            if (deferredHexRange && rangeShare(itemHistogram(p.d, extractItemHexString), deferredHexRange) < RANGE_MIN_SHARE) return false;
 
             if (deferredSearchTerm) {
                 const groups = deferredSearchTerm.trim().split(/\s+/).filter(Boolean);
@@ -1829,7 +1869,7 @@ export const UnifiedInventoryView = () => {
         });
 
         return filtered.map(p => p.item);
-    }, [preparedItems, deferredStatusFilter, deferredVendorFilter, deferredSearchTerm, deferredSortKey, deferredSortOrder, partialPayIds, fullPayIds, deferredVisibleWorkbooks, user, deferredCategoryFilter, deferredMaterialFilter, deferredShapeFilter, deferredContentFilter, deferredMaterialColorFilter, deployedItemsMap, logisticsDocs]);
+    }, [deferredHexRange, preparedItems, deferredStatusFilter, deferredVendorFilter, deferredSearchTerm, deferredSortKey, deferredSortOrder, partialPayIds, fullPayIds, deferredVisibleWorkbooks, user, deferredCategoryFilter, deferredMaterialFilter, deferredShapeFilter, deferredContentFilter, deferredMaterialColorFilter, deployedItemsMap, logisticsDocs]);
 
     // ── Semantic Vector Re-ranking (iOS companion embedder + Supabase VectorIndex) ──
     const [vectorIndex, setVectorIndex] = useState<VectorIndex | null>(null);
@@ -2076,7 +2116,7 @@ export const UnifiedInventoryView = () => {
                             ? "relative w-full pb-32"
                             : viewMode === 'gallery'
                                 ? "grid gap-5 px-3 pt-3 pb-32 auto-rows-max"
-                                : "inv-scope flex flex-col gap-1 pb-32 w-full"
+                                : `inv-scope${showMxnList ? '' : ' inv-scope--nomxn'} flex flex-col gap-1 pb-32 w-full`
                     }`}
                     style={
                         viewMode === 'grid'
@@ -2118,14 +2158,8 @@ export const UnifiedInventoryView = () => {
                                         <div className="inv-c-edge" />
                                         <div className="inv-c-media" />
                                         <div className="inv-c-tag">{tr("TAG")}</div>
-                                        <div className="inv-c-qty inv-r">{tr("QTY")}</div>
-                                        <div className="inv-c-item">{tr("SHAPE TYPE")}</div>
-                                        <div className="inv-c-color">{tr("COLOR MATERIAL")}</div>
-                                        <div className="inv-c-spacer" />
-                                        <div className="inv-c-size">{tr("SIZE")}</div>
-                                        <div className="inv-c-weight inv-r">{tr("WEIGHT")}</div>
-                                        <div className="inv-c-price inv-r">{tr("PRICE")}</div>
-                                        <div className="inv-c-total inv-r">{tr("TOTAL MXN")}</div>
+                                        <div className="inv-c-title">{tr("ITEM")}</div>
+                                        <div className="inv-c-price inv-r">{tr("PRICE MXN")}</div>
                                         <div className="inv-c-aq">{tr("AQ")}</div>
                                         <div className="inv-c-ld">{tr("LD")}</div>
                                         <div className="inv-c-state">{tr("PACKING")}</div>

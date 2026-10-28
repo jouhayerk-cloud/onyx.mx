@@ -513,6 +513,13 @@ export function resolveStonePaletteRaw(itemOrText: any): StonePalette {
  * averaged), lightest first. Skips the cutout background (#FFFFFF), the dark-room gray and the light-room creams,
  * the same background the db palettes exclude. Empty when fewer than 2 shades remain.
  */
+/** A hex-map cell that is backdrop, not stone: the cutout white, the dark-room gray or the light-room creams. */
+export function isHexMapBackground(r: number, g: number, b: number): boolean {
+    return (r === 255 && g === 255 && b === 255)
+        || (Math.abs(r - 109) <= 14 && Math.abs(g - 108) <= 14 && Math.abs(b - 114) <= 14)
+        || (r >= 244 && g >= 232 && b >= 165);
+}
+
 export function hexMapShades(hexes: readonly string[], n = 6): string[] {
     const bins = new Map<number, { c: number; r: number; g: number; b: number }>();
     for (const h of hexes) {
@@ -520,9 +527,7 @@ export function hexMapShades(hexes: readonly string[], n = 6): string[] {
         if (!m) continue;
         const v = parseInt(m[1], 16);
         const r = (v >> 16) & 255, g = (v >> 8) & 255, b = v & 255;
-        if (r === 255 && g === 255 && b === 255) continue;
-        if (Math.abs(r - 109) <= 14 && Math.abs(g - 108) <= 14 && Math.abs(b - 114) <= 14) continue;
-        if (r >= 244 && g >= 232 && b >= 165) continue;
+        if (isHexMapBackground(r, g, b)) continue;
         const k = ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5);
         const bin = bins.get(k) ?? { c: 0, r: 0, g: 0, b: 0 };
         bin.c++; bin.r += r; bin.g += g; bin.b += b;
@@ -616,4 +621,14 @@ export function boostAquaBandInMap(hexes: readonly string[]): string[] {
     const stone = hexes.filter(h => !/^#?f{6}$/i.test(h.trim()));
     const share = stone.length ? stone.filter(isAquaBand).length / stone.length : 0;
     return share >= 0.05 ? hexes.map(boostAquaBand) : [...hexes];
+}
+
+/** An item's colour-bar shades: its hex-map shades (aqua band boosted), else its canonical palette, lifted. Shared by the PDF bands and the inventory list. */
+export function itemBandShades(hexMap: readonly string[], item: { color?: string; material?: string }): string[] {
+    let shades = boostAquaBandInMap(hexMapShades(hexMap));
+    if (!shades.length) {
+        const palette = resolveStonePaletteRaw(item);
+        shades = palette.gradientColors.length ? palette.gradientColors : [palette.primary];
+    }
+    return shades.map(liftBandColor);
 }
