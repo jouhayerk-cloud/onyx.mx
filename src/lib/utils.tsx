@@ -346,6 +346,45 @@ export function getCleanImageUrl(url: string | null | undefined): string | null 
 }
 
 /**
+ * Widths we ask the image CDN for. Snapping to a few steps keeps the browser
+ * and the CDN cache warm: a 300px card and a 320px card share one file.
+ */
+const IMAGE_WIDTH_STEPS = [128, 256, 400, 640, 960, 1280, 1600, 2048];
+
+/**
+ * A display URL for a Drive image, resized and re-encoded by Google's CDN.
+ *
+ * `lh3.googleusercontent.com/d/<id>` (what getCleanImageUrl returns) serves
+ * the ORIGINAL upload: a 4000px phone photo or a multi-MB clean PNG for a
+ * 60px thumbnail. lh3 takes FIFE options after an `=`: `w<px>` scales down to
+ * that width (never up) and `rw` returns WebP, which keeps PNG transparency
+ * and is usually a fraction of the PNG's size. So a card asks for
+ * `/d/<id>=w400-rw` instead of the full file.
+ *
+ * `cssWidth` is the rendered width in CSS pixels; it is scaled by the device
+ * pixel ratio (capped at 2) and snapped up to IMAGE_WIDTH_STEPS. Without it,
+ * or for anything that is not a Drive image (data:, blob:, Supabase, a video),
+ * the result is exactly getCleanImageUrl's.
+ *
+ * Display only: exports, canvas work and outside services keep using
+ * getCleanImageUrl / toDriveDownloadUrl, which return the full original.
+ */
+export function getSizedImageUrl(url: string | null | undefined, cssWidth?: number): string | null {
+  const clean = getCleanImageUrl(url);
+  if (!clean || !cssWidth || cssWidth <= 0) return clean;
+  if (isVideoFile(String(url))) return clean;
+  let parsed: URL;
+  try { parsed = new URL(clean); } catch { return clean; }
+  if (parsed.hostname !== 'lh3.googleusercontent.com' || !parsed.pathname.startsWith('/d/')) return clean;
+  const fileId = extractFileId(clean);
+  if (!fileId) return clean;
+  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+  const target = Math.ceil(cssWidth * dpr);
+  const width = IMAGE_WIDTH_STEPS.find(s => s >= target) ?? IMAGE_WIDTH_STEPS[IMAGE_WIDTH_STEPS.length - 1];
+  return `https://lh3.googleusercontent.com/d/${fileId}=w${width}-rw`;
+}
+
+/**
  * Is this URL served by Google's Drive/CDN hosts?
  *
  * Matched against the parsed hostname and anchored at BOTH ends of the label,
