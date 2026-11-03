@@ -61,7 +61,7 @@ import { rowWorkbook } from '../../lib/seasons';
 import { rowMatchesShape, rowMatchesMaterialColor } from '../../lib/smartFilters';
 import { rowMatchesContent } from '../../lib/aiContent';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages, toTitleCase, extractItemHexString } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, getDynamicCrateIdComponents, extractFileId, collectAllImages, toTitleCase, extractItemHexString, getSizedImageUrl } from '../../lib/utils';
 import { parseHexMapString } from '../../lib/axonometric';
 import { itemShades } from '../../lib/itemShades';
 import { selectAtom } from 'jotai/utils';
@@ -212,7 +212,11 @@ const Stat = ({ k, label, overflow = false, valueClassName = '', children }: {
     </div>
 );
 
-const DriveImage = ({ src, className, ...props }: any) => {
+/**
+ * `width`: rendered width in CSS px. Drive images are then fetched resized and
+ * as WebP (getSizedImageUrl) instead of the full original upload.
+ */
+const DriveImage = ({ src, className, width, ...props }: any) => {
     const isIOS = typeof navigator !== 'undefined' && 
         (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
@@ -221,6 +225,12 @@ const DriveImage = ({ src, className, ...props }: any) => {
 
         // Handle data URIs directly
         if (src.startsWith('data:') || src.startsWith('blob:')) return src;
+
+        // Drive images with a known display width: ask lh3 for a resized WebP.
+        if (width && !isVideoFile(src)) {
+            const sized = getSizedImageUrl(src, width);
+            if (sized && sized.includes('lh3.googleusercontent.com/d/')) return `${sized}?.png`;
+        }
 
         // For Drive URLs, extract the ID
         const fid = extractFileId(src);
@@ -233,7 +243,7 @@ const DriveImage = ({ src, className, ...props }: any) => {
 
         // For non-Drive URLs, just clean them
         return getCleanImageUrl(src) || src;
-    }, [src]);
+    }, [src, width]);
 
     const [hasError, setHasError] = useState(false);
 
@@ -330,7 +340,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
             {isVideo ? (
                 <video preload="none" src={getCleanImageUrl(activeSrc)} controls autoPlay className="max-w-[90vw] max-h-[90vh] shadow-2xl rounded-2xl" onClick={(e) => e.stopPropagation()} />
             ) : (
-                <DriveImage loading="lazy" src={activeSrc} alt="" draggable={false}
+                <DriveImage loading="lazy" src={activeSrc} width={2048} alt="" draggable={false}
                     key={currentIdx}
                     className="max-w-[90vw] max-h-[90vh] object-contain select-none transition-transform animate-in fade-in zoom-in-95 duration-300"
                     style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
@@ -1145,7 +1155,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         Not a gallery: the clean photos open with the row, in its panel. */}
                     <div className={`inv-c-media inv-c-media--png${cutoutUrls.length ? '' : ' is-axo'}`} data-n={cutoutUrls.length}>
                         {cutoutUrls.length
-                            ? cutoutUrls.map(u => <DriveImage key={u} loading="lazy" src={u} alt="" className="inv-png" />)
+                            ? cutoutUrls.map(u => <DriveImage key={u} loading="lazy" src={u} width={128} alt="" className="inv-png" />)
                             : <div className="inv-png inv-png-axo"><WireframeIcon item={norm} /></div>}
                     </div>
 
@@ -1222,7 +1232,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                         style={{ '--ar': photoRatios[i] || 1 } as React.CSSProperties}
                                         onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
                                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setViewerIdx(i); setShowViewer(true); } }}>
-                                        <DriveImage loading="lazy" src={u} className="w-full h-full object-cover"
+                                        <DriveImage loading="lazy" src={u} width={400} className="w-full h-full object-cover"
                                             onLoad={(e: React.SyntheticEvent<HTMLImageElement>) => {
                                                 const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
                                                 if (w && h) setPhotoRatios(r => (r[i] === w / h ? r : { ...r, [i]: w / h }));
@@ -1356,7 +1366,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     );
     const heroMedia = (idx: number, imgClass: string) => mediaUrls[idx] ? (
         <>
-            <DriveImage loading="lazy" key={idx} src={mediaUrls[idx]} className={`${imgClass} animate-in fade-in duration-500`} />
+            <DriveImage loading="lazy" key={idx} src={mediaUrls[idx]} width={480} className={`${imgClass} animate-in fade-in duration-500`} />
             {isVideoFile(mediaUrls[idx]) && <span className="inv-card-video" aria-hidden="true"><Video size={28} /></span>}
         </>
     ) : axoFill;
@@ -1373,7 +1383,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         aria-label={more > 0 ? `${more} ${tr("more photos")}` : `${tr("Photo")} ${i + 1}`} aria-current={i === current || undefined}
                         onClick={(e) => { e.stopPropagation(); pick(); }}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); pick(); } }}>
-                        <DriveImage loading="lazy" src={u} className="inv-gal-img inv-gal-img--cover" />
+                        <DriveImage loading="lazy" src={u} width={96} className="inv-gal-img inv-gal-img--cover" />
                         {isVideoFile(u) && <span className="inv-card-video" aria-hidden="true"><Video size={12} /></span>}
                         {more > 0 && <span className="inv-gal-more">+{more}</span>}
                     </div>
