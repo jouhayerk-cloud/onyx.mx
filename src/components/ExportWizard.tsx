@@ -7,6 +7,7 @@ export interface ExportConfig {
     title: string;
     method: 'grid' | 'single' | 'list' | 'compact' | 'compactGrid' | 'largeColor';
     includeImages: boolean;
+    includeSummary: boolean;
     notes: string;
     bruteWeight?: string;
     branding?: 'MultiBrand' | 'ArtOfDecor' | 'RareEarth';
@@ -40,6 +41,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
         title: moduleName.toLowerCase().includes('catalog') ? (moduleName.toLowerCase() === 'catalog' ? 'Onyx Collection' : moduleName) : `${moduleName} Catalog`,
         method: 'grid',
         includeImages: true,
+        includeSummary: true,
         notes: '',
         bruteWeight: initialBruteWeight,
         branding: 'MultiBrand'
@@ -230,7 +232,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                                     ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
                                                     : 'bg-white/[0.03] border-white/[0.06] text-white/30'
                                             }`}>
-                                                9 Per Page
+                                                7 Per Page
                                             </span>
                                         </div>
                                         <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'compact' ? 'text-white' : 'text-white/70'}`}>{tr("Ribbon Labels")}</p>
@@ -333,6 +335,19 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                         />
                                         <label htmlFor="includeImages" className="text-xs font-semibold text-white/70 cursor-pointer select-none">
                                             {tr("Export Clean Room Images Only")}
+                                        </label>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-all">
+                                        <input
+                                            type="checkbox"
+                                            id="includeSummary"
+                                            checked={config.includeSummary}
+                                            onChange={e => setConfig({ ...config, includeSummary: e.target.checked })}
+                                            className="w-4 h-4 rounded border border-white/20 bg-white/5 checked:bg-(--main-color) checked:border-(--main-color) transition-all cursor-pointer accent-(--main-color)"
+                                        />
+                                        <label htmlFor="includeSummary" className="text-xs font-semibold text-white/70 cursor-pointer select-none">
+                                            {tr("Include Summary")}
                                         </label>
                                     </div>
                                 </div>

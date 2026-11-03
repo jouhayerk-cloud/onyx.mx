@@ -1,10 +1,10 @@
-import { jsPDF } from 'jspdf';
+﻿import { jsPDF } from 'jspdf';
 import { DEFAULT_EXCHANGE_RATE } from './consts';
 import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import { getVendorColor } from './excelStyles';
 import JsBarcode from 'jsbarcode';
-import { generateAxonometricDataUrl, resolveItemColor, normalizeHexMapTexture, parseHexMapString } from './axonometric';
+import { generateAxonometricDataUrl, resolveItemColor, normalizeHexMapTexture, parseHexMapString, extractItemHexMapString } from './axonometric';
 import { itemBandShades } from './canonicalColors';
 import { trackDocumentJob } from '../features/print/jobTracking';
 
@@ -102,7 +102,8 @@ function drawFormattedTagCode(
     hideRetail: boolean = false, 
     fallbackData?: any,
     targetWidth?: number,
-    maxFontSize: number = 11.5
+    maxFontSize: number = 11.5,
+    angle: 0 | 90 = 0
 ) {
     let barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || fallbackData?.bookBarcode || '').trim();
     const acqCode = (codes.bookAqCode && codes.bookAqCode !== '-') ? codes.bookAqCode.trim() : (fallbackData?.bookAqCode && fallbackData.bookAqCode !== '-' ? fallbackData.bookAqCode.trim() : '');
@@ -179,21 +180,37 @@ function drawFormattedTagCode(
         startX = x + (targetWidth - totalMeasured) / 2;
     }
 
-    let currX = startX;
-    if (part1) {
-        doc.setFont('helvetica', 'normal');
-        doc.text(part1, currX, y);
-        currX += w1;
-    }
-    if (part2) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(part2, currX, y);
-        currX += w2;
-    }
-    if (part3) {
-        doc.setFont('helvetica', 'normal');
-        doc.text(part3, currX, y);
-    }
+    // angle 90: x is the baseline, y the start, and the text runs upward from y (targetWidth is then a length).
+    let pos = angle === 90 ? y - (startX - x) : startX;
+    const put = (text: string, bold: boolean, w: number) => {
+        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+        if (angle === 90) { doc.text(text, x, pos, { angle: 90 }); pos -= w; }
+        else { doc.text(text, pos, y); pos += w; }
+    };
+    if (part1) put(part1, false, w1);
+    if (part2) put(part2, true, w2);
+    if (part3) put(part3, false, w3);
+}
+
+/** An image turned 90 degrees counter-clockwise (so it reads bottom to top), for the ribbon's vertical codes and logos. */
+async function rotateCcw(src: string | HTMLCanvasElement): Promise<{ dataUrl: string; w: number; h: number } | null> {
+    try {
+        let el: CanvasImageSource, w: number, h: number;
+        if (typeof src === 'string') {
+            const img = new Image();
+            img.src = src;
+            await img.decode();
+            el = img; w = img.naturalWidth; h = img.naturalHeight;
+        } else { el = src; w = src.width; h = src.height; }
+        if (!w || !h) return null;
+        const c = document.createElement('canvas');
+        c.width = h; c.height = w;
+        const ctx = c.getContext('2d')!;
+        ctx.translate(0, w);
+        ctx.rotate(-Math.PI / 2);
+        ctx.drawImage(el, 0, 0);
+        return { dataUrl: c.toDataURL('image/png'), w: c.width, h: c.height };
+    } catch { return null; }
 }
 
 interface ImgData { dataUrl: string; w: number; h: number; }
@@ -534,8 +551,8 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     
     // 3. Dimensions Block
     const dimX = M + 85;
-    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
-    const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('x') + (norm.lengthCm ? 'cm' : '');
+    const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' x ');
     
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
@@ -582,7 +599,7 @@ async function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number
     const axoX = PW - M - axoSize;
     if (wCm || hCm || dCm) {
         try {
-            const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true, extractItemHexString(item.data));
+            const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data), true, extractItemHexMapString(item.data) || undefined, { noSaturationBoost: true });
             if (axoDataUrl) {
                 doc.addImage(axoDataUrl, 'JPEG', axoX, row1Y - 2, axoSize, axoSize);
             }
@@ -960,7 +977,7 @@ export async function getAdvancedAxoDataUrl(norm: any, itemData: any, customOpti
     const shape = norm.shape || '';
     const shortDesc = norm.shortDescription || norm.description || '';
     const itemDataObj = itemData || norm;
-    const hexMap = extractItemHexString(itemDataObj) || extractItemHexString(norm);
+    const hexMap = extractItemHexMapString(itemDataObj) || extractItemHexMapString(norm);
     const wireColor = resolveItemColor(itemDataObj);
 
     // 3D axonometric with authentic stone hex map colors, mineral strata, bounding box, ticks, and dimensions
@@ -977,6 +994,7 @@ export async function getAdvancedAxoDataUrl(norm: any, itemData: any, customOpti
                 showMeasurementTicks: true,
                 hairlineColor: '#334155',
                 unit: 'in',
+                noSaturationBoost: true,
                 ...customOptions
             }
         );
@@ -1332,16 +1350,19 @@ export function generateNormalizedHexSquareDataUrl(
 
         const targetGridSize = 24;
         let normalizedColors: string[] = [];
+        const bowl = /\b(bowls?|canoes?|canoas?|cuencos?|taz[oó]n(?:es)?|plat[oó]n(?:es)?|vessels?|batea)\b/i.test(
+            `${norm?.shape || itemData?.shape || ''} ${norm?.shortDescription || itemData?.short_description || ''} ${norm?.generatedType || itemData?.generated_type || ''}`
+        );
 
         if (rawHexList.length > 0) {
-            normalizedColors = normalizeHexMapTexture(rawHexList, sCols, sRows, targetGridSize, targetGridSize);
+            normalizedColors = normalizeHexMapTexture(rawHexList, sCols, sRows, targetGridSize, targetGridSize, bowl);
         }
 
         if (!normalizedColors || normalizedColors.length === 0) {
             const extColors = getItemExtractedColors(norm, itemData);
             const hexes = extColors.map(c => `rgb(${c.rgb.join(',')})`);
             const baseHexes = hexes.length > 0 ? hexes : ['#e2d7c5', '#c8b69b', '#9b8064', '#5a4634'];
-            normalizedColors = normalizeHexMapTexture(baseHexes, 4, 4, targetGridSize, targetGridSize);
+            normalizedColors = normalizeHexMapTexture(baseHexes, 4, 4, targetGridSize, targetGridSize, bowl);
         }
 
         if (!normalizedColors || normalizedColors.length === 0) return null;
@@ -1834,14 +1855,14 @@ export function buildDeterministicTitle(norm: any, itemDataObj: any, includeImpe
     }
     const attrStr = Array.from(new Set(attrParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
 
-    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('x') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
 
     let dimsStr = dimsMetric;
     if (includeImperial) {
         const dImp = cmToImperial(norm.lengthCm || norm.length_cm) || (norm.lengthInches ? `${norm.lengthInches}"` : '');
         const wImp = cmToImperial(norm.widthCm || norm.width_cm) || (norm.widthInches ? `${norm.widthInches}"` : '');
         const hImp = cmToImperial(norm.heightCm || norm.height_cm) || (norm.heightInches ? `${norm.heightInches}"` : '');
-        const dimsImperial = [dImp, wImp, hImp].filter(Boolean).join(' × ').toUpperCase();
+        const dimsImperial = [dImp, wImp, hImp].filter(Boolean).map(s => s.toUpperCase()).join(' x ');
         if (dimsMetric && dimsImperial) {
             dimsStr = `${dimsMetric} (${dimsImperial})`;
         } else if (dimsImperial) {
@@ -1890,10 +1911,10 @@ async function drawCatalogHubPagePortrait(
     }
     const attrStr = Array.from(new Set(attrParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
 
-    // Metric dimensions: e.g. 30×30×220cm
-    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+    // Metric dimensions: e.g. 30x30x220cm
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('x') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
 
-    // Full title: TWO • SQUARED · FLOOR LAMP · GALAXY · ONYX • 30×30×220cm
+    // Full title: TWO • SQUARED · FLOOR LAMP · GALAXY · ONYX • 30x30x220cm
     let mainTitleStr = `${qtyWord} • ${attrStr}`;
     if (dimsMetric) {
         mainTitleStr += ` • ${dimsMetric}`;
@@ -2120,7 +2141,7 @@ async function drawCatalogHubPagePortrait(
     const hImp = cmToImperial(norm.heightCm) || toImp(norm.heightCm, 'in') || '—';
     const dImp = cmToImperial(norm.lengthCm) || toImp(norm.lengthCm, 'in') || '—';
     const wtImp = toImp(norm.weightKg, 'lbs') || '—';
-    const ovImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ') || '—';
+    const ovImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' x ') || '—';
 
     // Horizontal imperial sizes panel underneath the Axo
     const specCols = [
@@ -2281,10 +2302,10 @@ async function drawCatalogHubPageLandscapeGrid(
     }
     const attrStr = Array.from(new Set(attrParts)).join(' · ').replace(/\s+/g, ' ').trim().toUpperCase();
 
-    // Metric dimensions: e.g. 30×30×220cm
-    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+    // Metric dimensions: e.g. 30x30x220cm
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('x') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
 
-    // Full title: TWO • SQUARED · FLOOR LAMP · GALAXY · ONYX • 30×30×220cm
+    // Full title: TWO • SQUARED · FLOOR LAMP · GALAXY · ONYX • 30x30x220cm
     let mainTitleStr = `${qtyWord} • ${attrStr}`;
     if (dimsMetric) {
         mainTitleStr += ` • ${dimsMetric}`;
@@ -2857,7 +2878,8 @@ async function drawCatalogSummaryPages(
     catalogTitle?: string,
     heading?: string,
     /** Shared between calls so several summaries flow down the same pages; null starts a new page. */
-    cursor: { y: number | null } = { y: null }
+    cursor: { y: number | null } = { y: null },
+    includeAxoGrid = false
 ) {
     await yieldToUi(true);
 
@@ -2912,7 +2934,7 @@ async function drawCatalogSummaryPages(
             colorMatStr = matName.toUpperCase();
         }
 
-        const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+        const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('x') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
 
         grandTotalUnits += qty;
         grandTotalWeightKg += (wt * qty);
@@ -2998,6 +3020,17 @@ async function drawCatalogSummaryPages(
     let sectionY = cursor.y;
     if (sectionY === null || sectionY + 40 > PH - 20) sectionY = startPage();
     sectionLine(sectionY);
+
+    // For Ribbon Labels, Color Labels, and Large Color summaries: remove the old hairline table summary;
+    // render ONLY the larger full Axo elements grid (with cm sizes, large count badge, and tag ID below).
+    if (includeAxoGrid) {
+        cursor.y = sectionY + 7.5;
+        await drawSummaryAxoElementGrid(doc, results, M, PW, PH, startPage, isLandscape, cursor);
+        await yieldToUi(true);
+        return;
+    }
+
+
 
     // Compute column widths with generous space for Colors & Sizes
     const colTypeW = isLandscape ? 50 : 42;
@@ -3240,8 +3273,117 @@ async function drawCatalogSummaryPages(
         : `${Math.round(grandTotalWeightKg).toLocaleString()} kg`;
     doc.text(totalWtStr, xWeight + colWeightW - 3, rowY + 5.5, { align: 'right' });
 
-    cursor.y = rowY + totalRowH + 8;
+    cursor.y = rowY + totalRowH + 6;
     await yieldToUi(true);
+}
+
+/**
+ * Larger full-Axo element grid for the Summary of Ribbon Labels, Color Labels, and Large Color PDF exports:
+ * - Old hairline table summary removed; only 3D Axo elements are shown.
+ * - Full Axo element including bounding box, measurement ticks, and dimension labels in cm (unit: 'cm').
+ * - Large bold text quantity count badge on the axo element.
+ * - Tag ID text directly below the axo element (no frames, no containers).
+ */
+async function drawSummaryAxoElementGrid(
+    doc: any,
+    items: CatalogArtifact[],
+    M: number,
+    PW: number,
+    PH: number,
+    startPage: () => number,
+    isLandscape: boolean,
+    cursor: { y: number | null }
+) {
+    if (!items || items.length === 0) return;
+
+    const fullW = PW - 2 * M;
+    const cols = isLandscape ? 5 : 4;
+    const gapX = 0;
+    const gapY = 0;
+    const cellW = (fullW - (cols - 1) * gapX) / cols;
+    const pad = 0.6;
+    const axoSize = cellW - pad * 2;
+    const labelH = 8;
+    const cellH = axoSize + pad * 2 + labelH;
+    const bottomLimit = PH - 18;
+
+    let curY = cursor.y ?? startPage();
+    if (curY + cellH > bottomLimit) {
+        curY = startPage();
+    }
+
+    const totalRows = Math.ceil(items.length / cols);
+    for (let r = 0; r < totalRows; r++) {
+        if (curY + cellH > bottomLimit) {
+            curY = startPage();
+        }
+        const rowSlice = items.slice(r * cols, (r + 1) * cols);
+
+        const renderedRow = await Promise.all(rowSlice.map(async (it) => {
+            const d = it.data || it;
+            const norm = normalizeInventoryData(d);
+            const codes: any = it.codes || calculateCodesAndPrices(d, DEFAULT_EXCHANGE_RATE, d.workbook || '') || {};
+            let tagId = String(codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
+            const acq = (codes.bookAqCode && codes.bookAqCode !== '-') ? String(codes.bookAqCode).trim() : '';
+            if (acq && tagId.endsWith('-' + acq)) tagId = tagId.slice(0, -(acq.length + 1)).trim();
+            const qty = parseInt(String(norm.quantity || d.quantity || '1'), 10) || 1;
+
+            const axoUrl = await getAdvancedAxoDataUrl(norm, d, {
+                showBoundingBox: true,
+                showDimensionLabels: true,
+                showMeasurementTicks: true,
+                hairlineColor: '#334155',
+                unit: 'cm',
+            });
+            return { axoUrl, tagId, qty };
+        }));
+
+        for (let c = 0; c < renderedRow.length; c++) {
+            const { axoUrl, tagId, qty } = renderedRow[c];
+            const cellX = M + c * (cellW + gapX);
+            const axoX = cellX + pad;
+            const axoY = curY + pad;
+            // Large white container
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.2);
+            doc.rect(cellX, curY, cellW, cellH, 'FD');
+
+            if (axoUrl) {
+                const fmt = axoUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+                doc.addImage(axoUrl, fmt, axoX, axoY, axoSize, axoSize, undefined, 'FAST');
+            }
+
+            // Large text count badge on the axo element
+            const qtyStr = String(qty);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(16);
+            const textW = doc.getTextWidth(qtyStr);
+            const badgeH = 9.5;
+            const badgeW = Math.max(badgeH, textW + 4.5);
+            const badgeX = axoX + axoSize - badgeW - 1;
+            const badgeY = axoY + 1;
+            doc.setFillColor(15, 23, 42);
+            doc.roundedRect(badgeX, badgeY, badgeW, badgeH, badgeH / 2, badgeH / 2, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.text(qtyStr, badgeX + badgeW / 2, badgeY + 6.7, { align: 'center' });
+
+            // Tag ID text directly below the axo element (no frame, no container)
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11.5);
+            doc.setTextColor(15, 23, 42);
+            let fitTag = tagId;
+            while (fitTag.length > 4 && doc.getTextWidth(fitTag) > cellW - 2) {
+                fitTag = fitTag.slice(0, -1);
+            }
+            doc.text(fitTag, cellX + cellW / 2, axoY + axoSize + 5.6, { align: 'center' });
+        }
+
+        curY += cellH + gapY;
+        await yieldToUi();
+    }
+
+    cursor.y = curY + 6;
 }
 
 /**
@@ -3390,11 +3532,11 @@ function compactTitleChunks(norm: any, itemDataObj: any): TitleChunk[] {
     const colorMatParts = [color, material].filter(Boolean);
     const colorMatStr = toTitleCase(Array.from(new Set(colorMatParts)).join(' ').replace(/\s+/g, ' ').trim());
 
-    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('x') + (norm.lengthCm || norm.widthCm || norm.heightCm ? 'cm' : '');
     const dImp = cmToImperial(norm.lengthCm || norm.length_cm) || (norm.lengthInches ? `${norm.lengthInches}"` : '');
     const wImp = cmToImperial(norm.widthCm || norm.width_cm) || (norm.widthInches ? `${norm.widthInches}"` : '');
     const hImp = cmToImperial(norm.heightCm || norm.height_cm) || (norm.heightInches ? `${norm.heightInches}"` : '');
-    const dimsImperial = [dImp, wImp, hImp].filter(Boolean).join(' × ').toUpperCase();
+    const dimsImperial = [dImp, wImp, hImp].filter(Boolean).map(s => s.toUpperCase()).join(' x ');
 
     const titleChunks: TitleChunk[] = [
         { text: qtyNum, bold: true },
@@ -3413,8 +3555,15 @@ function compactTitleChunks(norm: any, itemDataObj: any): TitleChunk[] {
  * (unboosted). A hairline keeps white stones visible on white paper.
  */
 function drawStoneBand(doc: any, norm: any, itemDataObj: any, x: number, y: number, w: number, h: number, dir: 'horizontal' | 'vertical') {
-    const shades = itemBandShades(parseHexMapString(extractItemHexString(itemDataObj) || extractItemHexString(norm)),
-        { color: norm.color || itemDataObj.color, material: norm.material || itemDataObj.material });
+    const shades = itemBandShades(parseHexMapString(extractItemHexString(itemDataObj) || extractItemHexString(norm)), {
+        ...norm,
+        ...itemDataObj,
+        color: norm.color || itemDataObj.color,
+        material: norm.material || itemDataObj.material,
+        shape: norm.shape || itemDataObj.shape || itemDataObj.Shape,
+        shortDescription: norm.shortDescription || itemDataObj.short_description || itemDataObj.description,
+        type: norm.generatedType || itemDataObj.generated_type || itemDataObj.type,
+    });
     const step = (dir === 'horizontal' ? w : h) / shades.length;
     shades.forEach((hex, k) => {
         const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -3428,178 +3577,151 @@ function drawStoneBand(doc: any, norm: any, itemDataObj: any, x: number, y: numb
     doc.rect(x, y, w, h, 'S');
 }
 
-async function drawCatalogCompactPage(
-    doc: any,
-    items: CatalogArtifact[],
-    startIndex: number,
-    itemsPerPage: number,
-    M: number,
-    PW: number,
-    PH: number,
-    _catalogTitle?: string
+/**
+ * Ribbon Labels (owner's mockup, 2026-11-03): label strips edge to edge inside a 6 mm printable safe area, 7 per
+ * portrait A4 page, dotted cut guides around and between them.
+ *   left   the cutout PNG(s) on a light grey panel
+ *   middle the stone colour band along the top of the title block; the title (3 lines max) and the Shopify colours,
+ *          then a dotted divider and the axo
+ *   right  Rare Earth Gallery and Art of Decor logos upright with MADE IN MEXICO over the QR, the tag code, a
+ *          vertical colour band, and the barcode flush to the ribbon's right edge, all reading bottom to top.
+ */
+async function drawRibbonPage(
+    doc: any, items: CatalogArtifact[], startIndex: number, perPage: number, PW: number, PH: number,
+    logos: { rareEarth: LogoData | null; artOfDecor: LogoData | null },
 ) {
-    const pageItems = items.slice(startIndex, startIndex + itemsPerPage);
-
-    // Unified spacing scale (1.5 / 3.0 / 4.5 mm) and 3-tier typography (title 10.5pt, detail 8.5pt, micro 6.5pt)
-    const S1 = 1.5, S2 = 3.0, S3 = 4.5;
-    const TITLE_PT = 10.5, DETAIL_PT = 8.5, MICRO_PT = 6.5;
+    const S1 = 1.5, S2 = 3.0;
+    const TITLE_PT = 12, DETAIL_PT = 9.5, MICRO_PT = 6.5;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
+    // Printable safe area: 6 mm inside every page edge (most printers cannot print to the edge).
+    const SAFE = 6;
+    const X0 = SAFE, Y0 = SAFE, W = PW - 2 * SAFE, H = PH - 2 * SAFE;
+    const rowH = H / perPage;
+    const PAD = 2.5;
+    // Upright logos, turned once per page.
+    const [aodV, reV] = await Promise.all([
+        logos.artOfDecor ? rotateCcw(logos.artOfDecor.dataUrl) : Promise.resolve(null),
+        logos.rareEarth ? rotateCcw(logos.rareEarth.dataUrl) : Promise.resolve(null),
+    ]);
 
-    const startY = 2 * S3; // 9.0 mm
-    const bottomLimit = PH - 2 * S3; // 288.0 mm (symmetric 9.0 mm top/bottom margins)
-    const availH = bottomLimit - startY;
-    const rowH = availH / itemsPerPage; // 31.0 mm exact per row for 9 items
-
+    const pageItems = items.slice(startIndex, startIndex + perPage);
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
-        const rowY = startY + i * rowH;
+        const top = Y0 + i * rowH, bottom = top + rowH;
         const itemDataObj = item.data || item;
         const norm = normalizeInventoryData(itemDataObj);
         const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
         const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
-        // 0. LEFT STONE COLOUR BAND: flush to row left edge (M), full row height
-        const bandW = S2; // 3.0 mm
-        drawStoneBand(doc, norm, itemDataObj, M, rowY, bandW, rowH, 'vertical');
-
-        // 1. GRAPHICS BLOCK (Left): Cutout PNG(s) + Axo, vertically centred in row
-        const cutoutSecX = M + bandW + S2; // 18.0 mm
-        const cutoutSecW = 28.5;
-        const cutoutUrls = getItemCutoutPngs(item);
-        const loadedCutouts: { dataUrl: string; w: number; h: number }[] = [];
-        const maxEachCutW = cutoutUrls.length > 1
-            ? (cutoutSecW - (cutoutUrls.length - 1) * S1) / cutoutUrls.length
-            : cutoutSecW;
-        const maxCutH = rowH - S2; // 28.0 mm
-
-        for (const u of cutoutUrls) {
-            try {
-                const cData = await loadImgData(u, 400, true);
-                if (cData && cData.dataUrl && cData.w && cData.h) {
-                    const aspect = cData.w / cData.h;
-                    const boxAspect = maxEachCutW / maxCutH;
-                    let cw: number, ch: number;
-                    if (aspect > boxAspect) {
-                        cw = maxEachCutW;
-                        ch = maxEachCutW / aspect;
-                    } else {
-                        ch = maxCutH;
-                        cw = maxCutH * aspect;
-                    }
-                    loadedCutouts.push({ dataUrl: cData.dataUrl, w: cw, h: ch });
-                }
-            } catch (e) {}
-        }
-
-        const totalCutW = loadedCutouts.reduce((sum, c, idx) => sum + c.w + (idx > 0 ? S1 : 0), 0);
-        let currCutX = cutoutSecX + Math.max(0, (cutoutSecW - totalCutW) / 2);
-        for (const c of loadedCutouts) {
-            const pngY = rowY + (rowH - c.h) / 2;
-            doc.addImage(c.dataUrl, 'PNG', currCutX, pngY, c.w, c.h);
-            currCutX += c.w + S1;
-        }
-
-        // Axo Element (1:1 aspect ratio, vertically centred)
-        const axoSecX = cutoutSecX + cutoutSecW + S2; // 49.5 mm
-        const axoSecW = Math.min(28.0, rowH - S2);
-        const axoSecH = axoSecW;
-        const axoSecY = rowY + (rowH - axoSecH) / 2;
+        // ── Right cluster, laid out from the right edge inward ──
+        const R = X0 + W;
+        const codeLen = rowH - 2 * PAD;
+        // Barcode at the ribbon's right edge with 1 mm padding each side, the row's full height.
+        const barThick = 10, BAR_PAD = 1;
+        const barX = R - BAR_PAD - barThick;
         try {
-            const axoDataUrl = await getAdvancedAxoDataUrl(norm, itemDataObj);
-            if (axoDataUrl) {
-                drawAxoContain(doc, axoDataUrl, axoSecX, axoSecY, axoSecW, axoSecH, 0.98);
-            }
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 40, lineColor: '#141414' });
+            const v = await rotateCcw(canvas);
+            if (v) doc.addImage(v.dataUrl, 'PNG', barX, top, barThick, rowH);
         } catch (e) {}
 
-        // 2. CODES BLOCK (Far Right, flush to PW - M):
-        //   MADE IN MEXICO (micro small caps aligned to barcode left edge) + barcode (leftW) beside QR (qrSize)
-        //   Tag code sized to the barcode width (leftW)
-        const totalCodesW = 40.5;
-        const blockX = PW - M - totalCodesW;
-        const CODE_GAP = S1; // 1.5 mm
-        const qrSize = 12.0;
-        const leftW = totalCodesW - qrSize - CODE_GAP; // 27.0 mm
-        const mimCap = MICRO_PT * PT * CAP;
-        const barTop = mimCap + S1;
-        const barH = qrSize - barTop;
-        const tagCap = DETAIL_PT * PT * CAP;
-        const codesH = qrSize + S1 + tagCap;
-        const codesY = rowY + (rowH - codesH) / 2;
+        // Vertical colour band beside the barcode, the row's full height.
+        const vBandW = 4;
+        const vBandX = barX - BAR_PAD - vBandW;
+        drawStoneBand(doc, norm, itemDataObj, vBandX, top, vBandW, rowH, 'vertical');
 
+        // Tag code, large, reading upward.
+        const TAG_PT = 12;
+        const tagCap = TAG_PT * PT * CAP;
+        const tagBase = vBandX - S1;
+        drawFormattedTagCode(doc, codes, tagBase, bottom - PAD, TAG_PT, false, itemDataObj, codeLen, TAG_PT, 90);
+
+        // Branding column: QR at the bottom, MADE IN MEXICO (bold) and the two upright logos above it.
+        const colR = tagBase - tagCap - S2;
+        const qrS = Math.min(10, rowH * 0.26);
+        try {
+            const qr = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode));
+            if (qr) doc.addImage(qr, 'PNG', colR - qrS, bottom - PAD - qrS, qrS, qrS);
+        } catch (e) {}
+        const brandBottom = bottom - PAD - qrS - S1;
+        const brandLen = brandBottom - (top + PAD);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(MICRO_PT);
         doc.setTextColor(30, 41, 59);
-        doc.text('MADE IN MEXICO', blockX, codesY + mimCap);
+        doc.text('MADE IN MEXICO', colR, brandBottom, { angle: 90 });
+        let lx = colR - MICRO_PT * PT * CAP - S1;
+        ([[aodV, 4.8], [reV, 5.5]] as [{ dataUrl: string; w: number; h: number } | null, number][]).forEach(([lg, thick]) => {
+            if (!lg) return;
+            let lw = thick, lh = thick * lg.h / lg.w;
+            if (lh > brandLen) { lh = brandLen; lw = lh * lg.w / lg.h; }
+            lx -= lw;
+            doc.addImage(lg.dataUrl, 'PNG', lx, brandBottom - lh, lw, lh);
+            lx -= S1;
+        });
+        const clusterLeft = Math.min(lx, colR - qrS) - S2;
 
-        // Barcode (Code128)
-        let barDataUrl: string | null = null;
+        // ── Axo, turned to read bottom to top like the logos, between a dotted divider and the branding ──
+        const axoS = Math.min(codeLen, 30);
+        const divX = clusterLeft - axoS - S2;
         try {
-            const canvas = document.createElement('canvas');
-            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 28, lineColor: '#141414' });
-            barDataUrl = canvas.toDataURL('image/png');
+            const axo = await getAdvancedAxoDataUrl(norm, itemDataObj);
+            const axoV = axo ? await rotateCcw(axo) : null;
+            if (axoV) drawAxoContain(doc, axoV.dataUrl, divX + S2, top + (rowH - axoS) / 2, axoS, axoS, 0.98);
         } catch (e) {}
-        if (barDataUrl) {
-            doc.addImage(barDataUrl, 'PNG', blockX, codesY + barTop, leftW, barH);
+        doc.setDrawColor(148, 163, 184);
+        doc.setLineWidth(0.2);
+        doc.setLineDashPattern([0.6, 1.2], 0);
+        doc.line(divX, top, divX, bottom);
+        doc.setLineDashPattern([], 0);
+
+        // ── Left: cutout(s) on a light grey panel ──
+        const photoW = Math.min(rowH, W * 0.2);
+        doc.setFillColor(232, 232, 232);
+        doc.rect(X0, top, photoW, rowH, 'F');
+        const boxW = photoW - 2 * PAD, boxH = rowH - 2 * PAD;
+        const cutouts: { dataUrl: string; w: number; h: number }[] = [];
+        for (const u of getItemCutoutPngs(item).slice(0, 3)) {
+            try {
+                const c = await loadImgData(u, 600, true);
+                if (c && c.dataUrl && c.w && c.h) cutouts.push({ dataUrl: c.dataUrl, w: c.w, h: c.h });
+            } catch (e) {}
+        }
+        if (cutouts.length) {
+            const slotW = (boxW - (cutouts.length - 1) * S1) / cutouts.length;
+            cutouts.forEach((c, k) => {
+                const aspect = c.w / c.h;
+                let cw = slotW, ch = slotW / aspect;
+                if (ch > boxH) { ch = boxH; cw = boxH * aspect; }
+                doc.addImage(c.dataUrl, 'PNG', X0 + PAD + k * (slotW + S1) + (slotW - cw) / 2, top + PAD + (boxH - ch) / 2, cw, ch);
+            });
         }
 
-        // QR Code with vendor colour eyes, top/bottom flush with MADE IN MEXICO + barcode
-        const qrX = blockX + leftW + CODE_GAP;
-        let qrDataUrl = '';
-        try {
-            qrDataUrl = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode));
-        } catch (e) {}
-        if (qrDataUrl) {
-            doc.addImage(qrDataUrl, 'PNG', qrX, codesY, qrSize, qrSize);
-        }
-
-        // TagID + Retail + Acquisition Code, sized to the barcode width (leftW)
-        drawFormattedTagCode(doc, codes, blockX, codesY + codesH, DETAIL_PT, false, itemDataObj, leftW, DETAIL_PT);
-
-        // 3. MIDDLE INFORMATION BLOCK: 3.0 mm clear of Axo and Codes block, vertically centred
-        const infoX = axoSecX + axoSecW + S2;
-        const infoW = blockX - infoX - S2;
-
-        const titleChunks = compactTitleChunks(norm, itemDataObj);
-
-        const capH = TITLE_PT * PT * CAP;
-        const descH = TITLE_PT * PT * DESC;
+        // ── Middle: band to the divider, title, colours ──
+        const textX = X0 + photoW + PAD + 1.5;
+        const textW = divX - S2 - textX;
+        drawStoneBand(doc, norm, itemDataObj, X0 + photoW, top, divX - X0 - photoW, S2, 'horizontal');
+        const capH = TITLE_PT * PT * CAP, descH = TITLE_PT * PT * DESC;
         const lineH = capH + descH + S1;
-        const titleLines = measureStructuredTitle(doc, titleChunks, infoW, TITLE_PT).slice(0, 3);
-
-        const extractedColors = getItemExtractedColors(norm, itemDataObj);
-        const wtKg = parseFloat(norm.weightKg || '0');
-        const hasDetailLine = extractedColors.length > 0 || wtKg > 0;
-        const detailCapH = DETAIL_PT * PT * CAP;
-        const detailDescH = DETAIL_PT * PT * DESC;
-        const detailLineH = detailCapH * 1.25 + detailDescH + S1;
-
-        const infoH = capH + (titleLines.length - 1) * lineH + (hasDetailLine ? detailLineH : 0) + descH;
-        const firstBaseline = rowY + (rowH - infoH) / 2 + capH;
-        drawMeasuredTitle(doc, titleLines, infoX, firstBaseline, lineH, TITLE_PT);
-
-        if (hasDetailLine) {
-            const detailBaseline = firstBaseline + (titleLines.length - 1) * lineH + detailLineH;
-            const titleRight = infoX + Math.min(infoW, Math.max(0, ...titleLines.map(measuredLineWidth)));
-            const colorsW = drawCompactColorBubbles(doc, extractedColors.slice(0, 4), infoX, detailBaseline, infoW * 0.62, DETAIL_PT);
-            if (wtKg > 0) {
-                const wtText = `${Math.round(wtKg)} kg • ${Math.round(wtKg * 2.20462)} lbs`;
-                doc.setFontSize(DETAIL_PT);
-                doc.setFont('helvetica', 'normal');
-                doc.setTextColor(71, 85, 105);
-                const wtW = doc.getTextWidth(wtText);
-                const wtX = Math.max(infoX + colorsW + S2, titleRight - wtW);
-                doc.text(wtText, wtX, detailBaseline);
-            }
-        }
-
-        // Subtle Hairline Row Divider (Except after last item)
-        if (i < pageItems.length - 1) {
-            doc.setDrawColor(226, 232, 240);
-            doc.setLineWidth(0.15);
-            doc.line(M, rowY + rowH, PW - M, rowY + rowH);
+        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), textW, TITLE_PT).slice(0, 3);
+        const firstBaseline = top + S2 + S2 + capH;
+        drawMeasuredTitle(doc, titleLines, textX, firstBaseline, lineH, TITLE_PT);
+        const colors = getItemExtractedColors(norm, itemDataObj);
+        if (colors.length) {
+            const base = firstBaseline + (titleLines.length - 1) * lineH + descH + S2 + DETAIL_PT * PT * CAP * 1.25;
+            drawCompactColorBubbles(doc, colors.slice(0, 4), textX, Math.min(base, bottom - PAD), textW, DETAIL_PT);
         }
     }
+
+    // Dotted cut guides: the safe-area border and a line between ribbons, drawn over the colour bands.
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.2);
+    doc.setLineDashPattern([0.6, 1.2], 0);
+    doc.rect(X0, Y0, W, pageItems.length * rowH, 'S');
+    for (let r = 1; r < pageItems.length; r++) doc.line(X0, Y0 + r * rowH, X0 + W, Y0 + r * rowH);
+    doc.setLineDashPattern([], 0);
 }
+
 
 /**
  * CompactGrid: 3 x 2 packing-label panels per landscape A4 page. Each panel: top horizontal stone colour band
@@ -3656,6 +3778,89 @@ async function drawCatalogCompactGridPage(
         drawMeasuredTitle(doc, titleLines, ix, firstBaseline, lineH, TITLE_PT);
         const titleBottom = firstBaseline + (titleLines.length - 1) * lineH + descH;
 
+        // Large Color (owner's mockup, 2026-10-28): colours under the title; the cutouts as the label; a bottom-left
+        // block of brand logos, MADE IN MEXICO + tag on one line, then the QR in the corner with a tall barcode to the
+        // panel's bottom edge; the axo large in the bottom-right corner, standing on the panel bottom and allowed to
+        // overlap the cutouts a little.
+        if (layout.large) {
+            const bottom = y + cellH - PAD;
+            const sCap = DETAIL_PT * PT * CAP;
+            const blockW = innerW * 0.6;
+
+            // Colours under the title.
+            let contentTop = titleBottom + S1;
+            const colors = getItemExtractedColors(norm, itemDataObj);
+            if (colors.length) {
+                const base = contentTop + sCap * 1.25;
+                drawCompactColorBubbles(doc, colors.slice(0, 4), ix, base, innerW, DETAIL_PT);
+                contentTop = base + sCap * 0.6 + S1;
+            }
+
+            // Codes: QR bottom-left corner, barcode beside it to the bottom edge.
+            const qrS = 12.0;
+            const qrY = bottom - qrS;
+            try {
+                const qr = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode));
+                if (qr) doc.addImage(qr, 'PNG', ix, qrY, qrS, qrS);
+            } catch (e) {}
+            const barX = ix + qrS + S1, barW = ix + blockW - barX;
+            try {
+                const canvas = document.createElement('canvas');
+                JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 40, lineColor: '#141414' });
+                doc.addImage(canvas.toDataURL('image/png'), 'PNG', barX, qrY, barW, qrS);
+            } catch (e) {}
+
+            // MADE IN MEXICO and the tag on one line, together as wide as the QR + barcode.
+            const lineBase = qrY - S1;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(MICRO_PT);
+            doc.setTextColor(30, 41, 59);
+            doc.text('MADE IN MEXICO', ix, lineBase);
+            const mimW = doc.getTextWidth('MADE IN MEXICO');
+            const tagX = ix + mimW + S2;
+            drawFormattedTagCode(doc, codes, tagX, lineBase, DETAIL_PT, false, itemDataObj, ix + blockW - tagX, DETAIL_PT);
+
+            // Brand logos above that line: Rare Earth Gallery a little larger than Art of Decor.
+            const logoBottom = lineBase - DETAIL_PT * PT * CAP - S2;
+            let lx = ix;
+            ([[logos.rareEarth, 7.0, blockW * 0.5], [logos.artOfDecor, 6.0, blockW * 0.46]] as [LogoData | null, number, number][]).forEach(([lg, maxH, maxW]) => {
+                if (!lg) return;
+                let lw = maxH * lg.aspectRatio, lh = maxH;
+                if (lw > maxW) { lw = maxW; lh = maxW / lg.aspectRatio; }
+                doc.addImage(lg.dataUrl, 'PNG', lx, logoBottom - lh, lw, lh);
+                lx += lw + S3;
+            });
+            const blockTop = logoBottom - 7.0 - S2;
+
+            // Cutouts: the label's main element, centred in the space between the colours and the bottom block.
+            const boxTop = contentTop + S1;
+            const boxH = Math.max(12, (blockTop - boxTop) * 0.94);
+            const cutouts: { dataUrl: string; w: number; h: number }[] = [];
+            for (const u of getItemCutoutPngs(item).slice(0, 3)) {
+                try {
+                    const c = await loadImgData(u, 900, true);
+                    if (c && c.dataUrl && c.w && c.h) cutouts.push({ dataUrl: c.dataUrl, w: c.w, h: c.h });
+                } catch (e) {}
+            }
+            if (cutouts.length) {
+                const slotW = (innerW - (cutouts.length - 1) * S2) / cutouts.length;
+                cutouts.forEach((c, k) => {
+                    const aspect = c.w / c.h;
+                    let cw = slotW, ch = slotW / aspect;
+                    if (ch > boxH) { ch = boxH; cw = boxH * aspect; }
+                    doc.addImage(c.dataUrl, 'PNG', ix + k * (slotW + S2) + (slotW - cw) / 2, boxTop + (boxH - ch) / 2, cw, ch);
+                });
+            }
+
+            // Axo last, bottom-right, standing on the panel bottom.
+            const axoS = Math.min(innerW * 0.36, bottom - blockTop + 10);
+            try {
+                const axo = await getAdvancedAxoDataUrl(norm, itemDataObj);
+                if (axo) drawAxoContain(doc, axo, ix + innerW - axoS, bottom - axoS, axoS, axoS, 0.98);
+            } catch (e) {}
+            continue;
+        }
+
         // 3. Thin branding bar along panel bottom: Rare Earth Gallery and Art of Decor in equal slots
         const brandH = S3; // 4.5 mm
         const brandY = y + cellH - PAD - brandH;
@@ -3694,34 +3899,43 @@ async function drawCatalogCompactGridPage(
         } catch (e) {}
         try {
             const qr = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode));
-            if (qr) doc.addImage(qr, 'PNG', ix + leftW + CODE_GAP, codesY, qrSize, qrSize);
+            if (qr) doc.addImage(qr, 'PNG', ix + leftW + (layout.large ? S1 : CODE_GAP), codesY, qrSize, qrSize);
         } catch (e) {}
         drawFormattedTagCode(doc, codes, ix, codesY + codesH, DETAIL_PT, false, itemDataObj, leftW, TITLE_PT);
 
         // 5. Middle. Color Labels: large axo on the left; up to 3 cutouts, colours and weight on the right.
-        //    Large Color: the cutouts across the full width as the label's main element; under them a strip with
-        //    the axo (small) on the left and the colours and weight beside it.
-        const midTop = titleBottom + S1;
-        const midBottom = codesY - S2;
-        let midH = Math.max(12, midBottom - midTop);
-        const stripH = layout.large ? Math.min(46, midH * 0.38) : 0;
-        if (layout.large) midH -= stripH + S1;
-        const axoS = layout.large ? stripH : Math.min(midH, innerW * 0.48);
-        const axoY = layout.large ? midTop + midH + S1 : midTop + (midH - axoS) / 2;
-        try {
-            const axo = await getAdvancedAxoDataUrl(norm, itemDataObj);
-            if (axo) drawAxoContain(doc, axo, ix, axoY, axoS, axoS, 0.98);
-        } catch (e) {}
-
-        const rx = layout.large ? ix : ix + axoS + S2; // 3.0 mm clear gap from axo
-        const rw = ix + innerW - rx;
-        const metaX = layout.large ? ix + axoS + S2 : rx;
-        const metaW = ix + innerW - metaX;
+        //    Large Color: the cutouts fill the whole middle as the label's main element; the colours and weight sit
+        //    above MADE IN MEXICO, and the axo takes the space right of the barcode + QR (QR set close to the barcode).
         const sCap = DETAIL_PT * PT * CAP;
         const extractedColors = getItemExtractedColors(norm, itemDataObj);
         const wtKg = parseFloat(norm.weightKg || '0');
         const metaH = (extractedColors.length ? sCap * 1.25 + S1 : 0) + (wtKg > 0 ? sCap + S1 : 0);
-        const cutBoxH = layout.large ? midH : midH - metaH - S1;
+        const midTop = titleBottom + S1;
+        const midBottom = codesY - S2 - (layout.large ? metaH : 0);
+        const midH = Math.max(12, midBottom - midTop);
+        const codesRight = ix + leftW + S1 + qrSize;            // Large Color: end of the barcode + QR block
+        const axoX = layout.large ? codesRight + S2 : ix;
+        const axoW = ix + innerW - axoX;
+        const zoneTop = codesY - metaH;                          // the colours line's top
+        const zoneBottom = codesY + codesH;
+        // Large Color: the axo is large and rises from the codes line into the cutouts' area (drawn after them, so
+        // it may overlap them a little), right-aligned to the panel edge.
+        const axoS = layout.large ? Math.min(innerW * 0.44, 46) : Math.min(midH, innerW * 0.48);
+        const axoY = layout.large ? zoneBottom - axoS : midTop + (midH - axoS) / 2;
+        const axoDrawX = layout.large ? ix + innerW - axoS : axoX;
+        const drawAxo = async () => {
+            try {
+                const axo = await getAdvancedAxoDataUrl(norm, itemDataObj);
+                if (axo) drawAxoContain(doc, axo, axoDrawX, axoY, axoS, axoS, 0.98);
+            } catch (e) {}
+        };
+        if (!layout.large) await drawAxo();
+
+        const rx = layout.large ? ix : ix + axoS + S2; // 3.0 mm clear gap from axo
+        const rw = ix + innerW - rx;
+        const metaX = rx;
+        const metaW = layout.large ? codesRight - ix : ix + innerW - metaX;
+        const cutBoxH = layout.large ? midH * 0.86 : midH - metaH - S1;   // Large Color: a little under the full middle
 
         let cutoutH = 0;
         const cutouts: { dataUrl: string; w: number; h: number }[] = [];
@@ -3733,16 +3947,6 @@ async function drawCatalogCompactGridPage(
         }
         if (cutouts.length) {
             const boxH = Math.max(10, cutBoxH);
-            // Large Color: a neutral gray ground with a soft top-to-bottom gradient behind the cutouts, so white and
-            // pale stones keep their edge and colour against the page.
-            if (layout.large) {
-                const STEPS = 32;
-                for (let k = 0; k < STEPS; k++) {
-                    const t = k / (STEPS - 1);
-                    doc.setFillColor(Math.round(240 - 26 * t), Math.round(241 - 25 * t), Math.round(243 - 23 * t));
-                    doc.rect(rx, midTop + (boxH * k) / STEPS, rw, boxH / STEPS + 0.05, 'F');
-                }
-            }
             const slotW = (rw - (cutouts.length - 1) * S1) / cutouts.length;
             cutouts.forEach((c, k) => {
                 const aspect = c.w / c.h;
@@ -3753,8 +3957,10 @@ async function drawCatalogCompactGridPage(
             cutoutH = boxH + S1;
         }
 
-        // Colours and weight sit under the cutout, or centred in the column without one (Large Color: beside the axo).
-        let metaY = layout.large ? axoY + (stripH - metaH) / 2 : cutoutH ? midTop + cutoutH : midTop + (midH - metaH) / 2;
+        if (layout.large) await drawAxo();
+
+        // Colours and weight sit under the cutout, or centred in the column without one (Large Color: above MADE IN MEXICO).
+        let metaY = layout.large ? zoneTop - S1 : cutoutH ? midTop + cutoutH : midTop + (midH - metaH) / 2;
         if (extractedColors.length) {
             metaY += sCap * 1.25;
             drawCompactColorBubbles(doc, extractedColors.slice(0, 3), metaX, metaY, metaW, DETAIL_PT);
@@ -3780,7 +3986,7 @@ function catalogTypeOf(norm: any, d: any): { type: string; sizeRank: number; res
 }
 
 /** The vendor / type / shape / tag an item sorts and page-breaks by. */
-function catalogSortKey(item: CatalogArtifact): { vendor: string; type: string; sizeRank: number; shape: string; tag: string } {
+function catalogSortKey(item: CatalogArtifact): { vendor: string; book: number; index: number; type: string; sizeRank: number; shape: string; tag: string } {
     const d = item.data || item;
     const norm = normalizeInventoryData(d);
     const codes: any = item.codes || {};
@@ -3790,12 +3996,15 @@ function catalogSortKey(item: CatalogArtifact): { vendor: string; type: string; 
     const vendor = (norm.vendorId || tag.match(/^[A-Z]+/)?.[0] || '').toUpperCase();
     const t = catalogTypeOf(norm, d);
     const shape = (norm.shape || t.rest || '').toUpperCase();
-    return { vendor, type: t.type.toUpperCase(), sizeRank: t.sizeRank, shape, tag };
+    // Book and item index count from the tag: "EM826 29OLE" -> book 826, index 29. Untagged items sort last.
+    const m = tag.match(/^[A-Z]+-?(\d{3})[\s-]*(\d+)/);
+    const book = m ? +m[1] : Infinity, index = m ? +m[2] : Infinity;
+    return { vendor, book, index, type: t.type.toUpperCase(), sizeRank: t.sizeRank, shape, tag };
 }
 
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
-    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor'; logo?: string; exportType?: 'regular' | 'catalog' },
+    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor'; logo?: string; exportType?: 'regular' | 'catalog'; includeSummary?: boolean },
     onProgress?: (p: number, s: string) => void,
     output: 'download' | 'blob' = 'download',
     onStats?: (stats: CatalogExportStats) => void,
@@ -3808,20 +4017,15 @@ export async function exportCatalogPdf(
     }, async () => {
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
+    const includeSummary = config.includeSummary !== false;
 
-    // Every catalog format exports sorted by vendor / type / shape (then tag).
-    // Types come in the summary's order: most units first within each vendor, then by name.
-    const unitsByVendorType = new Map<string, number>();
-    for (const r of results) {
-        const k = catalogSortKey(r);
-        const qty = parseInt(normalizeInventoryData(r.data || r).quantity || '1', 10) || 1;
-        unitsByVendorType.set(`${k.vendor}|${k.type}`, (unitsByVendorType.get(`${k.vendor}|${k.type}`) || 0) + qty);
-    }
-    const units = (k: { vendor: string; type: string }) => unitsByVendorType.get(`${k.vendor}|${k.type}`) || 0;
+    // Every catalog format exports sorted by vendor, then the tag's book and item index count (EM826 1, 2, 3...),
+    // then type / shape for items that share an index or have no tag.
     results = [...results].sort((a, b) => {
         const kA = catalogSortKey(a);
         const kB = catalogSortKey(b);
-        return kA.vendor.localeCompare(kB.vendor) || units(kB) - units(kA) || kA.type.localeCompare(kB.type) || kA.sizeRank - kB.sizeRank || kA.shape.localeCompare(kB.shape) || kA.tag.localeCompare(kB.tag);
+        const num = (x: number, y: number) => (x === y ? 0 : x < y ? -1 : 1);
+        return kA.vendor.localeCompare(kB.vendor) || num(kA.book, kB.book) || num(kA.index, kB.index) || kA.type.localeCompare(kB.type) || kA.sizeRank - kB.sizeRank || kA.shape.localeCompare(kB.shape) || kA.tag.localeCompare(kB.tag);
     });
 
     // Warm every image before drawing. A grid page only ever draws the first
@@ -3889,7 +4093,8 @@ export async function exportCatalogPdf(
         
         if (isCompactMode) {
             // Only first summary page gets full footer with logos and page count; all item pages have NO footer
-            if (globalPageNum === 1) {
+            // Without a summary, page 1 is already an item page, so it gets no footer either.
+            if (globalPageNum === 1 && includeSummary) {
                 doc.setDrawColor(228, 228, 231);
                 doc.setLineWidth(0.2);
                 doc.line(M, PH - 16, PW - M, PH - 16);
@@ -4007,7 +4212,7 @@ export async function exportCatalogPdf(
 
     /** Compact pages: items fill every page in sorted order (no vendor or type breaks); per-vendor summaries come first. */
     const renderCompactRuns = async (vendorSummaries: boolean) => {
-        const itemsPerPage = isLargeColor ? 4 : isCompactGrid ? 6 : 9;
+        const itemsPerPage = isLargeColor ? 4 : isCompactGrid ? 6 : 7;
         if (vendorSummaries) {
             const byVendor = new Map<string, CatalogArtifact[]>();
             for (const it of results) {
@@ -4017,7 +4222,7 @@ export async function exportCatalogPdf(
             const cursor = { y: null as number | null };
             for (const [v, list] of byVendor) {
                 onProgress?.(8, `Summary ${v}...`);
-                await drawCatalogSummaryPages(doc, list, M, PW, PH, addPage, isLandscape, config.title, v, cursor);
+                await drawCatalogSummaryPages(doc, list, M, PW, PH, addPage, isLandscape, config.title, v, cursor, true);
             }
         }
         const totalPages = Math.ceil(results.length / itemsPerPage);
@@ -4027,19 +4232,21 @@ export async function exportCatalogPdf(
             await yieldToUi();
             if (isCompactGrid || isLargeColor) await drawCatalogCompactGridPage(doc, results, page * itemsPerPage, M, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo, onyx: onyxLogo },
                 isLargeColor ? { cols: 2, rows: 2, large: true } : undefined);
-            else await drawCatalogCompactPage(doc, results, page * itemsPerPage, itemsPerPage, M, PW, PH);
+            else await drawRibbonPage(doc, results, page * itemsPerPage, itemsPerPage, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo });
         }
     };
 
     if (exportType === 'catalog') {
         if (isCompactMode) {
             // Compact: a summary per vendor (no general one), then that vendor's pages.
-            await renderCompactRuns(true);
+            await renderCompactRuns(includeSummary);
         } else {
-            onProgress?.(5, 'Generating summary...');
-            await yieldToUi(true);
-            await drawCatalogSummaryPages(doc, results, M, PW, PH, addPage, isLandscape, config.title);
-            await yieldToUi(true);
+            if (includeSummary) {
+                onProgress?.(5, 'Generating summary...');
+                await yieldToUi(true);
+                await drawCatalogSummaryPages(doc, results, M, PW, PH, addPage, isLandscape, config.title);
+                await yieldToUi(true);
+            }
             for (let i = 0; i < results.length; i++) {
                 const item = results[i];
                 const imgs = getItemImages(item);
@@ -4090,7 +4297,7 @@ export async function exportCatalogPdf(
                 
                 if (wCm || hCm || dCm) {
                     try {
-                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data || item), true, extractItemHexString(item.data || item));
+                        const axoDataUrl = await generateAxonometricDataUrl(wCm, hCm, dCm, shapeStr, descStr, resolveItemColor(item.data || item), true, extractItemHexMapString(item.data || item) || undefined, { noSaturationBoost: true });
                         if (axoDataUrl) {
                             const cw = PW - M * 2 - 4;
                             const ch = PH - specY - 28;

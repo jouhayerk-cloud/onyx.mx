@@ -552,6 +552,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
             await exportCatalogPdf(sortedItems as any, { 
                 title: cfg.title || "ONYX COLLECTION", 
                 method: cfg.method, 
+                includeSummary: cfg.includeSummary,
                 exportType: 'catalog' 
             }, (p, s) => {
                 setExportProgress(p);

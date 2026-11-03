@@ -495,6 +495,7 @@ export const UniversalToolsBar: React.FC = () => {
             const blob = await exportCatalogPdf(itemsToExport as any, {
                 title: cfg.title || "ONYX COLLECTION",
                 method: cfg.method || "grid",
+                includeSummary: cfg.includeSummary,
                 exportType: 'catalog'
             }, (p: number, s: string) => {
                 setCatalogExportProgress(p);
