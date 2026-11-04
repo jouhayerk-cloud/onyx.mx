@@ -24,7 +24,7 @@ import { loadSegmentations } from '../../lib/segmentationStore';
 import {
     extractItemHexString,
     getCleanImageUrl,
-    getSizedImageUrl,
+
     cmToImperial,
     formatWeightImperialOnly
 } from '../../lib/utils';
@@ -439,7 +439,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                                 {activeCutoutUrl ? (
                                     <img
                                         key={activeCutoutUrl}
-                                        src={getSizedImageUrl(activeCutoutUrl, 640) || activeCutoutUrl}
+                                        src={activeCutoutUrl}
                                         alt={`${title} - Cutout ${activeCutoutIdx + 1}`}
                                         className="relative z-10 max-h-[360px] sm:max-h-[420px] w-auto max-w-full object-contain filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.7)] animate-in fade-in duration-300"
                                     />
@@ -538,7 +538,7 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                                                     }}
                                                 />
                                                 <img
-                                                    src={getSizedImageUrl(url, 96) || url}
+                                                    src={url}
                                                     alt={`Thumb ${idx + 1}`}
                                                     className="relative z-10 w-full h-full object-contain p-1"
                                                     loading="lazy"

@@ -357,9 +357,12 @@ const IMAGE_WIDTH_STEPS = [128, 256, 400, 640, 960, 1280, 1600, 2048];
  * `lh3.googleusercontent.com/d/<id>` (what getCleanImageUrl returns) serves
  * the ORIGINAL upload: a 4000px phone photo or a multi-MB clean PNG for a
  * 60px thumbnail. lh3 takes FIFE options after an `=`: `w<px>` scales down to
- * that width (never up) and `rw` returns WebP, which keeps PNG transparency
- * and is usually a fraction of the PNG's size. So a card asks for
- * `/d/<id>=w400-rw` instead of the full file.
+ * that width (never up) and `rw` returns WebP, a fraction of the original's
+ * size. So a card asks for `/d/<id>=w400-rw` instead of the full file.
+ *
+ * PHOTOS ONLY. Any resize on a Drive file flattens alpha (tested 4 Nov 2026:
+ * -rw, -rp, -nu, -ft, thumbnail?sz all return RGB), so a transparent cutout
+ * or Clean PNG comes back with a dark background. Pass those unsized.
  *
  * `cssWidth` is the rendered width in CSS pixels; it is scaled by the device
  * pixel ratio (capped at 2) and snapped up to IMAGE_WIDTH_STEPS. Without it,

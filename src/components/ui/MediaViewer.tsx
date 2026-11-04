@@ -143,7 +143,8 @@ export function MediaViewer({
     // The stage is at most ~640px wide: it shows a 1280px-class WebP from Drive
     // rather than the original upload. The lightbox below still opens `src`
     // at full size. SVG outlines are left as they are.
-    const displaySrc = src && shown === 'svg' ? svgSrc(src) : (src ? (getSizedImageUrl(src, 640) || src) : src);
+    // Only photos are resized: Drive's resizer flattens transparency (cutout, Clean PNG, mask).
+    const displaySrc = src && shown === 'svg' ? svgSrc(src) : (src && shown === 'photo' ? (getSizedImageUrl(src, 640) || src) : src);
     // lh3 only scales down, so a natural width under the requested one is the
     // file's real size; at or above it the image was resized and its pixel
     // count says nothing about the original.

@@ -1155,7 +1155,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         Not a gallery: the clean photos open with the row, in its panel. */}
                     <div className={`inv-c-media inv-c-media--png${cutoutUrls.length ? '' : ' is-axo'}`} data-n={cutoutUrls.length}>
                         {cutoutUrls.length
-                            ? cutoutUrls.map(u => <DriveImage key={u} loading="lazy" src={u} width={128} alt="" className="inv-png" />)
+                            ? cutoutUrls.map(u => <DriveImage key={u} loading="lazy" src={u} alt="" className="inv-png" />)
                             : <div className="inv-png inv-png-axo"><WireframeIcon item={norm} /></div>}
                     </div>
 

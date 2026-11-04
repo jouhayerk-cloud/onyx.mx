@@ -58,9 +58,9 @@ export function Thumb({ src, kind = 'photo', badge, alt = '', size = 'md', onCli
         onClick && 'ui-thumb--button',
         className,
     );
-    // Thumbs are 34-58px: fetch a small WebP from Drive, not the original upload.
-    // SVG outlines stay full (lh3 rasterises them; resizing gains little).
-    const imgSrc = kind === 'svg' ? svgSrc(src) : (getSizedImageUrl(src, THUMB_PX[size]) || src);
+    // Thumbs are 34-58px: photos come as a small WebP from Drive, not the original upload.
+    // Only photos: Drive's resizer flattens transparency, so cutouts/PNGs/masks stay original.
+    const imgSrc = kind === 'svg' ? svgSrc(src) : kind === 'photo' ? (getSizedImageUrl(src, THUMB_PX[size]) || src) : src;
     const body = (
         <>
             <img src={imgSrc} alt={onClick ? '' : alt} loading="lazy" decoding="async" draggable={false} />
