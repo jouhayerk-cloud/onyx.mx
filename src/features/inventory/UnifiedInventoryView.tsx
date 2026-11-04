@@ -160,14 +160,18 @@ const StoneBand = ({ data, norm, dir }: { data: any; norm: any; dir: 'h' | 'v' |
 // The item's transparent cutout PNGs, by the catalog compact rule (pdfExport getItemCutoutPngs): one per unit when the
 // quantity and the photos allow it, else one; lamps take the lights-on photos (angle 1 and 3) before the lights-off ones.
 // shortcut: a copy of that rule, kept here so the list does not pull jsPDF in; move both to utils if a third caller appears.
-const listCutoutUrls = (data: any, norm: any, photoCount: number): string[] => {
+// Each cutout comes with its stored black-and-white matte when there is one (see DriveImage `matte`).
+const listCutoutUrls = (data: any, norm: any, photoCount: number): { url: string; matte?: string }[] => {
     let masks = data?.spatial_masks ?? data?.spatialMasks;
     if (typeof masks === 'string') { try { masks = JSON.parse(masks); } catch { masks = null; } }
+    const mattes = new Map<string, string>();
     const at = (i: number): string | null => {
         const e = masks?.[`angle_${i}`];
         const x = Array.isArray(e) ? e[0] : e;
         const u = typeof x === 'string' ? x : (x?.cutoutUrl || x?.mask || x?.pngUrl);
-        return typeof u === 'string' && u ? u : null;
+        if (typeof u !== 'string' || !u) return null;
+        if (typeof x?.matte === 'string' && x.matte) mattes.set(u, x.matte);
+        return u;
     };
     const qty = parseInt(String(norm.quantity), 10) || 1;
     const max = qty > 1 && photoCount > 1 ? Math.min(qty, photoCount, 3) : 1;
@@ -183,7 +187,7 @@ const listCutoutUrls = (data: any, norm: any, photoCount: number): string[] => {
         if (!seen.has(id)) { seen.add(id); out.push(u); }
         if (out.length && picks.every(x => !x)) break; // the generated PNG is one piece, never repeated per unit
     }
-    return out;
+    return out.map(url => ({ url, matte: mattes.get(url) }));
 };
 
 // Building blocks of an open row's panel. `k` names the entry (`inv-f-<k>`).
@@ -215,8 +219,15 @@ const Stat = ({ k, label, overflow = false, valueClassName = '', children }: {
 /**
  * `width`: rendered width in CSS px. Drive images are then fetched resized and
  * as WebP (getSizedImageUrl) instead of the full original upload.
+ *
+ * `matte`: the cutout's black-and-white matte. Drive's resizer drops alpha, so
+ * a transparent cutout is only resized when its matte comes along: both are
+ * fetched small (~40 KB vs ~750 KB) and the matte is applied as a luminance
+ * CSS mask, which puts the transparency back. Without a matte the original
+ * PNG loads unsized. lh3 sends Access-Control-Allow-Origin: *, which a
+ * cross-origin mask image needs.
  */
-const DriveImage = ({ src, className, width, ...props }: any) => {
+const DriveImage = ({ src, className, width, matte, style, ...props }: any) => {
     const isIOS = typeof navigator !== 'undefined' && 
         (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
@@ -263,7 +274,14 @@ const DriveImage = ({ src, className, width, ...props }: any) => {
         if (!imgProps.decoding) imgProps.decoding = "async";
     }
 
-    return <img src={resolvedSrc} className={className} referrerPolicy="no-referrer" onError={() => setHasError(true)} {...imgProps} />;
+    // contain + centre mirrors .inv-png's object-fit: contain, so the mask sits on the fitted image, not the box.
+    const matteUrl = matte && width ? getSizedImageUrl(matte, width) : null;
+    const maskStyle = matteUrl ? {
+        maskImage: `url("${matteUrl}")`, maskMode: 'luminance', maskSize: 'contain',
+        maskPosition: 'center', maskRepeat: 'no-repeat',
+    } : null;
+
+    return <img src={resolvedSrc} className={className} referrerPolicy="no-referrer" onError={() => setHasError(true)} style={maskStyle ? { ...style, ...maskStyle } : style} {...imgProps} />;
 };
 
 const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
@@ -1155,7 +1173,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                         Not a gallery: the clean photos open with the row, in its panel. */}
                     <div className={`inv-c-media inv-c-media--png${cutoutUrls.length ? '' : ' is-axo'}`} data-n={cutoutUrls.length}>
                         {cutoutUrls.length
-                            ? cutoutUrls.map(u => <DriveImage key={u} loading="lazy" src={u} alt="" className="inv-png" />)
+                            ? cutoutUrls.map(c => <DriveImage key={c.url} loading="lazy" src={c.url} matte={c.matte} width={c.matte ? 128 : undefined} alt="" className="inv-png" />)
                             : <div className="inv-png inv-png-axo"><WireframeIcon item={norm} /></div>}
                     </div>
 
