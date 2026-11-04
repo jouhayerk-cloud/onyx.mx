@@ -14,7 +14,7 @@ import {
     Shield, CreditCard, Truck, Package, MapPin,
     ChevronRight, Zap, BarChart3, LayoutDashboard, Pipette, Layers,
     Box, Cuboid, BadgeDollarSign, Rotate3d, Cpu, Shapes, Album, Shell, Printer,
-    ChevronsLeft, ChevronsRight, House, FilePlus2,
+    ChevronsLeft, ChevronsRight, House, FilePlus2, Store,
     Settings,
 } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
@@ -44,7 +44,9 @@ const ICON_MAP: Record<string, React.FC<any>> = {
     'file-plus': FilePlus2,
     printer: Printer,
     home: House,
-    album: Album
+    album: Album,
+    showroom: Store,
+    store: Store
 };
 
 interface NavItemProps {
@@ -651,6 +653,18 @@ export const IslandSidebar: React.FC = () => {
                             isActive={activeView === 'upload'}
                             view="upload"
                             action={() => { switchView('upload'); handleMobileHide(); }}
+                            isCompact={isCompact}
+                            isRail={isRail}
+                            isHoverPeek={isHoverPeek}
+                        />
+                    )}
+                    {see('showroom') && (
+                        <NavItem
+                            icon={Store}
+                            label={tr("Showroom")}
+                            isActive={activeView === 'showroom' || activeView === 'store'}
+                            view="showroom"
+                            action={() => { switchView('showroom'); handleMobileHide(); }}
                             isCompact={isCompact}
                             isRail={isRail}
                             isHoverPeek={isHoverPeek}

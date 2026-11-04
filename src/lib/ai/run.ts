@@ -45,6 +45,7 @@ import {
 import type { BgQuality, BgRoom } from '../bgReplace';
 import type { DonorCandidate } from '../variationMatch';
 import { collectAllImages, getCleanImageUrl, normalizeInventoryData } from '../utils';
+import { enhanceHexMapStringForItem } from '../canonicalColors';
 import { supabase } from '../supabase';
 import { yieldToBrowser } from '../workers/imageWorkerClient';
 import { hasGeminiKey } from './keys';
@@ -510,7 +511,8 @@ function storedOf(raw: any, n: any, media: RunMedia[]): RunItem['stored'] {
     if (typeof points === 'string') { try { points = JSON.parse(points); } catch { points = null; } }
     const pm = Array.isArray(points) ? points.find((p: any) => p?.type === 'pixel_map' || p?.hex_string) : null;
     if (pm?.hex_string) {
-        hexMap = { hexString: String(pm.hex_string), bitmapUrl: urlOrUndef(pm.bitmap_url), cols: Number(pm.cols) || 60, rows: Number(pm.rows) || 60 };
+        const enhancedHex = enhanceHexMapStringForItem(String(pm.hex_string), raw) || String(pm.hex_string);
+        hexMap = { hexString: enhancedHex, bitmapUrl: urlOrUndef(pm.bitmap_url), cols: Number(pm.cols) || 60, rows: Number(pm.rows) || 60 };
     }
     return { photos, hexMap, axoIconUrl: urlOrUndef(raw.axo_icon_url ?? raw.axoIconUrl) };
 }
@@ -1029,7 +1031,7 @@ export function summarizeItem(item: RunItem): RunItem {
     // cell-by-cell, which has no spatial meaning and corrupted the result
     // (Chief review, 25 Oct 2026). cols/rows/bitmapUrl below already come
     // from the hero, so this keeps the hexString paired with them.
-    const heroHex = h.hexString || photoHexMaps[0];
+    const heroHex = h.hexString ? (enhanceHexMapStringForItem(h.hexString, item.source) || h.hexString) : (photoHexMaps[0] ? (enhanceHexMapStringForItem(photoHexMaps[0], item.source) || photoHexMaps[0]) : undefined);
     const hexMap: RunHexMap | undefined = heroHex
         ? { hexString: heroHex, bitmapUrl: h.bitmapUrl, cols: h.cols || 60, rows: h.rows || 60 }
         : undefined;

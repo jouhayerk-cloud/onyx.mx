@@ -7,6 +7,7 @@ import { supabase } from './supabase';
 import heic2any from 'heic2any';
 import { findContourPixels, simplifyContourPoints, trimRectPixels } from './workers/imagePixels';
 import { runPixelOp, canvasToDataUrl } from './workers/imageWorkerClient';
+import { enhanceHexMapStringForItem } from './canonicalColors';
 export { reconstructRgbPixelMap, type RgbPixel, type ReconstructedPixelMap } from './colorExtractor';
 
 export function resolveUserRole(email: string): UserRole {
@@ -198,6 +199,53 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
         }
       } catch (error) {
         console.error('Drive upload error:', error);
+        reject(error);
+      }
+    };
+    reader.onerror = (error) => reject(error);
+  });
+}
+
+export async function handleShowroomFileUpload(file: File | Blob, user: any, explicitName?: string): Promise<{ fileId: string; thumbnailUrl: string; originalFile: File | Blob }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    const fileName = explicitName || (file as any).name || ('showroom_' + Date.now() + '.jpg');
+    const mimeType = file.type || 'image/jpeg';
+
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      try {
+        console.log(`[Drive:Showroom] Uploading ${fileName} (${Math.round(file.size / 1024)}KB) using folderType: showroom...`);
+        const base64Data = (reader.result as string).split(',')[1];
+        const response = await fetchScriptWithTimeout({
+          method: 'POST',
+          mode: 'cors',
+          cache: 'no-cache',
+          body: JSON.stringify({
+            action: 'uploadMedia',
+            fileName,
+            mimeType,
+            base64: base64Data,
+            folderType: 'showroom',
+            user
+          }),
+        }, base64Data.length);
+
+        if (!response.ok) throw new Error(`Network response error: ${response.status}`);
+
+        const result = await response.json();
+        if (result.status === 'success') {
+          console.log(`[Drive:Showroom] Successfully uploaded: ${result.fileId}`);
+          resolve({
+            fileId: result.fileId,
+            thumbnailUrl: result.url || `https://drive.google.com/uc?export=view&id=${result.fileId}`,
+            originalFile: file
+          });
+        } else {
+          throw new Error(result.message || 'Drive Showroom Upload failed');
+        }
+      } catch (error) {
+        console.error('Drive Showroom upload error:', error);
         reject(error);
       }
     };
@@ -1988,6 +2036,11 @@ export function getDynamicCrateIdComponents(crate: any, allCrates: any[], allInv
 }
 
 export function extractItemHexString(itemData: any): string | undefined {
+    const raw = extractRawItemHexString(itemData);
+    return enhanceHexMapStringForItem(raw, itemData);
+}
+
+function extractRawItemHexString(itemData: any): string | undefined {
     if (!itemData) return undefined;
     if (itemData.hexString) return itemData.hexString;
     if (itemData.hex_string) return itemData.hex_string;

@@ -4,7 +4,7 @@ import type { AxoMirrorClass } from './axoMirrors';
 import type { AxoExtraClass } from './axoExtra';
 import { classifyGeometry } from './geometry';
 import type { Geometry } from './geometry';
-import { resolveStonePalette, resolveItemColor, enhanceStoneColor } from './canonicalColors';
+import { resolveStonePalette, resolveStonePaletteRaw, resolveItemColor, enhanceStoneColor, boostBowlHexColor, enhanceHexMapStringForItem, isBowlItem } from './canonicalColors';
 import type { StonePalette } from './canonicalColors';
 
 export { resolveStonePalette, resolveItemColor };
@@ -19,6 +19,7 @@ export interface AxoBoundingBoxOptions {
     hairlineColor?: string;
     unit?: string;
     rawDimensions?: { w?: number; h?: number; d?: number };
+    noSaturationBoost?: boolean;
 }
 
 export function parseHexMapString(hexMapString?: string): string[] {
@@ -79,7 +80,9 @@ export function normalizeHexMapTexture(
     srcCols: number,
     srcRows: number,
     targetCols = 20,
-    targetRows = 20
+    targetRows = 20,
+    isBowl = false,
+    noSaturationBoost = false
 ): string[] {
     if (!hexList || hexList.length === 0) return [];
 
@@ -236,7 +239,9 @@ export function normalizeHexMapTexture(
         }
     }
 
-    return result.map(enhanceStoneColor);
+    // Do not stack enhanceStoneColor on top of boostBowlHexColor (which caused near-white blowout and oversaturation on bowl axos).
+    if (noSaturationBoost) return result;
+    return result.map(h => isBowl ? boostBowlHexColor(h, true) : enhanceStoneColor(h));
 }
 
 /**
@@ -354,6 +359,10 @@ export function blendHexMapStrings(mapStrings: string[]): string | undefined {
  * the comment on persist.ts's hero-grid write).
  */
 export function extractItemHexMapString(item: any): string | undefined {
+    return extractRawItemHexMapString(item);
+}
+
+function extractRawItemHexMapString(item: any): string | undefined {
     if (!item) return undefined;
     const it = item.data ? { ...item.data, ...item } : item;
 
@@ -855,7 +864,8 @@ export async function generateAxonometricDataUrl(
 
         const isWireframe = wireframeColor === 'black' || wireframeColor === 'wireframe' || wireframeColor === 'transparent' || wireframeColor === '#000000';
 
-        const palette = resolveStonePalette({
+        const noSatBoost = typeof boundingBoxOptions === 'object' && !!boundingBoxOptions?.noSaturationBoost;
+        const palette = (noSatBoost ? resolveStonePaletteRaw : resolveStonePalette)({
             color: (wireframeColor && !wireframeColor.startsWith('rgba') && !wireframeColor.startsWith('#ef4444') && !wireframeColor.startsWith('#22c55e') && !wireframeColor.startsWith('#38bdf8') && !wireframeColor.startsWith('#eab308')) ? wireframeColor : undefined,
             shape: shapeStr,
             description: descStr,
@@ -930,13 +940,13 @@ export async function generateAxonometricDataUrl(
                             sRows = Math.ceil(len / sCols);
                         }
                     }
-                    parsedHexList = normalizeHexMapTexture(rawHexList, sCols, sRows, tCols, tRows);
+                    parsedHexList = normalizeHexMapTexture(rawHexList, sCols, sRows, tCols, tRows, geom === 'bowl' || isBowlItem({ shape: shapeStr, description: descStr }), noSatBoost);
                 }
             }
 
             // Fallback: If no photo hex map, use canonical stone palette to build continuous veined texture
             if (!parsedHexList || parsedHexList.length === 0) {
-                parsedHexList = normalizeHexMapTexture(palette.gradientColors, 4, 4, tCols, tRows);
+                parsedHexList = normalizeHexMapTexture(palette.gradientColors, 4, 4, tCols, tRows, geom === 'bowl' || isBowlItem({ shape: shapeStr, description: descStr }), noSatBoost);
             }
 
             if (parsedHexList && parsedHexList.length > 0) {

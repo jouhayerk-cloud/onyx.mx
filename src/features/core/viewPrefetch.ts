@@ -6,6 +6,8 @@ const viewLoaders: Record<string, () => Promise<unknown>> = {
     finance: () => import('../finance/FinanceView'),
     upload: () => import('../upload/UploadView'),
     inventory: () => import('../inventory/InventoryView'),
+    showroom: () => import('../store/StoreView'),
+    store: () => import('../store/StoreView'),
     warehouse: () => import('../logistics/LogisticsView'),
     trucking: () => import('../logistics/LogisticsView'),
     viewer: () => import('../viewer/ViewerView'),

@@ -1,0 +1,478 @@
+/* ==========================================================================
+   HEX & COLOR MAP STUDIO — Interactive Eyedropper, Hex Grid, Vibrance & Axo
+   ========================================================================== */
+
+.hex-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: var(--ui-r-md);
+    border: 1px solid var(--ui-edge);
+    background-color: var(--ui-raise);
+    backdrop-filter: var(--ui-blur);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+}
+
+.hex-editor__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+}
+
+.hex-editor__title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hex-editor__icon {
+    color: var(--ui-accent);
+}
+
+.hex-editor__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font: 700 11px/1.3 var(--ui-font-display);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ui-ink);
+    background: color-mix(in srgb, var(--ui-accent) 24%, var(--ui-well));
+    border: 1px solid color-mix(in srgb, var(--ui-accent) 55%, var(--ui-edge));
+}
+
+.hex-editor__header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.hex-editor__grid {
+    display: grid;
+    grid-template-columns: minmax(230px, 280px) minmax(240px, 1fr) minmax(290px, 1.15fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+@media (max-width: 980px) {
+    .hex-editor__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.hex-editor__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--ui-r-sm);
+    background-color: var(--ui-well);
+    border: 1px solid var(--ui-edge);
+    min-width: 0;
+}
+
+.hex-editor__panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font: 700 13px/1.2 var(--ui-font-display);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ui-dim);
+}
+
+.hex-editor__subnote {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ui-faint);
+    text-transform: none;
+}
+
+.hex-editor__img-tabs {
+    display: flex;
+    gap: 4px;
+}
+
+.hex-editor__tab {
+    padding: 2px 7px;
+    font: 600 11px/1.2 var(--ui-font-display);
+    border-radius: 4px;
+    border: 1px solid var(--ui-edge);
+    background: var(--ui-surface);
+    color: var(--ui-dim);
+    cursor: pointer;
+}
+
+.hex-editor__tab--active {
+    background: color-mix(in srgb, var(--ui-accent) 22%, var(--ui-surface));
+    color: var(--ui-ink);
+    border-color: var(--ui-accent);
+}
+
+.hex-editor__canvas-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-height: 240px;
+    border-radius: var(--ui-r-sm);
+    overflow: hidden;
+    background: #14171F;
+    border: 1px solid var(--ui-edge);
+}
+
+.hex-editor__img-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hex-editor__img-canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    cursor: crosshair;
+}
+
+.hex-editor__loupe {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.85), 0 2px 8px rgba(0, 0, 0, 0.5);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.hex-editor__picker-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 2px;
+}
+
+.hex-editor__swatch-pair {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: var(--ui-r-sm);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-edge);
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+}
+
+.hex-editor__swatch-pair--enhanced {
+    cursor: default;
+    border-color: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-edge));
+}
+
+.hex-editor__native-color {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.hex-editor__swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.hex-editor__swatch-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.15;
+}
+
+.hex-editor__swatch-meta small {
+    font-size: 10.5px;
+    color: var(--ui-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.hex-editor__swatch-meta code {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ui-ink);
+}
+
+.hex-editor__arrow {
+    color: var(--ui-faint);
+    font-weight: 700;
+}
+
+/* ── 2. Hex Map Grid ── */
+.hex-editor__match-pill {
+    font-size: 11.5px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-edge);
+    color: var(--ui-ink);
+    text-transform: none;
+}
+
+.hex-editor__map-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-height: 240px;
+    padding: 6px;
+    border-radius: var(--ui-r-sm);
+    background: #0F1218;
+    border: 1px solid var(--ui-edge);
+    overflow: hidden;
+}
+
+.hex-editor__map-grid {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    gap: 1px;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.hex-editor__cell {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+    transition: transform 0.08s ease;
+}
+
+.hex-editor__cell--bg {
+    opacity: 0.22;
+}
+
+.hex-editor__cell--matched {
+    outline: 1.5px solid #ffffff;
+    outline-offset: -1.5px;
+    z-index: 1;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.85);
+}
+
+.hex-editor__cell:hover {
+    transform: scale(1.35);
+    z-index: 2;
+    outline: 1.5px solid var(--ui-accent);
+}
+
+.hex-editor__hint {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--ui-faint);
+}
+
+/* ── 3. Sliders & Color Bar ── */
+.hex-editor__sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hex-editor__slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 12.5px;
+    color: var(--ui-dim);
+}
+
+.hex-editor__slider-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.hex-editor__slider-label strong {
+    color: var(--ui-ink);
+    font-size: 12.5px;
+}
+
+.hex-editor__slider-row input[type='range'] {
+    width: 100%;
+    accent-color: var(--ui-accent);
+    cursor: pointer;
+}
+
+.hex-editor__apply-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.hex-editor__colorbar-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 4px;
+    border-top: 1px solid var(--ui-edge);
+}
+
+.hex-editor__colorbar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font: 600 12px/1.2 var(--ui-font-display);
+    color: var(--ui-dim);
+}
+
+.hex-editor__colorbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hex-editor__clear-pin {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--ui-edge);
+    background: transparent;
+    color: var(--ui-faint);
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.hex-editor__clear-pin:hover {
+    color: var(--ui-ink);
+    border-color: var(--ui-edge-hi);
+}
+
+.hex-editor__colorbar {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    height: 36px;
+    border-radius: var(--ui-r-sm);
+    overflow: hidden;
+    border: 1px solid var(--ui-edge-hi);
+}
+
+.hex-editor__bar-slot {
+    position: relative;
+    border: 0;
+    border-right: 1px solid rgba(0, 0, 0, 0.22);
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    transition: transform 0.12s ease;
+}
+
+.hex-editor__bar-slot:last-child {
+    border-right: 0;
+}
+
+.hex-editor__bar-slot--selected {
+    outline: 2px solid #ffffff;
+    outline-offset: -2px;
+    z-index: 1;
+}
+
+.hex-editor__bar-code {
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 1px 3px;
+    margin-bottom: 2px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #ffffff;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.hex-editor__bar-slot:hover .hex-editor__bar-code,
+.hex-editor__bar-slot--selected .hex-editor__bar-code {
+    opacity: 1;
+}
+
+/* ── Live 3D Axo Preview ── */
+.hex-editor__axo-preview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--ui-r-sm);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-edge);
+    margin-top: auto;
+}
+
+.hex-editor__axo-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hex-editor__axo-meta span {
+    font: 700 12px/1.2 var(--ui-font-display);
+    color: var(--ui-ink);
+}
+
+.hex-editor__axo-meta small {
+    font-size: 11px;
+    color: var(--ui-faint);
+}
+
+.hex-editor__axo-img {
+    width: 68px;
+    height: 68px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid var(--ui-edge);
+    padding: 2px;
+    flex-shrink: 0;
+}
+
+.hex-editor__axo-placeholder {
+    width: 68px;
+    height: 68px;
+    border-radius: 6px;
+    background: var(--ui-well);
+    border: 1px dashed var(--ui-edge);
+}
+
+.hex-editor__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 16px;
+    font-size: 12.5px;
+    color: var(--ui-faint);
+}

@@ -11,9 +11,21 @@ export function itemShades(data: any): string[] {
     if (!data || typeof data !== 'object') return [];
     const hit = cache.get(data);
     if (hit) return hit;
-    const shades = itemBandShades(parseHexMapString(extractItemHexString(data)), { color: data.color, material: data.material });
+    const shades = itemBandShades(parseHexMapString(extractItemHexString(data)), {
+        ...data,
+        color: data.color,
+        material: data.material,
+        shape: data.shape || data.Shape,
+        shortDescription: data.shortDescription || data.short_description || data.description,
+        type: data.type || data.generatedType || data.generated_type,
+    });
     cache.set(data, shades);
     return shades;
+}
+
+/** Evict a specific row or recreate the cache after manual hex/band edits. */
+export function invalidateItemShades(data?: object) {
+    if (data && typeof data === 'object') cache.delete(data);
 }
 
 /** True when the shades come from the item's own hex map rather than the palette fallback. */

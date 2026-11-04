@@ -551,6 +551,9 @@ export const activeVendorsAtom = atom<string[], [string[]], void>(
   (_get, _set, _update) => {}
 );
 
+export const showroomItemsAtom = atom<any[]>([]);
+export const showroomTabAtom = atom<'live' | 'add' | 'archive'>('live');
+export const showroomLoadingAtom = atom<boolean>(false);
 export const storeInventoryAtom = atom<any[]>([]);
 export const storeShoppingBagAtom = atom<any[]>([]);
 export const storeActiveUserAtom = nullableAtom<string>(); // To view someone's store

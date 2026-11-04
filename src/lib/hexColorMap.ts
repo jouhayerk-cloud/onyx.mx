@@ -7,7 +7,7 @@
  * cell (background cells skipped, the same rule as the colour bar), so every histogram sums to 1.
  */
 import { parseHexMapString } from './axonometric';
-import { isHexMapBackground } from './canonicalColors';
+import { boostBowlHexColor, isHexMapBackground } from './canonicalColors';
 
 export const HUE_BINS = 12;
 export const NEUTRAL_COL = HUE_BINS;
@@ -129,7 +129,7 @@ export function inventoryColorMap(rows: readonly any[], hexString: (d: any) => s
     }
     const hex2 = (v: number) => Math.round(v).toString(16).padStart(2, '0');
     const color = Array.from({ length: CELLS }, (_, i) => weight[i]
-        ? '#' + hex2(rgb[i * 3] / weight[i]) + hex2(rgb[i * 3 + 1] / weight[i]) + hex2(rgb[i * 3 + 2] / weight[i])
+        ? boostBowlHexColor('#' + hex2(rgb[i * 3] / weight[i]) + hex2(rgb[i * 3 + 1] / weight[i]) + hex2(rgb[i * 3 + 2] / weight[i]), false)
         : cellColor(i));
     return { counts, weight, color };
 }

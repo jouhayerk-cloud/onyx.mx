@@ -4,18 +4,18 @@
  * One table, read by the sidebar (IslandSidebar), by the Home tiles (WelcomeView) and by the view guard
  * (MainAppView), so the three can never drift apart. Owner direction, 11 Oct 2026:
  *
- *   Admin            Home, Dashboard, Finances, Inventory (Add entry, Print Center), Warehouse, Trucking, Viewer
+ *   Admin            Home, Dashboard, Finances, Inventory (Add entry, Print Center), Showroom, Warehouse, Trucking, Viewer
  *   Developer        everything Admin has, plus Admin Control Center, Archived, Devices
- *   Client Boss      Dashboard, Finances, Inventory
- *   Client Accounting Dashboard, Finances, Inventory
- *   Client           Home (limited), Inventory, Viewer
- *   Vendor           Home, Add entry (limited to its own vendor), Inventory
+ *   Client Boss      Dashboard, Finances, Inventory, Showroom
+ *   Client Accounting Dashboard, Finances, Inventory, Showroom
+ *   Client           Home (limited), Inventory, Showroom, Viewer
+ *   Vendor           Home, Add entry (limited to its own vendor), Inventory, Showroom
  *
  * Labs (Process, 3D and AR) is no longer in the sidebar: those views stay in the code as legacy examples only.
  * This table is visibility, not data access: what a role can read is still decided by its own rules (RLS, FINANCE_ROLES).
  */
 export type NavId =
-    | 'home' | 'dashboard' | 'finance' | 'inventory' | 'add-entry'
+    | 'home' | 'dashboard' | 'finance' | 'inventory' | 'showroom' | 'add-entry'
     | 'warehouse' | 'trucking' | 'viewer'
     | 'control' | 'archived' | 'devices' | 'image-canvas';
 
@@ -25,6 +25,7 @@ export const NAV_VIEW: Record<NavId, string | null> = {
     dashboard: 'dashboard',
     finance: 'finance',
     inventory: 'inventory',
+    showroom: 'showroom',
     'add-entry': 'upload',
     warehouse: 'warehouse',
     trucking: 'trucking',
@@ -35,10 +36,10 @@ export const NAV_VIEW: Record<NavId, string | null> = {
     'image-canvas': 'image-canvas',
 };
 
-const ADMIN_NAV: readonly NavId[] = ['home', 'dashboard', 'finance', 'inventory', 'add-entry', 'warehouse', 'trucking', 'viewer', 'image-canvas'];
+const ADMIN_NAV: readonly NavId[] = ['home', 'dashboard', 'finance', 'inventory', 'showroom', 'add-entry', 'warehouse', 'trucking', 'viewer', 'image-canvas'];
 const DEV_ONLY_NAV: readonly NavId[] = ['control', 'archived', 'devices'];
-const CLIENT_FINANCE_NAV: readonly NavId[] = ['dashboard', 'finance', 'inventory'];
-const CLIENT_NAV: readonly NavId[] = ['home', 'inventory', 'viewer'];
+const CLIENT_FINANCE_NAV: readonly NavId[] = ['dashboard', 'finance', 'inventory', 'showroom'];
+const CLIENT_NAV: readonly NavId[] = ['home', 'inventory', 'showroom', 'viewer'];
 
 export const NAV_BY_ROLE: Readonly<Record<string, readonly NavId[]>> = {
     Developer: [...ADMIN_NAV, ...DEV_ONLY_NAV],
@@ -48,7 +49,7 @@ export const NAV_BY_ROLE: Readonly<Record<string, readonly NavId[]>> = {
     ClientViewer: CLIENT_NAV,
     // The offline fallback tier ('Client') sees what a limited client sees.
     Client: CLIENT_NAV,
-    Vendor: ['home', 'add-entry', 'inventory'],
+    Vendor: ['home', 'add-entry', 'inventory', 'showroom'],
 };
 
 /** Does this role see this sidebar entry? An unknown or missing role sees nothing. */
@@ -62,6 +63,8 @@ const GUARDED: Record<string, NavId> = {
     overview: 'dashboard',
     finance: 'finance',
     inventory: 'inventory',
+    showroom: 'showroom',
+    store: 'showroom',
     warehouse: 'warehouse',
     logistics: 'warehouse',
     trucking: 'trucking',

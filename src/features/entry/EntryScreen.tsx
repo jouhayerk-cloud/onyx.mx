@@ -50,6 +50,7 @@ import {
 import { uploadEntryPhotos } from './entryMedia';
 import { EntryForm, type EntryLocks, type EntryNumberState } from './EntryForm';
 import { ENTRY_PROCESSES, GeneratePanel } from './GeneratePanel';
+import { HexColorMapEditor } from './HexColorMapEditor';
 import './entry.css';
 import './generatePanel.css';
 import { useWorkGuard } from '../../lib/useWorkGuard';
@@ -260,6 +261,11 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
     const [keyMissing, setKeyMissing] = useState(false);
     /** Generate shows under the form once a photo exists; "Generate without a photo" opens it earlier (the text is then written from the most similar item). */
     const [genWithoutPhoto, setGenWithoutPhoto] = useState(false);
+    const [hexOverride, setHexOverride] = useState<{
+        spatial_points: any[];
+        processed_media_urls: string;
+        customBandShades?: string[];
+    } | null>(null);
 
     const patch = useCallback((p: Partial<EntryState>) => {
         if ('itemNumber' in p) autoNumber.current = false;
@@ -350,12 +356,17 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
         // An edit keeps every stored column (the AI ones, the printed barcode)
         // under the form's; a printed barcode is never replaced.
         const row: Record<string, any> = isEdit && existing ? { ...existing, ...cols, id: String(existing.id) } : { ...cols, id: draftId };
+        if (hexOverride) {
+            row.spatial_points = hexOverride.spatial_points;
+            row.processed_media_urls = hexOverride.processed_media_urls;
+            if (hexOverride.customBandShades) row.customBandShades = hexOverride.customBandShades;
+        }
         // Only a printed barcode is carried as the row's barcode. A computed
         // one left in would read as printed to the tag and the codes card;
         // without it they compute the same value and say so.
         row.book_barcode = printed ?? null;
         return row;
-    }, [form, media, draftId, isEdit, existing, printed]);
+    }, [form, media, draftId, isEdit, existing, printed, hexOverride]);
 
     const runItems = useMemo(() => [runRow], [runRow]);
     const run = useAiRun({
@@ -532,6 +543,10 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
 
             if (!isEdit) {
                 const row = buildInventoryRow(toInventoryForm(form, urls), { mode: 'create', id: draftId, user });
+                if (hexOverride) {
+                    (row as any).spatial_points = hexOverride.spatial_points;
+                    (row as any).processed_media_urls = hexOverride.processed_media_urls;
+                }
                 let aiWarnings: string[] = [];
                 let aiFailed = false;
                 let segmentations: Awaited<ReturnType<typeof buildAiPatch>>['segmentations'] = [];
@@ -747,6 +762,18 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
                         </div>
                     )}
                     <LivePreviewCard row={runRow} />
+                    {(isEdit || photos.length > 0) && (
+                        <HexColorMapEditor
+                            row={runRow}
+                            photos={photos}
+                            user={user}
+                            disabled={saving || missing}
+                            onHexMapSaved={savedPatch => {
+                                setHexOverride(savedPatch);
+                                setInventoryVersion(v => v + 1);
+                            }}
+                        />
+                    )}
                 </div>
 
             </div>

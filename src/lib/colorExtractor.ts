@@ -1,4 +1,5 @@
 // src/lib/colorExtractor.ts
+import { boostBowlHexColor, isBowlItem } from './canonicalColors';
 
 export const ALLOWED_SHOPIFY_COLORS = [
     "Black",
@@ -364,10 +365,15 @@ export async function generateBitmapAndHexMap(
                     // Helper to format hex
                     const toHex = (n: number) => Math.min(255, Math.max(0, Math.round(n))).toString(16).padStart(2, '0').toUpperCase();
 
+                    // Bowl rule: bowls have concave interior shadows that desaturate and dull their sampled hex maps;
+                    // boost brightness and saturation at extraction time for bowls only.
+                    const isBowl = isBowlItem({ shape: title, title, material, color });
+                    const effBrightness = isBowl ? Math.max(brightness + 12, 161) : brightness;
+                    const effSaturation = isBowl ? Math.max(saturation + 30, 229) : saturation;
                     // Sliders math adjustments
-                    const bOffset = (brightness - 100) * 1.2;
+                    const bOffset = (effBrightness - 100) * 1.2;
                     const cFactor = (259 * ((contrast - 50) * 2 + 255)) / (255 * (259 - (contrast - 50) * 2));
-                    const sFactor = saturation / 100;
+                    const sFactor = effSaturation / 100;
 
                     for (let r = 0; r < actualRows; r++) {
                         for (let c = 0; c < actualCols; c++) {
@@ -411,7 +417,7 @@ export async function generateBitmapAndHexMap(
                                 pg = gray + (pg - gray) * sFactor;
                                 pb = gray + (pb - gray) * sFactor;
 
-                                hex = `#${toHex(pr)}${toHex(pg)}${toHex(pb)}`;
+                                hex = boostBowlHexColor(`#${toHex(pr)}${toHex(pg)}${toHex(pb)}`, isBowl);
                                 validBlocks++;
 
                                 // Color palette matching for Shopify
@@ -576,7 +582,8 @@ export function reconstructRgbPixelMap(spatialPoints: any): ReconstructedPixelMa
         }
     }
 
-    const pixels: RgbPixel[] = hexList.map((hex: string) => {
+    const pixels: RgbPixel[] = hexList.map((rawHex: string) => {
+        const hex = boostBowlHexColor(rawHex.startsWith('#') ? rawHex : `#${rawHex}`, false);
         const cleanHex = hex.startsWith('#') ? hex.slice(1) : hex;
         const num = parseInt(cleanHex, 16);
         const r = (num >> 16) & 255;

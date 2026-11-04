@@ -535,14 +535,7 @@ export function hexMapShades(hexes: readonly string[], n = 6): string[] {
     }
     const ranked = [...bins.values()].sort((a, b) => b.c - a.c);
     const avg = (x: { c: number; r: number; g: number; b: number }) => [x.r / x.c, x.g / x.c, x.b / x.c];
-    const hexOf = (c: number[]) => '#' + c.map(x => Math.round(x).toString(16).padStart(2, '0')).join('');
     const picked = ranked.slice(0, n);
-    // Aqua Serpentine: keep the sage-teal band in the bar even when it is not among the most common shades.
-    const total = ranked.reduce((t, x) => t + x.c, 0);
-    if (!picked.some(x => isAquaBand(hexOf(avg(x))))) {
-        const aqua = ranked.find(x => isAquaBand(hexOf(avg(x))) && x.c >= Math.max(2, total * 0.02));
-        if (aqua && picked.length) picked[picked.length - 1] = aqua;
-    }
     const top = picked.map(avg)
         .sort((a, b) => (b[0] * 0.299 + b[1] * 0.587 + b[2] * 0.114) - (a[0] * 0.299 + a[1] * 0.587 + a[2] * 0.114));
     if (top.length < 2) return [];
@@ -601,36 +594,170 @@ const fromHsl = (h: number, s: number, l: number): string => {
     return ('#' + ch(hh + 1 / 3) + ch(hh) + ch(hh - 1 / 3)).toUpperCase();
 };
 
-/** Aqua Serpentine's sage-teal band (#88A271, #657C5D, #819B6A): hue 70-140°, saturation 0.08-0.55, lightness 0.22-0.72. */
+/** Aqua Serpentine's sage-teal band (#88A271, #657C5D, #819B6A): hue 70-185°, saturation 0.06-0.60, lightness 0.20-0.75. */
 export function isAquaBand(hex: string): boolean {
     const hsl = toHsl(hex);
     if (!hsl) return false;
     const [h, s, l] = hsl;
-    return h >= 70 && h <= 140 && s >= 0.08 && s <= 0.55 && l >= 0.22 && l <= 0.72;
+    return h >= 70 && h <= 185 && s >= 0.06 && s <= 0.60 && l >= 0.20 && l <= 0.75;
 }
 
-/** Vibrance for the aqua band in colour bars: saturation x1.3 (+0.03, max 0.55), hue nudged 8° toward teal (max 150°). Other colours unchanged. */
+/** True when an item's colour/material/title names Aqua or Teal or Turquoise. */
+export function isAquaItem(item: any): boolean {
+    if (!item || typeof item !== 'object') return false;
+    const d = item.data ? { ...item.data, ...item } : item;
+    const text = [
+        d.color, d.color_en, d.color_es, d.generated_color, d.generatedColor,
+        d.material, d.material_en, d.material_es,
+        d.short_description, d.shortDescription, d.title, d.name,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return /\b(aqua|teal|turquesa|turquoise)\b/.test(text);
+}
+
+/** Vibrance for the aqua band in colour bars: saturation x1.3 (+0.03, max 0.55) with NO hue shift (`h` stays exact). Other colours unchanged. */
 export function boostAquaBand(hex: string): string {
     if (!isAquaBand(hex)) return hex;
     const [h, s, l] = toHsl(hex)!;
-    return fromHsl(Math.min(150, h + 8), Math.min(0.55, s * 1.3 + 0.03), l);
+    return fromHsl(h, Math.min(0.55, s * 1.3 + 0.03), l);
 }
 
-/** Boosts the aqua band in a hex map only when the band is really there: at least 5% of the non-background cells. */
+/** Boosts the aqua band in a hex map when the band is present in the image's sampled cells (>= 5% of stone cells). */
 export function boostAquaBandInMap(hexes: readonly string[]): string[] {
     const stone = hexes.filter(h => !/^#?f{6}$/i.test(h.trim()));
     const share = stone.length ? stone.filter(isAquaBand).length / stone.length : 0;
     return share >= 0.05 ? hexes.map(boostAquaBand) : [...hexes];
 }
 
-/** An item's colour-bar shades: its hex-map shades (aqua band boosted), else its canonical palette, lifted. Shared by the PDF bands and the inventory list. */
-export function itemBandShades(hexMap: readonly string[], item: { color?: string; material?: string }): string[] {
-    let shades = boostAquaBandInMap(hexMapShades(hexMap));
+/** True when an item is a bowl or canoe (concave interior shadows desaturate and darken its sampled hex map). */
+export function isBowlItem(item: any): boolean {
+    if (!item || typeof item !== 'object') return false;
+    const d = item.data ? { ...item.data, ...item } : item;
+    const text = [
+        d.shape, d.Shape,
+        d.type, d.Type, d.generated_type, d.generatedType,
+        d.short_description, d.shortDescription,
+        d.description, d.title, d.name,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return /\b(bowls?|canoes?|canoas?|cuencos?|taz[oó]n(?:es)?|plat[oó]n(?:es)?|vessels?|batea)\b/.test(text);
+}
+
+/**
+ * Boosts brightness and color vibrance/saturation specifically for bowl hex-map cells without shifting hue.
+ * Prevents highlights/whites from blowing out (lightness > 0.72 is untouched) and keeps saturation natural (capped at 0.72).
+ * Leaves pure backdrop cells (#FFFFFF, dark-room gray, light-room creams) untouched so background guards still match.
+ */
+export function boostBowlHexColor(hex: string, isBowl = true): string {
+    if (!isBowl) return hex;
+    const m = /^#?([0-9a-f]{6})/i.exec((hex || '').trim());
+    if (!m) return hex;
+    const v = parseInt(m[1], 16);
+    const r8 = (v >> 16) & 255, g8 = (v >> 8) & 255, b8 = v & 255;
+    if (isHexMapBackground(r8, g8, b8)) return hex;
+    const hsl = toHsl(hex);
+    if (!hsl) return hex;
+    const [h, s, l] = hsl;
+    // Leave already-light / near-white stone cells untouched so they never blow out to bright white
+    if (l >= 0.72) {
+        const sLight = s > 0.06 ? Math.min(0.60, s * 1.15 + 0.02) : s;
+        return fromHsl(h, sLight, l);
+    }
+    // Lift shadowed bowl interior and boost midtone pigment saturation without shifting hue or clipping
+    const sBoost = s < 0.04
+        ? s
+        : Math.min(0.72, s * 1.24 + 0.04);
+    const lBoost = l < 0.42
+        ? Math.min(0.66, l * 1.16 + 0.04)
+        : Math.min(0.75, l * 1.07 + 0.02);
+    return fromHsl(h, sBoost, lBoost);
+}
+
+/** Enhances a comma/JSON hex-map string (preserving any "COLSxROWS:" prefix) ONLY when the item is a bowl (no hue shift). */
+export function enhanceHexMapStringForItem(hexMapString: string | undefined, item?: any): string | undefined {
+    if (!hexMapString || typeof hexMapString !== 'string') return hexMapString;
+    const bowl = isBowlItem(item);
+    if (!bowl) return hexMapString;
+    let prefix = '';
+    let body = hexMapString.trim();
+    const dimMatch = body.match(/^(\d+x\d+:)(['"\[#\s\S]+)$/);
+    if (dimMatch) {
+        prefix = dimMatch[1];
+        body = dimMatch[2];
+    }
+    const transformHex = (raw: string): string => {
+        const out = raw.startsWith('#') ? raw : `#${raw}`;
+        return boostBowlHexColor(out, true);
+    };
+    if (body.startsWith('[') && body.endsWith(']')) {
+        try {
+            const arr = JSON.parse(body);
+            if (Array.isArray(arr)) {
+                return prefix + JSON.stringify(arr.map((c: any) => typeof c === 'string' && /^#?[0-9a-f]{6}$/i.test(c.trim()) ? transformHex(c.trim()) : c));
+            }
+        } catch {}
+    }
+    const parts = body.split(',');
+    if (parts.length < 2) return hexMapString;
+    return prefix + parts.map(p => {
+        const t = p.trim();
+        return /^#?[0-9a-f]{6}$/i.test(t) ? transformHex(t) : p;
+    }).join(',');
+}
+
+/** A gentle lift for displayed and exported colour bars: single bowl interior lift for bowls, standard gentle liftBandColor for all other items. */
+export function liftBandColorForItem(hex: string, isBowl = false): string {
+    return isBowl ? boostBowlHexColor(hex, true) : liftBandColor(hex);
+}
+
+/** Extracts any custom/pinned colour-bar shades saved on an item (in spatial_points or processed_media_urls). */
+export function extractCustomBandShades(item?: any): string[] | null {
+    if (!item || typeof item !== 'object') return null;
+    const d = item.data ? { ...item.data, ...item } : item;
+    if (Array.isArray(d.customBandShades) && d.customBandShades.length >= 2) {
+        return d.customBandShades.filter((s: any) => typeof s === 'string' && /^#[0-9a-f]{6}$/i.test(s.trim()));
+    }
+    const sp = d.spatial_points || d.spatialPoints;
+    if (sp) {
+        let parsed = sp;
+        if (typeof parsed === 'string') {
+            try { parsed = JSON.parse(parsed); } catch {}
+        }
+        const arr = Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' ? [parsed] : []);
+        for (const p of arr) {
+            if (p && Array.isArray(p.band_shades) && p.band_shades.length >= 2) {
+                const valid = p.band_shades.filter((s: any) => typeof s === 'string' && /^#[0-9a-f]{6}$/i.test(s.trim()));
+                if (valid.length >= 2) return valid;
+            }
+        }
+    }
+    const pmu = d.processed_media_urls || d.processedMediaUrls;
+    if (pmu) {
+        let parsed = pmu;
+        if (typeof parsed === 'string') {
+            try { parsed = JSON.parse(parsed); } catch {}
+        }
+        if (parsed && typeof parsed === 'object' && parsed._band_shades) {
+            const raw = parsed._band_shades;
+            const list = Array.isArray(raw) ? raw : String(raw).split(',');
+            const valid = list.map((s: any) => String(s).trim()).filter(s => /^#[0-9a-f]{6}$/i.test(s));
+            if (valid.length >= 2) return valid;
+        }
+    }
+    return null;
+}
+
+/** An item's colour-bar shades: custom pinned shades if saved, else its hex-map shades, else its canonical palette, lifted with vibrancy only (never hue-shifted). Shared by the PDF bands and the inventory list. */
+export function itemBandShades(hexMap: readonly string[], item: { color?: string; material?: string; shape?: string; shortDescription?: string; type?: string; [key: string]: any }): string[] {
+    const custom = extractCustomBandShades(item);
+    if (custom && custom.length >= 2) {
+        return custom.map(h => h.toUpperCase());
+    }
+    const bowl = isBowlItem(item);
+    let shades = hexMapShades(hexMap);
     if (!shades.length) {
         const palette = resolveStonePaletteRaw(item);
         shades = palette.gradientColors.length ? palette.gradientColors : [palette.primary];
     }
-    return shades.map(liftBandColor);
+    return shades.map(h => liftBandColorForItem(h, bowl));
 }
 
 /**

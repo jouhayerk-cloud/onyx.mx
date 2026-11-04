@@ -296,6 +296,7 @@ export function MainAppView() {
             case 'deployed': return <DeployedView />;
             case 'packing': return <PackingModule />;
             case 'finance': return <FinanceView />;
+            case 'showroom':
             case 'store': return <StoreView />;
             case 'process': return <ProcessView />;
             case 'threed': return <ThreeDAppView />;

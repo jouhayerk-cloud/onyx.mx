@@ -80,13 +80,30 @@ export function describeAxoIcon(item: any, colorOverride?: string): AxoIconReque
     
     const hexMapString = extractItemHexMapString(item);
     const itemId = item?.id || item?.itemId || item?.row || item?.book_barcode || item?.bookBarcode || '';
-    const texIdentity = hexMapString ? `hex:${itemId || hexMapString.slice(0, 32)}` : `c:${color}`;
+    let hexHash = 0;
+    if (hexMapString) {
+        const step = Math.max(1, Math.floor(hexMapString.length / 64));
+        for (let i = 0; i < hexMapString.length; i += step) {
+            hexHash = ((hexHash << 5) - hexHash + hexMapString.charCodeAt(i)) | 0;
+        }
+    }
+    const texIdentity = hexMapString ? `hex:${itemId || hexMapString.slice(0, 32)}:${(hexHash >>> 0).toString(36)}` : `c:${color}`;
     const key = `${g.extra ? 'x:' + g.extra + (g.panelVariant ? ':' + g.panelVariant : '') : g.geom}|${g.isMirror ? 'm' : ''}|${dims}|${texIdentity}`;
 
     return { key, w, h, d, shape, desc, color, hexMapString };
 }
 
 /** Synchronous cache read — lets a card paint its icon on first render with no flash. */
+export function clearAxoIconCache(itemId?: string) {
+    if (!itemId) {
+        cache.clear();
+        return;
+    }
+    for (const k of Array.from(cache.keys())) {
+        if (k.includes(`hex:${itemId}`)) cache.delete(k);
+    }
+}
+
 export function peekAxoIcon(key: string): string | null {
     return cache.get(key) ?? null;
 }
