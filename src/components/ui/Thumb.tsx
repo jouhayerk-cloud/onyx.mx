@@ -1,6 +1,6 @@
 import React from 'react';
 import { cx } from './types';
-import { getCleanImageUrl } from '../../lib/utils';
+import { getCleanImageUrl, getSizedImageUrl } from '../../lib/utils';
 
 /** `cutout`: the transparent PNG of the piece alone, when it is not the clean PNG itself (bgreplace + mask). */
 export type ThumbKind = 'photo' | 'png' | 'cutout' | 'mask' | 'svg' | 'axo';
@@ -20,6 +20,9 @@ export interface ThumbProps {
     title?: string;
     className?: string;
 }
+
+/** Rendered edge of each thumb size in CSS px (ui.css .ui-thumb). */
+const THUMB_PX: Record<NonNullable<ThumbProps['size']>, number> = { md: 34, lg: 44, xl: 58 };
 
 const GROUND: Partial<Record<ThumbKind, string>> = {
     png: 'ui-checker',
@@ -55,9 +58,12 @@ export function Thumb({ src, kind = 'photo', badge, alt = '', size = 'md', onCli
         onClick && 'ui-thumb--button',
         className,
     );
+    // Thumbs are 34-58px: fetch a small WebP from Drive, not the original upload.
+    // SVG outlines stay full (lh3 rasterises them; resizing gains little).
+    const imgSrc = kind === 'svg' ? svgSrc(src) : (getSizedImageUrl(src, THUMB_PX[size]) || src);
     const body = (
         <>
-            <img src={kind === 'svg' ? svgSrc(src) : src} alt={onClick ? '' : alt} loading="lazy" decoding="async" draggable={false} />
+            <img src={imgSrc} alt={onClick ? '' : alt} loading="lazy" decoding="async" draggable={false} />
             {badge && <span className="ui-thumb__badge" aria-hidden="true">{badge}</span>}
         </>
     );

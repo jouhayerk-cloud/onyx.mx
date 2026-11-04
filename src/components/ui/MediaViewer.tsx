@@ -4,6 +4,7 @@ import { tr } from '../../lib/i18n';
 import { Lightbox } from './Lightbox';
 import { Thumb, svgSrc } from './Thumb';
 import { cx } from './types';
+import { getSizedImageUrl } from '../../lib/utils';
 
 /**
  * `cutout` is opt-in (not in MEDIA_VIEWS): in bgreplace mode the clean PNG is
@@ -139,7 +140,14 @@ export function MediaViewer({
     // the stage is never blank while a generated tab is still selected.
     const shown: MediaView = available(view) ? view : 'photo';
     const src = srcFor(shown);
-    const displaySrc = src && shown === 'svg' ? svgSrc(src) : src;
+    // The stage is at most ~640px wide: it shows a 1280px-class WebP from Drive
+    // rather than the original upload. The lightbox below still opens `src`
+    // at full size. SVG outlines are left as they are.
+    const displaySrc = src && shown === 'svg' ? svgSrc(src) : (src ? (getSizedImageUrl(src, 640) || src) : src);
+    // lh3 only scales down, so a natural width under the requested one is the
+    // file's real size; at or above it the image was resized and its pixel
+    // count says nothing about the original.
+    const requestedW = Number(/=w(\d+)/.exec(displaySrc || '')?.[1] || 0);
 
     const viewLabel = tr(MEDIA_VIEW_LABEL[shown]);
     const metaOf = current?.meta?.[shown];
@@ -176,6 +184,7 @@ export function MediaViewer({
                 ? <img className="ui-viewer__img" src={displaySrc} alt={imgAlt} draggable={false} decoding="async"
                     onLoad={(e) => {
                         const el = e.currentTarget;
+                        if (requestedW && el.naturalWidth >= requestedW) return;
                         if (src && !measured[src]) setMeasured(m => ({ ...m, [src]: { w: el.naturalWidth, h: el.naturalHeight } }));
                     }} />
                 : <span className="ui-viewer__empty">{tr('No photo')}</span>}
