@@ -799,12 +799,17 @@ export function resolve826TypeId(rawType: unknown, rawShape?: unknown): string {
   const exact = ONYX826_TAXONOMY.find(e => e.id === normType || e.id === asId);
   if (exact) return exact.id;
 
-  // Alias lookup
+  // Alias lookup: exact alias first, then the LONGEST alias contained in the text.
+  // First-hit substring matching sent "tower lamp" to table-lamp via its bare "lamp" alias.
+  let best: { id: string; len: number } | null = null;
   for (const entry of ONYX826_TAXONOMY) {
-    if (entry.aliases.some(a => normType === normalizeAlias(a) || normType.includes(normalizeAlias(a)))) {
-      return entry.id;
+    for (const a of entry.aliases) {
+      const na = normalizeAlias(a);
+      if (normType === na) return entry.id;
+      if (normType.includes(na) && (!best || na.length > best.len)) best = { id: entry.id, len: na.length };
     }
   }
+  if (best) return best.id;
 
   return normType;
 }

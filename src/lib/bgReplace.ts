@@ -84,7 +84,7 @@ export type BgRoom = 'dark' | 'light';
  */
 
 /**
- * Downscale on the long edge only.
+ * Downscale on the long edge only, then centre on a square canvas.
  *
  * Deliberately NOT resizeImage() from utils: that letterboxes onto a #121212
  * square with 10% padding, and a generative model treats the padding as part
@@ -98,19 +98,32 @@ export async function loadImageForGeneration(
     const longEdge = Math.max(img.width, img.height);
     const scale = longEdge > maxEdge ? maxEdge / longEdge : 1;
 
+    // Square input for a square output. Asking the model for 1:1 from a 3:4 or
+    // 16:9 photo made it resample the whole frame, stretching or squashing the
+    // piece. The photo goes in centred at its own proportions; the margin is a
+    // heavily blurred copy of the photo (reads as more room, not a border --
+    // see the #121212 note above), which the room prompt then replaces.
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+    const side = Math.max(w, h);
     const canvas = document.createElement('canvas');
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
+    canvas.width = canvas.height = side;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas unavailable for image preparation');
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    if (w !== h) {
+        const cover = side / Math.min(w, h);
+        ctx.filter = 'blur(40px)';
+        ctx.drawImage(img, (side - w * cover) / 2, (side - h * cover) / 2, w * cover, h * cover);
+        ctx.filter = 'none';
+    }
+    ctx.drawImage(img, Math.round((side - w) / 2), Math.round((side - h) / 2), w, h);
 
     const dataUrl = await canvasToDataUrl(canvas, 'image/jpeg', 0.92);
     return {
         data: dataUrl.split(',')[1],
         mimeType: 'image/jpeg',
-        width: img.width,
-        height: img.height,
+        width: side,
+        height: side,
     };
 }
 

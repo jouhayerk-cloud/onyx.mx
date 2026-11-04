@@ -271,7 +271,12 @@ export function typeGuidance826For(item: any): string {
     const rawShape = String(item.shape || '');
     const entry = getOnyx826Entry(rawType, rawShape);
     const familyKey = entry?.family ?? 'lamps';
-    const famSpec = FAMILY_826_SPECS.find(f => f.family === familyKey) || FAMILY_826_SPECS[0];
+    // Taxonomy families are 'panels-mirrors', 'rocks-fountains-sculpture', 'small-items'; specs use the first word.
+    // An exact-only match sent mirrors, panels, rocks and small items to the lamps spec.
+    const famSpec = FAMILY_826_SPECS.find(f => familyKey === f.family || familyKey.startsWith(`${f.family}-`)) || FAMILY_826_SPECS[0];
+    const typeNoun = famSpec.family === 'lamps'
+        ? `"${entry?.labelEN ?? 'Floor Lamp'}" (a Tower Lamp is a Floor Lamp; never call a floor or tower piece a Table Lamp)`
+        : `"${entry?.labelEN ?? (rawType || 'the recorded Type')}" -- this piece is NOT a lamp, tower or luminary unless its Type says so`;
 
     const invoiceTitle = buildInvoiceTitle826(item);
     const approvedColors = getApprovedShopifyColors826(item.vendorColor || item.color || '');
@@ -299,7 +304,7 @@ export function typeGuidance826For(item: any): string {
   * Format: Title Case, no articles (a, an, the, and, of), no trailing period.
   * DO NOT USE sizes, dimensions, or relative size words (NEVER use "Small", "Medium", "Large", "Mini", "cm", "in", dimensions).
   * DO NOT USE phrases or words like "Light Column", "Ambient Pillar", "Ambient Stone Tower", "Stone Tower", "Ambient Stone Towe".
-  * USE regular nouns: "Tower", "Floor Lamp", or "Table Lamp".
+  * The title's product noun is ${typeNoun}.
   * MUST include a couple of descriptive words of the onyx patterns and colors observed in the image (e.g. Banded Amber, Striated Caramel, Cream Cloud Veins, Honey Gold Waves).
 - invoiceTitle:
   * Deterministic identification title in Title Case.
@@ -541,7 +546,7 @@ export function buildContentPrompt826(
 You are inspecting the attached image of the item. Your titles and description MUST be directly informed by the visual patterns and colors visible in the stone.
 
 Your goal is to produce accurate, strictly factual product copy adhering to owner-approved rules:
-1. shopifyTitle: 60 to 70 characters strictly, Title Case, no articles (a, an, the, and, of), no trailing period. NO sizes/dimensions (no Small, Medium, Large, Mini, cm, in). NO phrases like "Light Column", "Ambient Pillar", "Ambient Stone Tower". USE regular "Tower", "Floor Lamp", or "Table Lamp". MUST include descriptive words of the onyx patterns and colors seen in the image.
+1. shopifyTitle: 60 to 70 characters strictly, Title Case, no articles (a, an, the, and, of), no trailing period. NO sizes/dimensions (no Small, Medium, Large, Mini, cm, in). NO phrases like "Light Column", "Ambient Pillar", "Ambient Stone Tower". Name the piece by its recorded Type (see TITLE INSTRUCTIONS below). MUST include descriptive words of the onyx patterns and colors seen in the image.
 2. invoiceTitle: Invoice title in Title Case. NEVER include "[Top: confirm]". MUST include descriptive words of the onyx patterns and colors seen in the image.
 3. body: Strictly 600 to 750 characters of PLAIN TEXT (no HTML tags, no markup). Describe visible stone patterns, veining, banding, and colors observed in the image.
 4. dominantColors: 1 to 3 approved colors observed in the image.
