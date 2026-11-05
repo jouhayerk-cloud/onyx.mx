@@ -288,7 +288,7 @@ export const ItemsPayWizard: React.FC = () => {
                                             >
                                                 <CheckBox state={on ? 'on' : 'off'} onClick={() => toggle([l.key], !on)} label={l.label || l.key} />
                                                 {l.kind === 'inv'
-                                                    ? <ItemTag item={l.raw} />
+                                                    ? <span className="ui-root inline-flex"><ItemTag item={l.raw} /></span>
                                                     : <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md liquid-control"><Box size={12} />{tr('Crate')}</span>}
                                                 <span className="text-[13px] truncate flex-1 min-w-0">{l.label}</span>
                                                 <span className="text-[12px] text-(--text-color-secondary) tabular-nums">×{l.qty}</span>

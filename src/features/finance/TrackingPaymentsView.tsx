@@ -8,7 +8,7 @@ import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, pay
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase, useNotify } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, formatDimensionsImperial, formatWeightImperial } from '../../lib/utils';
+import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatWeightMetricOnly, toTitleCase } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { rowWorkbook } from '../../lib/seasons';
 import { 
@@ -18,7 +18,8 @@ import {
     CreditCard, Percent
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
-import { InventoryArtifact } from '../inventory/InventoryArtifact';
+import { InventoryArtifact, WireframeIcon } from '../inventory/InventoryArtifact';
+import { ItemTag } from '../../components/ui/ItemTag';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { tr } from '../../lib/i18n';
 
@@ -849,9 +850,13 @@ const EditPaymentModal: React.FC<{
         manualFee: '',
         includeIva: false,
         includeComm: false,
+        date: '',
+        pay_date: '',
     });
 
     const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+    // YYYY-MM-DD for <input type="date">, from a stored ISO timestamp.
+    const dayOf = (iso: any) => (iso ? String(iso).split('T')[0] : '');
 
     // Pre-populate form when record changes
     useEffect(() => {
@@ -879,6 +884,8 @@ const EditPaymentModal: React.FC<{
                 manualFee: manualFeeAmt > 0 ? String(manualFeeAmt) : '',
                 includeIva: isIva,
                 includeComm: isComm,
+                date: dayOf(record.date),
+                pay_date: dayOf(record.pay_date),
             });
             setStep(4);
         }
@@ -914,6 +921,10 @@ const EditPaymentModal: React.FC<{
                 recurring_day: form.recurring ? (form.recurring_day ?? null) : null,
                 updated_at: new Date().toISOString(),
             };
+            // Only a changed day is written, so an untouched date keeps its original time.
+            // Noon UTC keeps the day the same in every timezone the list renders in.
+            if (form.date && form.date !== dayOf(record.date)) updatePayload.date = `${form.date}T12:00:00.000Z`;
+            if (form.pay_date !== dayOf(record.pay_date)) updatePayload.pay_date = form.pay_date ? `${form.pay_date}T12:00:00.000Z` : null;
 
             const { error } = await supabase.from('finance').update(updatePayload).eq('id', record.id);
             if (error) throw error;
@@ -989,6 +1000,21 @@ const EditPaymentModal: React.FC<{
                                         <input value={form.reference} onChange={e => set('reference', e.target.value)}
                                             className="w-full h-20 px-8 rounded-[32px] bg-white/5 border border-white/5 text-xl font-medium text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all" placeholder={tr("Optional #")} />
                                     </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">{tr("PAYMENT DATE")}</label>
+                                        <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
+                                            className="w-full h-20 px-8 font-mono text-xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all [color-scheme:dark]" />
+                                    </div>
+                                    {(record.status === 'Paid' || record.pay_date) && (
+                                        <div className="space-y-4">
+                                            <label className="text-[10px] text-white/30 font-black uppercase tracking-[0.4em] block ml-1">{tr("PAID ON")}</label>
+                                            <input type="date" value={form.pay_date} onChange={e => set('pay_date', e.target.value)}
+                                                className="w-full h-20 px-8 font-mono text-xl font-black bg-white/5 border border-white/5 rounded-[32px] text-white outline-none focus:border-(--main-color)/40 focus:bg-white/[0.08] transition-all [color-scheme:dark]" />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className={`flex items-center justify-between p-8 rounded-[40px] border transition-all duration-500 ${form.recurring ? 'bg-(--main-color)/10 border-(--main-color)/40 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.1)]' : 'bg-white/5 border-white/5'}`}>
@@ -1832,138 +1858,74 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                         });
                                                         
                                                         return (
-                                                            <div className="flex flex-col gap-2 overflow-x-auto no-scrollbar pb-2">
-                                                                {Object.values(grouped).map(({ id, ids, invItem, logCrate, groupCount }) => {
+                                                            <div className="ui-root flex flex-col rounded-xl border border-(--text-color)/8 overflow-hidden">
+                                                                {Object.values(grouped).map(({ id, invItem, logCrate, groupCount }) => {
                                                                     if (!invItem && !logCrate) return (
-                                                                        <div key={id} className="h-10 shrink-0 flex items-center gap-3 px-3 grayscale opacity-30">
-                                                                            <span className="text-[9px] font-mono uppercase truncate opacity-50">{id}</span>
+                                                                        <div key={id} className="flex items-center h-9 px-3 border-t border-(--text-color)/5 first:border-t-0 opacity-30">
+                                                                            <span className="text-[10px] font-mono uppercase truncate">{id}</span>
                                                                         </div>
                                                                     );
 
-                                                                    const norm = invItem ? normalizeInventoryData(invItem.data) : null;
-                                                                    const codes = norm ? calculateCodesAndPrices(norm, liveExchangeRate || exchangeRate, '326') : null;
-                                                                    
-                                                                    const subcat = invItem?.data.category || logCrate?.type || tr("Asset");
-                                                                    const img = invItem?.imageUrl || (invItem?.data.mediaUrls ? invItem.data.mediaUrls.split(',')[0] : null);
-                                                                    const priceNum = parseFloat(String(invItem?.data.price_mxn || invItem?.data.price || logCrate?.cost_mxn || '0'));
-                                                                    const vId = invItem?.data.vendor_id || invItem?.data.vendorId || logCrate?.vendor_id || r.vendor_id || tr("UNKNOWN");
-                                                                    const vColor = vendors[vId as keyof typeof vendors]?.color || '#888';
-                                                                    
-                                                                    const baseTag = codes?.bookBarcode || id;
-                                                                    const tagId = groupCount > 1 ? `${baseTag.slice(0, 10)}... +${groupCount - 1}` : baseTag;
-                                                                    const shape = norm?.shape || (logCrate?.type === 'pallet' ? tr("Pallet") : 'Crate');
-                                                                    const material = norm?.material || '';
-                                                                    const color = norm?.color || '';
-                                                                    
+                                                                    const data = invItem?.data;
+                                                                    const norm = invItem ? normalizeInventoryData(data) : null;
+                                                                    const book = rowWorkbook(data).slice(1);
+                                                                    // Book codes at the 17 book rate and the item's own season, as Inventory shows them.
+                                                                    const codes = norm ? calculateCodesAndPrices(norm, exchangeRate, book) : null;
+                                                                    const priceNum = parseFloat(String(data?.price_mxn || data?.price || logCrate?.cost_mxn || '0')) || 0;
                                                                     const packedItems = logCrate?.inventory_ids ? logCrate.inventory_ids.split(',').filter(Boolean).length : 0;
-                                                                    const unitQty = norm?.quantity || (logCrate ? (packedItems || 1) : 1);
+                                                                    const unitQty = (parseInt(String(norm?.quantity), 10) || 0) || (logCrate ? (packedItems || 1) : 1);
                                                                     const totalQty = unitQty * groupCount;
-                                                                    const totalLine = priceNum * (logCrate ? groupCount : totalQty); 
+                                                                    const lineQty = logCrate ? groupCount : totalQty;
+                                                                    const totalLine = priceNum * lineQty;
 
-                                                                    const dims = invItem 
-                                                                        ? formatDimensionsImperial(norm.widthCm, norm.heightCm, norm.lengthCm) 
-                                                                        : (logCrate ? `${logCrate.width_cm}×${logCrate.length_cm}×${logCrate.height_cm} CM` : '');
-                                                                    const weight = invItem ? formatWeightImperial(norm.weightKg) : '';
+                                                                    // The Inventory row title: quantity, type, colour material, metric size and weight, one deterministic line.
+                                                                    const uniq = (parts: any[]) => toTitleCase(Array.from(new Set(parts.filter(Boolean).join(' ').split(/\s+/).filter(Boolean).map((w: string) => w.toLowerCase()))).join(' '));
+                                                                    const dims = norm ? formatDimensionsMetricOnly(norm.widthCm, norm.heightCm, norm.lengthCm).replace(/x/g, '×') : `${logCrate.width_cm}×${logCrate.length_cm}×${logCrate.height_cm} cm`;
+                                                                    const weight = norm ? formatWeightMetricOnly(norm.weightKg) : '';
+                                                                    const titleRuns: { t: string; b: boolean }[] = norm ? [
+                                                                        { t: String(totalQty), b: true },
+                                                                        { t: ' ' + (uniq([norm.shape, norm.shortDescription]) || tr("Object")), b: true },
+                                                                        ...((norm.color || norm.material) ? [{ t: ' ' + uniq([norm.color, norm.material]), b: false }] : []),
+                                                                        ...(dims ? [{ t: ' ' + dims, b: true }] : []),
+                                                                        ...(weight ? [{ t: ' ' + weight, b: false }] : []),
+                                                                    ] : [
+                                                                        { t: String(groupCount), b: true },
+                                                                        { t: ' ' + (logCrate.type === 'pallet' ? tr("Pallet") : tr("Crate")), b: true },
+                                                                        { t: ' ' + dims, b: true },
+                                                                        ...(packedItems ? [{ t: ` · ${packedItems} ${tr("items")}`, b: false }] : []),
+                                                                    ];
+                                                                    const titleText = titleRuns.map(t => t.t).join('');
 
                                                                     return (
-                                                                        <div key={id} className="flex items-center gap-8 py-4 px-4 hover:bg-(--text-color)/5 border border-(--text-color)/5 rounded-xl transition-all group/item relative shrink-0 min-w-[1200px]">
-                                                                            {/* Thumbnail / Wireframe */}
-                                                                            <div className="w-16 h-16 rounded-xl bg-black/40 border border-white/5 overflow-hidden shrink-0 flex items-center justify-center relative">
-                                                                                {invItem ? (
-                                                                                    img ? (
-                                                                                        <img src={getCleanImageUrl(img) || ''} className="w-full h-full object-cover opacity-60 group-hover/item:opacity-100 transition-opacity" />
-                                                                                    ) : (
-                                                                                        <Box size={20} className="text-white/10" />
-                                                                                    )
-                                                                                ) : logCrate ? (
-                                                                                    <div className="opacity-80 group-hover/item:opacity-100 transition-opacity relative">
-                                                                                        <WireframeCrate 
-                                                                                            w={logCrate.width_cm} 
-                                                                                            l={logCrate.length_cm} 
-                                                                                            h={logCrate.height_cm} 
-                                                                                            type={logCrate.type}
-                                                                                            vibrant
-                                                                                            size={40}
-                                                                                        />
-                                                                                        {groupCount > 1 && (
-                                                                                            <div className="absolute -bottom-1 -right-1 bg-(--main-color) text-black text-[8px] font-black px-1 rounded-sm shadow-xl border border-black/20 flex items-center h-4">
-                                                                                                x{groupCount}
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <Box size={20} className="text-white/10" />
-                                                                                )}
+                                                                        <div key={id} className="grid grid-cols-[40px_auto_minmax(0,1fr)_auto] sm:grid-cols-[40px_auto_minmax(0,1fr)_auto_auto] items-center gap-x-3 px-3 py-1.5 border-t border-(--text-color)/5 first:border-t-0 hover:bg-(--text-color)/4 transition-colors">
+                                                                            {/* AXO — the piece's silhouette, textured from its own hex colour map. */}
+                                                                            <div className="w-10 h-10 flex items-center justify-center shrink-0 [&_img]:max-w-full [&_img]:max-h-full" aria-hidden="true">
+                                                                                {norm
+                                                                                    ? <WireframeIcon item={norm} />
+                                                                                    : <WireframeCrate w={logCrate.width_cm} l={logCrate.length_cm} h={logCrate.height_cm} type={logCrate.type} vibrant size={32} />}
                                                                             </div>
 
-                                                                            {/* Primary Info Block */}
-                                                                            <div className="flex flex-col min-w-[200px] max-w-[250px]">
-                                                                                <div className="flex items-baseline gap-2 mb-1">
-                                                                                    <span className="text-[13px] font-black text-(--text-color)/90 uppercase tracking-tight">{shape}</span>
-                                                                                    <span className="text-[10px] font-bold text-(--text-color)/40 uppercase tracking-widest">{subcat}</span>
-                                                                                    <span className="text-[12px] font-black text-(--main-color) ml-2">x{totalQty} {logCrate ? 'units' : ''}</span>
-                                                                                </div>
-                                                                                <span className="text-[9px] font-bold text-(--text-color)/20 uppercase tracking-[0.2em] leading-none truncate">
-                                                                                    {invItem ? [color, material].filter(Boolean).join(' • ') : (logCrate?.description || tr("LOGISTICS UNIT"))}
-                                                                                </span>
+                                                                            {/* TAG */}
+                                                                            <div className="flex items-center">
+                                                                                {invItem
+                                                                                    ? <ItemTag item={data} exchangeRate={exchangeRate} workbook={book} />
+                                                                                    : <span className="text-[10px] font-mono uppercase text-(--text-color-secondary) truncate max-w-[90px]" title={id}>{String(id).slice(0, 8)}</span>}
                                                                             </div>
 
-                                                                            {/* Identity Hub Pill */}
-                                                                            <div className={`flex flex-col shrink-0 min-w-[80px] transition-opacity ${logCrate ? 'opacity-0 pointer-events-none' : ''}`}>
-                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Tag ID")}</span>
-                                                                                <span className="px-2 py-1 rounded-[6px] text-[9px] font-black uppercase tracking-tight shadow-lg" style={{ backgroundColor: vColor, color: getTextColorForBg(vColor) }}>
-                                                                                    {tagId}
-                                                                                </span>
+                                                                            {/* TITLE */}
+                                                                            <div className="min-w-0 text-[12px] leading-snug text-(--text-color)/80" title={titleText}>
+                                                                                {titleRuns.map((t, i) => t.b ? <b key={i} className="font-semibold text-(--text-color)">{t.t}</b> : <span key={i}>{t.t}</span>)}
                                                                             </div>
 
-                                                                            {/* Technical Spec Column */}
-                                                                            <div className="flex flex-col shrink-0 min-w-[200px]">
-                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Size / Weight")}</span>
-                                                                                <div className="flex flex-col">
-                                                                                    <span className="text-[11px] font-black text-(--text-color)/60 uppercase leading-tight tracking-widest">{dims || 'N/A'}</span>
-                                                                                    {logCrate ? (
-                                                                                        <span className="text-[8px] font-bold text-(--text-color)/20 uppercase leading-none mt-1 font-mono tracking-tighter">
-                                                                                            {ids[0].toUpperCase()} {groupCount > 1 ? ` (+${groupCount - 1} MORE)` : ''}
-                                                                                        </span>
-                                                                                    ) : weight && (
-                                                                                        <span className="text-[9px] font-bold text-(--text-color)/30 uppercase leading-tight">{weight}</span>
-                                                                                    )}
-                                                                                </div>
+                                                                            {/* CODES */}
+                                                                            <div className="hidden sm:flex items-center gap-2 font-mono text-[11px] tabular-nums text-(--text-color-secondary)">
+                                                                                {codes && <><span title={tr("AQ Code")}>{codes.bookAqCode || '—'}</span><span className="text-(--main-color)" title={tr("LD Code")}>{codes.bookLandCode || '—'}</span></>}
                                                                             </div>
 
-                                                                            {/* Financial Column: Price */}
-                                                                            <div className="flex flex-col shrink-0 min-w-[100px]">
-                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Unit Price")}</span>
-                                                                                <span className="text-[11px] font-black text-(--text-color)/70 uppercase tracking-widest leading-none">
-                                                                                    {fmtMXN(priceNum)}
-                                                                                </span>
-                                                                            </div>
-
-                                                                            {/* Financial Column: Total */}
-                                                                            <div className="flex flex-col shrink-0 min-w-[120px]">
-                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Line Total")}</span>
-                                                                                <span className="text-[12px] font-black text-(--main-color) uppercase tracking-widest leading-none">
-                                                                                    {fmtMXN(totalLine)}
-                                                                                </span>
-                                                                            </div>
-
-                                                                            {/* Diagnostic Columns: AQ/LD Codes */}
-                                                                            <div className="flex items-center gap-8 ml-auto pr-4">
-                                                                                <div className="flex flex-col items-center">
-                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("AQ Code")}</span>
-                                                                                    <span className="text-[11px] font-black text-(--text-color)/60 font-mono">{codes?.bookAqCode || '—'}</span>
-                                                                                </div>
-                                                                                <div className="flex flex-col items-center">
-                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("LD Code")}</span>
-                                                                                    <span className="text-[11px] font-black text-(--main-color) font-mono opacity-80">{codes?.bookLandCode || '—'}</span>
-                                                                                </div>
-                                                                                <div className="flex flex-col items-end">
-                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">{tr("Status")}</span>
-                                                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20">
-                                                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-                                                                                        <span className="text-[8px] font-black text-[#22c55e] uppercase">{tr("Paid")}</span>
-                                                                                    </div>
-                                                                                </div>
+                                                                            {/* MONEY — line total over unit price */}
+                                                                            <div className="flex flex-col items-end tabular-nums leading-tight">
+                                                                                <span className="text-[12px] font-semibold text-(--text-color)">{fmtMXN(totalLine)}</span>
+                                                                                {lineQty > 1 && <span className="text-[10px] text-(--text-color-secondary)">{lineQty} × {fmtMXN(priceNum)}</span>}
                                                                             </div>
                                                                         </div>
                                                                     );
