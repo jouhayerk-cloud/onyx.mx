@@ -1,8 +1,9 @@
 import React from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import {
-    Pointer, Wrench, LayoutTemplate, Filter, Search as SearchIcon, Tag, Plus, SquareCheckBig, Download, FileSpreadsheet
+    Pointer, Wrench, LayoutTemplate, Filter, Search as SearchIcon, Tag, Plus, SquareCheckBig, Download, FileSpreadsheet, DollarSign
 } from 'lucide-react';
+import { isFinanceRole } from './miscViewTools';
 import { tr } from '../../lib/i18n';
 import {
     inventorySearchTermAtom,
@@ -17,6 +18,7 @@ import {
     activeViewAtom,
     inventoryStatusFilterAtom,
     isUploadWizardOpenAtom,
+    isPaymentWizardOpenAtom,
     userAtom
 } from '../../lib/atoms';
 import { useRegisterTools, type ToolDescriptor, islandCommandsEnabledAtom } from '../../lib/toolRegistry';
@@ -35,6 +37,7 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const setIsUploadWizardOpen = useSetAtom(isUploadWizardOpenAtom);
+    const setPayOpen = useSetAtom(isPaymentWizardOpenAtom);
     const appUser = useAtomValue(userAtom);
     const [isSearchOpen, setIsSearchOpen] = useAtom(isInventorySearchOpenAtom);
     const setView = useSetAtom(activeViewAtom);
@@ -225,6 +228,24 @@ export function useInventoryTools(widgets: InventoryWidgets): ToolDescriptor[] {
             dock: 'right',
             run: () => { document.dispatchEvent(new CustomEvent('openMasterExportPicker')); }
         });
+
+        // Pay requests payment for the selected items only (finance roles).
+        if (selectedIds.length > 0 && isFinanceRole(appUser?.role)) {
+            tools.push({
+                id: 'inventory.pay',
+                moduleId: 'inventory',
+                parent: 'inventory.actions',
+                label: tr('Pay'),
+                title: tr('Request payment for the selected items'),
+                icon: DollarSign,
+                kind: 'action',
+                group: tr('Actions'),
+                order: 35,
+                pinned: true,
+                dock: 'right',
+                run: () => setPayOpen(true)
+            });
+        }
 
         // Sheets sits next to Export (Admin and Developer only, as the upload itself is); MainHeader's SheetsUploadBridge runs it
         if (appUser?.role === 'Admin' || appUser?.role === 'Developer') {

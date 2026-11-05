@@ -44,7 +44,7 @@ type Subcategory = typeof SUBCATEGORIES[number];
 
 type VendorGroup = { vendorId: string; type: 'Acquisition' | 'Production' | 'Packing'; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
 
-const appendExpense = async (payload: any, db: any) => {
+export const appendExpense = async (payload: any, db: any) => {
     const idsToLink = payload.inventoryItemRows || payload.linkedRows;
     const { error, data } = await supabase.from('finance').insert({
         amount: payload.amount,
@@ -72,8 +72,9 @@ const appendExpense = async (payload: any, db: any) => {
         // Also update related inventory items with the payment_id and internal status
         if (idsToLink) {
             const idStrs = idsToLink.split(',').map(s => s.trim());
-            const idList = idStrs.map(s => Number(s)).filter(n => !isNaN(n));
-            const barcodeList = idStrs.filter(s => isNaN(Number(s)));
+            // inventory.id is text (uuid strings), so match every id on id; barcodes are the non-uuid, non-numeric ones.
+            const idList = idStrs;
+            const barcodeList = idStrs.filter(s => isNaN(Number(s)) && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(s));
 
             const updatePayload = {
                 payment_ids: finalData.id.toString(),
@@ -1310,6 +1311,18 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         return totals;
     }, [docs]);
 
+    // finance has no workbook column, so a payment takes its season from the items it pays for.
+    const itemWorkbook = useMemo(() => {
+        const m = new Map<string, ReturnType<typeof rowWorkbook>>();
+        inventory.forEach((i: any) => m.set(String(i.row), rowWorkbook(i.data || i)));
+        return m;
+    }, [inventory]);
+    const financeWorkbook = (r: any) => {
+        const ids = r.related_ids || String(r.related_inventory_ids || '').split(',');
+        for (const id of ids) { const wb = itemWorkbook.get(String(id).trim()); if (wb) return wb; }
+        return rowWorkbook(r);
+    };
+
     const filtered = useMemo(() => {
         const searchWords = financeSearch.toLowerCase().trim().split(/\s+/).filter(Boolean);
 
@@ -1317,7 +1330,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             .filter(r => {
                 // Past seasons are hidden unless the Archive toggle is on — same switch
                 // the Inventory module uses, so both views stay on the same season.
-                if (visibleWorkbooks[rowWorkbook(r)] === false) return false;
+                if (visibleWorkbooks[financeWorkbook(r)] === false) return false;
 
                 const subcatValue = normalizeSubcat(r.subcategory || r.category || '');
                 const subcatMatch = subcatFilter === 'All' || subcatValue === subcatFilter;
@@ -1341,7 +1354,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 return subcatMatch && destMatch && vendorMatch && statusMatch && searchMatch;
             })
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
-    }, [docs, subcatFilter, destinationFilter, vendorFilter, financeSearch, statusFilter, visibleWorkbooks]);
+    }, [docs, subcatFilter, destinationFilter, vendorFilter, financeSearch, statusFilter, visibleWorkbooks, itemWorkbook]);
 
     const handleRequestPayment = async (dest: PaymentDestination, percentage: number, manualFee: number = 0, includeIva: boolean = false, includeComm: boolean = false) => {
         if (!requestGroup) return;

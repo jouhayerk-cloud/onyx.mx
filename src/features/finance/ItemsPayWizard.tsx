@@ -1,458 +1,392 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { 
-    isPaymentWizardOpenAtom, 
-    selectedInventoryIdsAtom, 
+import {
+    isPaymentWizardOpenAtom,
+    selectedInventoryIdsAtom,
     inventoryAtom,
     logisticsDocsAtom,
-    liveExchangeRateAtom,
+    exchangeRateAtom,
     inventoryStatusSetsAtom,
     paymentsArtifactConfigAtom,
-    inventoryArtifactConfigAtom,
+    paymentsVersionAtom,
+    InventoryVersionAtom,
     userAtom
 } from '../../lib/atoms';
-import { 
-    X, CreditCard, CheckCircle2, AlertCircle, Clock, PlusCircle, 
-    ChevronRight, ArrowRight, DollarSign, Wallet, Building2,
-    Search, Info, ExternalLink, RefreshCw
-} from 'lucide-react';
-import { getStatusClass, normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
+import { X, CheckCircle2, Clock, AlertCircle, CircleDashed, Check, Minus, Send, Box } from 'lucide-react';
+import { getStatusClass, normalizeInventoryData } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
+import { useDatabase } from '../../lib/hooks';
+import { PaymentDestination } from '../../lib/Types';
+import { destinationsConfig } from '../../lib/paymentConfig';
+import { ItemTag } from '../../components/ui/ItemTag';
 import toast from '../onyxIsland/notify/toast';
-
-import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
-import { createPortal } from 'react-dom';
 import { tr } from '../../lib/i18n';
+import { appendExpense } from './TrackingPaymentsView';
 
+type Line = {
+    key: string;          // inventory row id or crate id
+    kind: 'inv' | 'log';
+    vendorId: string;
+    label: string;
+    qty: number;
+    mxn: number;          // line total in MXN (unit price x qty)
+    isProduction: boolean;
+    raw: any;
+};
+
+const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n || 0);
+const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+
+const PERCENTS = [25, 50, 75, 100];
+
+/**
+ * Payment request for the items selected in Inventory. Amounts use the book rate
+ * (exchangeRateAtom, 17 MXN/USD) like the workbooks, never the live market rate.
+ * Each vendor with checked items becomes one finance record, written by the same
+ * appendExpense the Finances module uses.
+ */
 export const ItemsPayWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isPaymentWizardOpenAtom);
     const selectedIds = useAtomValue(selectedInventoryIdsAtom);
     const allInventory = useAtomValue(inventoryAtom);
     const allLogistics = useAtomValue(logisticsDocsAtom);
-    const liveRate = useAtomValue(liveExchangeRateAtom) || 17;
+    const rate = useAtomValue(exchangeRateAtom) || 17;
     const { partialPayIds, fullPayIds, requestedAcqIds } = useAtomValue(inventoryStatusSetsAtom);
     const user = useAtomValue(userAtom);
-
     const setPaymentsArtifact = useSetAtom(paymentsArtifactConfigAtom);
-    const setInventoryArtifact = useSetAtom(inventoryArtifactConfigAtom);
+    const setPaymentsVersion = useSetAtom(paymentsVersionAtom);
+    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
+    const db = useDatabase();
 
-    const [isProcessing, setIsProcessing] = useState(false);
+    // ── Split the selection by payment state ─────────────────────────────────
+    const { open, paid, requested, partial } = useMemo(() => {
+        const res = { open: [] as Line[], paid: [] as Line[], requested: [] as Line[], partial: [] as Line[] };
+        const ids = new Set(selectedIds.map(String));
 
-    // ── DATA GROUPING ────────────────────────────────────────────────────────
-    const groups = useMemo(() => {
-        const selectedItems = allInventory.filter(item => selectedIds.includes(String(item.row)));
-        const selectedCrates = (allLogistics || []).filter(c => selectedIds.includes(String(c.id)));
-        
-        const res = {
-            paid: [] as any[],
-            requested: [] as any[],
-            partial: [] as any[],
-            new: [] as any[],
-            newByVendor: {} as Record<string, any[]>
-        };
+        allInventory.filter(i => ids.has(String(i.row))).forEach(item => {
+            const norm: any = normalizeInventoryData(item.data);
+            const qty = Number(norm.quantity || norm.qty || 1) || 1;
+            const line: Line = {
+                key: String(item.row),
+                kind: 'inv',
+                vendorId: norm.vendorId || String(norm.itemId || '').split('-')[0] || 'MISC',
+                label: `${norm.shape || ''} ${norm.shortDescription || norm.description || ''}`.trim(),
+                qty,
+                mxn: (parseFloat(norm.price || norm.price_mxn) || 0) * qty,
+                isProduction: String(norm.status || '').toLowerCase().includes('production'),
+                raw: item.data,
+            };
+            const status = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds);
+            (status === 'GREEN' ? res.paid : status === 'YELLOW' ? res.requested : status === 'RED' ? res.partial : res.open).push(line);
+        });
 
-        const processItem = (item: any, type: 'inv' | 'log') => {
-            let norm, status, cost, vId;
-            
-            if (type === 'inv') {
-                norm = normalizeInventoryData(item.data);
-                status = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds);
-                cost = Number(calculateCodesAndPrices(norm, liveRate, '326').bookAcquisition) || 0;
-                vId = norm.vendorId || String(norm.itemId || '').split('-')[0] || 'MISC';
-            } else {
-                norm = item;
-                const payReq = String(item.pay_req || '').toLowerCase();
-                status = (payReq === 'paid' || payReq === 'true') ? 'GREEN' : (payReq === 'requested' ? 'YELLOW' : 'NONE');
-                cost = Number(item.cost_mxn || 0) / liveRate; // Convert to USD for grouping
-                const searchStr = `${item.vendors || ''} ${item.description || ''} ${item.vendor_id || ''}`.toUpperCase();
-                if (searchStr.includes('JUAN')) vId = 'JUAN';
-                else if (searchStr.includes('SIMONA')) vId = 'SIMONA';
-                else vId = (item.vendors || item.vendor_id || 'CRATES').toUpperCase();
-            }
-
-            const processed = { ...item, norm, cost, artifactType: type };
-
-            if (status === 'GREEN') res.paid.push(processed);
-            else if (status === 'YELLOW') res.requested.push(processed);
-            else if (status === 'RED') res.partial.push(processed);
-            else {
-                res.new.push(processed);
-                if (!res.newByVendor[vId]) res.newByVendor[vId] = [];
-                res.newByVendor[vId].push(processed);
-            }
-        };
-
-        selectedItems.forEach(i => processItem(i, 'inv'));
-        selectedCrates.forEach(c => processItem(c, 'log'));
-
+        (allLogistics || []).filter((c: any) => ids.has(String(c.id))).forEach((c: any) => {
+            const payReq = String(c.pay_req || '').toLowerCase();
+            const searchStr = `${c.vendors || ''} ${c.description || ''} ${c.vendor_id || ''}`.toUpperCase();
+            const qty = Number(c.quantity || 1) || 1;
+            const line: Line = {
+                key: String(c.id),
+                kind: 'log',
+                vendorId: searchStr.includes('JUAN') ? 'JUAN' : searchStr.includes('SIMONA') ? 'SIMONA' : String(c.vendors || c.vendor_id || 'CRATES').toUpperCase(),
+                label: c.description || `Crate ${c.id}`,
+                qty,
+                mxn: (Number(c.cost_mxn) || 0) * qty,
+                isProduction: false,
+                raw: c,
+            };
+            (payReq === 'paid' || payReq === 'true' ? res.paid : payReq === 'requested' ? res.requested : res.open).push(line);
+        });
         return res;
-    }, [allInventory, allLogistics, selectedIds, partialPayIds, fullPayIds, requestedAcqIds, liveRate]);
+    }, [allInventory, allLogistics, selectedIds, partialPayIds, fullPayIds, requestedAcqIds]);
+
+    const byVendor = useMemo(() => {
+        const m: Record<string, Line[]> = {};
+        open.forEach(l => { (m[l.vendorId] ||= []).push(l); });
+        return m;
+    }, [open]);
+
+    // ── Request state ────────────────────────────────────────────────────────
+    const [checked, setChecked] = useState<Set<string>>(new Set());
+    const [dest, setDest] = useState<PaymentDestination | null>(null);
+    const [percent, setPercent] = useState(100);
+    const [iva, setIva] = useState(false);
+    const [comm, setComm] = useState(false);
+    const [fee, setFee] = useState('');
+    const [busy, setBusy] = useState(false);
+
+    // Every unrequested item starts checked; re-seed when the selection changes.
+    // Keyed on the ids, not the array, so a background sync does not undo the user's unchecks.
+    const openKeys = open.map(l => l.key).join(',');
+    useEffect(() => { setChecked(new Set(openKeys ? openKeys.split(',') : [])); }, [openKeys]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isOpen, setIsOpen]);
 
     if (!isOpen) return null;
 
-    const handleClose = () => setIsOpen(false);
+    const close = () => setIsOpen(false);
+    const toggle = (keys: string[], on: boolean) => setChecked(prev => {
+        const next = new Set(prev);
+        keys.forEach(k => (on ? next.add(k) : next.delete(k)));
+        return next;
+    });
 
-    const openPaymentsForItems = (items: any[], title: string) => {
-        const ids = items.map(i => i.artifactType === 'inv' ? String(i.row) : String(i.id));
-        setPaymentsArtifact({ isOpen: true, itemIds: ids, title });
-    };
+    const chosenByVendor = Object.entries(byVendor)
+        .map(([vendorId, lines]) => ({ vendorId, lines: lines.filter(l => checked.has(l.key)) }))
+        .filter(g => g.lines.length > 0);
 
-    const openInventoryForItems = (items: any[], title: string) => {
-        const ids = items.map(i => String(i.row));
-        setInventoryArtifact({ isOpen: true, itemIds: ids, title, displayMode: 'list' });
-    };
+    const sum = (lines: Line[]) => lines.reduce((a, l) => a + l.mxn, 0);
+    const feesFor = (amount: number) => (parseFloat(fee) || 0) + (iva ? amount * 0.16 : 0) + (comm ? amount * 0.10 : 0);
+    const subtotal = chosenByVendor.reduce((a, g) => a + sum(g.lines) * (percent / 100), 0);
+    // A manual fee is per request, so it is charged once per vendor record.
+    const fees = chosenByVendor.reduce((a, g) => a + feesFor(sum(g.lines) * (percent / 100)), 0);
+    const total = subtotal + fees;
+    const chosenCount = chosenByVendor.reduce((a, g) => a + g.lines.length, 0);
 
-    const handleRequestPaymentForVendor = async (vendorId: string, items: any[]) => {
-        if (isProcessing) return;
-        setIsProcessing(true);
-        const tid = toast.loading(`Generating request for ${vendorId}...`);
-
+    const handleRequest = async () => {
+        if (busy || !dest || chosenByVendor.length === 0) return;
+        setBusy(true);
+        const tid = toast.loading(tr('Sending request…'));
         try {
-            const totalMxn = items.reduce((acc, i) => {
-                const qty = Number(i.norm.quantity || i.norm.qty || 1);
-                if (i.artifactType === 'log') {
-                    return acc + (Number(i.cost_mxn || 0) * qty);
+            for (const { vendorId, lines } of chosenByVendor) {
+                const amount = Number((sum(lines) * (percent / 100)).toFixed(2));
+                const commission = Number(feesFor(amount).toFixed(2));
+                const invIds = lines.filter(l => l.kind === 'inv').map(l => l.key);
+                const crateIds = lines.filter(l => l.kind === 'log').map(l => l.key);
+                const allIds = [...invIds, ...crateIds].join(',');
+                const isPartial = percent < 100;
+                const subcategory = crateIds.length && !invIds.length ? 'Pack' : lines.some(l => l.isProduction) ? 'Prod' : 'Acq';
+
+                // Description ends in "from <vendorId>": Finances reads the vendor from it.
+                const data = await appendExpense({
+                    description: `${isPartial ? `Partial Payment (${percent}%)` : 'Payment'} for ${lines.length} items from ${vendorId}`,
+                    amount,
+                    commission,
+                    destination: dest,
+                    status: 'Requested',
+                    subcategory,
+                    vendor_id: vendorId,
+                    inventoryItemRows: isPartial ? null : allIds,
+                    linkedRows: isPartial ? allIds : null,
+                    notes: `Requested from Inventory selection by ${user?.name || 'Unknown'} at ${rate} MXN/USD.`,
+                }, db);
+                const paymentId = data?.[0]?.id ? String(data[0].id) : null;
+
+                if (crateIds.length) {
+                    const { error } = await supabase.from('logistics').update({ pay_req: 'requested', payment_ids: paymentId }).in('id', crateIds);
+                    if (error) throw error;
                 }
-                return acc + (i.cost * liveRate * qty);
-            }, 0);
-            
-            const itemIds = items.filter(i => i.artifactType === 'inv').map(i => String(i.row));
-            const crateIds = items.filter(i => i.artifactType === 'log').map(i => String(i.id));
-            
-            // 1. Create Finance Record
-            const { data: finData, error: finError } = await supabase.from('finance').insert({
-                amount: totalMxn,
-                currency: 'MXN',
-                status: 'Requested',
-                date: new Date().toISOString(),
-                description: `Bulk Request: ${vendorId} (${items.length} units)`,
-                vendor_id: vendorId,
-                type: 'Expense',
-                category: 'Acquisition',
-                subcategory: items.some(i => i.artifactType === 'log') ? 'Logistics' : 'Acquisition',
-                related_ids: [...itemIds, ...crateIds],
-                notes: `Generated via ItemsPay Wizard by ${user?.name || 'Unknown'}. Includes ${itemIds.length} items and ${crateIds.length} crates.`,
-                updated_at: new Date().toISOString()
-            }).select();
-
-            if (finError) throw finError;
-
-            // 2. Update Inventory Items
-            if (itemIds.length > 0) {
-                const { error: invError } = await supabase.from('inventory')
-                    .update({ 
-                        pay_req: 'requested',
-                        payment_ids: finData[0].id.toString()
-                    })
-                    .in('id', itemIds);
-                if (invError) throw invError;
+                // Reflect the new state locally so Inventory updates before the next sync.
+                if (db) {
+                    for (const id of invIds) {
+                        try {
+                            const doc = await db.inventory.findOne({ selector: { id } }).exec();
+                            if (doc) await doc.patch({ pay_req: 'requested', payReq: 'requested', payment_ids: paymentId });
+                        } catch (e) { console.error(e); }
+                    }
+                }
             }
-
-            // 3. Update Crates
-            if (crateIds.length > 0) {
-                const { error: crateError } = await supabase.from('logistics')
-                    .update({ 
-                        pay_req: 'requested',
-                        payment_ids: finData[0].id.toString()
-                    })
-                    .in('id', crateIds);
-                if (crateError) throw crateError;
-            }
-
-            toast.success(`Request generated for ${vendorId}`, { id: tid });
+            toast.success(chosenByVendor.length > 1 ? `${chosenByVendor.length} ${tr('payment requests sent')}` : tr('Payment requested'), { id: tid });
+            setInventoryVersion(v => v + 1);
+            setPaymentsVersion(v => v + 1);
+            close();
         } catch (err: any) {
-            toast.error(err.message || 'Generation failed', { id: tid });
+            toast.error(err?.message || tr('Request failed'), { id: tid });
         } finally {
-            setIsProcessing(false);
+            setBusy(false);
         }
     };
 
-    const groupTotals = {
-        paid: groups.paid.reduce((acc, i) => acc + i.cost, 0),
-        requested: groups.requested.reduce((acc, i) => acc + i.cost, 0),
-        partial: groups.partial.reduce((acc, i) => acc + i.cost, 0),
-        new: groups.new.reduce((acc, i) => acc + i.cost, 0)
-    };
+    const openPayments = (lines: Line[], title: string) =>
+        setPaymentsArtifact({ isOpen: true, itemIds: lines.map(l => l.key), title });
 
-    const totalValue = Object.values(groupTotals).reduce((a, b) => a + b, 0);
+    const states = [
+        { label: tr('To request'), lines: open, color: '#38bdf8', icon: CircleDashed, onClick: undefined as undefined | (() => void) },
+        { label: tr('Requested'), lines: requested, color: '#eab308', icon: Clock, onClick: () => openPayments(requested, 'Requested Items Detail') },
+        { label: tr('Partial'), lines: partial, color: '#ef4444', icon: AlertCircle, onClick: () => openPayments(partial, 'Partial Items Detail') },
+        { label: tr('Paid'), lines: paid, color: '#22c55e', icon: CheckCircle2, onClick: () => openPayments(paid, 'Paid Items Detail') },
+    ];
 
     return createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center animate-in fade-in duration-1000 overflow-hidden no-select">
-            {/* ── ULTRA-HIGH FIDELITY GLASS BACKDROP ── */}
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[120px]" onClick={handleClose} />
-            <div className="absolute inset-0 bg-gradient-to-br from-(--main-color)/5 via-transparent to-blue-500/5 pointer-events-none" />
-            
-            <div className="relative w-full h-full flex flex-col pointer-events-auto overflow-hidden animate-in slide-in-from-bottom-12 duration-1000 ease-out">
-                
-                {/* ── IMMERSIVE HEADER ─────────────────────────────────────────── */}
-                <div className="flex items-center justify-between px-8 md:px-20 py-10 md:py-16 z-20">
-                    <div className="flex items-center gap-8 md:gap-12">
-                        <div className="relative group cursor-pointer" onClick={handleClose}>
-                            <OnyxMiniLogo className="w-10 h-10 md:w-14 md:h-14 text-white transition-all duration-1000 group-hover:rotate-180 group-hover:scale-110" />
-                            <div className="absolute inset-0 bg-white/20 blur-2xl opacity-0 group-hover:opacity-40 transition-opacity duration-1000" />
-                        </div>
-                        <div className="flex flex-col">
-                            <div className="flex items-center gap-4 mb-2">
-                                <h1 className="text-2xl md:text-5xl font-black uppercase tracking-[0.3em] leading-none text-white drop-shadow-2xl">
-                                    {tr("PAYMENT")}<span className="text-white/20">.</span>{tr("PROTOCOL")}
-                                </h1>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <span className="text-[10px] font-black text-(--main-color) tracking-[0.5em] uppercase px-3 py-1 bg-(--main-color)/10 rounded-full border border-(--main-color)/20">
-                                    {tr("ENGINE_ACTIVE")}
-                                </span>
-                                <span className="text-[9px] font-black uppercase tracking-[0.8em] text-white/30">{tr("ID:")} {selectedIds.length > 0 ? `BATCH_0x${selectedIds.length.toString(16).toUpperCase()}` : tr("NULL_SESSION")}</span>
-                            </div>
-                        </div>
+        <div className="pay-scrim fixed inset-0 z-[10000] flex items-end md:items-center justify-center p-0 md:p-6" onClick={close}>
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={tr('Request payment')}
+                className="pay-sheet liquid-panel relative w-full max-w-5xl h-[92dvh] md:h-[86vh] flex flex-col overflow-hidden rounded-t-[18px] md:rounded-[18px] text-(--text-color)"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <header className="flex items-center gap-3 px-5 py-3 border-b border-(--lq-rim) shrink-0">
+                    <div className="flex flex-col min-w-0 flex-1">
+                        <h2 className="text-[15px] font-semibold leading-tight">{tr('Request payment')}</h2>
+                        <p className="text-[12px] text-(--text-color-secondary) tabular-nums">
+                            {selectedIds.length} {tr('selected')} · {tr('Book rate')} {rate} MXN/USD
+                        </p>
                     </div>
-                    <button 
-                        onClick={handleClose} 
-                        className="group relative w-16 h-16 flex items-center justify-center rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-500 active:scale-90"
-                    >
-                        <X className="w-8 h-8 text-white/30 group-hover:text-white transition-colors duration-500" strokeWidth={1} />
+                    <button onClick={close} aria-label={tr('Close')} className="liquid-control w-9 h-9 rounded-full flex items-center justify-center">
+                        <X size={18} />
                     </button>
-                </div>
+                </header>
 
-                {/* ── MAIN CONTENT (FREE FLOATING) ───────────────────────────────────── */}
-                <div className="flex-1 overflow-y-auto no-scrollbar px-8 md:px-20 pb-32">
-                    <div className="max-w-[1800px] mx-auto space-y-24 md:space-y-40">
-                        
-                        {/* ── NEURAL CONTEXT BAR ── */}
-                        <div className="flex flex-col xl:flex-row items-center justify-between gap-12 md:gap-24 animate-in fade-in slide-in-from-left-8 duration-1000">
-                            <div className="flex items-center gap-10">
-                                <div className="w-16 h-16 rounded-[24px] bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                                    <Building2 size={32} className="text-blue-500" strokeWidth={1.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[9px] font-black uppercase tracking-[1em] mb-2 text-white/40">{tr("Verified Operator")}</span>
-                                    <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
-                                        <span className="text-2xl md:text-4xl font-black uppercase tracking-[0.1em] text-white">{user?.name || tr("ROOT")}</span>
-                                        <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-2xl border border-white/10">
-                                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                            <span className="text-[10px] font-black text-white/60 lowercase tracking-widest">{user?.email || tr("admin@onyx.mx")}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-12">
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.6em] mb-2 text-white/20">{tr("FX_CALIBRATION")}</span>
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-2xl md:text-4xl font-black text-white tracking-tighter tabular-nums">{liveRate}</span>
-                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em]">{tr("MXN/USD")}</span>
-                                    </div>
-                                </div>
-                                <div className="h-12 w-[1px] bg-white/10" />
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.6em] mb-2 text-white/20">{tr("TIMESTAMP")}</span>
-                                    <span className="text-xl font-black text-white/60 tracking-widest uppercase">{new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ── STATUS GRID (HOLOGRAPHIC CARDS) ── */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 md:gap-14 animate-in zoom-in-95 duration-1000 delay-300">
-                            <StatusCard label={tr("Paid")} count={groups.paid.length} amount={groupTotals.paid} color="#22c55e" icon={CheckCircle2} onClick={() => openPaymentsForItems(groups.paid, 'Paid Items Detail')} />
-                            <StatusCard label={tr("Requested")} count={groups.requested.length} amount={groupTotals.requested} color="#eab308" icon={Clock} onClick={() => openPaymentsForItems(groups.requested, 'Requested Items Detail')} />
-                            <StatusCard label={tr("Partial")} count={groups.partial.length} amount={groupTotals.partial} color="#ef4444" icon={AlertCircle} onClick={() => openPaymentsForItems(groups.partial, 'Partial Items Detail')} />
-                            <StatusCard label={tr("New")} count={groups.new.length} amount={groupTotals.new} color="#38bdf8" icon={PlusCircle} onClick={() => openInventoryForItems(groups.new, 'New Items Review')} />
-                        </div>
-
-                        {/* ── BATCH EXECUTION AREA ── */}
-                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-20 md:gap-32">
-                            
-                            {/* Brand Watermark Overlay */}
-                            <div className="hidden xl:flex xl:col-span-4 flex-col justify-start pt-12 animate-in slide-in-from-left-20 duration-1000 delay-500">
-                                <div className="sticky top-12 space-y-16">
-                                    <div className="relative group">
-                                        <OnyxLogo mono className="w-80 h-80 text-white/5 transition-all duration-1000 group-hover:text-white/10 group-hover:scale-105" />
-                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--main-color)_0%,transparent_70%)] opacity-10 blur-3xl" />
-                                    </div>
-                                    <div className="space-y-8 pl-8 border-l border-white/5">
-                                        <div className="space-y-2">
-                                            <h3 className="text-[11px] font-black uppercase tracking-[0.8em] text-white/40">{tr("Protocol Guidelines")}</h3>
-                                            <div className="h-[2px] w-12 bg-(--main-color)" />
-                                        </div>
-                                        <p className="text-[12px] leading-relaxed text-white/20 uppercase tracking-widest max-w-xs font-medium">
-                                            {tr("Executing batch requests will generate immediate financial artifacts in the main ledger. Ensure all inventory counts have been physically verified.")}
-                                        </p>
-                                        <div className="flex flex-col gap-4">
-                                            {[tr("TRANSACTION_LOGGING"), tr("IDENTITY_VERIFIED"), tr("ENCRYPTION_ACTIVE")].map(txt => (
-                                                <div key={txt} className="flex items-center gap-3">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                                                    <span className="text-[8px] font-black uppercase tracking-[0.5em] text-white/10">{txt}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Dynamic Vendor Panels */}
-                            <div className="xl:col-span-8 space-y-16">
-                                <div className="flex items-center gap-8 mb-12">
-                                    <h2 className="text-[11px] font-black uppercase tracking-[1.2em] text-white/30 whitespace-nowrap">{tr("Execution Queues")}</h2>
-                                    <div className="h-[1px] flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                                </div>
-
-                                {Object.keys(groups.newByVendor).length === 0 ? (
-                                    <div className="py-40 flex flex-col items-center justify-center rounded-[64px] bg-white/[0.01] border border-dashed border-white/5 group hover:bg-white/[0.02] transition-all duration-700">
-                                        <div className="relative mb-10">
-                                            <RefreshCw size={64} strokeWidth={1} className="text-white/5 animate-spin-slow" />
-                                            <Search size={24} className="absolute inset-0 m-auto text-white/10" />
-                                        </div>
-                                        <p className="text-[10px] font-black uppercase tracking-[1em] text-white/10 group-hover:text-white/20 transition-colors">{tr("Registry Empty : Standing By")}</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-10">
-                                        {Object.entries(groups.newByVendor).map(([vId, items], idx) => {
-                                            const vInfo = vendors[vId as keyof typeof vendors];
-                                            const vColor = vInfo?.color || '#888';
-                                            const total = items.reduce((acc, i) => acc + i.cost, 0);
-                                            
-                                            return (
-                                                <div 
-                                                    key={vId} 
-                                                    className="group relative overflow-hidden p-12 md:p-16 rounded-[56px] bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/20 transition-all duration-700 animate-in slide-in-from-right-12"
-                                                    style={{ animationDelay: `${700 + (idx * 100)}ms` }}
-                                                >
-                                                    <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-40 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: vColor }} />
-                                                    <div className="absolute top-0 right-0 p-12 opacity-0 group-hover:opacity-5 transition-opacity duration-1000 pointer-events-none">
-                                                        <OnyxMiniLogo className="w-40 h-40" />
-                                                    </div>
-                                                    
-                                                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-12 relative z-10">
-                                                        <div className="flex items-center gap-12">
-                                                            <div 
-                                                                className="w-24 h-24 rounded-[32px] flex items-center justify-center text-black font-black text-xl shadow-2xl transition-all duration-700 group-hover:rotate-6 group-hover:scale-110" 
-                                                                style={{ backgroundColor: vColor, boxShadow: `0 0 40px ${vColor}33` }}
-                                                            >
-                                                                {vId}
-                                                            </div>
-                                                            <div className="flex flex-col">
-                                                                <h4 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter mb-4 drop-shadow-xl">{vInfo?.name || tr("Unknown Source")}</h4>
-                                                                <div className="flex items-center gap-4">
-                                                                    <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10">
-                                                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{items.length} {tr("Units")}</span>
-                                                                    </div>
-                                                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] opacity-40 group-hover:opacity-100 transition-opacity whitespace-nowrap">{tr("Ready for Batch Request")}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center justify-between lg:justify-end gap-16 border-t lg:border-t-0 pt-8 lg:pt-0 border-white/5">
-                                                            <div className="flex flex-col items-end">
-                                                                <div className="flex items-baseline gap-2">
-                                                                    <span className="text-sm font-black text-white/20 uppercase tracking-[0.4em] mb-1">$</span>
-                                                                    <p className="text-4xl md:text-6xl font-black text-white tracking-tighter tabular-nums leading-none">{total.toLocaleString()}</p>
-                                                                </div>
-                                                                <p className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.5em] mt-3 opacity-60">{tr("AGGREGATE_TOTAL")}</p>
-                                                            </div>
-                                                            <button 
-                                                                disabled={isProcessing}
-                                                                onClick={() => handleRequestPaymentForVendor(vId, items)}
-                                                                className="h-24 px-12 rounded-[32px] bg-white/5 border border-white/10 text-white hover:bg-white hover:text-black hover:border-white transition-all duration-500 flex items-center gap-6 group/btn shadow-[0_0_50px_rgba(0,0,0,0.3)] active:scale-95 disabled:opacity-20 relative overflow-hidden"
-                                                            >
-                                                                <div className="flex flex-col items-start">
-                                                                    <span className="text-[9px] font-black uppercase tracking-[0.6em] mb-1 opacity-40 group-hover/btn:opacity-60">{tr("Protocol")}</span>
-                                                                    <span className="text-sm font-black uppercase tracking-[0.3em]">{tr("EXECUTE")}</span>
-                                                                </div>
-                                                                <ArrowRight size={24} className="group-hover/btn:translate-x-3 transition-transform duration-500" strokeWidth={2.5} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* ── INTEGRATED CONTROL BAR ─────────────────────────────────────── */}
-                <div className="mt-auto px-8 py-10 md:px-20 md:py-20 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-24 animate-in slide-in-from-bottom-12 duration-1000 shrink-0 bg-gradient-to-t from-black/40 to-transparent backdrop-blur-md border-t border-white/5">
-                    <div className="flex flex-col gap-4">
-                        <span className="text-[11px] font-black uppercase tracking-[1em] text-white/20 ml-2">{tr("Session Aggregation")}</span>
-                        <div className="flex items-center gap-6">
-                            <span className="text-5xl md:text-9xl font-black tracking-tighter text-white tabular-nums drop-shadow-[0_0_50px_rgba(255,255,255,0.1)]">
-                                <span className="text-white/10 text-3xl md:text-5xl mr-4">$</span>
-                                {totalValue.toLocaleString()}
-                            </span>
-                            <div className="flex flex-col justify-center gap-2">
-                                <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-[10px] font-black text-white/40 uppercase tracking-widest text-center">{tr("USD_TOTAL")}</span>
-                                <span className="px-3 py-1 bg-(--main-color)/10 rounded-lg border border-(--main-color)/20 text-[10px] font-black text-(--main-color) uppercase tracking-widest text-center">{tr("NET_VAL")}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-8 w-full md:w-auto">
-                        <button 
-                            onClick={handleClose}
-                            className="group relative flex-1 md:flex-initial h-24 px-20 flex items-center justify-center rounded-[32px] bg-white/5 border border-white/5 text-white/30 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all duration-700 text-[12px] font-black uppercase tracking-[1.2em] active:scale-95 overflow-hidden"
+                {/* Payment state of the selection */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-5 py-3 shrink-0">
+                    {states.map(s => (
+                        <button
+                            key={s.label}
+                            type="button"
+                            disabled={!s.onClick || s.lines.length === 0}
+                            onClick={s.onClick}
+                            className="liquid-control flex items-center gap-3 px-3 py-2 rounded-[10px] text-left disabled:cursor-default"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                            {tr("CLOSE_SESSION")}
+                            <s.icon size={16} style={{ color: s.color }} className="shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-[11px] text-(--text-color-secondary)">{s.label} · {s.lines.length}</span>
+                                <span className="text-[13px] font-semibold tabular-nums">{fmtMXN(sum(s.lines))}</span>
+                            </div>
                         </button>
-                    </div>
+                    ))}
                 </div>
 
-                <style dangerouslySetInnerHTML={{ __html: `
-                    .no-scrollbar::-webkit-scrollbar { display: none; }
-                    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                    .shadow-holographic { box-shadow: 0 0 50px rgba(var(--main-color-rgb), 0.1), inset 0 0 20px rgba(255,255,255,0.05); }
-                `}} />
+                {/* Items to request, grouped by vendor */}
+                <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
+                    {open.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center gap-2 text-(--text-color-secondary) text-[13px] text-center">
+                            <CheckCircle2 size={28} />
+                            {tr('Every selected item already has a payment request.')}
+                        </div>
+                    ) : Object.entries(byVendor).map(([vendorId, lines]) => {
+                        const keys = lines.map(l => l.key);
+                        const n = keys.filter(k => checked.has(k)).length;
+                        const all = n === keys.length;
+                        const vColor = (vendors as any)[vendorId]?.color || '#888';
+                        const vendorSum = sum(lines.filter(l => checked.has(l.key)));
+                        return (
+                            <section key={vendorId} className="rounded-[14px] border border-(--lq-rim) overflow-hidden">
+                                <div className="flex items-center gap-3 px-3 py-2 bg-(--lq-fill-control)">
+                                    <CheckBox state={all ? 'on' : n ? 'mixed' : 'off'} onClick={() => toggle(keys, !all)} label={`${tr('Select all from')} ${vendorId}`} />
+                                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: vColor }} />
+                                    <span className="text-[13px] font-semibold truncate">{(vendors as any)[vendorId]?.name || vendorId}</span>
+                                    <span className="text-[12px] text-(--text-color-secondary) tabular-nums">{n}/{keys.length}</span>
+                                    <span className="ml-auto text-[13px] font-semibold tabular-nums">{fmtMXN(vendorSum)}</span>
+                                    <span className="hidden sm:inline text-[12px] text-(--text-color-secondary) tabular-nums w-16 text-right">{fmtUSD(vendorSum / rate)}</span>
+                                </div>
+                                <ul>
+                                    {lines.map(l => {
+                                        const on = checked.has(l.key);
+                                        return (
+                                            <li
+                                                key={l.key}
+                                                onClick={() => toggle([l.key], !on)}
+                                                className={`flex items-center gap-3 px-3 py-2 border-t border-(--lq-rim) cursor-pointer transition-opacity ${on ? '' : 'opacity-45'}`}
+                                            >
+                                                <CheckBox state={on ? 'on' : 'off'} onClick={() => toggle([l.key], !on)} label={l.label || l.key} />
+                                                {l.kind === 'inv'
+                                                    ? <ItemTag item={l.raw} />
+                                                    : <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md liquid-control"><Box size={12} />{tr('Crate')}</span>}
+                                                <span className="text-[13px] truncate flex-1 min-w-0">{l.label}</span>
+                                                <span className="text-[12px] text-(--text-color-secondary) tabular-nums">×{l.qty}</span>
+                                                <span className="text-[13px] tabular-nums w-24 text-right">{fmtMXN(l.mxn)}</span>
+                                                <span className="hidden sm:inline text-[12px] text-(--text-color-secondary) tabular-nums w-16 text-right">{fmtUSD(l.mxn / rate)}</span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </section>
+                        );
+                    })}
+                </div>
+
+                {/* Bottom action bar */}
+                {open.length > 0 && (
+                    <footer className="shrink-0 border-t border-(--lq-rim) px-5 py-3 space-y-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] text-(--text-color-secondary) w-full md:w-auto">{tr('Pay to')}</span>
+                            {(Object.keys(destinationsConfig) as PaymentDestination[]).map(key => (
+                                <Chip key={key} on={dest === key} onClick={() => setDest(key)}>{destinationsConfig[key].name}</Chip>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] text-(--text-color-secondary)">{tr('Amount')}</span>
+                            {PERCENTS.map(p => <Chip key={p} on={percent === p} onClick={() => setPercent(p)}>{p}%</Chip>)}
+                            <span className="w-px h-5 bg-(--lq-rim) mx-1" />
+                            <Chip on={iva} onClick={() => setIva(!iva)}>IVA 16%</Chip>
+                            <Chip on={comm} onClick={() => setComm(!comm)}>{tr('Comm.')} 10%</Chip>
+                            <label className="liquid-control flex items-center gap-1 h-8 px-2 rounded-[8px] text-[12px]">
+                                <span className="text-(--text-color-secondary)">{tr('Fee')}</span>
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    min={0}
+                                    value={fee}
+                                    onChange={e => setFee(e.target.value)}
+                                    placeholder="0"
+                                    className="w-16 bg-transparent outline-none tabular-nums text-right"
+                                />
+                            </label>
+                        </div>
+                        <div className="flex flex-col md:flex-row md:items-center gap-3">
+                            <div className="flex items-baseline gap-4 tabular-nums flex-1">
+                                <div className="flex flex-col">
+                                    <span className="text-[11px] text-(--text-color-secondary)">{chosenCount} {tr('items')} · {chosenByVendor.length} {chosenByVendor.length === 1 ? tr('vendor') : tr('vendors')}</span>
+                                    <span className="text-[22px] font-semibold leading-tight">{fmtMXN(total)}</span>
+                                </div>
+                                <span className="text-[13px] text-(--text-color-secondary)">{fmtUSD(total / rate)}</span>
+                                {fees > 0 && <span className="text-[12px] text-(--text-color-secondary)">{tr('incl. fees')} {fmtMXN(fees)}</span>}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleRequest}
+                                disabled={busy || !dest || chosenCount === 0}
+                                className="h-11 px-6 rounded-[12px] flex items-center justify-center gap-2 font-semibold text-[14px] bg-(--main-color) text-black disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform"
+                            >
+                                <Send size={16} />
+                                {!dest ? tr('Choose where to pay')
+                                    : chosenByVendor.length > 1 ? `${tr('Send')} ${chosenByVendor.length} ${tr('requests')}`
+                                    : tr('Send request')}
+                            </button>
+                        </div>
+                    </footer>
+                )}
+
+                <style>{`
+                    .pay-scrim { background: rgba(2,6,16,.18); backdrop-filter: blur(14px) saturate(1.35); -webkit-backdrop-filter: blur(14px) saturate(1.35); }
+                    html.theme-aqua .pay-scrim { background: rgba(255,255,255,.22); }
+                    @media (prefers-reduced-transparency: reduce) { .pay-scrim { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(2,6,16,.6); } }
+                `}</style>
             </div>
         </div>,
         document.body
     );
 };
 
-interface StatusCardProps {
-    label: string;
-    count: number;
-    amount: number;
-    color: string;
-    icon: any;
-    onClick: () => void;
-}
-
-const StatusCard: React.FC<StatusCardProps> = ({ label, count, amount, color, icon: Icon, onClick }) => (
-    <button 
+const Chip: React.FC<{ on: boolean; onClick: () => void; children: React.ReactNode }> = ({ on, onClick, children }) => (
+    <button
+        type="button"
+        aria-pressed={on}
         onClick={onClick}
-        className="relative group p-12 rounded-[56px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.07] hover:border-white/20 transition-all duration-700 text-left flex flex-col gap-10 overflow-hidden shadow-2xl backdrop-blur-xl"
+        className={`liquid-control h-8 px-3 rounded-[8px] text-[12px] whitespace-nowrap transition-colors ${on ? 'ring-1 ring-(--main-color) text-(--main-color) font-semibold' : ''}`}
     >
-        <div className="absolute -top-12 -right-12 p-6 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-1000 group-hover:scale-125 group-hover:-rotate-12">
-            <Icon size={240} strokeWidth={1} />
-        </div>
-        
-        <div className="flex items-center justify-between relative z-10">
-            <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center shadow-inner transition-transform duration-700 group-hover:scale-110 group-hover:rotate-6" style={{ color }}>
-                <Icon size={32} strokeWidth={2.5} />
-            </div>
-            <div className="flex flex-col items-end">
-                <span className="text-[20px] font-black text-white leading-none mb-1">{count}</span>
-                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">{tr("Objects")}</span>
-            </div>
-        </div>
+        {children}
+    </button>
+);
 
-        <div className="relative z-10">
-            <h4 className="text-[11px] font-black uppercase tracking-[0.6em] text-white/30 group-hover:text-white/60 transition-colors mb-4">{label}</h4>
-            <div className="flex items-baseline gap-2">
-                <span className="text-sm font-black text-white/20">$</span>
-                <p className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none">
-                    {amount.toLocaleString()}
-                </p>
-            </div>
-        </div>
-
-        <div className="mt-4 flex items-center gap-4 text-[9px] font-black uppercase tracking-[0.5em] text-white/10 group-hover:text-white/40 transition-all duration-700">
-            <div className="h-[1px] flex-1 bg-white/5 group-hover:bg-white/20 transition-all" />
-            <span className="whitespace-nowrap">{tr("VIEW_DETAILS")}</span>
-            <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
-        </div>
+const CheckBox: React.FC<{ state: 'on' | 'off' | 'mixed'; onClick: () => void; label: string }> = ({ state, onClick, label }) => (
+    <button
+        type="button"
+        role="checkbox"
+        aria-checked={state === 'mixed' ? 'mixed' : state === 'on'}
+        aria-label={label}
+        onClick={e => { e.stopPropagation(); onClick(); }}
+        className={`w-5 h-5 shrink-0 rounded-[6px] flex items-center justify-center border transition-colors ${state === 'off' ? 'border-(--lq-rim)' : 'bg-(--main-color) border-(--main-color) text-black'}`}
+    >
+        {state === 'on' && <Check size={13} strokeWidth={3} />}
+        {state === 'mixed' && <Minus size={13} strokeWidth={3} />}
     </button>
 );
