@@ -8,6 +8,7 @@ import {
     logisticsDataAtom,
     isSyncingAtom,
     InventoryVersionAtom,
+    paymentsVersionAtom,
     userAtom,
     activeViewAtom,
 } from '../lib/atoms';
@@ -16,6 +17,20 @@ import { normalizeInventoryData } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { presenceService } from '../lib/presence/presenceService';
 import { colibriRealtimeBridge } from '../lib/ai/colibriRealtimeBridge';
+
+/** Every finance row, paged. null when the first page fails, so a bad fetch never blanks the list. */
+const fetchAllFinance = async (): Promise<any[] | null> => {
+    const pageSize = 1000;
+    let all: any[] = [];
+    for (let page = 0; ; page++) {
+        const { data, error } = await supabase.from('finance').select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+        if (error) return page === 0 ? null : all;
+        if (!data || data.length === 0) break;
+        all = [...all, ...data];
+        if (data.length < pageSize) break;
+    }
+    return all;
+};
 
 /**
  * DataSyncProvider
@@ -30,6 +45,7 @@ export const DataSyncProvider: React.FC = () => {
     const setLogistics = useSetAtom(logisticsDataAtom);
     const setIsSyncing = useSetAtom(isSyncingAtom);
     const inventoryVersion = useAtomValue(InventoryVersionAtom);
+    const paymentsVersion = useAtomValue(paymentsVersionAtom);
 
     const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
 
@@ -116,26 +132,9 @@ export const DataSyncProvider: React.FC = () => {
         );
 
         // 2. Finance - Direct Supabase Sync (Bypassing RxDB for reliability)
-        let currentFinanceData: any[] = [];
-        const fetchInitialFinance = async () => {
-            try {
-                let page = 0;
-                const pageSize = 1000;
-                let allFinance: any[] = [];
-                while (true) {
-                    const { data, error } = await supabase.from('finance').select('*').range(page * pageSize, (page + 1) * pageSize - 1);
-                    if (error || !data || data.length === 0) break;
-                    allFinance = [...allFinance, ...data];
-                    if (data.length < pageSize) break;
-                    page++;
-                }
-                currentFinanceData = allFinance;
-                setFinance(currentFinanceData);
-            } catch (err) {
-                console.error('[DataSync] Failed to fetch initial finance data:', err);
-            }
-        };
-        fetchInitialFinance();
+        fetchAllFinance()
+            .then(rows => { if (rows) setFinance(rows); })
+            .catch(err => console.error('[DataSync] Failed to fetch initial finance data:', err));
 
         // 3. Logistics
         subscriptions.push(
@@ -170,15 +169,13 @@ export const DataSyncProvider: React.FC = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'production' }, payload => applyRealtimeChange(db.production, payload))
             .on('postgres_changes', { event: '*', schema: 'public', table: 'logistics' }, payload => applyRealtimeChange(db.logistics, payload))
             .on('postgres_changes', { event: '*', schema: 'public', table: 'finance' }, payload => {
-                // Direct memory update for Finance
-                if (payload.eventType === 'INSERT') {
-                    currentFinanceData = [...currentFinanceData, payload.new];
-                } else if (payload.eventType === 'UPDATE') {
-                    currentFinanceData = currentFinanceData.map(d => String(d.id) === String(payload.new.id) ? payload.new : d);
-                } else if (payload.eventType === 'DELETE') {
-                    currentFinanceData = currentFinanceData.filter(d => String(d.id) !== String(payload.old.id));
-                }
-                setFinance(currentFinanceData);
+                // Direct memory update for Finance, on the current list (a version refetch may have replaced it).
+                setFinance(prev => {
+                    if (payload.eventType === 'INSERT') return [...prev, payload.new];
+                    if (payload.eventType === 'UPDATE') return prev.map(d => String(d.id) === String((payload.new as any).id) ? payload.new : d);
+                    if (payload.eventType === 'DELETE') return prev.filter(d => String(d.id) !== String((payload.old as any).id));
+                    return prev;
+                });
             })
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
@@ -222,6 +219,26 @@ export const DataSyncProvider: React.FC = () => {
 
         return () => clearTimeout(timer);
     }, [db, inventoryVersion]);
+
+    // 5b. Finance refetch. finance is not in the supabase_realtime publication, so a payment write here never
+    // comes back as an event: every write bumps paymentsVersion and the list is refetched (debounced, like 5).
+    // Returning to the tab refetches too, which picks up changes made on other devices.
+    useEffect(() => {
+        if (paymentsVersion === 0) return; // the mount fetch above covers the first load
+        const timer = setTimeout(() => {
+            fetchAllFinance().then(rows => { if (rows) setFinance(rows); }).catch(err => console.error('[DataSync] Finance refetch failed:', err));
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [paymentsVersion, setFinance]);
+
+    useEffect(() => {
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return;
+            fetchAllFinance().then(rows => { if (rows) setFinance(rows); }).catch(() => { });
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [setFinance]);
 
     // 6. Colibrì Realtime Bridge Initialization
     // Engages G7 host mode if loopback is reachable or client wss:// relay listener

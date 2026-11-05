@@ -4,11 +4,11 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import toast from '../onyxIsland/notify/toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom, paymentCategoryFilterAtom, paymentVendorFilterAtom, paymentStatusFilterAtom, financeTotalsAtom, visibleWorkbooksAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom, paymentCategoryFilterAtom, paymentVendorFilterAtom, paymentStatusFilterAtom, financeTotalsAtom, visibleWorkbooksAtom, inventoryStatusSetsAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase, useNotify } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatWeightMetricOnly, toTitleCase } from '../../lib/utils';
+import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatWeightMetricOnly, toTitleCase, getStatusClass } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { rowWorkbook } from '../../lib/seasons';
 import { 
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact, WireframeIcon } from '../inventory/InventoryArtifact';
-import { ItemTag } from '../../components/ui/ItemTag';
+import { PackedCrateBadge } from '../inventory/PackedCrateBadge';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { tr } from '../../lib/i18n';
 
@@ -1157,12 +1157,17 @@ const EditPaymentModal: React.FC<{
 };
 
 
+// An item's payment state (getStatusClass), in the Inventory row's colours and words.
+const PAY_COLOR = { GREEN: '#22c55e', YELLOW: '#eab308', RED: '#ef4444', BLUE: '#38bdf8', PURPLE: '#a855f7' } as const;
+const PAY_LABEL = { GREEN: 'Paid', YELLOW: 'Requested', RED: 'Partial', BLUE: 'New', PURPLE: 'New' } as const;
+
 export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, exchangeRate, onRefresh }) => {
     const db = useDatabase();
     const user = useAtomValue(userAtom);
     // Use inventoryAtom as a read-only live feed from DataSyncProvider (reactive via Supabase realtime)
     const inventory = useAtomValue(inventoryAtom);
     const logisticsData = useAtomValue(logisticsDataAtom);
+    const { partialPayIds, fullPayIds, requestedAcqIds } = useAtomValue(inventoryStatusSetsAtom);
     const isLoading = useAtomValue(isSyncingAtom);
     const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [paymentsVersion, setPaymentsVersion] = useAtom(paymentsVersionAtom);
@@ -1305,28 +1310,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             .catch(() => { });
     }, [liveExchangeRate, setLiveExchangeRate]);
 
-    // Auto-refresh payments list when finance or inventory data changes in the local RxDB.
-    // This fires after any save (AddPayment, EditPayment, inventory update) without requiring a manual reload.
-    useEffect(() => {
-        if (!db) return;
-        let timer: ReturnType<typeof setTimeout>;
-        const triggerRefresh = () => {
-            clearTimeout(timer);
-            timer = setTimeout(() => {
-                setPaymentsVersion(v => v + 1);
-                onRefresh();
-            }, 300);
-        };
-
-        const finSub = db.finance.find().$.subscribe(triggerRefresh);
-        const invSub = db.inventory.find().$.subscribe(triggerRefresh);
-
-        return () => {
-            clearTimeout(timer);
-            finSub.unsubscribe();
-            invSub.unsubscribe();
-        };
-    }, [db, onRefresh, setPaymentsVersion]);
+    // Payment writes bump paymentsVersion; DataSyncProvider refetches finance on it (finance has no realtime).
 
     const vendorTotals = useMemo(() => {
         const totals: Record<string, number> = {};
@@ -1674,7 +1658,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                             return (
                                     <div key={r.id} 
-                                        className={`group relative flex flex-col p-3 bg-(--text-color)/5 border-b border-(--text-color)/5 transition-all hover:bg-(--text-color)/7 ${isExpanded ? 'bg-(--text-color)/8 my-3 rounded-xl border z-10' : ''}`}
+                                        className={`fin-glass group relative flex flex-col p-3 border-b border-(--text-color)/5 transition-all ${isExpanded ? 'my-3 rounded-xl border z-10' : ''}`}
                                         style={{ 
                                             borderColor: isExpanded ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)',
                                             borderLeftWidth: isExpanded ? '1px' : '4px',
@@ -1858,19 +1842,18 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                         });
                                                         
                                                         return (
-                                                            <div className="ui-root flex flex-col rounded-xl border border-(--text-color)/8 overflow-hidden">
+                                                            <div className="flex flex-col gap-1">
                                                                 {Object.values(grouped).map(({ id, invItem, logCrate, groupCount }) => {
                                                                     if (!invItem && !logCrate) return (
-                                                                        <div key={id} className="flex items-center h-9 px-3 border-t border-(--text-color)/5 first:border-t-0 opacity-30">
+                                                                        <div key={id} className="flex items-center h-9 px-3 rounded-xl opacity-30">
                                                                             <span className="text-[10px] font-mono uppercase truncate">{id}</span>
                                                                         </div>
                                                                     );
 
                                                                     const data = invItem?.data;
                                                                     const norm = invItem ? normalizeInventoryData(data) : null;
-                                                                    const book = rowWorkbook(data).slice(1);
                                                                     // Book codes at the 17 book rate and the item's own season, as Inventory shows them.
-                                                                    const codes = norm ? calculateCodesAndPrices(norm, exchangeRate, book) : null;
+                                                                    const codes = norm ? calculateCodesAndPrices(norm, exchangeRate, rowWorkbook(data).slice(1)) : null;
                                                                     const priceNum = parseFloat(String(data?.price_mxn || data?.price || logCrate?.cost_mxn || '0')) || 0;
                                                                     const packedItems = logCrate?.inventory_ids ? logCrate.inventory_ids.split(',').filter(Boolean).length : 0;
                                                                     const unitQty = (parseInt(String(norm?.quantity), 10) || 0) || (logCrate ? (packedItems || 1) : 1);
@@ -1878,16 +1861,21 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                     const lineQty = logCrate ? groupCount : totalQty;
                                                                     const totalLine = priceNum * lineQty;
 
+                                                                    // The item's own payment state, the same colours as its Inventory row.
+                                                                    const pay = norm ? getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds) : (r.status === 'Paid' ? 'GREEN' : 'YELLOW');
+                                                                    const accent = PAY_COLOR[pay as keyof typeof PAY_COLOR] || 'transparent';
+                                                                    const payLabel = PAY_LABEL[pay as keyof typeof PAY_LABEL] || tr("New");
+
                                                                     // The Inventory row title: quantity, type, colour material, metric size and weight, one deterministic line.
                                                                     const uniq = (parts: any[]) => toTitleCase(Array.from(new Set(parts.filter(Boolean).join(' ').split(/\s+/).filter(Boolean).map((w: string) => w.toLowerCase()))).join(' '));
-                                                                    const dims = norm ? formatDimensionsMetricOnly(norm.widthCm, norm.heightCm, norm.lengthCm).replace(/x/g, '×') : `${logCrate.width_cm}×${logCrate.length_cm}×${logCrate.height_cm} cm`;
+                                                                    const dims = norm ? formatDimensionsMetricOnly(norm.widthCm, norm.heightCm, norm.lengthCm).replace(/x/g, '×') : `${logCrate.width_cm}×${logCrate.length_cm}×${logCrate.height_cm}cm`;
                                                                     const weight = norm ? formatWeightMetricOnly(norm.weightKg) : '';
                                                                     const titleRuns: { t: string; b: boolean }[] = norm ? [
                                                                         { t: String(totalQty), b: true },
                                                                         { t: ' ' + (uniq([norm.shape, norm.shortDescription]) || tr("Object")), b: true },
                                                                         ...((norm.color || norm.material) ? [{ t: ' ' + uniq([norm.color, norm.material]), b: false }] : []),
                                                                         ...(dims ? [{ t: ' ' + dims, b: true }] : []),
-                                                                        ...(weight ? [{ t: ' ' + weight, b: false }] : []),
+                                                                        ...(weight ? [{ t: ' ' + weight, b: true }] : []),
                                                                     ] : [
                                                                         { t: String(groupCount), b: true },
                                                                         { t: ' ' + (logCrate.type === 'pallet' ? tr("Pallet") : tr("Crate")), b: true },
@@ -1896,36 +1884,72 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                     ];
                                                                     const titleText = titleRuns.map(t => t.t).join('');
 
+                                                                    const vColor = (vendors as any)[String(norm?.itemId || '').split('-')[0]]?.color || '#ccc';
+                                                                    const tagDisplay = codes?.bookBarcodeDisplay && codes.bookBarcodeDisplay !== '-' ? codes.bookBarcodeDisplay : '';
+                                                                    const crate = norm?.crateId ? logisticsData.find((c: any) => c.id === norm.crateId) : null;
+                                                                    const deployed = !!norm && norm.packingStatus === 'Packed' && (!crate || crate.status === 'Deployed');
+
                                                                     return (
-                                                                        <div key={id} className="grid grid-cols-[40px_auto_minmax(0,1fr)_auto] sm:grid-cols-[40px_auto_minmax(0,1fr)_auto_auto] items-center gap-x-3 px-3 py-1.5 border-t border-(--text-color)/5 first:border-t-0 hover:bg-(--text-color)/4 transition-colors">
-                                                                            {/* AXO — the piece's silhouette, textured from its own hex colour map. */}
-                                                                            <div className="w-10 h-10 flex items-center justify-center shrink-0 [&_img]:max-w-full [&_img]:max-h-full" aria-hidden="true">
-                                                                                {norm
-                                                                                    ? <WireframeIcon item={norm} />
-                                                                                    : <WireframeCrate w={logCrate.width_cm} l={logCrate.length_cm} h={logCrate.height_cm} type={logCrate.type} vibrant size={32} />}
+                                                                        <div key={id} className="fin-glass relative grid grid-cols-[8px_44px_auto_minmax(0,1fr)_auto] lg:grid-cols-[8px_44px_auto_minmax(0,1fr)_auto_auto_minmax(90px,auto)] items-center gap-x-3 pl-3 pr-4 py-1.5 rounded-xl border overflow-hidden"
+                                                                            style={{ borderColor: pay ? `color-mix(in srgb, ${accent} 30%, var(--border-color))` : 'var(--border-color)' }}>
+                                                                            {/* EDGE — the payment colour down the row. */}
+                                                                            <span className="absolute left-0 inset-y-0 w-[3px]" style={{ backgroundColor: accent, opacity: 0.7 }} aria-hidden="true" />
+
+                                                                            {/* RAIL — payment state, and a teal dot once the piece is on a truck. */}
+                                                                            <div className="flex flex-col items-center gap-1" role="img" aria-label={payLabel}>
+                                                                                <span title={payLabel} className="w-2 h-2 rounded-full" style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}` }} />
+                                                                                {deployed && <span title={tr("Deployed")} className="w-2 h-2 rounded-full bg-teal-400" style={{ boxShadow: '0 0 8px rgba(45,212,191,0.4)' }} />}
                                                                             </div>
 
-                                                                            {/* TAG */}
+                                                                            {/* AXO — the piece's silhouette, textured from its own hex colour map. */}
+                                                                            <div className="w-11 h-11 flex items-center justify-center [&_img]:max-w-full [&_img]:max-h-full" aria-hidden="true">
+                                                                                {norm
+                                                                                    ? <WireframeIcon item={norm} />
+                                                                                    : <WireframeCrate w={logCrate.width_cm} l={logCrate.length_cm} h={logCrate.height_cm} type={logCrate.type} vibrant size={34} />}
+                                                                            </div>
+
+                                                                            {/* TAG — the Inventory vendor key: vendor + book on the vendor colour, then number and code. */}
                                                                             <div className="flex items-center">
-                                                                                {invItem
-                                                                                    ? <ItemTag item={data} exchangeRate={exchangeRate} workbook={book} />
-                                                                                    : <span className="text-[10px] font-mono uppercase text-(--text-color-secondary) truncate max-w-[90px]" title={id}>{String(id).slice(0, 8)}</span>}
+                                                                                {tagDisplay ? (
+                                                                                    <button type="button" title={codes!.bookBarcode}
+                                                                                        onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(codes!.bookBarcode); toast.success(`${tr("Tag ID Copied")}: ${codes!.bookBarcode}`); }}
+                                                                                        className="inline-flex items-stretch min-h-[24px] rounded overflow-hidden text-[13px] leading-none font-black uppercase tracking-tight shadow-sm hover:scale-105 active:scale-95 transition-transform">
+                                                                                        <span className="flex items-center px-1.5 text-black" style={{ backgroundColor: vColor }}>{tagDisplay.slice(0, 5)}</span>
+                                                                                        <span className="flex items-center px-1.5 text-(--text-color) border border-white/10 border-l-0 rounded-r">{tagDisplay.slice(5).trim()}</span>
+                                                                                    </button>
+                                                                                ) : (
+                                                                                    <span className="text-[10px] font-mono uppercase text-(--text-color-secondary) truncate max-w-[90px]" title={id}>{String(id).slice(0, 8)}</span>
+                                                                                )}
                                                                             </div>
 
                                                                             {/* TITLE */}
-                                                                            <div className="min-w-0 text-[12px] leading-snug text-(--text-color)/80" title={titleText}>
-                                                                                {titleRuns.map((t, i) => t.b ? <b key={i} className="font-semibold text-(--text-color)">{t.t}</b> : <span key={i}>{t.t}</span>)}
+                                                                            <div className="min-w-0" title={titleText}>
+                                                                                <span className="inv-title block">
+                                                                                    {titleRuns.map((t, i) => t.b ? <b key={i}>{t.t}</b> : <span key={i}>{t.t}</span>)}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            {/* TOTAL — line total over unit price */}
+                                                                            <div className="flex flex-col items-end tabular-nums leading-tight">
+                                                                                <small className="text-[9px] font-black uppercase tracking-[0.12em] text-(--text-color)/45">{tr("Total MXN")}</small>
+                                                                                <b className="text-[14px] font-black text-(--text-color)">{fmtMXN(totalLine)}</b>
+                                                                                {lineQty > 1 && <span className="text-[10px] text-(--text-color-secondary)">{lineQty} × {fmtMXN(priceNum)}</span>}
                                                                             </div>
 
                                                                             {/* CODES */}
-                                                                            <div className="hidden sm:flex items-center gap-2 font-mono text-[11px] tabular-nums text-(--text-color-secondary)">
-                                                                                {codes && <><span title={tr("AQ Code")}>{codes.bookAqCode || '—'}</span><span className="text-(--main-color)" title={tr("LD Code")}>{codes.bookLandCode || '—'}</span></>}
+                                                                            <div className="hidden lg:flex items-center gap-3 font-mono text-[13px] font-black tabular-nums">
+                                                                                {codes && <><span className="text-(--text-color)/75" title={tr("AQ Code")}>{codes.bookAqCode || '—'}</span><span className="text-yellow-500/90" title={tr("LD Code")}>{codes.bookLandCode || '—'}</span></>}
                                                                             </div>
 
-                                                                            {/* MONEY — line total over unit price */}
-                                                                            <div className="flex flex-col items-end tabular-nums leading-tight">
-                                                                                <span className="text-[12px] font-semibold text-(--text-color)">{fmtMXN(totalLine)}</span>
-                                                                                {lineQty > 1 && <span className="text-[10px] text-(--text-color-secondary)">{lineQty} × {fmtMXN(priceNum)}</span>}
+                                                                            {/* STATE — the crate when packed, a truck mark when deployed */}
+                                                                            <div className="hidden lg:flex items-center justify-end min-w-0">
+                                                                                {norm && norm.packingStatus === 'Packed' ? (
+                                                                                    <PackedCrateBadge crateId={norm.crateId || ''} itemId={norm.itemId || norm.tag_id || ''} logisticsDocs={logisticsData} allInventory={inventory} isCompact />
+                                                                                ) : logCrate ? (
+                                                                                    <span className={`text-[10px] font-black uppercase tracking-[0.15em] leading-none ${logCrate.status === 'Deployed' ? 'text-teal-400' : 'text-(--text-color)/30'}`}>{logCrate.status === 'Deployed' ? tr("DEPLOYED") : tr("IN WAREHOUSE")}</span>
+                                                                                ) : (
+                                                                                    <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-[0.15em] leading-none">{tr("UNPACKED")}</span>
+                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                     );

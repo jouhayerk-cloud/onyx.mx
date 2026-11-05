@@ -1967,3 +1967,20 @@ html.performance-mode-active.style-slab .inv-scope .inv-grid.inv-row:is(*, :hove
     -webkit-backdrop-filter: blur(18px) saturate(1.4) !important;
     backdrop-filter: blur(18px) saturate(1.4) !important;
 }
+
+/* ── Finance: payment cards and their item rows ───────────────────────────
+   The Inventory row's glass: light at rest, the denser slab glass with sheen
+   and blur on hover. Fallbacks for themes without the slab tokens. */
+.fin-glass {
+    background-color: var(--slab-glass-row, color-mix(in srgb, var(--text-color) 4%, transparent));
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.fin-glass:hover {
+    background-color: var(--slab-glass-row-hover, color-mix(in srgb, var(--text-color) 10%, transparent));
+    background-image: var(--lq-sheen, none);
+    -webkit-backdrop-filter: blur(32px) saturate(1.5);
+    backdrop-filter: blur(32px) saturate(1.5);
+}
+@media (prefers-reduced-transparency: reduce) {
+    .fin-glass:hover { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
