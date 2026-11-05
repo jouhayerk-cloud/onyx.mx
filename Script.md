@@ -11,6 +11,7 @@ This script serves as the bridge between the React frontend and Google Drive. It
  */
 
 const UPLOAD_FOLDER_ID = '1tr9_cgbNUVs5lwLJYOYaHiDa-CLLUIek';
+const SHOWROOM_FOLDER_ID = '1tr9_cgbNUVs5lwLJYOYaHiDa-CLLUIek'; // Dedicated Showroom Folder ID (separated from inventory)
 
 function doPost(e) {
   try {
@@ -24,6 +25,10 @@ function doPost(e) {
         return jsonResponse(handleGetImageBase64(data.fileId));
       case 'batchGetImageBase64FromDriveIds':
         return jsonResponse(handleBatchGetImageBase64(data.fileIds));
+      case 'extractDocImages':
+        return jsonResponse(handleExtractDocImages(data.docId));
+      case 'fetchIcloudAlbum':
+        return jsonResponse(handleFetchIcloudAlbum(data.token));
       default:
         return jsonResponse({ status: 'error', message: 'Unknown action: ' + action });
     }
@@ -38,7 +43,8 @@ function doPost(e) {
  */
 function handleUploadMedia(data) {
   try {
-    const folder = DriveApp.getFolderById(UPLOAD_FOLDER_ID);
+    const targetFolderId = (data.folderType === 'showroom') ? SHOWROOM_FOLDER_ID : UPLOAD_FOLDER_ID;
+    const folder = DriveApp.getFolderById(targetFolderId);
     const bytes = Utilities.base64Decode(data.base64);
     const blob = Utilities.newBlob(bytes, data.mimeType, data.fileName);
     const file = folder.createFile(blob);
@@ -84,6 +90,115 @@ function handleBatchGetImageBase64(fileIds) {
     catch(e) { res[id] = { error: e.toString() }; }
   });
   return { status: 'success', data: res };
+}
+
+/**
+ * Extracts inline images from a Google Doc by ID.
+ * Returns array of base64 images with index and content type.
+ */
+function handleExtractDocImages(docId) {
+  try {
+    const doc = DocumentApp.openById(docId);
+    const body = doc.getBody();
+    const images = body.getImages();
+    const results = [];
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      const blob = img.getBlob();
+      results.push({
+        index: i + 1,
+        name: 'image_' + (i + 1) + '.jpg',
+        mimeType: blob.getContentType(),
+        base64: Utilities.base64Encode(blob.getBytes()),
+        width: img.getWidth(),
+        height: img.getHeight()
+      });
+    }
+    return { status: 'success', count: results.length, docTitle: doc.getName(), images: results };
+  } catch (err) {
+    return { status: 'error', message: 'Extract Doc Images error: ' + err.toString() };
+  }
+}
+
+/**
+ * Resolves Apple iCloud Shared Album photos by token.
+ * Returns array of direct high-res CDN photo URLs.
+ */
+function handleFetchIcloudAlbum(token) {
+  try {
+    const cleanToken = token.replace(/.*#/, '').trim();
+    const payload = JSON.stringify({ streamCtag: null });
+    
+    // 1. Initial lookup to discover partition host
+    const res1 = UrlFetchApp.fetch('https://sharedstreams.icloud.com/' + cleanToken + '/sharedstreams/webstream', {
+      method: 'post',
+      contentType: 'text/plain',
+      payload: payload,
+      muteHttpExceptions: true
+    });
+    
+    let host = 'sharedstreams.icloud.com';
+    const redirectHost = res1.getHeaders()['X-Apple-MMe-Host'];
+    if (redirectHost) {
+      host = redirectHost;
+    }
+    
+    // 2. Fetch stream metadata from partition host
+    const res2 = UrlFetchApp.fetch('https://' + host + '/' + cleanToken + '/sharedstreams/webstream', {
+      method: 'post',
+      contentType: 'text/plain',
+      payload: payload,
+      muteHttpExceptions: true
+    });
+    
+    const streamData = JSON.parse(res2.getContentText());
+    const photos = streamData.photos || [];
+    const guids = photos.map(function(p) { return p.photoGuid; });
+    
+    // 3. Batch fetch direct Akamai CDN asset URLs (up to 100)
+    const assetPayload = JSON.stringify({ photoGuids: guids.slice(0, 100) });
+    const res3 = UrlFetchApp.fetch('https://' + host + '/' + cleanToken + '/sharedstreams/webasseturls', {
+      method: 'post',
+      contentType: 'text/plain',
+      payload: assetPayload,
+      muteHttpExceptions: true
+    });
+    
+    const assetData = JSON.parse(res3.getContentText());
+    const items = assetData.items || {};
+    const locations = assetData.locations || {};
+    
+    const results = [];
+    for (let i = 0; i < photos.length; i++) {
+      const p = photos[i];
+      const derivKeys = Object.keys(p.derivatives || {}).sort(function(a, b) { return parseInt(b) - parseInt(a); });
+      if (!derivKeys.length) continue;
+      
+      const deriv = p.derivatives[derivKeys[0]];
+      const itemInfo = items[deriv.checksum];
+      if (itemInfo && locations[itemInfo.url_location]) {
+        const locHost = locations[itemInfo.url_location].hosts[0];
+        const fullUrl = 'https://' + locHost + itemInfo.url_path;
+        results.push({
+          guid: p.photoGuid,
+          caption: p.caption || '',
+          width: deriv.width,
+          height: deriv.height,
+          url: fullUrl,
+          name: 'IMG_' + (i + 1) + '.jpg'
+        });
+      }
+    }
+    
+    return {
+      status: 'success',
+      albumName: streamData.streamName || 'iCloud Album',
+      totalPhotos: photos.length,
+      photos: results
+    };
+  } catch (err) {
+    return { status: 'error', message: 'iCloud Album error: ' + err.toString() };
+  }
 }
 
 function jsonResponse(obj) { 
