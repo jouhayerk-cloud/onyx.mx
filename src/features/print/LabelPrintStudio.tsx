@@ -33,15 +33,10 @@ import {
 } from '../../lib/utils';
 import { generateAxonometricDataUrl } from '../../lib/axonometric';
 import { exportToXLSX } from '../../lib/xlsxUtils';
-import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 import {
     exportCatalogPdf,
-    prewarmCatalogImages,
-    beginImageSession,
-    endImageSession,
     CatalogArtifact
 } from '../../lib/pdfExport';
-import { isShopifyReady } from '../../lib/aiContent';
 import { tr } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 import { M110Driver, VirtualM110Driver, VirtualDecodedLabel, isWebBluetoothSupported, BarcodeScanlineCheckResult } from '../../utils/PhomemoM110';
@@ -960,130 +955,31 @@ export const LabelPrintStudio: React.FC = () => {
         }
     });
 
-    // Control PDF Export
+    // Control PDF Export: the Catalog Hub ribbon layout without Rare Earth Gallery / Art of Decor branding
     const handleGeneratePDF = async () => {
         setProgress(p => ({ ...p, pdf: 5 }));
         try {
-            const manifestoItems: ManifestoItem[] = selectedItems.map((item, idx) => {
-                const d = item.normData;
-                const c = item.codes;
-                const vendorPrefix = String(d.itemId || c.bookBarcode || '').split('-')[0].toUpperCase();
-                return {
-                    index: idx + 1,
-                    vendorPrefix,
-                    qty: quantities[String(item.row)] ?? (Number(d.quantity) || 1),
-                    itemId: c.bookBarcode || '',
-                    rowId: String(item.row),
-                    name: `${d.shape || ''} ${d.shortDescription || ''}`.trim() || 'Artifact',
-                    material: d.material || '',
-                    color: d.color || '',
-                    dims: [d.lengthCm, d.widthCm, d.heightCm].filter(Boolean).join('×'),
-                    weightKg: parseFloat(d.weightKg) || 0,
-                    costMxn: 0,
-                    costUsd: 0,
-                    imageUrls: collectExportImages(d),
-                    tagColor: '#333',
-                    dbItemCount: Number(d.quantity || 1)
-                };
-            });
-
-            const blob = await exportCrateManifesto(manifestoItems, {
-                dynamicId: name,
-                crateId: `LBL-${Date.now()}`,
-                crateDims: 'N/A',
-                crateType: 'Labels Batch',
-                fillPct: 100,
-                exportedAt: new Date().toLocaleString(),
-                customTitle: 'CONTROL PAGE MANIFESTO',
-                excludeImages: false,
-                excludeHeader: true,
-                sortByTagDesc: true
-            }, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob');
-
-            if (blob instanceof Blob) {
-                setUrlSlot('pdf', URL.createObjectURL(blob));
-                setProgress(p => ({ ...p, pdf: 100 }));
-                toast.success(tr("Control Page generated"));
-            } else {
-                throw new Error('PDF generation failed');
-            }
-        } catch (e: any) {
-            console.error(e);
-            setProgress(p => ({ ...p, pdf: -1 }));
-            toast.error(tr("Control Page failed"));
-        }
-    };
-
-    // Catalog PDF Export
-    const handleGenerateCatalog = async () => {
-        const startedAt = Date.now();
-        setCatalogStatus({ label: tr("Preparing Catalog..."), error: null, startedAt, updatedAt: startedAt, bytes: 0, imagesTotal: 0, imagesFailed: 0 });
-        setProgress(p => ({ ...p, catalog: 5 }));
-        try {
-            const ready = selectedItems.filter(i => isShopifyReady(i.normData));
-            const notReady = selectedItems.filter(i => !isShopifyReady(i.normData));
-
-            const jobs = [
-                { key: 'catalogReady' as const, suffix: 'Shopify', label: tr("Shopify"), items: ready },
-                { key: 'catalogNotReady' as const, suffix: 'Isometric', label: tr("Isometric"), items: notReady },
-            ].filter(j => j.items.length > 0);
-
-            if (jobs.length === 0) throw new Error(tr("No items selected"));
-
-            const span = 95 / jobs.length;
-            let base = 5;
-            let totalBytes = 0;
-            let imgTotal = 0;
-            let imgFailed = 0;
-
-            const jobResults: CatalogArtifact[][] = jobs.map(job => job.items.map(item => ({
+            const results: CatalogArtifact[] = selectedItems.map(item => ({
                 data: item.data,
                 codes: item.codes,
                 images: collectExportImages(item.normData),
                 exportType: 'catalog' as const,
-            })));
+            }));
+            const blob = await exportCatalogPdf(results, {
+                title: `${name} — ${tr("Control Page")}`,
+                method: 'compact',
+                exportType: 'catalog',
+                noBranding: true
+            }, pct => setProgress(p => ({ ...p, pdf: Math.min(99, Math.max(5, Math.round(pct))) })), 'blob');
 
-            beginImageSession();
-            for (let ji = 0; ji < jobs.length; ji++) {
-                const job = jobs[ji];
-                const results = jobResults[ji];
-                const jobBase = base;
-
-                const blob = await exportCatalogPdf(results, {
-                    title: `${name} — ${job.label}`,
-                    method: 'grid',
-                    logo: logoVariant,
-                    exportType: 'catalog'
-                }, (pct, stage) => {
-                    setProgress(p => ({ ...p, catalog: Math.min(99, Math.round(jobBase + (pct / 100) * span)) }));
-                    setCatalogStatus(s => ({
-                        ...s,
-                        label: `${job.label} (${job.items.length}) — ${stage || s.label}`,
-                        updatedAt: Date.now(),
-                    }));
-                }, 'blob', (stats) => {
-                    imgTotal += stats.imagesTotal;
-                    imgFailed += stats.imagesFailed;
-                    setCatalogStatus(s => ({ ...s, imagesTotal: imgTotal, imagesFailed: imgFailed }));
-                    const nextResults = jobResults[ji + 1];
-                    if (nextResults) void prewarmCatalogImages(nextResults, { method: 'grid', exportType: 'catalog' });
-                });
-
-                if (!(blob instanceof Blob)) throw new Error(`${job.label}: catalogue generation failed`);
-
-                totalBytes += blob.size;
-                setUrlSlot(job.key as 'catalogReady' | 'catalogNotReady', URL.createObjectURL(blob));
-                base += span;
-            }
-
-            setProgress(p => ({ ...p, catalog: 100 }));
-            toast.success(tr("Catalog generated successfully"));
+            if (!(blob instanceof Blob)) throw new Error('PDF generation failed');
+            setUrlSlot('pdf', URL.createObjectURL(blob));
+            setProgress(p => ({ ...p, pdf: 100 }));
+            toast.success(tr("Control Page generated"));
         } catch (e: any) {
             console.error(e);
-            setProgress(p => ({ ...p, catalog: -1 }));
-            toast.error(tr("Catalog generation failed"));
-        } finally {
-            endImageSession();
+            setProgress(p => ({ ...p, pdf: -1 }));
+            toast.error(`${tr("Control Page failed")}: ${e?.message || e}`);
         }
     };
 
@@ -1447,11 +1343,6 @@ export const LabelPrintStudio: React.FC = () => {
 
     if (!isOpen && !isPrintCenterOpen) return null;
 
-    const catalogDocs: PdfDocumentSource[] = [
-        urls.catalogReady ? { key: 'catalogReady', label: tr("SHOPIFY"), filename: `Catalog_${name}_Shopify.pdf`, url: urls.catalogReady } : null,
-        urls.catalogNotReady ? { key: 'catalogNotReady', label: tr("ISOMETRIC"), filename: `Catalog_${name}_Isometric.pdf`, url: urls.catalogNotReady } : null,
-    ].filter(Boolean) as PdfDocumentSource[];
-
     const controlDocs: PdfDocumentSource[] = urls.pdf ? [{
         key: 'pdf', label: tr("CONTROL PAGE"), filename: `ControlPage_${name}.pdf`, url: urls.pdf
     }] : [];
@@ -1462,8 +1353,8 @@ export const LabelPrintStudio: React.FC = () => {
             <PdfPreview
                 isOpen={previewTarget !== null}
                 onClose={() => setPreviewTarget(null)}
-                docs={previewTarget === 'catalog' ? catalogDocs : controlDocs}
-                title={previewTarget === 'catalog' ? `${tr("CATALOG")} — ${name}` : `${tr("CONTROL PAGE")} — ${name}`}
+                docs={controlDocs}
+                title={`${tr("CONTROL PAGE")} — ${name}`}
             />
 
             {/* Overlay Container */}
@@ -1971,7 +1862,7 @@ export const LabelPrintStudio: React.FC = () => {
                                         </button>
                                         <div className="lps-collapsible-content">
                                             {/* 5. Secondary Exports */}
-                                            <div className="grid grid-cols-2 gap-2">
+                                            <div className="grid grid-cols-1 gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={handleGeneratePDF}
@@ -1981,15 +1872,6 @@ export const LabelPrintStudio: React.FC = () => {
                                                     <FileText size={13} />
                                                     <span>Control PDF</span>
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleGenerateCatalog}
-                                                    disabled={progress.catalog > 0 && progress.catalog < 100}
-                                                    className="lps-export-btn liquid-control lps-tone-blue cursor-pointer flex items-center justify-center gap-1.5"
-                                                >
-                                                    <BookOpen size={13} />
-                                                    <span>Catalog PDF</span>
-                                                </button>
                                             </div>
                                             {progress.pdf === 100 && urls.pdf && (
                                                 <button
@@ -1998,15 +1880,6 @@ export const LabelPrintStudio: React.FC = () => {
                                                     className="w-full lps-export-btn liquid-control lps-tone-red cursor-pointer flex items-center justify-center gap-1.5"
                                                 >
                                                     <Eye size={12} /> Review Control PDF
-                                                </button>
-                                            )}
-                                            {progress.catalog === 100 && (urls.catalogReady || urls.catalogNotReady) && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPreviewTarget('catalog')}
-                                                    className="w-full lps-export-btn liquid-control lps-tone-blue cursor-pointer flex items-center justify-center gap-1.5"
-                                                >
-                                                    <Eye size={12} /> Review Catalog PDF
                                                 </button>
                                             )}
                                         </div>

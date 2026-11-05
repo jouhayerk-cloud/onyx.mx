@@ -4004,7 +4004,7 @@ function catalogSortKey(item: CatalogArtifact): { vendor: string; book: number; 
 
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
-    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor'; logo?: string; exportType?: 'regular' | 'catalog'; includeSummary?: boolean },
+    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor'; logo?: string; exportType?: 'regular' | 'catalog'; includeSummary?: boolean; noBranding?: boolean },
     onProgress?: (p: number, s: string) => void,
     output: 'download' | 'blob' = 'download',
     onStats?: (stats: CatalogExportStats) => void,
@@ -4085,6 +4085,8 @@ export async function exportCatalogPdf(
         loadLogoData(RARE_EARTH_LOGO),
         loadLogoData(ONYX_MX_LOGO)
     ]);
+    // Control pages (Label Print Studio): no Rare Earth Gallery or Art of Decor logos anywhere
+    if (config.noBranding) artOfDecorLogo = rareEarthLogo = null;
     let logoData = artOfDecorLogo;
     
     let globalPageNum = 0;
