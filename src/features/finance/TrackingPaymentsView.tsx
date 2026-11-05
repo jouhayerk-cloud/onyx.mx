@@ -1618,7 +1618,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
 
 
-                <div className="pt-0 p-2 space-y-1 pb-32">
+                <div className="pt-0 p-2 space-y-1 pb-32 md:pt-[max(0px,calc(100px_-_var(--submenu-h,0px)))] lg:pt-[max(0px,calc(120px_-_var(--submenu-h,0px)))]">
                     {filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-20">
                             <Info size={40} className="mb-4" />
@@ -2013,7 +2013,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
             {/* ── NEW REQUEST TRIGGER (Glassmorphic Bar) ── */}
                 {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                    <div className="sticky bottom-0 left-0 right-0 z-50">
+                    <div className="fixed left-[var(--sidebar-width,0px)] right-0 bottom-[calc(env(safe-area-inset-bottom,0px)+84px)] md:bottom-0 z-50">
                         <button 
                             onClick={() => setShowAdd(true)}
                             className="w-full flex items-center justify-center gap-4 py-8 bg-black/40 backdrop-blur-3xl border-t border-white/10 text-(--main-color) hover:bg-(--main-color)/10 hover:text-white active:bg-(--main-color)/20 transition-all group shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
