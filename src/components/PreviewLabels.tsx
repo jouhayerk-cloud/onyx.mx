@@ -330,7 +330,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                             logoVariant={logoVariant}
                                             axoSvg={axoSvg}
                                             className="w-full h-full border-none shadow-none"
-                                            dataUrl={effectiveRasters[tag]}
+                                            dataUrl={effectiveRasters[`${tag}#${instance.index}`] || effectiveRasters[tag]}
                                         />
                                     </div>
 
@@ -452,7 +452,7 @@ export const PreviewLabels: React.FC<PreviewLabelsProps> = ({
                                     logoVariant={logoVariant}
                                     axoSvg={axoCache[inspectedTag]}
                                     scale={integerScale}
-                                    dataUrl={effectiveRasters[inspectedTag]}
+                                    dataUrl={effectiveRasters[`${inspectedTag}#${inspectedInstance.index}`] || effectiveRasters[inspectedTag]}
                                     className="rounded shadow-lg"
                                 />
 

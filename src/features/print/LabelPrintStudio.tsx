@@ -2221,7 +2221,7 @@ export const LabelPrintStudio: React.FC = () => {
                                                     logoVariant={logoVariant}
                                                     axoSvg={axoCache[currentActiveInstance.item.codes?.bookBarcode || '']}
                                                     is1Bit={true}
-                                                    dataUrl={designerRasters[currentActiveInstance.item.codes?.bookBarcode || '']}
+                                                    dataUrl={designerRasters[`${currentActiveInstance.item.codes?.bookBarcode || ''}#${currentActiveInstance.index}`] || designerRasters[currentActiveInstance.item.codes?.bookBarcode || '']}
                                                 />
                                             </div>
                                         )}
