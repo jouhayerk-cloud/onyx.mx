@@ -3722,6 +3722,80 @@ async function drawRibbonPage(
     doc.setLineDashPattern([], 0);
 }
 
+/**
+ * Control ribbon (Label Print Studio, 2026-11-05): the ribbon strip without branding, cutouts, QR or vertical band.
+ *   left   the axo, upright
+ *   middle the stone colour band along the top, the title (3 lines max) and the colours
+ *   right  a horizontal barcode with the tag code under it, centred in its column
+ */
+async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIndex: number, perPage: number, PW: number, PH: number) {
+    const S1 = 1.5, S2 = 3.0;
+    const TITLE_PT = 12, DETAIL_PT = 9.5, TAG_PT = 11;
+    const PT = 0.3528, CAP = 0.72, DESC = 0.21;
+    const SAFE = 6;
+    const X0 = SAFE, Y0 = SAFE, W = PW - 2 * SAFE, H = PH - 2 * SAFE;
+    const rowH = H / perPage;
+    const PAD = 2.5;
+    const axoW = Math.min(rowH, W * 0.2);
+    const codeW = 64;
+    const divX = X0 + W - codeW;
+
+    const pageItems = items.slice(startIndex, startIndex + perPage);
+    for (let i = 0; i < pageItems.length; i++) {
+        const item = pageItems[i];
+        const top = Y0 + i * rowH, bottom = top + rowH;
+        const itemDataObj = item.data || item;
+        const norm = normalizeInventoryData(itemDataObj);
+        const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
+        const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
+
+        // Left: upright axo
+        try {
+            const axo = await getAdvancedAxoDataUrl(norm, itemDataObj);
+            if (axo) drawAxoContain(doc, axo, X0, top, axoW, rowH, 0.98);
+        } catch (e) {}
+
+        // Right: horizontal barcode + tag code, centred in the code column
+        const barW = codeW - 2 * S2, barH = Math.min(16, rowH * 0.42);
+        const tagCap = TAG_PT * PT * CAP;
+        const blockH = barH + S1 + tagCap;
+        const barY = top + (rowH - blockH) / 2;
+        try {
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 40, lineColor: '#141414' });
+            doc.addImage(canvas.toDataURL('image/png'), 'PNG', divX + S2, barY, barW, barH);
+        } catch (e) {}
+        drawFormattedTagCode(doc, codes, divX + S2, barY + barH + S1 + tagCap, TAG_PT, false, itemDataObj, barW, TAG_PT);
+        doc.setDrawColor(148, 163, 184);
+        doc.setLineWidth(0.2);
+        doc.setLineDashPattern([0.6, 1.2], 0);
+        doc.line(divX, top, divX, bottom);
+        doc.setLineDashPattern([], 0);
+
+        // Middle: band to the divider, title, colours
+        const textX = X0 + axoW + PAD + 1.5;
+        const textW = divX - S2 - textX;
+        drawStoneBand(doc, norm, itemDataObj, X0 + axoW, top, divX - X0 - axoW, S2, 'horizontal');
+        const capH = TITLE_PT * PT * CAP, descH = TITLE_PT * PT * DESC;
+        const lineH = capH + descH + S1;
+        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), textW, TITLE_PT).slice(0, 3);
+        const firstBaseline = top + S2 + S2 + capH;
+        drawMeasuredTitle(doc, titleLines, textX, firstBaseline, lineH, TITLE_PT);
+        const colors = getItemExtractedColors(norm, itemDataObj);
+        if (colors.length) {
+            const base = firstBaseline + (titleLines.length - 1) * lineH + descH + S2 + DETAIL_PT * PT * CAP * 1.25;
+            drawCompactColorBubbles(doc, colors.slice(0, 4), textX, Math.min(base, bottom - PAD), textW, DETAIL_PT);
+        }
+    }
+
+    // Dotted cut guides
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.2);
+    doc.setLineDashPattern([0.6, 1.2], 0);
+    doc.rect(X0, Y0, W, pageItems.length * rowH, 'S');
+    for (let r = 1; r < pageItems.length; r++) doc.line(X0, Y0 + r * rowH, X0 + W, Y0 + r * rowH);
+    doc.setLineDashPattern([], 0);
+}
 
 /**
  * CompactGrid: 3 x 2 packing-label panels per landscape A4 page. Each panel: top horizontal stone colour band
@@ -4004,7 +4078,7 @@ function catalogSortKey(item: CatalogArtifact): { vendor: string; book: number; 
 
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
-    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor'; logo?: string; exportType?: 'regular' | 'catalog'; includeSummary?: boolean; noBranding?: boolean },
+    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor'; logo?: string; exportType?: 'regular' | 'catalog'; includeSummary?: boolean; control?: boolean },
     onProgress?: (p: number, s: string) => void,
     output: 'download' | 'blob' = 'download',
     onStats?: (stats: CatalogExportStats) => void,
@@ -4017,7 +4091,8 @@ export async function exportCatalogPdf(
     }, async () => {
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
-    const includeSummary = config.includeSummary !== false;
+    // Control pages (Label Print Studio) never carry a summary
+    const includeSummary = config.includeSummary !== false && !config.control;
 
     // Every catalog format exports sorted by vendor, then the tag's book and item index count (EM826 1, 2, 3...),
     // then type / shape for items that share an index or have no tag.
@@ -4085,8 +4160,6 @@ export async function exportCatalogPdf(
         loadLogoData(RARE_EARTH_LOGO),
         loadLogoData(ONYX_MX_LOGO)
     ]);
-    // Control pages (Label Print Studio): no Rare Earth Gallery or Art of Decor logos anywhere
-    if (config.noBranding) artOfDecorLogo = rareEarthLogo = null;
     let logoData = artOfDecorLogo;
     
     let globalPageNum = 0;
@@ -4234,6 +4307,7 @@ export async function exportCatalogPdf(
             await yieldToUi();
             if (isCompactGrid || isLargeColor) await drawCatalogCompactGridPage(doc, results, page * itemsPerPage, M, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo, onyx: onyxLogo },
                 isLargeColor ? { cols: 2, rows: 2, large: true } : undefined);
+            else if (config.control) await drawControlRibbonPage(doc, results, page * itemsPerPage, itemsPerPage, PW, PH);
             else await drawRibbonPage(doc, results, page * itemsPerPage, itemsPerPage, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo });
         }
     };

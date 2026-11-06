@@ -955,7 +955,7 @@ export const LabelPrintStudio: React.FC = () => {
         }
     });
 
-    // Control PDF Export: the Catalog Hub ribbon layout without Rare Earth Gallery / Art of Decor branding
+    // Control PDF Export: unbranded control ribbon (axo, title, colours, barcode), no summary
     const handleGeneratePDF = async () => {
         setProgress(p => ({ ...p, pdf: 5 }));
         try {
@@ -969,7 +969,7 @@ export const LabelPrintStudio: React.FC = () => {
                 title: `${name} — ${tr("Control Page")}`,
                 method: 'compact',
                 exportType: 'catalog',
-                noBranding: true
+                control: true
             }, pct => setProgress(p => ({ ...p, pdf: Math.min(99, Math.max(5, Math.round(pct))) })), 'blob');
 
             if (!(blob instanceof Blob)) throw new Error('PDF generation failed');
