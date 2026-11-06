@@ -69,6 +69,7 @@ export const CANONICAL_COLOR_MAP: Record<string, readonly ShopifyColor[]> = {
     'Orange Black Brown':          ['Orange', 'Black', 'Brown'],
     'Orange Cosmic':               ['Orange', 'Multicolor'],
     'Orange Green White':          ['Orange', 'Green', 'White'],
+    'Orange Zebra':                ['Orange', 'White', 'Black'],
     'Pearlescent':                 ['Iridescent', 'White', 'Cream'],
     'Pink':                        ['Pink'],
     'Pink Gray':                   ['Pink', 'Gray'],

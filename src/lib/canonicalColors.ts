@@ -109,6 +109,12 @@ export const CANONICAL_STONE_PALETTES: Record<string, StonePalette> = {
         secondary: '#515b70',
         gradientColors: ['#6a728b', '#515b70', '#968993', '#576475', '#b5a9b3', '#cbb1b0'],
     },
+    orangeZebra: { // from the EM-076 bowl photo (exposure-corrected): orange calcite core, white / charcoal / salmon / gray strata.
+        // Order alternates light and dark so the no-photo wave texture reads as zebra bands; [0] top face, [1] right, last left.
+        primary: '#D9822B',
+        secondary: '#F2EEE8',
+        gradientColors: ['#D9822B', '#F2EEE8', '#3A3836', '#D9B49B', '#B8661F', '#8E8884'],
+    },
     talan: { // shades of green with earthy bands: the db hex maps for Green Talan were mostly room background
         primary: '#4F7A3A',
         secondary: '#6B8F4E',
@@ -320,7 +326,10 @@ function resolveRawStonePalette(itemOrText: any): StonePalette {
         return CANONICAL_STONE_PALETTES.aquaSerpentine;
     }
 
-    // 0b. Zebra (black and white banded)
+    // 0b. Zebra (black and white banded); Orange Zebra has its own orange-core palette
+    if ((has('zebra') || has('cebra')) && (has('orange') || has('naranja'))) {
+        return CANONICAL_STONE_PALETTES.orangeZebra;
+    }
     if (has('zebra') || has('cebra')) {
         return CANONICAL_STONE_PALETTES.zebra;
     }
