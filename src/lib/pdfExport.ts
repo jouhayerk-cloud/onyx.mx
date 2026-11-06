@@ -29,6 +29,8 @@ export interface CatalogArtifact {
      * comparisons type-checked as impossible while working fine at runtime.
      */
     exportType?: 'regular' | 'catalog' | 'catalog-grid';
+    /** Payment status colour (inventory list indicator): Control PDF draws it as a rim band. */
+    payColor?: string;
 }
 
 function formatQuantityText(qty: any): string {
@@ -3722,23 +3724,45 @@ async function drawRibbonPage(
     doc.setLineDashPattern([], 0);
 }
 
+/** Short control tag: vendor + book, then item index + landed code; no retail or acq code. EM826104OHFM -> "EM826 104OHFM". */
+export function shortControlTag(barcode: string): string {
+    const m = barcode.toUpperCase().match(/^([A-Z]+)-?(\d{3})[\s-]*(\d+)([A-Z]*)/);
+    return m ? `${m[1]}${m[2]} ${m[3]}${m[4]}` : barcode;
+}
+
+type ControlRowImages = { dataUrl: string; aspect: number; axo?: boolean }[];
+
+/** Loads one control row's cutouts and axo, all in parallel. */
+async function prepareControlRow(item: CatalogArtifact): Promise<ControlRowImages> {
+    const itemDataObj = item.data || item;
+    const norm = normalizeInventoryData(itemDataObj);
+    const [cutouts, axo] = await Promise.all([
+        Promise.all(getItemCutoutPngs(item).slice(0, 3).map(u => loadImgData(u, 600, true).catch(() => null))),
+        getAdvancedAxoDataUrl(norm, itemDataObj).catch(() => null),
+    ]);
+    const imgs: ControlRowImages = [];
+    for (const c of cutouts) if (c && c.dataUrl && c.w && c.h) imgs.push({ dataUrl: c.dataUrl, aspect: c.w / c.h });
+    if (axo) imgs.push({ dataUrl: axo, aspect: 1, axo: true });
+    return imgs;
+}
+
 /**
- * Control ribbon (Label Print Studio, 2026-11-05): the ribbon strip without branding, cutouts, QR or vertical band.
- *   left   the axo, upright
+ * Control ribbon (Label Print Studio, 2026-11-05): landscape A4, unbranded strips.
+ *   left   a payment status rim band, then one grey panel, width set by its content: the cutout PNG(s) when available, then the upright axo
  *   middle the stone colour band along the top, the title (3 lines max) and the colours
- *   right  a horizontal barcode with the tag code under it, centred in its column
+ *   right  a horizontal barcode with the short tag (EM826 104) under it, centred in its column
  */
-async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIndex: number, perPage: number, PW: number, PH: number) {
+async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIndex: number, perPage: number, PW: number, PH: number, rowImages: ControlRowImages[]) {
     const S1 = 1.5, S2 = 3.0;
-    const TITLE_PT = 12, DETAIL_PT = 9.5, TAG_PT = 11;
+    const TITLE_PT = 12, DETAIL_PT = 9.5, TAG_PT = 14;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
     const SAFE = 6;
     const X0 = SAFE, Y0 = SAFE, W = PW - 2 * SAFE, H = PH - 2 * SAFE;
     const rowH = H / perPage;
     const PAD = 2.5;
-    const axoW = Math.min(rowH, W * 0.2);
-    const codeW = 64;
+    const codeW = 70;
     const divX = X0 + W - codeW;
+    const maxPanelW = W * 0.4;
 
     const pageItems = items.slice(startIndex, startIndex + perPage);
     for (let i = 0; i < pageItems.length; i++) {
@@ -3749,23 +3773,43 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
         const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
         const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
 
-        // Left: upright axo
-        try {
-            const axo = await getAdvancedAxoDataUrl(norm, itemDataObj);
-            if (axo) drawAxoContain(doc, axo, X0, top, axoW, rowH, 0.98);
-        } catch (e) {}
+        // Left: cutouts + axo side by side in one panel as wide as they need (capped), all at the panel's height.
+        const imgs = rowImages[i] || [];
+        let imgH = rowH - 2 * PAD;
+        const natural = imgs.reduce((sum, im) => sum + imgH * im.aspect, 0) + Math.max(0, imgs.length - 1) * S2;
+        if (natural + 2 * PAD > maxPanelW) imgH *= (maxPanelW - 2 * PAD - Math.max(0, imgs.length - 1) * S2) / (natural - Math.max(0, imgs.length - 1) * S2);
+        const contentW = imgs.reduce((sum, im) => sum + imgH * im.aspect, 0) + Math.max(0, imgs.length - 1) * S2;
+        const panelW = Math.max(rowH * 0.6, contentW + 2 * PAD);
+        doc.setFillColor(240, 240, 240);
+        doc.rect(X0, top, panelW, rowH, 'F');
+        // Payment status rim band on the strip's left edge (New blue, Requested yellow, Paid green)
+        if (item.payColor) {
+            doc.setFillColor(item.payColor);
+            doc.rect(X0, top, 1.6, rowH, 'F');
+        }
+        let ix = X0 + (panelW - contentW) / 2;
+        const iy = top + (rowH - imgH) / 2;
+        for (const im of imgs) {
+            const iw = imgH * im.aspect;
+            if (im.axo) drawAxoContain(doc, im.dataUrl, ix, iy, iw, imgH, 1);
+            else doc.addImage(im.dataUrl, 'PNG', ix, iy, iw, imgH);
+            ix += iw + S2;
+        }
 
-        // Right: horizontal barcode + tag code, centred in the code column
-        const barW = codeW - 2 * S2, barH = Math.min(16, rowH * 0.42);
+        // Right: horizontal barcode + short tag, centred in the code column
+        const barW = codeW - 2 * S2, barH = Math.min(18, rowH * 0.45);
         const tagCap = TAG_PT * PT * CAP;
-        const blockH = barH + S1 + tagCap;
+        const blockH = barH + S2 + tagCap;
         const barY = top + (rowH - blockH) / 2;
         try {
             const canvas = document.createElement('canvas');
             JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 40, lineColor: '#141414' });
             doc.addImage(canvas.toDataURL('image/png'), 'PNG', divX + S2, barY, barW, barH);
         } catch (e) {}
-        drawFormattedTagCode(doc, codes, divX + S2, barY + barH + S1 + tagCap, TAG_PT, false, itemDataObj, barW, TAG_PT);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(TAG_PT);
+        doc.setTextColor(20, 20, 20);
+        doc.text(shortControlTag(barcode), divX + codeW / 2, barY + barH + S2 + tagCap, { align: 'center' });
         doc.setDrawColor(148, 163, 184);
         doc.setLineWidth(0.2);
         doc.setLineDashPattern([0.6, 1.2], 0);
@@ -3773,9 +3817,9 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
         doc.setLineDashPattern([], 0);
 
         // Middle: band to the divider, title, colours
-        const textX = X0 + axoW + PAD + 1.5;
+        const textX = X0 + panelW + PAD + 1.5;
         const textW = divX - S2 - textX;
-        drawStoneBand(doc, norm, itemDataObj, X0 + axoW, top, divX - X0 - axoW, S2, 'horizontal');
+        drawStoneBand(doc, norm, itemDataObj, X0 + panelW, top, divX - X0 - panelW, S2, 'horizontal');
         const capH = TITLE_PT * PT * CAP, descH = TITLE_PT * PT * DESC;
         const lineH = capH + descH + S1;
         const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), textW, TITLE_PT).slice(0, 3);
@@ -4149,7 +4193,7 @@ export async function exportCatalogPdf(
     const isLargeColor = config.method === 'largeColor';
     const isCompactGrid = config.method === 'compactGrid';
     const isCompactMode = config.method === 'compact' || isCompactGrid || isLargeColor;
-    const isLandscape = config.method === 'grid' || isCompactGrid;
+    const isLandscape = config.method === 'grid' || isCompactGrid || !!config.control;
     const PW = isLandscape ? 297 : 210;
     const PH = isLandscape ? 210 : 297;
     const M = 12;
@@ -4287,7 +4331,7 @@ export async function exportCatalogPdf(
 
     /** Compact pages: items fill every page in sorted order (no vendor or type breaks); per-vendor summaries come first. */
     const renderCompactRuns = async (vendorSummaries: boolean) => {
-        const itemsPerPage = isLargeColor ? 4 : isCompactGrid ? 6 : 7;
+        const itemsPerPage = isLargeColor ? 4 : isCompactGrid ? 6 : config.control ? 5 : 7;
         if (vendorSummaries) {
             const byVendor = new Map<string, CatalogArtifact[]>();
             for (const it of results) {
@@ -4301,13 +4345,20 @@ export async function exportCatalogPdf(
             }
         }
         const totalPages = Math.ceil(results.length / itemsPerPage);
+        // Control pages: load the next page's images while this one draws
+        const prepPage = (p: number) => Promise.all(results.slice(p * itemsPerPage, (p + 1) * itemsPerPage).map(prepareControlRow));
+        let nextPrep = config.control && totalPages > 0 ? prepPage(0) : null;
         for (let page = 0; page < totalPages; page++) {
             addPage();
             onProgress?.(Math.round(10 + ((page + 1) / totalPages) * 85), `Rendering compact page ${page + 1}/${totalPages}...`);
             await yieldToUi();
             if (isCompactGrid || isLargeColor) await drawCatalogCompactGridPage(doc, results, page * itemsPerPage, M, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo, onyx: onyxLogo },
                 isLargeColor ? { cols: 2, rows: 2, large: true } : undefined);
-            else if (config.control) await drawControlRibbonPage(doc, results, page * itemsPerPage, itemsPerPage, PW, PH);
+            else if (config.control && nextPrep) {
+                const rows = await nextPrep;
+                nextPrep = page + 1 < totalPages ? prepPage(page + 1) : null;
+                await drawControlRibbonPage(doc, results, page * itemsPerPage, itemsPerPage, PW, PH, rows);
+            }
             else await drawRibbonPage(doc, results, page * itemsPerPage, itemsPerPage, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo });
         }
     };

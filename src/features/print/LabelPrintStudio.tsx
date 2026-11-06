@@ -12,7 +12,8 @@ import {
     packingSelectedIdsAtom,
     activeViewAtom,
     logisticsSubTabAtom,
-    packingLabelSizeAtom
+    packingLabelSizeAtom,
+    inventoryStatusSetsAtom
 } from '../../lib/atoms';
 import { isPrintCenterOpenAtom, printCenterTabAtom, PrintCenterTab } from './printState';
 import {
@@ -29,7 +30,8 @@ import {
     calculateCodesAndPrices,
     normalizeInventoryData,
     collectExportImages,
-    toTitleCase
+    toTitleCase,
+    getStatusClass
 } from '../../lib/utils';
 import { generateAxonometricDataUrl } from '../../lib/axonometric';
 import { exportToXLSX } from '../../lib/xlsxUtils';
@@ -90,6 +92,7 @@ export const LabelPrintStudio: React.FC = () => {
     const logisticsSubTab = useAtomValue(logisticsSubTabAtom);
     const inventory = useAtomValue(inventoryAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
+    const { partialPayIds, fullPayIds, requestedAcqIds } = useAtomValue(inventoryStatusSetsAtom);
     const workbookPrefix = useAtomValue(workbookVersionAtom);
     const theme = useAtomValue(themeAtom);
 
@@ -955,6 +958,9 @@ export const LabelPrintStudio: React.FC = () => {
         }
     });
 
+    // Same colours as the inventory list payment indicator
+    const PAY_COLORS: Record<string, string> = { GREEN: '#22c55e', YELLOW: '#eab308', RED: '#ef4444', BLUE: '#38bdf8', PURPLE: '#a855f7' };
+
     // Control PDF Export: unbranded control ribbon (axo, title, colours, barcode), no summary
     const handleGeneratePDF = async () => {
         setProgress(p => ({ ...p, pdf: 5 }));
@@ -964,6 +970,7 @@ export const LabelPrintStudio: React.FC = () => {
                 codes: item.codes,
                 images: collectExportImages(item.normData),
                 exportType: 'catalog' as const,
+                payColor: PAY_COLORS[getStatusClass({ ...item.normData, id: item.normData?.id ?? item.data?.id }, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE'],
             }));
             const blob = await exportCatalogPdf(results, {
                 title: `${name} — ${tr("Control Page")}`,
