@@ -8730,27 +8730,27 @@ window.addEventListener('message', async (event) => {
     } catch (e) {}
 
     const records = (batch?.records || batch?.templateData || state.templateData || []);
-    const uniqueTags = new Set();
+    // Every copy renders on its own (ITEM COUNT differs per copy). Key: "TAG#n" for copy n; copy 1 also keeps the plain TAG key.
+    const copyNo = {};
     const uniqueRecords = [];
     for (const r of records) {
       const tag = r['TAG ID'] || r['TAGID'] || r['tag_id'] || '';
-      if (tag && !uniqueTags.has(tag)) {
-        uniqueTags.add(tag);
-        uniqueRecords.push(r);
-      } else if (!tag && uniqueRecords.length === 0) {
-        uniqueRecords.push(r);
-      }
+      if (!tag) { if (uniqueRecords.length === 0) uniqueRecords.push({ r, n: 1 }); continue; }
+      copyNo[tag] = (copyNo[tag] || 0) + 1;
+      uniqueRecords.push({ r, n: copyNo[tag] });
     }
 
     const resultMap = {};
 
-    for (const record of uniqueRecords) {
+    for (const { r: record, n } of uniqueRecords) {
       if (jobId !== currentPreviewJobId) return;
-      const tagId = record['TAG ID'] || record['TAGID'] || record['tag_id'] || '';
+      const baseTag = record['TAG ID'] || record['TAGID'] || record['tag_id'] || '';
+      const tagId = n > 1 ? `${baseTag}#${n}` : baseTag;
       const res = await renderRecordToRasterDataUrl(record, state.elements);
       if (!res) continue;
 
       resultMap[tagId] = res.dataUrl;
+      if (n === 1) resultMap[`${baseTag}#1`] = res.dataUrl;
 
       try {
         window.parent.postMessage({
