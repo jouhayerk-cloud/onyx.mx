@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TE8261OADO — Aqua Serpentine Onyx Rectangular Bookmatched Wall Panel Pair | Onyx.mx 3D Studio</title>
+<style>
+  :root {
+    --bg: #08090c;
+    --panel: rgba(16, 19, 26, 0.82);
+    --border: rgba(255, 255, 255, 0.12);
+    --accent: #f59e0b;
+    --teal: #14b8a6;
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  #canvas-wrap { position: fixed; inset: 0; background: radial-gradient(circle at 50% 42%, #1b1f2a 0%, #07080b 78%); }
+  .hud-top {
+    position: fixed; top: 16px; left: 16px; right: 16px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    pointer-events: none; z-index: 10; gap: 12px; flex-wrap: wrap;
+  }
+  .card {
+    pointer-events: auto;
+    background: var(--panel);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
+  .badge-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+  .barcode { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 0.06em; background: rgba(245, 158, 11, 0.14); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.3); }
+  .archetype { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--teal); font-weight: 600; }
+  h1 { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px; max-width: 460px; line-height: 1.3; }
+  .specs { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .swatches { display: flex; align-items: center; gap: 5px; margin-top: 8px; }
+  .swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.35); box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+  .hud-bottom {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    z-index: 10; pointer-events: auto;
+  }
+  button {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 13px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  button:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255,255,255,0.3); }
+  button.active { background: rgba(245, 158, 11, 0.22); border-color: var(--accent); color: #fde68a; box-shadow: 0 0 16px rgba(245, 158, 11, 0.25); }
+  .status-pill { font-size: 11px; color: var(--muted); padding: 6px 10px; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.167.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.167.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="canvas-wrap"></div>
+
+<div class="hud-top">
+  <div class="card">
+    <div class="badge-row">
+      <span class="barcode" id="ui-barcode"></span>
+      <span class="archetype" id="ui-archetype"></span>
+    </div>
+    <h1 id="ui-title"></h1>
+    <div class="specs" id="ui-specs"></div>
+    <div class="swatches" id="ui-swatches"></div>
+  </div>
+  <div class="card status-pill" id="ui-tex-status">Synthesizing Translucent Onyx Shader...</div>
+</div>
+
+<div class="hud-bottom card">
+  <button id="btn-backlight" class="active">Warm Internal Backlight</button>
+  <button id="btn-rotate" class="active">Auto-Rotate</button>
+  <button id="btn-wire">Wireframe</button>
+  <button id="btn-reset">Reset Camera</button>
+  <button id="btn-fullscreen">Fullscreen</button>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const ITEM = {"id": "601eaade-d530-464f-9f31-3f6d9d8f43eb", "barcode": "TE8261OADO", "item_id": "TE-001", "workbook": "v826", "title": "Aqua Serpentine Onyx Rectangular Bookmatched Wall Panel Pair", "short_description": "Wall Panel Pair", "shape": "Rectangular", "material": "Onyx", "color": "Teal, Tan", "archetype": "wall_panel_pair", "width_cm": 60.0, "height_cm": 150.0, "length_cm": 10.0, "weight_kg": null, "vein_colors": ["#897267", "#a49595", "#d1c5c1", "#7b6c74", "#574548", "#baa089", "#241825", "#93badc"], "cutout_url": "https://lh3.googleusercontent.com/d/1evi1JpNK6LviZdoonLc1n6uNI-m8cUmj", "plan_cutout_url": "https://lh3.googleusercontent.com/d/1evi1JpNK6LviZdoonLc1n6uNI-m8cUmj", "profile_cutout_url": "", "vein_svg_url": "https://lh3.googleusercontent.com/d/1Xnhx_Y5I-XREpjSRa-c0-c5ibHwLa2E_", "plan_vein_svg_url": "https://lh3.googleusercontent.com/d/1Xnhx_Y5I-XREpjSRa-c0-c5ibHwLa2E_", "angle_views": null, "mask_attractions": {"archetype_task": "wall_panel_pair", "bbox_uv": [0.0, 0.1855, 0.8915, 0.8568], "subpath_count": 1, "panel_pair_contours": {"mode": "split_pair_midline", "left_points": [[-0.4944, 0.4992], [-0.5, 0.4532], [-0.5, 0.3949], [-0.5, 0.3483], [-0.5, 0.29], [-0.5, 0.244], [-0.5, 0.1864], [-0.5, 0.1404], [-0.4994, 0.0834], [-0.5, 0.0374], [-0.496, -0.0192], [-0.496, -0.0652], [-0.496, -0.1235], [-0.4972, -0.1694], [-0.5, -0.2157], [-0.5, -0.274], [-0.496, -0.3203], [-0.5, -0.3776], [-0.5, -0.4236], [-0.5, -0.4818], [-0.4389, -0.5], [-0.3185, -0.5], [-0.2223, -0.5], [-0.1374, -0.4765], [-0.137, -0.4344], [-0.1374, -0.3923], [-0.1374, -0.334], [-0.1374, -0.2875], [-0.1374, -0.2292], [-0.1374, -0.1826], [-0.1374, -0.1243], [-0.1374, -0.0778], [-0.1374, -0.0195], [-0.1374, 0.0271], [-0.1374, 0.0854], [-0.1374, 0.1319], [-0.1374, 0.1786], [-0.1374, 0.2368], [-0.1374, 0.2834], [-0.1253, 0.279], [-0.1253, 0.2323], [-0.1173, 0.1784], [-0.1173, 0.1318], [-0.1173, 0.0735], [-0.1173, 0.027], [-0.1173, -0.0313], [-0.1173, -0.0779], [-0.1171, -0.1362], [-0.1073, -0.1805], [-0.1073, -0.2271], [-0.1073, -0.2854], [-0.1073, -0.3319], [-0.1073, -0.3902], [-0.1073, -0.4368], [-0.0915, -0.4893], [-0.0011, -0.4942], [0.1191, -0.4942], [0.2088, -0.4884], [0.3293, -0.4884], [0.4254, -0.4884], [0.5, -0.4884], [0.5, 0.5], [0.5, 0.5], [0.3807, 0.5], [0.2846, 0.5], [0.1642, 0.5], [0.068, 0.5], [-0.0524, 0.5], [-0.1257, 0.4851], [-0.2191, 0.4992], [-0.3023, 0.5], [-0.4225, 0.5]], "right_points": [[-0.5, -0.5], [-0.5, -0.5], [-0.3914, -0.5], [-0.3475, -0.4708], [-0.3475, -0.4118], [-0.3475, -0.3647], [-0.3295, -0.3118], [-0.3387, -0.2783], [-0.3054, -0.2706], [-0.3092, -0.3008], [-0.2994, -0.3508], [-0.2994, -0.3979], [-0.2994, -0.4569], [-0.2812, -0.4979], [-0.1628, -0.5], [-0.0728, -0.4941], [0.0474, -0.4941], [0.1438, -0.4941], [0.2335, -0.4886], [0.3537, -0.4882], [0.4501, -0.4882], [0.492, -0.446], [0.492, -0.3988], [0.492, -0.3399], [0.492, -0.2927], [0.492, -0.2339], [0.492, -0.1867], [0.492, -0.1278], [0.492, -0.0806], [0.492, -0.0217], [0.492, 0.0226], [0.492, 0.0816], [0.4932, 0.1286], [0.5, 0.1862], [0.5, 0.2333], [0.5, 0.2922], [0.5, 0.3394], [0.5, 0.3866], [0.5, 0.4454], [0.4836, 0.4882], [0.3632, 0.4882], [0.267, 0.4882], [0.1532, 0.4941], [0.0698, 0.4941], [-0.0377, 0.4941], [-0.1339, 0.4941], [-0.2543, 0.4941], [-0.3094, 0.4702], [-0.3094, 0.4112], [-0.3174, 0.3655], [-0.3094, 0.3079], [-0.3094, 0.2637], [-0.3094, 0.2048], [-0.3094, 0.1576], [-0.3094, 0.0987], [-0.3094, 0.0515], [-0.3094, 0.0044], [-0.3094, -0.0455], [-0.3058, -0.0887], [-0.3475, -0.0459], [-0.3475, 0.0012], [-0.3475, 0.0602], [-0.3475, 0.1073], [-0.3475, 0.1662], [-0.3475, 0.2133], [-0.3475, 0.2723], [-0.3475, 0.3194], [-0.3475, 0.3783], [-0.3475, 0.4255], [-0.3475, 0.4844], [-0.425, 0.5], [-0.5, 0.4972]], "left_bbox_uv": [0.0, 0.1855, 0.4333, 0.8568], "right_bbox_uv": [0.4582, 0.1855, 0.8915, 0.849]}}, "outline_svg_url": "https://drive.google.com/uc?export=view&id=15Fxf52EYUfkVDmWPYhw9VjRvs8rgi3kR", "pixel_map_hex": "#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#BDA3B6,#C3A0AC,#C3A0AE,#B18DA5,#AF97B8,#C8ACC4,#C6AABB,#BDA3B2,#CBA7AE,#B49AAA,#B48E97,#D2ACAE,#D3ABA6,#D9BABA,#C4A3A8,#B69595,#C1A2A2,#ACB0BF,#AA9FAA,#A48F96,#B09294,#B49AA6,#A68EA3,#BD9CAF,#A482A4,#A2889D,#AD939F,#A28688,#9B8492,#A099A5,#9E9EAC,#AD8E93,#AE8888,#C4A0A5,#D1B5B5,#CE9F9F,#C69E97,#AC818D,#B794A6,#C6A5AC,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#BA9CAC,#DCADAB,#DEB1B3,#BF97A3,#B99DB7,#CAA8B4,#CAA9B0,#BA9799,#CDA7A9,#B699AA,#B68B8B,#E0B5AE,#DEB3A7,#E8D3C7,#CDA79B,#BA9286,#C5A6A1,#ADBED1,#A19395,#A28481,#BD978E,#9F8793,#A38492,#B894AC,#A5849E,#A88A9A,#B69CA0,#B78D86,#A58686,#ABA2A2,#AAB6C9,#C49E95,#B68C82,#CCA69F,#DFC3C1,#D8ABA4,#CFA59E,#AD838A,#B995A1,#D0A5AA,#CCB5C0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#AF92A3,#E0AEA7,#EBBEBE,#C79AA3,#BA9EB3,#C5A1AB,#CAA6A9,#B89592,#C9A4A6,#B59BAC,#BB8F8C,#EBC3B7,#E0BAAE,#ECDBD7,#CBA799,#B58D84,#C4A5A0,#A7C3E4,#A89EA1,#A88782,#BE9B94,#705F77,#8C7288,#B997AA,#A2819A,#947A8D,#7D6A7D,#C6A199,#A98883,#A69C9C,#ABBEDA,#C59F98,#B58B81,#CAA7A0,#DEC6BF,#DCAFA3,#D7AAA3,#B2878E,#B998A1,#CEA3A1,#D4B0BC,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#AA8E9E,#E9BFBA,#FFDAD8,#DBA7AA,#C7A8C0,#C9A6B2,#C6A3A5,#B28E93,#C7A5A8,#BFA5B1,#D7A39A,#FFDECD,#F4CEC0,#F2E1DA,#D1AD9F,#BE9688,#CAAEA9,#AACDF8,#AAA5A5,#B49387,#D6AB9B,#8C7A8C,#846D84,#B599B1,#A0849E,#86708A,#766880,#D5B2AA,#BB9A93,#B2ABA8,#AEC8E7,#CAAEA9,#BB938A,#CBAA9C,#E7D1CA,#E9BAA5,#EDBCAB,#C49799,#C3A4AE,#CBA19E,#C9A5A5,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#B195A3,#F4CAC0,#FFF1E5,#FEC1B3,#DFBCCF,#D3B2BE,#C29CA1,#AA8C90,#CDA9A4,#D7BDC4,#FDBEA6,#FFF9DF,#FFDCC2,#FAE7DE,#D9B6A5,#C59D91,#D2B1A3,#ADC6EA,#B7B9BB,#C4A392,#FCC6A2,#B7A0A4,#837087,#A78FA9,#957D99,#7E6B87,#827490,#F2CABC,#CEAB9D,#B7B9BB,#AFD2FA,#D1B2A7,#BE968A,#D3B09F,#F2DBCF,#FFCEB0,#FFD3B7,#DEA7A3,#CCAFB9,#D0A5A5,#D2A3AF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D7C9D9,#FFE3D7,#FFFFF5,#FFD5B6,#F7D1DD,#DDBCC3,#C6A3A5,#A2868B,#D5AFA8,#EED6DD,#FFD9B8,#FFFFF6,#FFEFD5,#FFEEE2,#E2C1AE,#C9A095,#D7B6A5,#AFCBF6,#C2DCEC,#D9C7B1,#FFE6BC,#F9D3BC,#A592A5,#947E9D,#816B8A,#98859D,#E2CACF,#FFF1DA,#DCC2B3,#C5D8EB,#B0CAF4,#D8B4A4,#C59A8C,#DBBAA9,#FDEADE,#FFE7C8,#FFEBC5,#FFC5B5,#E4C6CA,#DBB0A9,#D5B1B1,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F4E8F4,#FFEFE3,#FFFFF7,#FFD0AC,#FFDFED,#E0BDC1,#C09FA9,#99828D,#DDB7B0,#F6E5F1,#FFE3C2,#FFFFF7,#FFFDE5,#FFECD9,#E8CEBB,#CAA294,#DDB5A2,#C8BDC4,#BEF2FF,#DFDDD3,#FFEFD7,#FBD7C2,#8F8196,#887A98,#776285,#A899A8,#FFE5CB,#FFF4DC,#E5DCD0,#C8ECFF,#CDBFC1,#D3AA97,#C09687,#E0C1AE,#FEE2CC,#FFF5D2,#FFF3C9,#FFD5C7,#EECFD4,#DBB0A9,#CEABB6,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F9EDFB,#FFF7F0,#FFFFFF,#FFD6B7,#FBDEEF,#E2BCC1,#BB9FAA,#907D8E,#DEBBB8,#FBE1E5,#FFECD9,#FFECC0,#FFFADE,#FFDEC9,#F4E1D6,#D4AC99,#D7AA97,#E1C7BC,#C5FBFF,#EAECEA,#FFFBE1,#FDE0CD,#645B72,#5B5478,#5B4F70,#71657F,#FCDBCF,#FFF9E1,#E8E3DC,#CAEBFF,#E2C1AE,#C49889,#C19486,#D8B7A9,#FFDBC1,#FFFFE5,#FFD3B0,#FFC5C3,#EBC1BE,#DCB7B9,#D4B0BC,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F6D3CC,#FFE8DE,#FFE9CF,#FFCDC4,#FFECFC,#ECC6CB,#C1AABA,#948494,#DEBDC0,#FFD5CC,#FFF5F5,#FFCDA7,#FFFFE8,#FFE5D0,#FBF2ED,#DBBCAC,#D1A696,#E7C6B0,#C2F8FF,#EBFFFF,#FFEDD0,#FFE2C4,#89798C,#655B7F,#554C6D,#736A84,#FFDECE,#FFEDCF,#EAEDE5,#CAF2FF,#E4C0AE,#C69988,#C19789,#DFBEAE,#FFCBA1,#FFE8C2,#FFA691,#FFC6CB,#F1C2BA,#E5C4CB,#D4B0BC,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F8D2CE,#FFF7F4,#FFE0C9,#FFF3F7,#FFF5FE,#EECDCB,#BFACBA,#8D7C8D,#E3CCD0,#FFD1BE,#FFDCD5,#FFB6A6,#FFE3C4,#FFE3C9,#FBEFEA,#E2CABA,#CDA492,#EDC2A6,#CDE4FF,#E3FFFF,#F6EAD5,#F0C7AB,#CDA79B,#9A829A,#645675,#A58E97,#FFDABB,#F7DFC5,#E6FBFF,#C8DEFF,#EAC4AA,#CA9B8A,#B99183,#D1A48F,#FFC48C,#FFD5A5,#FFC8B3,#FFFFFF,#FFD2C1,#E5C8CD,#BEA6B2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFD7D0,#FFF6F4,#FFD5BE,#FFFFFF,#FFFFFF,#F4DFE6,#BEADBB,#917C8E,#E8D5DF,#FFDCC6,#FFE6D3,#FFC0B9,#FFD5B9,#FFEAD3,#F5E2D1,#EDD5C0,#CEA18E,#E2B79D,#EDDDD3,#D1FFFF,#F4FFFF,#CCB5A7,#BF9789,#B49295,#8E768E,#C5A094,#D9BAA0,#EEE7D2,#DCFFFF,#E3D5D0,#E3B99C,#C79D8A,#CBA592,#DEAA8E,#FFD0AA,#FFCEAB,#FFD1CA,#FFFFFD,#FFDFD5,#E2CAD1,#B8A0AC,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFDED9,#FFEAE0,#FFC4B1,#FFFFFF,#FFFCF7,#F6E4EF,#BEADBE,#917F8D,#E7D4DC,#FFE3D0,#FFEBC5,#FFC5BE,#F6B6A3,#FFEBDB,#F9D7C2,#F8E7D2,#DDB79B,#D6AB94,#FFDCBB,#EEFFFF,#E5FFFF,#D0D5D3,#AF928E,#AF8C91,#997D8B,#B39289,#C3B3A0,#F5FFFF,#DCF8FF,#FFDEBA,#D6A98F,#C49C8B,#E1C2AF,#EDBEA6,#FFE5D0,#FCB79B,#FFD9E5,#FFFEF4,#FFE7E2,#E2CAD4,#B29AA6,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFDFDD,#FCC3B5,#F5B5BC,#FFFDFF,#FFF5E7,#F5E7F0,#BDAAB9,#8B7889,#E0CFD4,#FFFCF5,#FFF6CE,#FFDAD5,#D99999,#FFD2BF,#FED1B7,#FCDFCA,#E9CFB3,#D6A991,#F6C4A1,#FFFFE3,#E3FFFF,#D1F9FF,#A69898,#A1858E,#927883,#A6938E,#CBD7D3,#E5FFFF,#F3E4D9,#FFD1A4,#C69683,#B79281,#ECC9B4,#FECDB5,#FFD0B6,#EDAB9D,#FFF4FE,#FFFFF6,#FFF5FA,#DDC8CF,#AC95A0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFE0DE,#F5BAAA,#FFE2FA,#FFFFFF,#FFFFFF,#FAF0FF,#BEACBC,#8F7C8D,#DBC6C8,#FFFFFB,#FFFFDD,#FFEED6,#E1AAAF,#F1BAA5,#FFDAC3,#F9CCAB,#F2D8BB,#D5AA90,#E5B695,#FFF6C9,#FFFFF8,#C7F9FF,#A29B99,#8F7888,#876D7F,#A39393,#CCF2FF,#EBFFFF,#FFF0B7,#F7BE96,#C69C89,#C4A189,#EFBE9F,#FAC8AE,#F1B197,#E9B7BC,#FFFFFD,#FFFFEE,#FFFFFF,#DAC5CC,#B08CA4,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FDDAD7,#EFB1AA,#FFF3FF,#FFFFFF,#FFFFFF,#F8F1FF,#BEA9B7,#8D7F90,#DBC8CA,#FFFFFB,#FFFFF6,#FFE2BA,#E9C1CA,#D49989,#F3C6AF,#F8C9AA,#FBDAB4,#EFCEAA,#ECB892,#FFDFAB,#FFFFEC,#C4F8FF,#A29D9B,#857383,#796779,#9F989A,#C1E6FF,#FFFCE6,#FFE8AF,#E5B18B,#DAB08C,#F3CFAE,#F5C1A2,#F9CCB3,#E3A18B,#EBC8D6,#FFFEF0,#FFFFFF,#FFFCFF,#D9BFC6,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F1C4BD,#E4AEB5,#FFEEFF,#FFFFFD,#FFFFFF,#F4E8F2,#BAA7B7,#887F8F,#D7C4CB,#FFF9F2,#FFFFFF,#FFF9CC,#FCD6D3,#CD999C,#E3B29A,#F6CEB7,#FAD7B3,#F7D9B5,#EEB58B,#FFDBA0,#FFF3E0,#BCEEFF,#9E9595,#8F7C8D,#746677,#9C9595,#C2EFFF,#FFF7DB,#FFD69D,#E9B086,#F8D5AF,#F7CBA9,#F3C1A7,#ECB69A,#D19A98,#F2D4DD,#FFFFEB,#FFFFFF,#FFF4F1,#DDC3CA,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#DFA498,#E3BDD0,#FFE2E0,#FFFFFF,#FFFFFF,#F0E0E2,#BDAAB9,#89798C,#D8C8D1,#FFFAF5,#FFFFFF,#FFFFF5,#FFD7BF,#DAB0B2,#D4A08D,#F3CBB5,#FEDAB9,#F9E4C0,#EBB48A,#FFDFA9,#FFF6E8,#C2F5FF,#9C9390,#8B7686,#79667C,#978E8E,#BDEEFF,#FCF5E7,#FFDAA3,#E5AD85,#FDEAD5,#FFDABD,#F4C5B2,#D39883,#D4ACBA,#FFE0DE,#FFFFFF,#FFFFFF,#FFF0EB,#DBC8D2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D39FA1,#E9D3E6,#FFF8EE,#FFFFFF,#FFFFFF,#ECDEE0,#BFB1C4,#897A8B,#D9C8D9,#FFF8F3,#FFFFFF,#FFFFFF,#FFE0C6,#DBB8BD,#CA9483,#EFC4AF,#F9CFA7,#F6E1C2,#E7B389,#FFDDA6,#FFF5D7,#BFEFFF,#9C9FA1,#7A6981,#726479,#9D9AA1,#BBEBFF,#FFF2D5,#FFDBA7,#DFA47C,#F4DABE,#FACDAA,#F1C7AF,#D29A87,#E2C6CD,#FFEFDF,#FFFFFF,#FFFFFF,#FFEFEF,#DCC4D2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#C99EB6,#E9CDDB,#FFFDF2,#FFFFFF,#FFFFFF,#EEE2EC,#BFACC2,#857993,#D8C7D8,#FFFAF7,#FFFFFF,#FFFFFF,#FFE9CF,#DBBCBF,#C58C80,#EABDA8,#F3C39B,#F8D7B4,#EBB786,#FFCE9A,#FFFFD5,#C5E9FF,#A4B5C0,#817788,#776E83,#A3AFBB,#C1E7FF,#FFFBCC,#FFDBA4,#EFBD95,#FCE2C6,#F5C19C,#F0C6AC,#CE9887,#DEC1C4,#FFEFD8,#FFFFFF,#FFFFFF,#FFF4F8,#DEBFD0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D2B6CD,#F5D1D1,#FFFFFF,#FFFFFF,#FFFFFF,#EFE6F4,#C2ADC5,#837996,#D5C6D7,#FFF8F6,#FFFFFF,#FFFFFF,#FFEBD1,#E1C0BD,#C5968A,#E4B79F,#F0BE9B,#FAD2A5,#F1BF8B,#FFC48C,#FFFFC9,#C9E1FF,#A6B9CC,#887C8F,#837C9B,#A9BED1,#C6DEFF,#FFF9BE,#FFD198,#FED4AB,#FFF8DE,#FACAA7,#E5B49F,#C79891,#E5C9C7,#FFF8E3,#FFFFFF,#FFFFFF,#FFF6FF,#DBC3DB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D7BDD5,#FFDBD1,#FFFFFF,#FFFFFF,#FFFFFF,#F2EBFC,#BFACC4,#85758C,#D7C4D5,#FFF7F7,#FFFFFF,#FFFFFF,#FFECCF,#E5C9C7,#CA9D94,#E6B9A4,#F3C39E,#FFE9C5,#F7C798,#FFC186,#FFFDC6,#C2D0EA,#9DA4AB,#847487,#847D9C,#A9BACF,#C4DCFD,#FFFBC9,#FFD29C,#FCD7B1,#FFF4D3,#FBCBA8,#EABFAC,#C69A92,#E2C5C5,#FFF5E0,#FFFFFF,#FFFFFF,#FFFAFF,#E0CFE7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#DBC4D4,#F7DADF,#FFFFFC,#FFFFFF,#FFFFFF,#EFE5EF,#C3B7CA,#827187,#D8C5D1,#FFF2ED,#FFFFFF,#FFFFFF,#FFE3C9,#D8C3C5,#D0A18E,#F8DBCD,#FFDCC0,#FFF5DD,#F1C499,#FFD49B,#FFFFC0,#C6CADB,#A2B3BA,#857B8C,#786C7D,#9EAEC1,#C2D0EA,#FFF7C3,#FFD8A2,#F7CCA4,#FFF3D4,#FCD4B2,#F5D2C4,#CF9D8C,#D6BEC5,#FFE7D6,#FFFFFF,#FFFFFF,#FFF5F7,#DBCBDB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#CFA09B,#DEC4D2,#FFEBDD,#FFFFFF,#FFFFFF,#EFDEE3,#C4B6C8,#85798C,#D5C2CE,#FFFFFF,#FFFFFF,#FFFFEC,#F5D4CD,#D2AFAA,#E6BCA7,#F9D3C0,#FFE1C0,#F9EBD3,#E9B58A,#FFDCA1,#FFFFDE,#C0EDFF,#A1A8A8,#75738F,#7A6E86,#A5B3C1,#AFDFFF,#FFEDCA,#FFE2A5,#F0BC93,#FEEBCC,#FFDDB7,#FAD2BF,#E8B6A3,#D0A39C,#F4D8DA,#FFFFFF,#FFFFFF,#FFF4F6,#DAC3CF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#E5B6A8,#D8AEAE,#FFE0E0,#FFFFED,#FFFFFF,#F2E2E7,#C3AEBE,#837788,#D6C3CA,#FFFFFF,#FFFFFF,#FFFEE4,#EBD1D6,#D39F8E,#FCDBCC,#FDD0B4,#FCE5CF,#E1C09F,#E8AF87,#FFE4AB,#F5F5E7,#C6F1F8,#94857C,#7070A2,#6D689A,#978E8C,#B8ECFF,#FBF4E3,#FFEDB0,#FAC199,#EDC9AB,#FFF4E4,#FFD4B6,#FDD2C2,#E1A895,#EED2D9,#FFFFF9,#FFFFFF,#FFF7FA,#DFC2CC,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F8CDC4,#E2A998,#FCDDE7,#FFFBEB,#FFFEF6,#F8E8F1,#C5B4C2,#817386,#D7C4CB,#FFFCFF,#FFFFF7,#FFF2E1,#E4B7AE,#EAB99F,#FED5BE,#FCDBC4,#F3E2CF,#D7AA8C,#F6C098,#FFF0C1,#ECFFFF,#CCF0F2,#94817A,#7376B1,#696BA6,#958582,#BEEBF9,#DBFEFF,#FFF2CA,#FEC398,#DDAE8F,#F2E4D3,#FFEBD3,#FFDAC2,#FAC8B3,#EDBBB2,#FFF9F7,#FFFFE6,#FFF9FC,#DFC8CF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FACDC1,#F7BEAC,#F7C3BE,#FFF1F3,#FFE5CE,#F3D7DE,#C5B0C0,#86788B,#DBC8D2,#FFF2F2,#FFFEDF,#FFF5F1,#EFB498,#FFD3B9,#FFD6BA,#FDEDDE,#E2C8B0,#DCAC8E,#FFD3AD,#ECFFFF,#E9FFFF,#C5CABE,#9B847D,#7B79B4,#7573AB,#9A8280,#BBBDB6,#E4FFFF,#E3F4F9,#FFD4AC,#E0AA8B,#E0C2A8,#FFF9EB,#FFD2AD,#FFE0CD,#F6B79F,#FFF1F3,#FFF9DF,#FFEAE5,#E0C6D0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFD2BA,#FFE5D2,#FFBD9E,#FFDCDF,#F8D0CB,#E4BAB7,#C3AEBE,#9A859A,#DECBD4,#FFDCD0,#FFF7E2,#FFEDEB,#FDB995,#FFE3CC,#FFD4AE,#FFF1E6,#D8B298,#E2AE8F,#F3DBCA,#DBFFFF,#F0F9E4,#C8A78B,#B69084,#7F7BB6,#7B76B1,#B5918A,#BEA48F,#E1DAB9,#DFFFFF,#E6D6CA,#EEB794,#D8AB91,#FBF1E3,#FFE0BC,#FFE3CB,#FFC5A4,#FFE0D7,#FFE8D7,#FFC8B5,#E1C7D1,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFD6B8,#FFECDA,#FFECC6,#FFC5A2,#EED2D9,#D7B1AF,#BEA2B2,#A189A1,#DCC4C9,#F9C9B4,#FFF8F3,#FFDFC3,#FFDDB7,#FFE9D4,#FFDFC3,#F8EAD7,#D7AD93,#ECBA9C,#E2E2E9,#D4FFFF,#F8E9C6,#F1C29C,#B6938E,#6C6EB3,#5F66AB,#9D858F,#E7C3AB,#E6C79F,#E3FFFF,#D2E5F6,#F1BD99,#D7AA8E,#F0DDC8,#FFF1D7,#FFE5C4,#FFE3C1,#FFC8A9,#FFEAEA,#F6C0AB,#E0BCC6,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFEEDB,#FFE0BF,#FFFFE3,#FFD9A7,#F2C8CA,#D3B2B9,#B8979C,#A1899C,#D8B7B7,#F2C1AE,#FFF5F0,#FFE0AC,#FFF2CC,#FFE1BC,#FFF3E4,#F3DBC8,#D7A78D,#EFC4AD,#DFEAF9,#DAFFFF,#F7E6C5,#FBC9A1,#B69593,#595EA4,#5259A0,#7E7082,#FFD5B7,#F9D7AD,#EBFFFF,#D0EFFF,#F5C4A3,#D9A58B,#E5C6AC,#FFFFFF,#FFE9C6,#FFF6D7,#FFC899,#FFDFDC,#EBBCB2,#DAADB0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFE9C6,#FFFFE8,#FFFECF,#FFC9BD,#CFB5C3,#BC949B,#998495,#CFA9A4,#EBC3B9,#FFE8D8,#FFEBB4,#FFFFE0,#FFE3B8,#FFFFFF,#E7C3A9,#D2A28B,#EDBEA2,#DFE4EB,#DFFFFF,#F7E6C8,#FFCDA5,#BFA3A1,#585FA4,#525CA3,#786C7F,#FFD7BA,#FDD9B3,#EFFFFF,#CAE6FF,#FACDAA,#DBA382,#D8AE96,#FFF5F1,#FFF4D8,#FFFAD9,#FFEBBC,#FFD9C7,#E3BEC0,#D4A2A0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFB,#FFF7DA,#FFFFEA,#FFFFF8,#FFC4AC,#C7ADC0,#B8949E,#967C8A,#CBA19C,#DEBFBF,#FFCEAF,#FFEFB4,#FFFFDD,#FFF1CE,#FFFFFF,#E0B899,#D29E84,#F6CCAD,#BEDAF9,#E1FFFF,#F9E9CC,#FFE0C2,#AB939D,#575592,#5C5E99,#7D6E81,#FFD7BA,#F3D2B1,#EEFDF5,#C7FFFF,#D6C1BC,#EAB490,#D4A58B,#F5E0D0,#FFFFF0,#FFFFE3,#FFFFE1,#FFBC9F,#D3B2BC,#CEA1A1,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F8ECE2,#FFFFFF,#FFFFDC,#FFFFFD,#FFCDAE,#BAA5C1,#B091A1,#937280,#C79F9F,#DABDCB,#FFBAA2,#FFFFCB,#FFFFE3,#FFFEED,#FFFFFF,#DDB096,#D49E84,#F1D0BD,#B7F4FF,#E6FFFF,#EDD0B4,#FFDEC0,#998492,#625D8F,#8278A3,#78687F,#FFDAC3,#F7CFA7,#DCCEB1,#D3FFFF,#C0C7E1,#EFBB9C,#D39F8A,#F6D9C6,#FFFFF8,#FFFCD1,#FFFFEA,#FFC8A5,#CFB5C8,#D1A6A9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F0D4BC,#FFFFFF,#FFFFDD,#FFFFFF,#FFDFC0,#BBA6C2,#AE91A2,#906F82,#C59FA1,#D6BCCF,#F7BCB5,#FFFFE7,#FFFFD6,#FFFEE4,#FFF1E6,#D9AC95,#DCA892,#DFCECE,#C0FFFF,#E9F0E9,#FAD9BA,#FFF4DD,#887588,#7B6A97,#9F8CAD,#7C677F,#F4DDD6,#FFE5B8,#DBC1A7,#D2FFFF,#BFC4DC,#E8B298,#CB9989,#F1D0BB,#FFFFFF,#FFF8CB,#FFFFEF,#FFDDC3,#D3B9CB,#CDA4A7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#ECD0BB,#FFFFFF,#FFFFCC,#FFFFFD,#FFEAD3,#C9B4CE,#AE919F,#8F7281,#C7A1A4,#DEC6D7,#FFD5D1,#FFFFEC,#FFF8C2,#FFFFFD,#F7DDCA,#D1A491,#E2B7A2,#C2D2F6,#C8F5FF,#D5BBA1,#FFF4CA,#FFF4E8,#7F6A7F,#967A99,#B99DB0,#8B718B,#CFBEC3,#FFFFE0,#E3BDA1,#D0DEE5,#BBDEFF,#DEB9AB,#CF9D8C,#E5BFAC,#FFFFFF,#FFF9CF,#FFFFE6,#FFDED3,#D7BDD7,#CCA4A9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#ECCBBB,#FFFFFF,#FFF9CA,#FFFFF4,#FFDDCF,#C3B0D4,#B598A7,#8F7285,#C5A1A6,#D5C4DC,#FFDDE4,#FFFFFB,#FFFBCB,#FFFFFF,#EECAB5,#C79A8C,#E0BDAE,#AFDAFF,#C7DCE8,#DDB596,#FFFFD7,#E2D2CD,#876E85,#A587A5,#BF9EB6,#A4869D,#A08B9C,#FFFFF5,#F8C6A3,#B9A99F,#BEEBFF,#D2BCC3,#CFA091,#E0B6A5,#FFFFFF,#FFF6CE,#FFFFF7,#FFE2F0,#C8B0CF,#CCA4AB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#E3BFAC,#FFFFF9,#FFF6D0,#FFFFFE,#F6D3E1,#B8A3CD,#B798A6,#8F7281,#C09DA4,#BFACCD,#EBD3F5,#FFFFFB,#FFF7D8,#FFFFFB,#E8C0AB,#C59A8E,#D6B9B7,#B1DEFF,#B4B1B4,#CDA08B,#FFFFDB,#C6B3BA,#987B95,#A586AA,#BEA1B9,#B291A9,#887388,#FFEEE0,#F1BD9F,#AF9893,#B8DBFC,#CAB9C1,#C69B90,#D7AC9E,#FFFAF8,#FFEDCE,#FFF7E9,#E6C9E8,#B8A1BF,#C29CA8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#DFC1B7,#FFFBF6,#FFE7CD,#FFEFE5,#E2C6E9,#BCA9D3,#B195A8,#957789,#BF9BA7,#B5A2C6,#D8C3EB,#FFE3D9,#FFDEC4,#FFF7F3,#DCB4A1,#BE948D,#D5B4AF,#B1D0FD,#B9BBC2,#BB9589,#FFD6BA,#AA95A3,#A986A2,#AC90B4,#CDA9C8,#C19BB5,#8F778F,#E5C4BF,#D2A094,#AE9DA0,#B8D9FD,#C7B2BB,#C0938F,#CDA297,#FAEEEB,#FFDDC8,#FFD5CC,#D3B9DA,#B49DBE,#BD9AA8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#DCBFBD,#FBF1F4,#FDD5C9,#FBD8E1,#CFB9E1,#B8A7CF,#B399AB,#907685,#BC9DA9,#B4A4C7,#C8B1D9,#F3CBCB,#F9CCBB,#F6DED7,#CBA094,#B48E8C,#CAA9A9,#A0A9C5,#A69A9D,#A47E79,#D8B2A9,#978095,#AD89A8,#B89CBF,#CFACCB,#C6A0BA,#8C758F,#CBADB6,#BC928B,#9C8284,#B1BFCD,#BBABB7,#BB9693,#C6A199,#F0DFD8,#F1CCBE,#E9C5C8,#CAB5D8,#B298B7,#BC98A9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D3BABC,#F1E5E5,#EBC3BC,#E7C9D9,#C5AFDF,#BBA8CC,#B695A6,#96798A,#BB9AA6,#B4A1C2,#D0BAE5,#EACBD7,#F0C5B7,#F4E4E1,#CDA9A4,#B18D90,#BF9EA1,#938CA1,#A59699,#987575,#C79C97,#AB91A7,#B693AF,#C0A2C5,#D3B2D3,#C9A3C0,#957995,#C7A6B2,#B48C87,#A38990,#B1BDD0,#B39CA7,#B79296,#C59D98,#E5CBC4,#E6BBB0,#E2C5D8,#C7AFDA,#B79DBB,#BB9AAB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D3BBC0,#EED9DE,#E3BBBB,#DFC8E9,#C0AADC,#BCA7CA,#BFA3B6,#A08BA5,#BC9FB0,#B6A3C7,#C7AFDE,#E1C9E8,#E4BBB7,#F3DEDE,#DBB6B3,#C19BA7,#CFAAAC,#B3AEC6,#B7ABB0,#997B86,#BD999C,#AF93AF,#B69AB9,#C5ABCE,#CAABD1,#BE9FC0,#9A83A4,#BE9FB0,#A98183,#A5909C,#B3B3CA,#B69CAD,#AA8DA5,#AC8E97,#BFA5B5,#CBA1A1,#C9AAC9,#AB98C3,#A892B6,#9A829A,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#CEB2CA,#DABED3,#D0A8C0,#C3B3DF,#AA99D2,#9D91BE,#AEA0BE,#FFFFFF,#A397AE,#A49BC3,#A893C7,#A89FD3,#AC97C1,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF", "hex_dimensions": "45x60", "generated_at": "2026-11-08T22:28:38Z"};
+window.ONYX_ITEM_3D = ITEM;
+const MASK_ATTR = ITEM.mask_attractions || {};
+
+document.getElementById('ui-barcode').textContent = ITEM.barcode;
+document.getElementById('ui-archetype').textContent = `${ITEM.material || 'Onyx'} • ${ITEM.archetype.replace(/_/g, ' ')}`;
+document.getElementById('ui-title').textContent = ITEM.title;
+document.getElementById('ui-specs').textContent = `${ITEM.width_cm} × ${ITEM.height_cm} × ${ITEM.length_cm} cm` + (ITEM.weight_kg ? ` • ${ITEM.weight_kg} kg` : '') + ` • ${ITEM.shape || 'Natural Form'}`;
+
+const swatchWrap = document.getElementById('ui-swatches');
+(ITEM.vein_colors || []).forEach(c => {
+  const s = document.createElement('span');
+  s.className = 'swatch';
+  s.style.background = c;
+  s.title = c;
+  swatchWrap.appendChild(s);
+});
+
+// 1. Build Procedural Banded Onyx Albedo + Vein Bump Canvas from 60x60 Hex Map & Vein Palette
+function buildProceduralOnyxTextures() {
+  const size = 1024;
+  const albedoCanvas = document.createElement('canvas');
+  albedoCanvas.width = size; albedoCanvas.height = size;
+  const ctx = albedoCanvas.getContext('2d');
+
+  const bumpCanvas = document.createElement('canvas');
+  bumpCanvas.width = size; bumpCanvas.height = size;
+  const bctx = bumpCanvas.getContext('2d');
+
+  const palette = (ITEM.vein_colors && ITEM.vein_colors.length)
+    ? ITEM.vein_colors
+    : ['#e8dcc8', '#d4a359', '#9c6234', '#5c3a21', '#f3ede2'];
+
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  palette.forEach((col, idx) => {
+    grad.addColorStop(idx / Math.max(1, palette.length - 1), col);
+  });
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+
+  if (ITEM.pixel_map_hex) {
+    const rawHex = ITEM.pixel_map_hex.replace(/^\d+x\d+:/, '');
+    const hexes = rawHex.split(',');
+    const dims = (ITEM.hex_dimensions || '60x60').split('x');
+    const cols = parseInt(dims[0], 10) || 60;
+    const rows = parseInt(dims[1], 10) || 60;
+    let rMin = rows, rMax = 0, cMin = cols, cMax = 0, hasStone = false;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const hx = (hexes[r * cols + c] || '').trim().toUpperCase();
+        if (hx && hx !== '#FFFFFF' && hx !== '#FEFEFE') {
+          if (r < rMin) rMin = r;
+          if (r > rMax) rMax = r;
+          if (c < cMin) cMin = c;
+          if (c > cMax) cMax = c;
+          hasStone = true;
+        }
+      }
+    }
+    if (!hasStone) { rMin = 0; rMax = rows - 1; cMin = 0; cMax = cols - 1; }
+    const spanC = Math.max(1, cMax - cMin + 1);
+    const spanR = Math.max(1, rMax - rMin + 1);
+    const cw = size / spanC;
+    const ch = size / spanR;
+    ctx.save();
+    ctx.globalAlpha = 1.0;
+    for (let r = rMin; r <= rMax; r++) {
+      for (let c = cMin; c <= cMax; c++) {
+        const hx = (hexes[r * cols + c] || '').trim();
+        if (hx && hx.toUpperCase() !== '#FFFFFF') {
+          ctx.fillStyle = hx;
+          ctx.fillRect((c - cMin) * cw - 1, (r - rMin) * ch - 1, cw + 2, ch + 2);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  bctx.fillStyle = '#808080';
+  bctx.fillRect(0, 0, size, size);
+
+  for (let band = 0; band < 38; band++) {
+    const col = palette[band % palette.length];
+    const lw = 4 + (band % 7) * 5;
+    bctx.strokeStyle = (band % 2 === 0) ? '#ffffff' : '#2a2a2a';
+    bctx.lineWidth = lw * 0.8;
+    bctx.globalAlpha = 0.28;
+
+    const baseY = (band / 38) * size;
+    const freq = 0.004 + (band % 5) * 0.0018;
+    const amp = 22 + (band % 6) * 14;
+    const phase = band * 1.37;
+
+    if (!ITEM.pixel_map_hex) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = lw;
+      ctx.globalAlpha = 0.24;
+      ctx.beginPath();
+    }
+    bctx.beginPath();
+    for (let x = 0; x <= size; x += 16) {
+      const y = baseY + Math.sin(x * freq + phase) * amp + Math.cos(x * freq * 2.3 - phase) * (amp * 0.4);
+      if (x === 0) {
+        if (!ITEM.pixel_map_hex) ctx.moveTo(x, y);
+        bctx.moveTo(x, y);
+      } else {
+        if (!ITEM.pixel_map_hex) ctx.lineTo(x, y);
+        bctx.lineTo(x, y);
+      }
+    }
+    if (!ITEM.pixel_map_hex) ctx.stroke();
+    bctx.stroke();
+  }
+
+  const colorTex = new THREE.CanvasTexture(albedoCanvas);
+  colorTex.wrapS = colorTex.wrapT = THREE.ClampToEdgeWrapping;
+  colorTex.colorSpace = THREE.SRGBColorSpace;
+
+  const bumpTex = new THREE.CanvasTexture(bumpCanvas);
+  bumpTex.wrapS = bumpTex.wrapT = THREE.ClampToEdgeWrapping;
+
+  return { colorTex, bumpTex, albedoCanvas, bumpCanvas };
+}
+
+/**
+ * Maps mesh UVs into a specific normalized image bounding box [uMin, vMinTop, uMax, vMaxTop].
+ */
+function applyBoxUVsInSubregion(geom, bboxUv = [0, 0, 1, 1]) {
+  geom.computeBoundingBox();
+  const bb = geom.boundingBox;
+  if (!bb) return;
+  const pos = geom.attributes.position;
+  const norm = geom.attributes.normal;
+  const spanX = Math.max(0.001, bb.max.x - bb.min.x);
+  const spanY = Math.max(0.001, bb.max.y - bb.min.y);
+  const spanZ = Math.max(0.001, bb.max.z - bb.min.z);
+
+  const u0 = bboxUv[0] ?? 0;
+  const v0Top = bboxUv[1] ?? 0;
+  const u1 = bboxUv[2] ?? 1;
+  const v1Top = bboxUv[3] ?? 1;
+  const vMinGL = 1.0 - v1Top;
+  const vMaxGL = 1.0 - v0Top;
+
+  const uvs = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const nx = norm ? Math.abs(norm.getX(i)) : 0;
+    const ny = norm ? Math.abs(norm.getY(i)) : 0;
+    const nz = norm ? Math.abs(norm.getZ(i)) : 1;
+
+    let lu = 0, lv = 0;
+    if (ny > nx && ny > nz) {
+      lu = (x - bb.min.x) / spanX;
+      lv = (z - bb.min.z) / spanZ;
+    } else if (nx > nz) {
+      lu = (z - bb.min.z) / spanZ;
+      lv = (y - bb.min.y) / spanY;
+    } else {
+      lu = (x - bb.min.x) / spanX;
+      lv = (y - bb.min.y) / spanY;
+    }
+    uvs[i * 2] = u0 + lu * (u1 - u0);
+    uvs[i * 2 + 1] = vMinGL + lv * (vMaxGL - vMinGL);
+  }
+  geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+}
+
+/**
+ * Unwraps a 4-sided Tower/Floor Lamp column shot from a side corner:
+ * - Left-Front face (+Z, x in [-hw, +hw]) maps u in [uMin, uCorner]
+ * - Right-Front face (+X, z in [+hd, -hd]) maps u in [uCorner, uMax]
+ * - Rear faces (-Z and -X) mirror-wrap continuously so all 4 vertical corners have seamless stone veins.
+ */
+function applyCornerLampUVs(geom, cornerSpec) {
+  geom.computeBoundingBox();
+  const bb = geom.boundingBox;
+  if (!bb) return;
+  const pos = geom.attributes.position;
+  const norm = geom.attributes.normal;
+  const spanX = Math.max(0.001, bb.max.x - bb.min.x);
+  const spanY = Math.max(0.001, bb.max.y - bb.min.y);
+  const spanZ = Math.max(0.001, bb.max.z - bb.min.z);
+
+  const bbox = [0.02, 0.02, 0.98, 0.98];
+  const uMin = bbox[0], vMinTop = bbox[1], uMax = bbox[2], vMaxTop = bbox[3];
+  const uCornerFrac = (cornerSpec && cornerSpec.u_corner_frac) || 0.5;
+  const uCorner = uMin + uCornerFrac * (uMax - uMin);
+  const vMinGL = 1.0 - vMaxTop;
+  const vMaxGL = 1.0 - vMinTop;
+
+  const uvs = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const nx = norm ? norm.getX(i) : 0;
+    const ny = norm ? norm.getY(i) : 0;
+    const nz = norm ? norm.getZ(i) : 1;
+
+    const tx = (x - bb.min.x) / spanX; // 0 at -hw, 1 at +hw (corner)
+    const ty = (y - bb.min.y) / spanY; // 0 at bottom, 1 at top
+    const tz = (z - bb.min.z) / spanZ; // 0 at -hd, 1 at +hd (corner)
+
+    let u = uCorner;
+    const v = vMinGL + ty * (vMaxGL - vMinGL);
+
+    if (Math.abs(ny) > 0.75) {
+      u = uMin + tx * (uMax - uMin);
+    } else if (Math.abs(nz) >= Math.abs(nx)) {
+      if (nz >= 0) {
+        // Left-Front face (+Z): x goes from -hw (tx=0 -> uMin) to +hw corner (tx=1 -> uCorner)
+        u = uMin + tx * (uCorner - uMin);
+      } else {
+        // Back-Right face (-Z): x goes from +hw (tx=1 -> uMax) to -hw (tx=0 -> uCorner)
+        u = uCorner + tx * (uMax - uCorner);
+      }
+    } else {
+      if (nx >= 0) {
+        // Right-Front face (+X): z goes from +hd corner (tz=1 -> uCorner) to -hd (tz=0 -> uMax)
+        u = uCorner + (1.0 - tz) * (uMax - uCorner);
+      } else {
+        // Back-Left face (-X): z goes from -hd (tz=0 -> uCorner) to +hd (tz=1 -> uMin)
+        u = uCorner - tz * (uCorner - uMin);
+      }
+    }
+    uvs[i * 2] = u;
+    uvs[i * 2 + 1] = v;
+  }
+  geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+}
+
+const wrap = document.getElementById('canvas-wrap');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.05, 100);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.18;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+wrap.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.25;
+controls.maxPolarAngle = Math.PI * 0.52;
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.82);
+scene.add(ambient);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.15);
+keyLight.position.set(3.5, 5.2, 4.0);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0xe2e8f0, 0.85);
+rimLight.position.set(-4.0, 3.0, -3.5);
+scene.add(rimLight);
+
+const attHex = '#fffaf0';
+const internalLight = new THREE.PointLight(0xfff4e0, 3.2, 6.5, 1.4);
+scene.add(internalLight);
+
+const floorGeo = new THREE.CircleGeometry(6, 64);
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x0c0e14, roughness: 0.85, metalness: 0.1 });
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const { colorTex, bumpTex, albedoCanvas, bumpCanvas } = buildProceduralOnyxTextures();
+const isTravertine = (ITEM.material || '').toLowerCase().includes('travertine') || (ITEM.material || '').toLowerCase().includes('marble');
+
+const stoneMat = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
+  map: colorTex,
+  bumpMap: bumpTex,
+  bumpScale: isTravertine ? 0.028 : 0.014,
+  roughness: isTravertine ? 0.36 : 0.18,
+  metalness: 0.0,
+  transmission: isTravertine ? 0.08 : 0.32,
+  thickness: isTravertine ? 0.8 : 2.2,
+  ior: 1.54,
+  reflectivity: 0.65,
+  clearcoat: isTravertine ? 0.25 : 0.72,
+  clearcoatRoughness: 0.14,
+  attenuationColor: new THREE.Color(0xffffff),
+  attenuationDistance: 8.0,
+  emissive: new THREE.Color(0xffffff),
+  emissiveMap: colorTex,
+  emissiveIntensity: 0.14,
+  side: THREE.FrontSide,
+});
+
+const baseW = Math.max(8, Number(ITEM.width_cm) || 40);
+const rawH = Math.max(8, Number(ITEM.height_cm) || 40);
+const rawW = (ITEM.archetype === 'wall_panel_pair' && baseW < rawH * 0.68) ? Math.round(baseW * 2.04) : baseW;
+const rawL = (ITEM.archetype === 'wall_panel_pair' || ITEM.archetype === 'wall_panel') ? Math.min(8, Math.max(4, Number(ITEM.length_cm) || 8)) : Math.max(6, Number(ITEM.length_cm) || 25);
+const maxDim = Math.max(rawW, rawH, rawL);
+const scale = 2.1 / maxDim;
+const W = rawW * scale;
+const H = rawH * scale;
+const L = rawL * scale;
+
+const root = new THREE.Group();
+scene.add(root);
+
+function addShadowMesh(geo, mat, x = 0, y = 0, z = 0) {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  root.add(m);
+  return m;
+}
+
+const arch = ITEM.archetype;
+const shapeLower = (ITEM.shape || '').toLowerCase();
+
+if (arch === 'bowl') {
+  // Task C: Multi-view Bowl with top_down radial rim contour r(theta) + side wall flare profile r(y)
+  const vc = MASK_ATTR.vessel_contours || {};
+  const rimRadii = vc.rim_radii || null;
+  const wallProf = vc.wall_profile_r || null;
+  const rx = W * 0.5;
+  const rz = L * 0.5;
+  const avgR = (rx + rz) * 0.5;
+  const rBot = avgR * (wallProf && wallProf.length ? Math.max(0.32, Math.min(0.68, wallProf[0])) : 0.48);
+  const pts = [];
+  const steps = 28;
+
+  pts.push(new THREE.Vector2(0.001, 0));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    let flare = Math.pow(t, 0.72);
+    if (wallProf && wallProf.length >= 4) {
+      const wfIdx = Math.min(wallProf.length - 1, Math.floor(t * (wallProf.length - 1)));
+      flare = Math.max(0, Math.min(1, (wallProf[wfIdx] - wallProf[0]) / Math.max(0.08, 1.0 - wallProf[0])));
+    }
+    const r = rBot + (avgR - rBot) * flare;
+    const y = t * H;
+    pts.push(new THREE.Vector2(r, y));
+  }
+  const wall = Math.max(0.055, avgR * 0.11);
+  for (let i = steps; i >= 0; i--) {
+    const t = i / steps;
+    const r = Math.max(0.01, (rBot + (avgR - rBot) * Math.pow(t, 0.78)) - wall);
+    const y = wall * 1.15 + t * (H - wall * 1.15);
+    pts.push(new THREE.Vector2(r, y));
+  }
+  pts.push(new THREE.Vector2(0.001, wall * 1.15));
+
+  const segs = 72;
+  const lathe = new THREE.LatheGeometry(pts, segs);
+  const pos = lathe.attributes.position;
+  const scaleX = rx / Math.max(0.001, avgR);
+  const scaleZ = rz / Math.max(0.001, avgR);
+
+  for (let i = 0; i < pos.count; i++) {
+    let vx = pos.getX(i) * scaleX;
+    let vy = pos.getY(i);
+    let vz = pos.getZ(i) * scaleZ;
+    if (rimRadii && rimRadii.length > 8) {
+      const th = Math.atan2(vz, vx);
+      const normTh = ((th + Math.PI) / (2 * Math.PI)) * rimRadii.length;
+      const idx0 = ((Math.floor(normTh) % rimRadii.length) + rimRadii.length) % rimRadii.length;
+      const idx1 = (idx0 + 1) % rimRadii.length;
+      const frac = normTh - Math.floor(normTh);
+      const rMod = rimRadii[idx0] * (1 - frac) + rimRadii[idx1] * frac;
+      const hRatio = Math.max(0, Math.min(1, vy / Math.max(0.001, H)));
+      const factor = 1.0 + (rMod - 1.0) * Math.pow(hRatio, 0.85);
+      vx *= factor;
+      vz *= factor;
+    }
+    pos.setXYZ(i, vx, vy, vz);
+  }
+  lathe.computeVertexNormals();
+  applyBoxUVsInSubregion(lathe, [0, 0, 1, 1]);
+  addShadowMesh(lathe, stoneMat, 0, 0, 0);
+  internalLight.position.set(0, H * 0.55, 0);
+
+} else if (arch === 'canoe') {
+  // Task B: Multi-view Canoe lofted from top_down rim contour (plan_half_widths) + side_profile prow/rocker (profile_top_y, profile_bot_y)
+  const vc = MASK_ATTR.vessel_contours || {};
+  const halfWidths = vc.plan_half_widths || null;
+  const topYCurve = vc.profile_top_y || null;
+  const botYCurve = vc.profile_bot_y || null;
+
+  const len = Math.max(W, L);
+  const wid = Math.min(W, L);
+  const uSteps = 72;
+  const vSteps = 32;
+  const wallThick = Math.max(0.045, wid * 0.11);
+
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+
+  function sampleArray(arr, t01, fallback) {
+    if (!arr || !arr.length) return fallback;
+    const f = Math.max(0, Math.min(1, t01)) * (arr.length - 1);
+    const i0 = Math.floor(f);
+    const i1 = Math.min(arr.length - 1, i0 + 1);
+    return arr[i0] * (1 - (f - i0)) + arr[i1] * (f - i0);
+  }
+
+  for (let iu = 0; iu <= uSteps; iu++) {
+    const u = iu / uSteps;
+    const theta = u * Math.PI * 2;
+    const cosT = Math.cos(theta);
+    const sinT = Math.sin(theta);
+    const xNorm = cosT * 0.5 + 0.5; // 0..1 from stern to bow
+    const longAbs = Math.abs(cosT);
+
+    // Mask-driven plan half-width envelope + side-profile prow lift and keel rocker
+    const planFactor = sampleArray(halfWidths, xNorm, Math.pow(1 - Math.pow(longAbs, 2.1) * 0.35, 0.7));
+    const profTop = sampleArray(topYCurve, xNorm, 0.78 + Math.pow(longAbs, 2.5) * 0.22);
+    const profBot = sampleArray(botYCurve, xNorm, Math.pow(longAbs, 2.2) * 0.16);
+
+    const localTopY = H * profTop;
+    const localBotY = H * profBot * 0.45;
+    const localSpanY = Math.max(H * 0.25, localTopY - localBotY);
+
+    for (let iv = 0; iv <= vSteps; iv++) {
+      const v = iv / vSteps;
+      let rFrac = 0;
+      let yVal = 0;
+
+      if (v <= 0.48) {
+        const t = v / 0.48;
+        rFrac = 0.24 + 0.76 * Math.sin(t * Math.PI * 0.5);
+        yVal = localBotY + localSpanY * Math.pow(t, 0.88);
+      } else if (v <= 0.54) {
+        const t = (v - 0.48) / 0.06;
+        const innerR = Math.max(0.2, 1.0 - wallThick / Math.max(0.08, wid * 0.5));
+        rFrac = 1.0 - (1.0 - innerR) * t;
+        yVal = localTopY + Math.sin(t * Math.PI) * wallThick * 0.25;
+      } else {
+        const t = 1.0 - (v - 0.54) / 0.46;
+        const innerR = Math.max(0.2, 1.0 - wallThick / Math.max(0.08, wid * 0.5));
+        rFrac = Math.max(0.02, innerR * Math.sin(t * Math.PI * 0.5));
+        const floorY = localBotY + wallThick * 1.15;
+        yVal = floorY + (localTopY - floorY) * Math.pow(t, 1.25);
+      }
+
+      const px = cosT * (len * 0.5) * rFrac;
+      const pz = sinT * (wid * 0.5) * rFrac * planFactor;
+      const py = yVal;
+
+      positions.push(px, py, pz);
+      const bbox = [0, 0, 1, 1];
+      const uRaw = (px / Math.max(0.001, len)) + 0.5;
+      const vRaw = (pz / Math.max(0.001, wid)) + 0.5;
+      uvs.push(
+        bbox[0] + uRaw * (bbox[2] - bbox[0]),
+        (1.0 - bbox[3]) + vRaw * (bbox[3] - bbox[1])
+      );
+    }
+  }
+
+  const stride = vSteps + 1;
+  for (let iu = 0; iu < uSteps; iu++) {
+    for (let iv = 0; iv < vSteps; iv++) {
+      const a = iu * stride + iv;
+      const b = (iu + 1) * stride + iv;
+      const c = (iu + 1) * stride + (iv + 1);
+      const d = iu * stride + (iv + 1);
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  const canoeGeo = new THREE.BufferGeometry();
+  canoeGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  canoeGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  canoeGeo.setIndex(indices);
+  canoeGeo.computeVertexNormals();
+  addShadowMesh(canoeGeo, stoneMat, 0, 0.04, 0);
+  internalLight.position.set(0, H * 0.48, 0);
+
+} else if (arch === 'mirror') {
+  // Task A: SVG-cut Mirror using exact outer stone contour + inner hand-carved mirror opening
+  const depth = Math.max(0.09, Math.min(L, 0.22));
+  const mc = MASK_ATTR.mirror_contours || null;
+  const frameSh = new THREE.Shape();
+  const glassSh = new THREE.Shape();
+  const rw = W * 0.5, rh = H * 0.5;
+
+  if (mc && Array.isArray(mc.outer_points) && mc.outer_points.length >= 6) {
+    mc.outer_points.forEach((pt, idx) => {
+      const px = pt[0] * W;
+      const py = pt[1] * H;
+      if (idx === 0) frameSh.moveTo(px, py);
+      else frameSh.lineTo(px, py);
+    });
+    frameSh.closePath();
+
+    const holePts = (Array.isArray(mc.inner_hole_points) && mc.inner_hole_points.length >= 6)
+      ? mc.inner_hole_points
+      : mc.outer_points.map(p => [p[0] * 0.55, p[1] * 0.55]);
+    const hole = new THREE.Path();
+    holePts.forEach((pt, idx) => {
+      const hx = pt[0] * W;
+      const hy = pt[1] * H;
+      const gx = hx * 1.02;
+      const gy = hy * 1.02;
+      if (idx === 0) { hole.moveTo(hx, hy); glassSh.moveTo(gx, gy); }
+      else { hole.lineTo(hx, hy); glassSh.lineTo(gx, gy); }
+    });
+    hole.closePath();
+    glassSh.closePath();
+    frameSh.holes.push(hole);
+  } else {
+    const isRound = shapeLower.includes('round') || shapeLower.includes('circle') || shapeLower.includes('oval') || Math.abs(W - H) < 0.15;
+    const rim = Math.min(rw, rh) * 0.26;
+    if (isRound) {
+      frameSh.absellipse(0, 0, rw, rh, 0, Math.PI * 2, false, 0);
+      const hole = new THREE.Path();
+      hole.absellipse(0, 0, rw - rim, rh - rim, 0, Math.PI * 2, true, 0);
+      frameSh.holes.push(hole);
+      glassSh.absellipse(0, 0, rw - rim * 0.9, rh - rim * 0.9, 0, Math.PI * 2, false, 0);
+    } else {
+      frameSh.moveTo(-rw, -rh); frameSh.lineTo(rw, -rh); frameSh.lineTo(rw, rh); frameSh.lineTo(-rw, rh); frameSh.closePath();
+      const hole = new THREE.Path();
+      hole.moveTo(-(rw - rim), -(rh - rim)); hole.lineTo(-(rw - rim), rh - rim); hole.lineTo(rw - rim, rh - rim); hole.lineTo(rw - rim, -(rh - rim)); hole.closePath();
+      frameSh.holes.push(hole);
+      glassSh.moveTo(-(rw - rim * 0.9), -(rh - rim * 0.9)); glassSh.lineTo(rw - rim * 0.9, -(rh - rim * 0.9)); glassSh.lineTo(rw - rim * 0.9, rh - rim * 0.9); glassSh.lineTo(-(rw - rim * 0.9), rh - rim * 0.9); glassSh.closePath();
+    }
+  }
+
+  const frameGeo = new THREE.ExtrudeGeometry(frameSh, { depth, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.015, bevelSegments: 4 });
+  applyBoxUVsInSubregion(frameGeo, [0, 0, 1, 1]);
+  addShadowMesh(frameGeo, stoneMat, 0, rh + 0.1, -depth * 0.5);
+
+  const mirrorMat = new THREE.MeshPhysicalMaterial({ color: 0xdbeafe, metalness: 0.98, roughness: 0.02, clearcoat: 1.0, reflectivity: 1.0 });
+  const glassGeo = new THREE.ExtrudeGeometry(glassSh, { depth: 0.018, bevelEnabled: false });
+  addShadowMesh(glassGeo, mirrorMat, 0, rh + 0.1, -depth * 0.15);
+  internalLight.position.set(0, rh + 0.1, -depth * 1.4);
+
+} else if (arch === 'yin_yang_fountain') {
+  const plinthH = H * 0.16;
+  const bodyH = H * 0.84;
+  const plinthGeo = new THREE.BoxGeometry(W * 1.08, plinthH, Math.max(L, W * 0.38));
+  addShadowMesh(plinthGeo, stoneMat, 0, plinthH * 0.5, 0);
+
+  const gap = W * 0.025;
+  const halfW = (W - gap) * 0.5;
+  const rHole = Math.min(W, bodyH) * 0.19;
+  const slabDepth = Math.max(0.14, L * 0.65);
+
+  const leftSh = new THREE.Shape();
+  leftSh.moveTo(-halfW, -bodyH * 0.5);
+  leftSh.lineTo(0, -bodyH * 0.5);
+  leftSh.lineTo(0, -rHole);
+  leftSh.absarc(0, 0, rHole, -Math.PI / 2, Math.PI / 2, true);
+  leftSh.lineTo(0, bodyH * 0.5);
+  leftSh.lineTo(-halfW, bodyH * 0.5);
+  leftSh.closePath();
+
+  const rightSh = new THREE.Shape();
+  rightSh.moveTo(0, -bodyH * 0.5);
+  rightSh.lineTo(halfW, -bodyH * 0.5);
+  rightSh.lineTo(halfW, bodyH * 0.5);
+  rightSh.lineTo(0, bodyH * 0.5);
+  rightSh.lineTo(0, rHole);
+  rightSh.absarc(0, 0, rHole, Math.PI / 2, -Math.PI / 2, true);
+  rightSh.closePath();
+
+  const extOpts = { depth: slabDepth, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.015, bevelSegments: 3 };
+  addShadowMesh(new THREE.ExtrudeGeometry(leftSh, extOpts), stoneMat, -gap * 0.5, plinthH + bodyH * 0.5, -slabDepth * 0.5);
+  addShadowMesh(new THREE.ExtrudeGeometry(rightSh, extOpts), stoneMat, gap * 0.5, plinthH + bodyH * 0.5, -slabDepth * 0.5);
+  internalLight.position.set(0, plinthH + bodyH * 0.5, 0);
+
+} else if (arch === 'wall_panel_pair') {
+  // Task D: Wall Panel Pair — single photo contains both panels side-by-side!
+  // Extract left & right contours and map Left Panel UVs to left_bbox_uv and Right Panel UVs to right_bbox_uv.
+  const thick = Math.max(0.06, Math.min(L, 0.14));
+  const panelW = W * 0.47;
+  const gap = W * 0.04;
+  const ppc = MASK_ATTR.panel_pair_contours || {};
+  const leftBbox = [0.0, 0.0, 0.492, 1.0];
+  const rightBbox = [0.508, 0.0, 1.0, 1.0];
+
+  function buildPairSlabGeo(ptsArray, bboxUv) {
+    let geo;
+    if (Array.isArray(ptsArray) && ptsArray.length >= 6) {
+      const sh = new THREE.Shape();
+      ptsArray.forEach((pt, idx) => {
+        const px = pt[0] * panelW;
+        const py = pt[1] * H;
+        if (idx === 0) sh.moveTo(px, py);
+        else sh.lineTo(px, py);
+      });
+      sh.closePath();
+      geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 3 });
+      geo.center();
+    } else {
+      geo = new THREE.BoxGeometry(panelW, H, thick, 4, 4, 2);
+    }
+    applyBoxUVsInSubregion(geo, bboxUv);
+    return geo;
+  }
+
+  const leftGeo = buildPairSlabGeo(ppc.left_points, leftBbox);
+  const rightGeo = buildPairSlabGeo(ppc.right_points, rightBbox);
+  addShadowMesh(leftGeo, stoneMat, -(panelW * 0.5 + gap * 0.5), H * 0.5 + 0.08, 0);
+  addShadowMesh(rightGeo, stoneMat, (panelW * 0.5 + gap * 0.5), H * 0.5 + 0.08, 0);
+  internalLight.position.set(0, H * 0.5 + 0.08, -thick * 2.2);
+
+} else if (arch === 'wall_panel') {
+  const thick = Math.max(0.07, Math.min(L, 0.16));
+  const wpc = MASK_ATTR.wall_panel_contours || {};
+  const isFree = shapeLower.includes('free') || shapeLower.includes('organic');
+  let geo;
+  if (isFree && Array.isArray(wpc.outer_points) && wpc.outer_points.length >= 6) {
+    const sh = new THREE.Shape();
+    wpc.outer_points.forEach((pt, idx) => {
+      if (idx === 0) sh.moveTo(pt[0] * W, pt[1] * H);
+      else sh.lineTo(pt[0] * W, pt[1] * H);
+    });
+    sh.closePath();
+    geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.012, bevelSegments: 3 });
+    geo.center();
+  } else {
+    geo = new THREE.BoxGeometry(W, H, thick);
+  }
+  applyBoxUVsInSubregion(geo, [0, 0, 1, 1]);
+  addShadowMesh(geo, stoneMat, 0, H * 0.5 + 0.08, 0);
+  internalLight.position.set(0, H * 0.5 + 0.08, -thick * 2.2);
+
+} else if (arch === 'tower_lamp' || arch === 'floor_lamp') {
+  // Task E: Tower Lamp photos are taken at a side corner showing two adjacent faces meeting at the central vertical corner edge!
+  const isCyl = shapeLower.includes('cylin') || shapeLower.includes('round') || shapeLower.includes('oval');
+  const isSphere = shapeLower.includes('sphere') || shapeLower.includes('ball') || shapeLower.includes('globe');
+  const isPyr = shapeLower.includes('pyram') || shapeLower.includes('trian');
+  const cornerSpec = MASK_ATTR.tower_lamp_corner_uv || null;
+
+  const baseH = Math.min(0.12, H * 0.08);
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x1e2028, roughness: 0.4, metalness: 0.6 });
+  addShadowMesh(new THREE.BoxGeometry(W * 0.92, baseH, L * 0.92), baseMat, 0, baseH * 0.5, 0);
+
+  const bodyH = H - baseH;
+  if (isSphere) {
+    const r = Math.max(W, H, L) * 0.48;
+    const g = new THREE.SphereGeometry(r, 64, 48);
+    applyBoxUVsInSubregion(g, MASK_ATTR.bbox_uv || [0, 0, 1, 1]);
+    addShadowMesh(g, stoneMat, 0, baseH + r * 0.95, 0);
+  } else if (isCyl) {
+    const r = Math.max(W, L) * 0.46;
+    const g = new THREE.CylinderGeometry(r * 0.88, r, bodyH, 64, 1, false);
+    const cyl = addShadowMesh(g, stoneMat, 0, baseH + bodyH * 0.5, 0);
+    if (Math.abs(W - L) > 0.08) cyl.scale.set(1, 1, L / W);
+  } else {
+    // Hollowed 4-sided stone column with side-corner UV unwrapping across the front corner ridge (+hw, +hd)
+    const colW = W * 0.88;
+    const colL = L * 0.88;
+    const wallT = Math.max(0.035, Math.min(colW, colL) * 0.12);
+    const outerSh = new THREE.Shape();
+    const hw = colW * 0.5, hd = colL * 0.5;
+    outerSh.moveTo(-hw, -hd); outerSh.lineTo(hw, -hd); outerSh.lineTo(hw, hd); outerSh.lineTo(-hw, hd); outerSh.closePath();
+
+    const innerHole = new THREE.Path();
+    const ihw = Math.max(0.04, hw - wallT), ihd = Math.max(0.04, hd - wallT);
+    innerHole.moveTo(-ihw, -ihd); innerHole.lineTo(ihw, -ihd); innerHole.lineTo(ihw, ihd); innerHole.lineTo(-ihw, ihd); innerHole.closePath();
+    outerSh.holes.push(innerHole);
+
+    const colGeo = new THREE.ExtrudeGeometry(outerSh, { depth: bodyH, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2 });
+    colGeo.rotateX(-Math.PI / 2);
+    colGeo.center();
+
+    const taper = isPyr ? 0.42 : ((cornerSpec && cornerSpec.taper_ratio && cornerSpec.taper_ratio < 0.86) ? cornerSpec.taper_ratio : 1.0);
+    if (taper < 0.96) {
+      const pos = colGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const vy = pos.getY(i);
+        const t = (vy + bodyH * 0.5) / Math.max(0.001, bodyH);
+        const s = 1.0 - t * (1.0 - taper);
+        pos.setX(i, pos.getX(i) * s);
+        pos.setZ(i, pos.getZ(i) * s);
+      }
+      colGeo.computeVertexNormals();
+    }
+
+    // Map left half of corner-shot photo to +Z face and right half to +X face meeting at the (+hw, +hd) corner edge
+    applyCornerLampUVs(colGeo, cornerSpec);
+    addShadowMesh(colGeo, stoneMat, 0, baseH + bodyH * 0.5, 0);
+  }
+  internalLight.position.set(0, baseH + bodyH * 0.48, 0);
+  internalLight.intensity = 6.2;
+
+} else if (arch === 'table') {
+  const topH = Math.max(0.08, H * 0.14);
+  const pedH = H - topH;
+  addShadowMesh(new THREE.BoxGeometry(W, topH, L), stoneMat, 0, pedH + topH * 0.5, 0);
+  addShadowMesh(new THREE.BoxGeometry(W * 0.52, pedH, L * 0.52), stoneMat, 0, pedH * 0.5, 0);
+  internalLight.position.set(0, H * 0.5, 0);
+} else {
+  const g = new THREE.BoxGeometry(W, H, L);
+  applyBoxUVsInSubregion(g, MASK_ATTR.bbox_uv || [0, 0, 1, 1]);
+  addShadowMesh(g, stoneMat, 0, H * 0.5, 0);
+  internalLight.position.set(0, H * 0.5, 0);
+}
+
+// Frame camera nicely
+const centerY = H * 0.52;
+controls.target.set(0, centerY, 0);
+const camDist = Math.max(W, H, L) * 2.05;
+camera.position.set(camDist * 0.72, centerY + camDist * 0.35, camDist * 0.92);
+controls.update();
+
+// Progressive enhancement: blend real clean-room cutout PNG and SVG vein mask if accessible
+const statusEl = document.getElementById('ui-tex-status');
+const mvSummary = ITEM.angle_views
+  ? Object.entries(ITEM.angle_views).map(([k, v]) => `${k}:${v.view_class}(${v.elevation_deg}°)`).join(' • ')
+  : '';
+const taskBadge = MASK_ATTR.mirror_contours ? 'SVG Inner/Outer Mirror Cut'
+  : MASK_ATTR.panel_pair_contours ? `Dual-Slab Pair (${MASK_ATTR.panel_pair_contours.mode})`
+  : MASK_ATTR.tower_lamp_corner_uv ? `Corner-Shot UV Unwrap (u*=${MASK_ATTR.tower_lamp_corner_uv.u_corner_frac})`
+  : MASK_ATTR.vessel_contours ? 'Multi-View Rim+Profile Contours'
+  : 'Onyx Shader Active';
+
+statusEl.textContent = mvSummary
+  ? `${taskBadge} • ${mvSummary}`
+  : `${taskBadge} • ${(ITEM.vein_colors || []).length} Vein Clusters`;
+
+const primaryCutout = ITEM.plan_cutout_url || ITEM.cutout_url;
+const secondaryCutout = (ITEM.profile_cutout_url && ITEM.profile_cutout_url !== primaryCutout) ? ITEM.profile_cutout_url : null;
+
+if (primaryCutout) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const ctx = albedoCanvas.getContext('2d');
+      const iw = img.naturalWidth || img.width;
+      const ih = img.naturalHeight || img.height;
+      const tmp = document.createElement('canvas');
+      tmp.width = iw; tmp.height = ih;
+      const tCtx = tmp.getContext('2d', { willReadFrequently: true });
+      let sx = 0, sy = 0, sw = iw, sh = ih;
+      if (tCtx && iw > 0 && ih > 0) {
+        tCtx.drawImage(img, 0, 0);
+        const data = tCtx.getImageData(0, 0, iw, ih).data;
+        let minX = iw, minY = ih, maxX = 0, maxY = 0, found = false;
+        for (let y = 0; y < ih; y += 2) {
+          for (let x = 0; x < iw; x += 2) {
+            const idx = (y * iw + x) * 4;
+            const a = data[idx + 3];
+            const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+            if (a > 32 && !(r > 248 && g > 248 && b > 248)) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+              found = true;
+            }
+          }
+        }
+        if (found && maxX > minX + 16 && maxY > minY + 16) {
+          sx = minX; sy = minY; sw = maxX - minX; sh = maxY - minY;
+        }
+      }
+      const cw = albedoCanvas.width, ch = albedoCanvas.height;
+      ctx.save();
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.filter = 'blur(36px)';
+      ctx.drawImage(img, sx, sy, sw, sh, -cw * 0.12, -ch * 0.12, cw * 1.24, ch * 1.24);
+      ctx.filter = 'blur(16px)';
+      ctx.drawImage(img, sx, sy, sw, sh, -cw * 0.04, -ch * 0.04, cw * 1.08, ch * 1.08);
+      ctx.filter = 'none';
+      ctx.globalAlpha = 1.0;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+      ctx.restore();
+      colorTex.needsUpdate = true;
+      statusEl.textContent = mvSummary
+        ? `${taskBadge} • Multi-View True-Color (${mvSummary})`
+        : `${taskBadge} • True-Color Cutout PNG`;
+    } catch (e) {}
+  };
+  img.src = primaryCutout;
+}
+
+const primaryVeinSvg = ITEM.plan_vein_svg_url || ITEM.vein_svg_url;
+if (primaryVeinSvg) {
+  const vimg = new Image();
+  vimg.crossOrigin = 'anonymous';
+  vimg.onload = () => {
+    const bctx = bumpCanvas.getContext('2d');
+    bctx.save();
+    bctx.globalAlpha = 0.9;
+    bctx.drawImage(vimg, 0, 0, bumpCanvas.width, bumpCanvas.height);
+    bctx.restore();
+    bumpTex.needsUpdate = true;
+  };
+  vimg.src = primaryVeinSvg;
+}
+
+let backlightOn = true;
+document.getElementById('btn-backlight').addEventListener('click', (e) => {
+  backlightOn = !backlightOn;
+  internalLight.visible = backlightOn;
+  stoneMat.emissiveIntensity = backlightOn ? 0.22 : 0.02;
+  e.currentTarget.classList.toggle('active', backlightOn);
+});
+
+document.getElementById('btn-rotate').addEventListener('click', (e) => {
+  controls.autoRotate = !controls.autoRotate;
+  e.currentTarget.classList.toggle('active', controls.autoRotate);
+});
+
+document.getElementById('btn-wire').addEventListener('click', (e) => {
+  stoneMat.wireframe = !stoneMat.wireframe;
+  e.currentTarget.classList.toggle('active', stoneMat.wireframe);
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  controls.target.set(0, centerY, 0);
+  camera.position.set(camDist * 0.72, centerY + camDist * 0.35, camDist * 0.92);
+  controls.update();
+});
+
+document.getElementById('btn-fullscreen').addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>

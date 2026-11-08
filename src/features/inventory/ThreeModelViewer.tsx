@@ -23,7 +23,8 @@ import {
     resolveStonePalette,
     type AxoBoundingBoxOptions
 } from '../../lib/axonometric';
-import { classifyExtra, extractHolesCount, isFreeFormPanel, isPanelPair } from '../../lib/axoExtra';
+import { resolveStonePaletteRaw } from '../../lib/canonicalColors';
+import { classifyExtra, extractHolesCount, isFreeFormPanel, isPanelPair, PANEL_PAIR_GAP_RATIO } from '../../lib/axoExtra';
 import { classifyMirror } from '../../lib/axoMirrors';
 import { classifyGeometry } from '../../lib/geometry';
 import {
@@ -258,10 +259,10 @@ export function parseItemFor3D(item: any): ParsedItemSpecs {
         /\b(travertine|travertino|granite|granito|cantera|basalt|volcanic|volcanica|sandstone|limestone)\b/i.test(combinedLower) ||
         (archetype === 'rock' && !/\b(onyx|onix|fluorite|fluorita|calcite|calcita)\b/i.test(combinedLower));
 
-    // Resolve stone palette & vein colors
-    const palette = resolveStonePalette(rawData);
-    const dominantHex = resolveItemColor(rawData) || palette.primary || '#e8a856';
-    const secondaryHex = palette.secondary || '#f5dfbb';
+    // Resolve raw untinted stone palette & vein colors (no 1.45x saturation boost in 3D)
+    const palette = resolveStonePaletteRaw(rawData);
+    const dominantHex = palette.primary || resolveItemColor(rawData) || '#d6cab8';
+    const secondaryHex = palette.secondary || '#ece5d8';
     const paletteHexes = [...(palette.gradientColors || [dominantHex, secondaryHex])];
 
     // Inspect processed_media_urls for vein_colors, vein_svg_urls, and cutout PNG
@@ -398,7 +399,8 @@ function createSeededStoneCanvases(specs: ParsedItemSpecs, size = 1024): {
                 srcRows,
                 gridN,
                 gridN,
-                specs.archetype === 'bowl' || specs.archetype === 'canoe'
+                specs.archetype === 'bowl' || specs.archetype === 'canoe',
+                true
             );
             denseGrid = normalized.map(hexToRgb);
         }
@@ -450,12 +452,9 @@ function createSeededStoneCanvases(specs: ParsedItemSpecs, size = 1024): {
         for (let x = 0; x < midN; x++) {
             const u = x / (midN - 1);
 
-            // Organic domain warp so pixel grid boundaries dissolve into natural onyx flow bands
-            const warpU = Math.min(1, Math.max(0, u + Math.sin(v * 14.0 + u * 6.0) * 0.018));
-            const warpV = Math.min(1, Math.max(0, v + Math.cos(u * 12.0 - v * 8.0) * 0.018));
-
-            const gx = warpU * (gridN - 1);
-            const gy = warpV * (gridN - 1);
+            // Keep true spatial alignment with the item's hex map (no domain warp that misaligns with cutout PNG)
+            const gx = u * (gridN - 1);
+            const gy = v * (gridN - 1);
             const x0 = Math.floor(gx);
             const y0 = Math.floor(gy);
             const x1 = Math.min(gridN - 1, x0 + 1);
@@ -472,22 +471,24 @@ function createSeededStoneCanvases(specs: ParsedItemSpecs, size = 1024): {
             let g = (c00.g * (1 - fx) + c10.g * fx) * (1 - fy) + (c01.g * (1 - fx) + c11.g * fx) * fy;
             let b = (c00.b * (1 - fx) + c10.b * fx) * (1 - fy) + (c01.b * (1 - fx) + c11.b * fx) * fy;
 
-            // Fine crystalline calcite vein ridge function
+            // Fine crystalline calcite vein ridge function (used for bump relief; only tints albedo if no real hex map)
             const veinPhase = Math.sin(
                 u * 18.0 + v * 11.0 + Math.sin(u * 7.0 - v * 9.0) * 2.4 + Math.cos(v * 23.0) * 0.7
             );
             const sharpVein = Math.pow(Math.max(0, 1.0 - Math.abs(veinPhase) * 3.8), 2.5);
             const secondaryBand = Math.pow(Math.max(0, Math.sin(v * 28.0 + Math.sin(u * 9.0) * 3.0)), 6.0) * 0.35;
 
-            if (sharpVein > 0.01) {
-                r = r * (1 - sharpVein * 0.45) + veinRgb.r * (sharpVein * 0.45);
-                g = g * (1 - sharpVein * 0.45) + veinRgb.g * (sharpVein * 0.45);
-                b = b * (1 - sharpVein * 0.45) + veinRgb.b * (sharpVein * 0.45);
-            }
-            if (secondaryBand > 0.01) {
-                r = r * (1 - secondaryBand) + darkVeinRgb.r * secondaryBand;
-                g = g * (1 - secondaryBand) + darkVeinRgb.g * secondaryBand;
-                b = b * (1 - secondaryBand) + darkVeinRgb.b * secondaryBand;
+            if (!specs.hexMapString) {
+                if (sharpVein > 0.01) {
+                    r = r * (1 - sharpVein * 0.35) + veinRgb.r * (sharpVein * 0.35);
+                    g = g * (1 - sharpVein * 0.35) + veinRgb.g * (sharpVein * 0.35);
+                    b = b * (1 - sharpVein * 0.35) + veinRgb.b * (sharpVein * 0.35);
+                }
+                if (secondaryBand > 0.01) {
+                    r = r * (1 - secondaryBand) + darkVeinRgb.r * secondaryBand;
+                    g = g * (1 - secondaryBand) + darkVeinRgb.g * secondaryBand;
+                    b = b * (1 - secondaryBand) + darkVeinRgb.b * secondaryBand;
+                }
             }
 
             // Porous travertine pits vs smooth onyx vein micro-relief
@@ -528,7 +529,7 @@ function createSeededStoneCanvases(specs: ParsedItemSpecs, size = 1024): {
     bCtx.imageSmoothingQuality = 'high';
     bCtx.drawImage(midBump, 0, 0, size, size);
 
-    // 3. Draw high-resolution vector-style mineral fissures on the 1024x1024 canvas
+    // 3. Draw micro-relief fissures into bumpCanvas (and only into albedoCanvas if no hexMapString exists)
     aCtx.save();
     bCtx.save();
     for (let i = 0; i < 14; i++) {
@@ -546,14 +547,16 @@ function createSeededStoneCanvases(specs: ParsedItemSpecs, size = 1024): {
             aCtx.lineTo(px, py);
             bCtx.lineTo(px, py);
         }
-        const palHex = specs.paletteHexes[i % specs.paletteHexes.length] || specs.secondaryHex;
-        aCtx.strokeStyle = palHex;
-        aCtx.globalAlpha = 0.16;
-        aCtx.lineWidth = 1.5 + (i % 3) * 1.2;
-        aCtx.stroke();
+        if (!specs.hexMapString) {
+            const palHex = specs.paletteHexes[i % specs.paletteHexes.length] || specs.secondaryHex;
+            aCtx.strokeStyle = palHex;
+            aCtx.globalAlpha = 0.12;
+            aCtx.lineWidth = 1.5 + (i % 3) * 1.2;
+            aCtx.stroke();
+        }
 
-        bCtx.strokeStyle = i % 2 === 0 ? 'rgba(255,255,255,0.28)' : 'rgba(40,40,40,0.24)';
-        bCtx.lineWidth = 2.0 + (i % 3);
+        bCtx.strokeStyle = i % 2 === 0 ? 'rgba(255,255,255,0.24)' : 'rgba(40,40,40,0.20)';
+        bCtx.lineWidth = 1.8 + (i % 3);
         bCtx.stroke();
     }
     aCtx.restore();
@@ -573,28 +576,28 @@ function createStudioEnvironment(renderer: THREE.WebGLRenderer, warmHex: string)
     const envScene = new THREE.Scene();
     envScene.background = new THREE.Color(0x111318);
 
-    // Overhead warm gallery softbox
+    // Overhead neutral studio softbox
     const topBox = new THREE.Mesh(
         new THREE.PlaneGeometry(24, 24),
-        new THREE.MeshBasicMaterial({ color: 0xfff5e4, side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
     );
     topBox.position.set(0, 14, 0);
     topBox.rotation.x = Math.PI / 2;
     envScene.add(topBox);
 
-    // Key warm side strip light
+    // Key neutral studio strip light
     const keyStrip = new THREE.Mesh(
         new THREE.PlaneGeometry(16, 20),
-        new THREE.MeshBasicMaterial({ color: new THREE.Color(warmHex).lerp(new THREE.Color(0xffffff), 0.55), side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({ color: 0xfafaf9, side: THREE.DoubleSide })
     );
     keyStrip.position.set(14, 4, 10);
     keyStrip.lookAt(0, 0, 0);
     envScene.add(keyStrip);
 
-    // Cool architectural rim light
+    // Subtle neutral fill strip light
     const rimStrip = new THREE.Mesh(
         new THREE.PlaneGeometry(14, 18),
-        new THREE.MeshBasicMaterial({ color: 0xbae6fd, side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide })
     );
     rimStrip.position.set(-14, 5, -10);
     rimStrip.lookAt(0, 0, 0);
@@ -708,7 +711,7 @@ function applyCornerLampUVs(geom: THREE.BufferGeometry, cornerSpec?: any): void 
     const spanY = Math.max(0.001, bb.max.y - bb.min.y);
     const spanZ = Math.max(0.001, bb.max.z - bb.min.z);
 
-    const bbox = (cornerSpec && Array.isArray(cornerSpec.bbox_uv) ? cornerSpec.bbox_uv : null) || [0.05, 0.03, 0.95, 0.97];
+    const bbox = [0.02, 0.02, 0.98, 0.98];
     const uMin = bbox[0] ?? 0.05;
     const vMinTop = bbox[1] ?? 0.03;
     const uMax = bbox[2] ?? 0.95;
@@ -774,12 +777,23 @@ function buildArchetype3DScene(
     const backlights: THREE.Light[] = [];
     const glowMeshes: THREE.Mesh[] = [];
 
+    // For panel pairs where widthCm is recorded per-slab (e.g. 64 x 145 cm -> 131 x 145 cm total pair),
+    // match 2D axo resolveAxoGeometry by widening total pair width to W * (2 + PANEL_PAIR_GAP_RATIO).
+    const effectiveWidthCm =
+        specs.archetype === 'panel-pair' && specs.widthCm < specs.heightCm * 0.68
+            ? Math.round(specs.widthCm * (2 + PANEL_PAIR_GAP_RATIO))
+            : specs.widthCm;
+    const effectiveDepthCm =
+        (specs.archetype === 'wall-panel' || specs.archetype === 'panel-pair' || specs.archetype === 'painted-wall-panel')
+            ? Math.min(specs.lengthCm, 8)
+            : specs.lengthCm;
+
     // Scale real cm dimensions so the largest dimension is ~8.0 scene units
-    const maxCm = Math.max(specs.widthCm, specs.heightCm, specs.lengthCm, 1);
+    const maxCm = Math.max(effectiveWidthCm, specs.heightCm, effectiveDepthCm, 1);
     const unitScale = 8.0 / maxCm;
-    const W = Math.max(0.6, specs.widthCm * unitScale);
+    const W = Math.max(0.6, effectiveWidthCm * unitScale);
     const H = Math.max(0.4, specs.heightCm * unitScale);
-    const D = Math.max(0.35, specs.lengthCm * unitScale);
+    const D = Math.max(0.24, effectiveDepthCm * unitScale);
 
     const addWarmLight = (x: number, y: number, z: number, intensity = 5.5, distance = 18) => {
         const pt = new THREE.PointLight(0xffae52, intensity, distance, 1.4);
@@ -942,7 +956,9 @@ function buildArchetype3DScene(
                     const y = yVal - H * 0.5;
 
                     positions.push(x, y, z);
-                    uvs.push((x / W) + 0.5, (z / D) + 0.5);
+                    const lu = Math.max(0, Math.min(1, (x / W) + 0.5));
+                    const lv = Math.max(0, Math.min(1, (z / D) + 0.5));
+                    uvs.push(lu, lv);
                 }
             }
 
@@ -1239,48 +1255,105 @@ function buildArchetype3DScene(
         case 'panel-pair':
         case 'painted-wall-panel': {
             const slabDepth = Math.min(Math.max(D, 0.24), 0.48);
-            const isPair = specs.archetype === 'panel-pair';
+            const pc = specs.maskAttractions?.panel_pair_contours;
+            const wpc = specs.maskAttractions?.wall_panel_contours;
+            const isPair = specs.archetype === 'panel-pair' || Boolean(pc);
             const isFree = isFreeFormPanel(combinedText);
 
-            const createPanelMesh = (panelW: number, panelH: number, mirrorX = false) => {
+            // Procedural fallback slab builder: for bookmatched free-form pairs, keeps the inner saw-cut seam straight
+            // and shapes the outer edge with natural live-edge undulation (matching 2D axo freeFormOutline)
+            const createPanelMesh = (panelW: number, panelH: number, isRightOfPair = false, bboxUv?: number[]) => {
                 if (isFree) {
                     const shape = new THREE.Shape();
-                    const segs = 72;
-                    for (let i = 0; i <= segs; i++) {
-                        const t = (i / segs) * Math.PI * 2;
-                        const w = 1 + Math.sin(t * 3 + (mirrorX ? -0.6 : 0.6)) * 0.09 + Math.cos(t * 5) * 0.04;
-                        const x = Math.cos(t) * (panelW * 0.5) * w;
-                        const y = Math.sin(t) * (panelH * 0.5) * w;
-                        if (i === 0) shape.moveTo(x, y);
-                        else shape.lineTo(x, y);
+                    const hw = panelW * 0.5;
+                    const hh = panelH * 0.5;
+                    const pts: [number, number][] = [];
+                    if (isPair) {
+                        // Straight vertical inner seam + undulating natural outer edge
+                        const steps = 28;
+                        if (!isRightOfPair) {
+                            // Left slab: straight right seam at x = +hw, natural outer edge on left/top/bottom
+                            pts.push([hw, -hh * 0.94]);
+                            pts.push([hw, hh * 0.97]);
+                            for (let i = 0; i <= 10; i++) {
+                                const t = i / 10;
+                                const x = hw * (1 - 2 * t);
+                                const y = hh * (0.97 - 0.04 * Math.sin(t * Math.PI) - 0.05 * Math.pow(t, 2));
+                                pts.push([x, y]);
+                            }
+                            for (let i = 1; i <= steps; i++) {
+                                const t = i / steps;
+                                const y = hh * (0.92 - 1.88 * t);
+                                const rind = 0.88 + 0.08 * Math.sin(t * Math.PI * 3.2 + 0.4) + 0.04 * Math.cos(t * Math.PI * 7.0);
+                                const taperBot = t > 0.78 ? (t - 0.78) * 0.65 : 0;
+                                const x = -hw * Math.max(0.55, rind - taperBot);
+                                pts.push([x, y]);
+                            }
+                            for (let i = 1; i <= 8; i++) {
+                                const t = i / 8;
+                                const x = -hw * 0.68 * (1 - t) + hw * t;
+                                const y = -hh * (0.96 - 0.04 * t);
+                                pts.push([x, y]);
+                            }
+                        } else {
+                            // Right slab: mirror of left slab (straight left seam at x = -hw, natural outer edge on right)
+                            pts.push([-hw, -hh * 0.94]);
+                            for (let i = 1; i <= 8; i++) {
+                                const t = i / 8;
+                                const x = -hw * (1 - t) + hw * 0.68 * t;
+                                const y = -hh * (0.94 + 0.04 * t);
+                                pts.push([x, y]);
+                            }
+                            for (let i = steps; i >= 0; i--) {
+                                const t = i / steps;
+                                const y = hh * (0.92 - 1.88 * t);
+                                const rind = 0.88 + 0.08 * Math.sin(t * Math.PI * 3.2 + 0.4) + 0.04 * Math.cos(t * Math.PI * 7.0);
+                                const taperBot = t > 0.78 ? (t - 0.78) * 0.65 : 0;
+                                const x = hw * Math.max(0.55, rind - taperBot);
+                                pts.push([x, y]);
+                            }
+                            for (let i = 10; i >= 0; i--) {
+                                const t = i / 10;
+                                const x = -hw * (1 - 2 * t);
+                                const y = hh * (0.97 - 0.04 * Math.sin(t * Math.PI) - 0.05 * Math.pow(t, 2));
+                                pts.push([x, y]);
+                            }
+                        }
+                    } else {
+                        const segs = 72;
+                        for (let i = 0; i <= segs; i++) {
+                            const t = (i / segs) * Math.PI * 2;
+                            const w = 1 + Math.sin(t * 3 + 0.6) * 0.07 + Math.cos(t * 5) * 0.03;
+                            pts.push([Math.cos(t) * hw * w, Math.sin(t) * hh * w]);
+                        }
                     }
+                    pts.forEach((pt, idx) => {
+                        if (idx === 0) shape.moveTo(pt[0], pt[1]);
+                        else shape.lineTo(pt[0], pt[1]);
+                    });
+                    shape.closePath();
                     const g = new THREE.ExtrudeGeometry(shape, {
                         depth: slabDepth,
                         bevelEnabled: true,
-                        bevelThickness: 0.03,
-                        bevelSize: 0.03,
+                        bevelThickness: 0.025,
+                        bevelSize: 0.02,
                         bevelSegments: 3
                     });
                     g.center();
-                    normalizeGeometryUVs(g);
+                    applyBoxUVsInSubregion(g, bboxUv || [0, 0, 1, 1]);
                     return new THREE.Mesh(g, stoneMat);
                 } else {
                     const g = new THREE.BoxGeometry(panelW, panelH, slabDepth, 4, 4, 2);
-                    normalizeGeometryUVs(g);
-                    if (mirrorX) {
-                        const uv = g.attributes.uv;
-                        for (let i = 0; i < uv.count; i++) {
-                            uv.setX(i, 1.0 - uv.getX(i));
-                        }
-                    }
+                    applyBoxUVsInSubregion(g, bboxUv || [0, 0, 1, 1]);
                     return new THREE.Mesh(g, stoneMat);
                 }
             };
 
             if (isPair) {
-                const pc = specs.maskAttractions?.panel_pair_contours;
-                const gap = W * 0.045;
+                const gap = W * 0.032;
                 const singleW = (W - gap) * 0.5;
+                const leftBbox = [0.0, 0.0, 0.492, 1.0];
+                const rightBbox = [0.508, 0.0, 1.0, 1.0];
                 if (pc && Array.isArray(pc.left_points) && pc.left_points.length >= 8 && Array.isArray(pc.right_points) && pc.right_points.length >= 8) {
                     const buildSplitSlab = (pts: number[][], bboxUv: number[]) => {
                         const sh = new THREE.Shape();
@@ -1294,57 +1367,66 @@ function buildArchetype3DScene(
                         const g = new THREE.ExtrudeGeometry(sh, {
                             depth: slabDepth,
                             bevelEnabled: true,
-                            bevelThickness: 0.03,
-                            bevelSize: 0.03,
+                            bevelThickness: 0.025,
+                            bevelSize: 0.02,
                             bevelSegments: 3
                         });
                         g.center();
                         applyBoxUVsInSubregion(g, bboxUv);
                         return new THREE.Mesh(g, stoneMat);
                     };
-                    const leftSlab = buildSplitSlab(pc.left_points, pc.left_bbox_uv || [0.02, 0.04, 0.49, 0.96]);
+                    const leftSlab = buildSplitSlab(pc.left_points, leftBbox);
                     leftSlab.position.x = -(singleW * 0.5 + gap * 0.5);
                     leftSlab.castShadow = true;
                     group.add(leftSlab);
 
-                    const rightSlab = buildSplitSlab(pc.right_points, pc.right_bbox_uv || [0.51, 0.04, 0.98, 0.96]);
+                    const rightSlab = buildSplitSlab(pc.right_points, rightBbox);
                     rightSlab.position.x = singleW * 0.5 + gap * 0.5;
                     rightSlab.castShadow = true;
                     group.add(rightSlab);
                 } else {
-                    const leftSlab = createPanelMesh(singleW, H, false);
+                    const leftSlab = createPanelMesh(singleW, H, false, leftBbox);
                     leftSlab.position.x = -(singleW * 0.5 + gap * 0.5);
                     leftSlab.castShadow = true;
-                    leftSlab.geometry && applyBoxUVsInSubregion(leftSlab.geometry, [0.02, 0.04, 0.49, 0.96]);
                     group.add(leftSlab);
 
-                    const rightSlab = createPanelMesh(singleW, H, false);
+                    const rightSlab = createPanelMesh(singleW, H, true, rightBbox);
                     rightSlab.position.x = singleW * 0.5 + gap * 0.5;
                     rightSlab.castShadow = true;
-                    rightSlab.geometry && applyBoxUVsInSubregion(rightSlab.geometry, [0.51, 0.04, 0.98, 0.96]);
                     group.add(rightSlab);
                 }
             } else {
-                const slab = createPanelMesh(W, H, false);
-                slab.castShadow = true;
-                group.add(slab);
+                const singleBbox = [0, 0, 1, 1];
+                if (isFree && Array.isArray(wpc?.outer_points) && wpc.outer_points.length >= 8) {
+                    const sh = new THREE.Shape();
+                    wpc.outer_points.forEach((pt: number[], idx: number) => {
+                        if (idx === 0) sh.moveTo(pt[0] * W, pt[1] * H);
+                        else sh.lineTo(pt[0] * W, pt[1] * H);
+                    });
+                    sh.closePath();
+                    const g = new THREE.ExtrudeGeometry(sh, {
+                        depth: slabDepth,
+                        bevelEnabled: true,
+                        bevelThickness: 0.025,
+                        bevelSize: 0.02,
+                        bevelSegments: 3
+                    });
+                    g.center();
+                    applyBoxUVsInSubregion(g, singleBbox);
+                    const slab = new THREE.Mesh(g, stoneMat);
+                    slab.castShadow = true;
+                    group.add(slab);
+                } else {
+                    const slab = createPanelMesh(W, H, false, singleBbox);
+                    slab.castShadow = true;
+                    group.add(slab);
+                }
             }
 
-            // Warm rear LED backlight array
-            const backPlaneMat = new THREE.MeshBasicMaterial({
-                color: 0xffb35c,
-                transparent: true,
-                opacity: 0.42,
-                side: THREE.DoubleSide
-            });
-            const backGlow = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.88, H * 0.88), backPlaneMat);
-            backGlow.position.z = -slabDepth * 0.75;
-            group.add(backGlow);
-            glowMeshes.push(backGlow);
-
-            addWarmLight(-W * 0.24, H * 0.22, -slabDepth * 1.8, 6.0, 18);
-            addWarmLight(W * 0.24, -H * 0.22, -slabDepth * 1.8, 6.0, 18);
-            addWarmLight(0, 0, -slabDepth * 1.6, 7.5, 20);
+            // Rear warm LED point lights (no solid yellow rectangle plane behind the slabs!)
+            addWarmLight(-W * 0.24, H * 0.22, -slabDepth * 1.8, 4.5, 18);
+            addWarmLight(W * 0.24, -H * 0.22, -slabDepth * 1.8, 4.5, 18);
+            addWarmLight(0, 0, -slabDepth * 1.6, 5.5, 20);
             break;
         }
 
@@ -1858,22 +1940,23 @@ albedoTex.colorSpace = THREE.SRGBColorSpace;
 const bumpTex = loader.load(BUMP_URL);
 
 const mat = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
   map: albedoTex,
   bumpMap: bumpTex,
-  bumpScale: SPECS.isPorousStone ? 0.35 : 0.08,
-  transmission: SPECS.isPorousStone ? 0.05 : 0.68,
-  thickness: 5.5,
+  bumpScale: SPECS.isPorousStone ? 0.28 : 0.06,
+  transmission: SPECS.isPorousStone ? 0.03 : 0.24,
+  thickness: 2.0,
   ior: 1.54,
-  roughness: SPECS.isPorousStone ? 0.65 : 0.16,
+  roughness: SPECS.isPorousStone ? 0.62 : 0.18,
   metalness: 0.0,
-  clearcoat: SPECS.isPorousStone ? 0.15 : 0.85,
-  clearcoatRoughness: 0.08,
-  attenuationColor: new THREE.Color(SPECS.dominantHex),
-  attenuationDistance: 12.0,
-  emissive: new THREE.Color(SPECS.dominantHex),
+  clearcoat: SPECS.isPorousStone ? 0.12 : 0.72,
+  clearcoatRoughness: 0.1,
+  attenuationColor: new THREE.Color(0xffffff),
+  attenuationDistance: 10.0,
+  emissive: new THREE.Color(0xffffff),
   emissiveMap: albedoTex,
-  emissiveIntensity: 0.25,
-  side: THREE.DoubleSide
+  emissiveIntensity: 0.16,
+  side: THREE.FrontSide
 });
 
 const maxCm = Math.max(SPECS.widthCm, SPECS.heightCm, SPECS.lengthCm, 1);
@@ -2070,33 +2153,34 @@ export const ThreeModelViewer: React.FC<ThreeModelViewerProps> = ({
 
         const albedoTex = new THREE.CanvasTexture(albedoCanvas);
         albedoTex.colorSpace = THREE.SRGBColorSpace;
-        albedoTex.wrapS = THREE.RepeatWrapping;
-        albedoTex.wrapT = THREE.RepeatWrapping;
+        albedoTex.wrapS = THREE.ClampToEdgeWrapping;
+        albedoTex.wrapT = THREE.ClampToEdgeWrapping;
         albedoTex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
 
         const bumpTex = new THREE.CanvasTexture(bumpCanvas);
-        bumpTex.wrapS = THREE.RepeatWrapping;
-        bumpTex.wrapT = THREE.RepeatWrapping;
+        bumpTex.wrapS = THREE.ClampToEdgeWrapping;
+        bumpTex.wrapT = THREE.ClampToEdgeWrapping;
 
-        // 2. Realistic Translucent Onyx vs Porous Travertine/Rock Physical Material
+        // 2. True-Color Translucent Onyx vs Porous Travertine/Rock Physical Material (zero artificial color tinting)
         const stoneMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
             map: albedoTex,
             bumpMap: bumpTex,
-            bumpScale: specs.isPorousStone ? 0.35 : 0.09,
-            transmission: specs.isPorousStone ? 0.05 : 0.68,
-            thickness: 5.5,
+            bumpScale: specs.isPorousStone ? 0.28 : 0.06,
+            transmission: specs.isPorousStone ? 0.03 : 0.24,
+            thickness: specs.isPorousStone ? 0.8 : 2.0,
             ior: 1.54,
-            roughness: specs.isPorousStone ? 0.65 : 0.16,
+            roughness: specs.isPorousStone ? 0.62 : 0.18,
             metalness: 0.0,
-            clearcoat: specs.isPorousStone ? 0.15 : 0.85,
-            clearcoatRoughness: 0.08,
-            attenuationColor: new THREE.Color(specs.dominantHex),
-            attenuationDistance: 12.0,
-            emissive: new THREE.Color(specs.dominantHex),
+            clearcoat: specs.isPorousStone ? 0.12 : 0.72,
+            clearcoatRoughness: 0.1,
+            attenuationColor: new THREE.Color(0xffffff),
+            attenuationDistance: 10.0,
+            emissive: new THREE.Color(0xffffff),
             emissiveMap: albedoTex,
-            emissiveIntensity: backlightOn && !specs.isPorousStone ? 0.28 : 0.02,
-            envMapIntensity: specs.isPorousStone ? 0.65 : 1.35,
-            side: THREE.DoubleSide
+            emissiveIntensity: backlightOn && !specs.isPorousStone ? 0.16 : 0.0,
+            envMapIntensity: specs.isPorousStone ? 0.55 : 0.95,
+            side: THREE.FrontSide
         });
         stoneMatRef.current = stoneMat;
 
@@ -2109,14 +2193,60 @@ export const ThreeModelViewer: React.FC<ThreeModelViewerProps> = ({
                 try {
                     const aCtx = albedoCanvas.getContext('2d');
                     if (aCtx) {
-                        // Draw the real stone cutout photo across the center with soft feathering over the hex-map stone base
+                        const iw = cutoutImg.naturalWidth || cutoutImg.width;
+                        const ih = cutoutImg.naturalHeight || cutoutImg.height;
+                        const tmp = document.createElement('canvas');
+                        tmp.width = iw;
+                        tmp.height = ih;
+                        const tCtx = tmp.getContext('2d', { willReadFrequently: true });
+                        let sx = 0, sy = 0, sw = iw, sh = ih;
+                        if (tCtx && iw > 0 && ih > 0) {
+                            tCtx.drawImage(cutoutImg, 0, 0);
+                            const imgData = tCtx.getImageData(0, 0, iw, ih).data;
+                            let minX = iw, minY = ih, maxX = 0, maxY = 0;
+                            let found = false;
+                            for (let y = 0; y < ih; y += 2) {
+                                for (let x = 0; x < iw; x += 2) {
+                                    const idx = (y * iw + x) * 4;
+                                    const a = imgData[idx + 3];
+                                    const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2];
+                                    // Non-transparent and not pure white studio background
+                                    if (a > 32 && !(r > 248 && g > 248 && b > 248)) {
+                                        if (x < minX) minX = x;
+                                        if (x > maxX) maxX = x;
+                                        if (y < minY) minY = y;
+                                        if (y > maxY) maxY = y;
+                                        found = true;
+                                    }
+                                }
+                            }
+                            if (found && maxX > minX + 16 && maxY > minY + 16) {
+                                sx = minX;
+                                sy = minY;
+                                sw = maxX - minX;
+                                sh = maxY - minY;
+                            }
+                        }
+
+                        // Completely replace the hex-map placeholder so two textures NEVER overlap:
+                        // 1) Multi-pass dilated/blurred self-bleed fills any irregular perimeter corners with the stone's own edge color
+                        const cw = albedoCanvas.width;
+                        const ch = albedoCanvas.height;
                         aCtx.save();
-                        aCtx.globalAlpha = 0.86;
-                        aCtx.drawImage(cutoutImg, 0, 0, albedoCanvas.width, albedoCanvas.height);
+                        aCtx.clearRect(0, 0, cw, ch);
+                        aCtx.filter = 'blur(36px)';
+                        aCtx.drawImage(cutoutImg, sx, sy, sw, sh, -cw * 0.12, -ch * 0.12, cw * 1.24, ch * 1.24);
+                        aCtx.filter = 'blur(16px)';
+                        aCtx.drawImage(cutoutImg, sx, sy, sw, sh, -cw * 0.04, -ch * 0.04, cw * 1.08, ch * 1.08);
+                        // 2) Crisp 1:1 tightly-cropped stone photo on top
+                        aCtx.filter = 'none';
+                        aCtx.globalAlpha = 1.0;
+                        aCtx.drawImage(cutoutImg, sx, sy, sw, sh, 0, 0, cw, ch);
                         aCtx.restore();
+
                         albedoTex.needsUpdate = true;
                         stoneMat.needsUpdate = true;
-                        setTextureSourceLabel(prev => prev.includes('SVG') ? 'Cutout PNG + Vein SVG + HexMap' : 'Cutout PNG + HexMap');
+                        setTextureSourceLabel(prev => prev.includes('SVG') ? 'True-Color Cutout PNG + Vein SVG' : 'True-Color Cutout PNG');
                     }
                 } catch {
                     // Canvas remained on synchronous HexMap texture if remote host restricted CORS readback
@@ -2132,20 +2262,13 @@ export const ThreeModelViewer: React.FC<ThreeModelViewerProps> = ({
                 if (isDisposed) return;
                 try {
                     const bCtx = bumpCanvas.getContext('2d');
-                    const aCtx = albedoCanvas.getContext('2d');
                     if (bCtx) {
+                        // Stroke Vein SVG into the bump map only so it adds 3D relief without double-painting over the photo albedo
                         bCtx.save();
                         bCtx.globalAlpha = 0.65;
                         bCtx.drawImage(svgImg, 0, 0, bumpCanvas.width, bumpCanvas.height);
                         bCtx.restore();
                         bumpTex.needsUpdate = true;
-                    }
-                    if (aCtx) {
-                        aCtx.save();
-                        aCtx.globalAlpha = 0.32;
-                        aCtx.drawImage(svgImg, 0, 0, albedoCanvas.width, albedoCanvas.height);
-                        aCtx.restore();
-                        albedoTex.needsUpdate = true;
                     }
                     stoneMat.needsUpdate = true;
                     setTextureSourceLabel(prev => prev.includes('PNG') ? 'Cutout PNG + Vein SVG + HexMap' : 'Vein SVG + HexMap');
@@ -2186,22 +2309,22 @@ export const ThreeModelViewer: React.FC<ThreeModelViewerProps> = ({
         scene.add(bboxGroup);
         bboxGroupRef.current = bboxGroup;
 
-        // 6. Studio Lighting & Subtle Contact Floor Disc
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.72);
+        // 6. Neutral True-Color Studio Lighting & Subtle Contact Floor Disc
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
         scene.add(ambientLight);
 
-        const keyLight = new THREE.DirectionalLight(0xfff8eb, 2.35);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2.1);
         keyLight.position.set(11, 16, 13);
         keyLight.castShadow = true;
         keyLight.shadow.mapSize.width = 1024;
         keyLight.shadow.mapSize.height = 1024;
         scene.add(keyLight);
 
-        const rimLight = new THREE.DirectionalLight(0x93c5fd, 1.15);
+        const rimLight = new THREE.DirectionalLight(0xf1f5f9, 0.9);
         rimLight.position.set(-12, 8, -11);
         scene.add(rimLight);
 
-        const underFill = new THREE.DirectionalLight(0xffedd5, 0.65);
+        const underFill = new THREE.DirectionalLight(0xffffff, 0.55);
         underFill.position.set(0, -10, 6);
         scene.add(underFill);
 
@@ -2262,7 +2385,7 @@ export const ThreeModelViewer: React.FC<ThreeModelViewerProps> = ({
             m.visible = backlightOn;
         });
         if (stoneMatRef.current) {
-            stoneMatRef.current.emissiveIntensity = backlightOn && !specs.isPorousStone ? 0.28 : 0.02;
+            stoneMatRef.current.emissiveIntensity = backlightOn && !specs.isPorousStone ? 0.16 : 0.0;
             stoneMatRef.current.needsUpdate = true;
         }
     }, [backlightOn, specs.isPorousStone]);
@@ -2298,8 +2421,16 @@ export const ThreeModelViewer: React.FC<ThreeModelViewerProps> = ({
         });
     }, [onCloseFullscreen]);
 
-    const metricDimsStr = `${specs.widthCm} × ${specs.heightCm} × ${specs.lengthCm} cm`;
-    const imperialDimsStr = [specs.widthCm, specs.heightCm, specs.lengthCm]
+    const displayWidthCm =
+        specs.archetype === 'panel-pair' && specs.widthCm < specs.heightCm * 0.68
+            ? Math.round(specs.widthCm * (2 + PANEL_PAIR_GAP_RATIO))
+            : specs.widthCm;
+    const displayDepthCm =
+        (specs.archetype === 'wall-panel' || specs.archetype === 'panel-pair' || specs.archetype === 'painted-wall-panel')
+            ? Math.min(specs.lengthCm, 8)
+            : specs.lengthCm;
+    const metricDimsStr = `${displayWidthCm} × ${specs.heightCm} × ${displayDepthCm} cm`;
+    const imperialDimsStr = [displayWidthCm, specs.heightCm, displayDepthCm]
         .map(cm => cmToImperial(cm))
         .filter(Boolean)
         .join(' × ');
