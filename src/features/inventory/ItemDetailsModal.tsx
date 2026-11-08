@@ -33,6 +33,12 @@ import { tr } from '../../lib/i18n';
 import toast from '../onyxIsland/notify/toast';
 import { ThreeModelViewer } from './ThreeModelViewer';
 
+const IS_LOCAL_3D_VIEWER_ENABLED = Boolean(
+    import.meta.env.DEV ||
+    (typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+);
+
 export interface ItemDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -402,32 +408,36 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                                 )}
                             </button>
 
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('axo')}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                                    activeTab === 'axo'
-                                        ? 'bg-sky-500/20 text-sky-300 border border-sky-400/30 shadow-sm'
-                                        : 'text-slate-400 hover:text-white'
-                                }`}
-                                title={tr('Interactive 3D Onyx Model & Axo')}
-                            >
-                                <Box size={13} strokeWidth={2.2} />
-                                <span>{tr('3D Onyx Model')}</span>
-                            </button>
+                            {IS_LOCAL_3D_VIEWER_ENABLED && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('axo')}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                            activeTab === 'axo'
+                                                ? 'bg-sky-500/20 text-sky-300 border border-sky-400/30 shadow-sm'
+                                                : 'text-slate-400 hover:text-white'
+                                        }`}
+                                        title={tr('Interactive 3D Onyx Model & Axo')}
+                                    >
+                                        <Box size={13} strokeWidth={2.2} />
+                                        <span>{tr('3D Onyx Model')}</span>
+                                    </button>
 
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setActiveTab('axo');
-                                    setIs3dFullscreen(true);
-                                }}
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-white hover:bg-amber-500/20 transition-all"
-                                title={tr('Open 3D Model in Fullscreen')}
-                            >
-                                <Maximize2 size={13} strokeWidth={2.2} />
-                                <span className="hidden sm:inline">{tr('3D Fullscreen')}</span>
-                            </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setActiveTab('axo');
+                                            setIs3dFullscreen(true);
+                                        }}
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-white hover:bg-amber-500/20 transition-all"
+                                        title={tr('Open 3D Model in Fullscreen')}
+                                    >
+                                        <Maximize2 size={13} strokeWidth={2.2} />
+                                        <span className="hidden sm:inline">{tr('3D Fullscreen')}</span>
+                                    </button>
+                                </>
+                            )}
                         </div>
 
                         {/* Close button */}

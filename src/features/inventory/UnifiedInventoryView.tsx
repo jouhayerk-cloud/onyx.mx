@@ -84,6 +84,12 @@ import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, 
 import { tr } from '../../lib/i18n';
 import { ItemDetailsModal } from './ItemDetailsModal';
 import { ThreeModelFullscreenModal } from './ThreeModelViewer';
+
+const IS_LOCAL_3D_VIEWER_ENABLED = Boolean(
+    import.meta.env.DEV ||
+    (typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+);
 import { canonicalColor } from '../../lib/inventoryTaxonomy';
 
 
@@ -827,12 +833,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     {!hasAxoOverlay && (
                         <div className="inv-axo-col">
                             <div
-                                className="inv-axo cursor-pointer hover:scale-105 transition-transform"
-                                role="button"
-                                tabIndex={0}
-                                title={tr("Click for Fullscreen Interactive 3D Onyx Model")}
-                                onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}
-                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } }}
+                                className={IS_LOCAL_3D_VIEWER_ENABLED ? "inv-axo cursor-pointer hover:scale-105 transition-transform" : "inv-axo"}
+                                role={IS_LOCAL_3D_VIEWER_ENABLED ? "button" : undefined}
+                                tabIndex={IS_LOCAL_3D_VIEWER_ENABLED ? 0 : undefined}
+                                title={IS_LOCAL_3D_VIEWER_ENABLED ? tr("Click for Fullscreen Interactive 3D Onyx Model") : undefined}
+                                onClick={IS_LOCAL_3D_VIEWER_ENABLED ? (e) => { e.stopPropagation(); setIs3dModalOpen(true); } : undefined}
+                                onKeyDown={IS_LOCAL_3D_VIEWER_ENABLED ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } } : undefined}
                             >
                                 <WireframeIcon item={norm} />
                             </div>
@@ -987,14 +993,16 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             title={tr("View PNG cutouts & 3D axo")}>
             <Layers size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Cutouts")}</span>
         </button>
-        <button type="button"
-            onClick={(e) => {
-                e.stopPropagation();
-                setIs3dModalOpen(true);
-            }}
-            title={tr("Open Interactive 3D Onyx Model")}>
-            <Box size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("3D Model")}</span>
-        </button>
+        {IS_LOCAL_3D_VIEWER_ENABLED && (
+            <button type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setIs3dModalOpen(true);
+                }}
+                title={tr("Open Interactive 3D Onyx Model")}>
+                <Box size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("3D Model")}</span>
+            </button>
+        )}
         {isEditable && (
             <button type="button" onClick={handleEdit} title={tr("Edit Item")}>
                 <Pencil size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Edit")}</span>
@@ -1105,7 +1113,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             ? cutoutUrls.map(c => <DriveImage key={c.url} loading="lazy" src={c.url} matte={c.matte} width={c.matte ? 128 : undefined} alt="" className="inv-png" />)
                             : (imageUrl && !isVideoFile(imageUrl)
                                 ? <DriveImage loading="lazy" src={imageUrl} width={128} alt="" className="inv-png object-cover rounded-md" />
-                                : <div className="inv-png inv-png-axo cursor-pointer" title={tr("Click for Fullscreen Interactive 3D Onyx Model")} onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}><WireframeIcon item={norm} /></div>)}
+                                : <div className={IS_LOCAL_3D_VIEWER_ENABLED ? "inv-png inv-png-axo cursor-pointer" : "inv-png inv-png-axo"} title={IS_LOCAL_3D_VIEWER_ENABLED ? tr("Click for Fullscreen Interactive 3D Onyx Model") : undefined} onClick={IS_LOCAL_3D_VIEWER_ENABLED ? (e) => { e.stopPropagation(); setIs3dModalOpen(true); } : undefined}><WireframeIcon item={norm} /></div>)}
                     </div>
 
                     {/* TAG */}
@@ -1190,12 +1198,12 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                     </div>
                                 ))}
                                 <div
-                                    className="inv-dtile inv-daxo cursor-pointer hover:ring-1 hover:ring-sky-400/50 transition-all"
-                                    role="button"
-                                    tabIndex={0}
-                                    title={tr("Click for Fullscreen Interactive 3D Onyx Model")}
-                                    onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}
-                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } }}
+                                    className={IS_LOCAL_3D_VIEWER_ENABLED ? "inv-dtile inv-daxo cursor-pointer hover:ring-1 hover:ring-sky-400/50 transition-all" : "inv-dtile inv-daxo"}
+                                    role={IS_LOCAL_3D_VIEWER_ENABLED ? "button" : undefined}
+                                    tabIndex={IS_LOCAL_3D_VIEWER_ENABLED ? 0 : undefined}
+                                    title={IS_LOCAL_3D_VIEWER_ENABLED ? tr("Click for Fullscreen Interactive 3D Onyx Model") : undefined}
+                                    onClick={IS_LOCAL_3D_VIEWER_ENABLED ? (e) => { e.stopPropagation(); setIs3dModalOpen(true); } : undefined}
+                                    onKeyDown={IS_LOCAL_3D_VIEWER_ENABLED ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } } : undefined}
                                 >
                                     <div className="inv-axo-fig" aria-hidden="true"><WireframeIcon item={norm} /></div>
                                     <dl className="inv-dims" aria-label={tr("Size and weight")}>
@@ -1230,11 +1238,13 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     item={item}
                     onEdit={isEditable ? handleEdit : undefined}
                 />
-                <ThreeModelFullscreenModal
-                    isOpen={is3dModalOpen}
-                    onClose={() => setIs3dModalOpen(false)}
-                    item={item}
-                />
+                {IS_LOCAL_3D_VIEWER_ENABLED && (
+                    <ThreeModelFullscreenModal
+                        isOpen={is3dModalOpen}
+                        onClose={() => setIs3dModalOpen(false)}
+                        item={item}
+                    />
+                )}
             </div>
         );
     }
@@ -1405,14 +1415,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             {mediaUrls.length > 0 && (
                                 <>
                                     <div
-                                        className="inv-hero-axo-overlay cursor-pointer hover:scale-105 transition-transform"
-                                        role="button"
-                                        tabIndex={0}
-                                        title={tr("Click for Fullscreen Interactive 3D Onyx Model")}
-                                        onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}
-                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } }}
+                                        className={IS_LOCAL_3D_VIEWER_ENABLED ? "inv-hero-axo-overlay cursor-pointer hover:scale-105 transition-transform" : "inv-hero-axo-overlay"}
+                                        role={IS_LOCAL_3D_VIEWER_ENABLED ? "button" : undefined}
+                                        tabIndex={IS_LOCAL_3D_VIEWER_ENABLED ? 0 : undefined}
+                                        title={IS_LOCAL_3D_VIEWER_ENABLED ? tr("Click for Fullscreen Interactive 3D Onyx Model") : undefined}
+                                        onClick={(e) => { e.stopPropagation(); if (IS_LOCAL_3D_VIEWER_ENABLED) setIs3dModalOpen(true); }}
+                                        onKeyDown={IS_LOCAL_3D_VIEWER_ENABLED ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } } : undefined}
                                     >
-                                        <div className="inv-hero-axo-figure" title={tr("Click for Fullscreen Interactive 3D Onyx Model")} aria-hidden="true">
+                                        <div className="inv-hero-axo-figure" title={IS_LOCAL_3D_VIEWER_ENABLED ? tr("Click for Fullscreen Interactive 3D Onyx Model") : tr("Proportions")} aria-hidden="true">
                                             <WireframeIcon item={norm} />
                                         </div>
                                     </div>
@@ -1504,11 +1514,13 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     item={item}
                     onEdit={isEditable ? handleEdit : undefined}
                 />
-                <ThreeModelFullscreenModal
-                    isOpen={is3dModalOpen}
-                    onClose={() => setIs3dModalOpen(false)}
-                    item={item}
-                />
+                {IS_LOCAL_3D_VIEWER_ENABLED && (
+                    <ThreeModelFullscreenModal
+                        isOpen={is3dModalOpen}
+                        onClose={() => setIs3dModalOpen(false)}
+                        item={item}
+                    />
+                )}
             </>
         );
     }
@@ -1533,14 +1545,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     {mediaUrls.length > 0 && (
                         <>
                             <div
-                                className="inv-hero-axo-overlay cursor-pointer hover:scale-105 transition-transform"
-                                role="button"
-                                tabIndex={0}
-                                title={tr("Click for Fullscreen Interactive 3D Onyx Model")}
-                                onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}
-                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } }}
+                                className={IS_LOCAL_3D_VIEWER_ENABLED ? "inv-hero-axo-overlay cursor-pointer hover:scale-105 transition-transform" : "inv-hero-axo-overlay"}
+                                role={IS_LOCAL_3D_VIEWER_ENABLED ? "button" : undefined}
+                                tabIndex={IS_LOCAL_3D_VIEWER_ENABLED ? 0 : undefined}
+                                title={IS_LOCAL_3D_VIEWER_ENABLED ? tr("Click for Fullscreen Interactive 3D Onyx Model") : undefined}
+                                onClick={(e) => { e.stopPropagation(); if (IS_LOCAL_3D_VIEWER_ENABLED) setIs3dModalOpen(true); }}
+                                onKeyDown={IS_LOCAL_3D_VIEWER_ENABLED ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } } : undefined}
                             >
-                                <div className="inv-hero-axo-figure" title={tr("Click for Fullscreen Interactive 3D Onyx Model")} aria-hidden="true">
+                                <div className="inv-hero-axo-figure" title={IS_LOCAL_3D_VIEWER_ENABLED ? tr("Click for Fullscreen Interactive 3D Onyx Model") : tr("Proportions")} aria-hidden="true">
                                     <WireframeIcon item={norm} />
                                 </div>
                             </div>
@@ -1575,11 +1587,13 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 item={item}
                 onEdit={isEditable ? handleEdit : undefined}
             />
-            <ThreeModelFullscreenModal
-                isOpen={is3dModalOpen}
-                onClose={() => setIs3dModalOpen(false)}
-                item={item}
-            />
+            {IS_LOCAL_3D_VIEWER_ENABLED && (
+                <ThreeModelFullscreenModal
+                    isOpen={is3dModalOpen}
+                    onClose={() => setIs3dModalOpen(false)}
+                    item={item}
+                />
+            )}
         </>
     );
 });
