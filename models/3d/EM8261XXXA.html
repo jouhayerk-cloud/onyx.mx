@@ -97,7 +97,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const ITEM = {"id": "98569126-3cc8-4c5f-ac62-da4de318154f", "barcode": "EM8261XXXA", "item_id": "EM-001", "workbook": "v826", "title": "Striated Deep Blue Onyx Free Form Wall Panel Pair Sculptural Decor", "short_description": "Wall Panel Pair", "shape": "Free Form", "material": "Onyx", "color": "Blue, White, Brown", "archetype": "wall_panel_pair", "width_cm": 56.0, "height_cm": 94.0, "length_cm": 2.0, "weight_kg": null, "vein_colors": ["#275054", "#406364", "#5f7e7c", "#3b4d47", "#615d4b", "#846f4f", "#92a89b"], "cutout_url": "https://lh3.googleusercontent.com/d/1W6scc64Z-xaCQuDrcYqqndT-3Zt6E2Zq", "plan_cutout_url": "https://lh3.googleusercontent.com/d/1W6scc64Z-xaCQuDrcYqqndT-3Zt6E2Zq", "profile_cutout_url": "", "vein_svg_url": "https://lh3.googleusercontent.com/d/1_AyRFmZt5W3LwmEOV-wBFtcw70g5dyzs", "plan_vein_svg_url": "https://lh3.googleusercontent.com/d/1_AyRFmZt5W3LwmEOV-wBFtcw70g5dyzs", "angle_views": null, "mask_attractions": {"archetype_task": "wall_panel_pair", "bbox_uv": [0.4473, 0.1817, 0.9583, 0.8718], "subpath_count": 2, "panel_pair_contours": {"mode": "dual_subpaths", "left_points": [[-0.0234, 0.498], [-0.0666, 0.4939], [-0.1091, 0.4869], [-0.1864, 0.4529], [-0.2277, 0.4413], [-0.2704, 0.4358], [-0.3127, 0.4275], [-0.3526, 0.4138], [-0.377, 0.3457], [-0.3854, 0.3106], [-0.3858, 0.2738], [-0.3924, 0.2384], [-0.3946, 0.2018], [-0.3959, 0.1282], [-0.4152, 0.0957], [-0.4315, 0.0625], [-0.4385, 0.0271], [-0.4473, -0.0449], [-0.4561, -0.0801], [-0.4649, -0.1152], [-0.4675, -0.1517], [-0.4736, -0.1872], [-0.4824, -0.2592], [-0.4905, -0.2944], [-0.5, -0.3293], [-0.5, -0.3663], [-0.4906, -0.4011], [-0.412, -0.4263], [-0.3773, -0.449], [-0.336, -0.4604], [-0.2956, -0.4747], [-0.2564, -0.4894], [-0.1719, -0.4952], [-0.128, -0.4939], [-0.0852, -0.4998], [-0.0411, -0.5], [0.0457, -0.4939], [0.087, -0.4822], [0.1293, -0.4738], [0.1698, -0.46], [0.2091, -0.4441], [0.2899, -0.4169], [0.3293, -0.4009], [0.3665, -0.3819], [0.4045, -0.3666], [0.4438, -0.3509], [0.4912, -0.2957], [0.4912, -0.2589], [0.4865, -0.223], [0.495, -0.188], [0.5, -0.1522], [0.483, -0.082], [0.4824, -0.0452], [0.4736, -0.01], [0.4736, 0.0268], [0.4709, 0.0632], [0.4649, 0.1356], [0.4649, 0.1724], [0.4649, 0.2092], [0.4649, 0.246], [0.4649, 0.2828], [0.4334, 0.3482], [0.411, 0.3789], [0.3786, 0.4034], [0.3514, 0.4318], [0.2775, 0.4645], [0.2343, 0.4687], [0.1919, 0.4768], [0.1492, 0.4833], [0.1063, 0.4902], [0.0204, 0.5], [-0.0234, 0.498]], "right_points": [[-0.0935, 0.4987], [-0.1358, 0.4882], [-0.1805, 0.4835], [-0.2456, 0.4718], [-0.2896, 0.4659], [-0.3336, 0.4599], [-0.3708, 0.4436], [-0.4352, 0.432], [-0.4577, 0.3981], [-0.4843, 0.3661], [-0.5, 0.3299], [-0.5, 0.2874], [-0.5, 0.2237], [-0.4925, 0.184], [-0.4916, 0.1416], [-0.4847, 0.1017], [-0.4771, 0.0408], [-0.4752, 0.0038], [-0.4694, -0.0363], [-0.4618, -0.0761], [-0.466, -0.117], [-0.4692, -0.1795], [-0.4618, -0.2192], [-0.4618, -0.2617], [-0.4478, -0.2989], [-0.4311, -0.3565], [-0.3955, -0.3766], [-0.3527, -0.3873], [-0.3096, -0.3956], [-0.2708, -0.4155], [-0.2078, -0.4331], [-0.1639, -0.4407], [-0.1231, -0.4557], [-0.085, -0.477], [-0.0192, -0.4804], [0.0238, -0.4843], [0.0647, -0.5], [0.1094, -0.4954], [0.1535, -0.4898], [0.2225, -0.4901], [0.2666, -0.4954], [0.3082, -0.4819], [0.3438, -0.4559], [0.4068, -0.4379], [0.4475, -0.4234], [0.479, -0.3947], [0.5, -0.3639], [0.4882, -0.3258], [0.4694, -0.2687], [0.4545, -0.2317], [0.4448, -0.1923], [0.4313, -0.155], [0.415, -0.0968], [0.4005, -0.0598], [0.3901, -0.021], [0.3702, 0.0143], [0.3622, 0.054], [0.3238, 0.1018], [0.2939, 0.1313], [0.286, 0.1711], [0.2855, 0.2135], [0.2707, 0.2718], [0.2673, 0.3131], [0.2554, 0.3513], [0.2403, 0.3882], [0.2241, 0.4244], [0.1646, 0.4495], [0.1206, 0.4553], [0.0746, 0.4562], [0.0348, 0.4739], [-0.0247, 0.4999], [-0.0708, 0.5]], "left_bbox_uv": [0.0098, 0.1817, 0.4544, 0.8451], "right_bbox_uv": [0.4473, 0.1817, 0.9583, 0.8718]}}, "outline_svg_url": "https://drive.google.com/uc?export=view&id=1CxSKor1DxaMEmpo8hoad8KqXWzYHsss7", "pixel_map_hex": "#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#516B6D,#485E5B,#516D6C,#708783,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#838F86,#71827A,#5E716E,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#647E87,#3E5758,#2C4243,#42504A,#465C58,#445F5E,#4D625F,#707667,#FFFFFF,#84908D,#708486,#667870,#53655E,#5A675F,#55635D,#3E4E4B,#415756,#4B625F,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#647A7D,#304749,#304B4E,#2F4F54,#2E4E52,#454F46,#3A5B5D,#325559,#626555,#FFFFFF,#6E7A6D,#576E6B,#7B918B,#485750,#4C625E,#3C5B5E,#345054,#3C5553,#6F7F78,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#668A90,#456265,#3C5455,#375455,#37514F,#404D44,#3F5753,#41534E,#605C49,#687065,#746E58,#60726A,#556C67,#42534E,#3E5A5A,#547170,#4B6563,#546C68,#466463,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#5D716C,#48574F,#3F504A,#394D49,#334844,#344A48,#566459,#5C6B63,#515B51,#737565,#737565,#495954,#435652,#4A5A54,#3D514F,#37504F,#3D5554,#445651,#3C4F4A,#666E62,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#606E69,#2D4D4E,#3C5755,#2E5052,#264D52,#2B5158,#556053,#465953,#3E5958,#5B5542,#3D5756,#3C5454,#4C625E,#3D5F63,#2D535B,#416165,#335255,#426264,#375659,#545C54,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#3F666B,#2E4F52,#284C50,#395959,#2D5154,#3E5855,#3E5450,#3B5755,#375A5C,#456060,#2E5055,#305154,#516057,#556E6B,#31575E,#345459,#335154,#345356,#516967,#637B77,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#446B74,#2A5056,#244E54,#3A5F62,#3B504C,#485C56,#486C70,#39504C,#345252,#45615E,#255055,#234E55,#3C5350,#264E56,#5D6D67,#375659,#274D54,#2E5259,#436365,#5E6659,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#595D53,#355357,#3B5352,#405756,#324846,#4B5E5B,#335658,#44605F,#335556,#365D5F,#3D5C5C,#3E5C5C,#3A5858,#29535A,#4E6E70,#455F61,#495D59,#28494E,#3F5350,#40524E,#52615B,#FFFFFF,#FFFFFF,#717871,#5B594B,#515F59,#375659,#395A5F,#325256,#515C56,#2E555A,#3F5C5A,#455D59,#486461,#3D6166,#405C5B,#3A6268,#527173,#3A595C,#28545D,#29565E,#324E4F,#48544B,#3E514B,#575F53,#FFFFFF,#FFFFFF,#6F8886,#4B5C59,#607773,#3A5A5D,#2F5359,#355559,#625B49,#585B4C,#5C5D4D,#5A5A4B,#44544E,#4A5F5C,#4A615F,#365457,#2E5259,#4B6565,#355C64,#255059,#3B5456,#224A51,#2E4C4E,#52625A,#FFFFFF,#FFFFFF,#5D6F6B,#54615D,#405859,#475E5E,#435958,#4C5851,#54635C,#455855,#465F5C,#545E52,#5B685F,#5A6056,#435451,#37575C,#4A5D59,#4D5E5A,#42504C,#40524F,#586054,#384C48,#3D4C46,#3C504B,#6A776A,#FFFFFF,#627F7F,#5C6661,#446166,#4A6869,#455756,#37585D,#365B5F,#395E5F,#4E6764,#485750,#60746C,#566D69,#495E5B,#436468,#476565,#40676D,#385A5C,#57645D,#355456,#3F6367,#5A7576,#405653,#5E6B62,#FFFFFF,#64726D,#3F5151,#48514D,#485E5F,#455B5A,#2F5258,#34585F,#3D6064,#436464,#556E6A,#6B7163,#576E6B,#4A5A55,#405D60,#416569,#2F5961,#345B61,#4C6767,#3E5654,#3C5B5C,#587273,#516059,#4B6460,#FFFFFF,#707064,#59625E,#485654,#4D5B59,#475E5E,#3A5659,#3D5C5F,#456567,#57726D,#64766C,#FFFFFF,#7D7767,#67807B,#587876,#5A7775,#557474,#3F6267,#426063,#506460,#636556,#595F53,#4C5B54,#5F614F,#FFFFFF,#FFFFFF,#818B85,#60665E,#5A5B4E,#536560,#546A66,#4B6968,#5D726C,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#717D75,#5B7772,#688480,#3A5B5E,#4A6462,#3A5353,#6A705F,#696A57,#7C7F6F,#6E807A,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#6E634C,#67766F,#7C8E87,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#728D8A,#5B7775,#667D7C,#707C75,#646250,#86806C,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF", "hex_dimensions": "24x24", "generated_at": "2026-11-08T22:28:38Z"};
+const ITEM = {"id": "98569126-3cc8-4c5f-ac62-da4de318154f", "barcode": "EM8261XXXA", "item_id": "EM-001", "workbook": "v826", "title": "Striated Deep Blue Onyx Free Form Wall Panel Pair Sculptural Decor", "short_description": "Wall Panel Pair", "shape": "Free Form", "material": "Onyx", "color": "Blue, White, Brown", "archetype": "wall_panel_pair", "width_cm": 56.0, "height_cm": 94.0, "length_cm": 2.0, "weight_kg": null, "vein_colors": ["#275054", "#406364", "#5f7e7c", "#3b4d47", "#615d4b", "#846f4f", "#92a89b"], "cutout_url": "https://lh3.googleusercontent.com/d/1W6scc64Z-xaCQuDrcYqqndT-3Zt6E2Zq", "plan_cutout_url": "https://lh3.googleusercontent.com/d/1W6scc64Z-xaCQuDrcYqqndT-3Zt6E2Zq", "profile_cutout_url": "", "vein_svg_url": "https://lh3.googleusercontent.com/d/1_AyRFmZt5W3LwmEOV-wBFtcw70g5dyzs", "plan_vein_svg_url": "https://lh3.googleusercontent.com/d/1_AyRFmZt5W3LwmEOV-wBFtcw70g5dyzs", "angle_views": null, "mask_attractions": {"archetype_task": "wall_panel_pair", "bbox_uv": [0.4473, 0.1817, 0.9583, 0.8718], "subpath_count": 2, "panel_pair_contours": {"mode": "dual_subpaths", "left_points": [[-0.0234, 0.498], [-0.0666, 0.4939], [-0.1091, 0.4869], [-0.1864, 0.4529], [-0.2277, 0.4413], [-0.2704, 0.4358], [-0.3127, 0.4275], [-0.3526, 0.4138], [-0.377, 0.3457], [-0.3854, 0.3106], [-0.3858, 0.2738], [-0.3924, 0.2384], [-0.3946, 0.2018], [-0.3959, 0.1282], [-0.4152, 0.0957], [-0.4315, 0.0625], [-0.4385, 0.0271], [-0.4473, -0.0449], [-0.4561, -0.0801], [-0.4649, -0.1152], [-0.4675, -0.1517], [-0.4736, -0.1872], [-0.4824, -0.2592], [-0.4905, -0.2944], [-0.5, -0.3293], [-0.5, -0.3663], [-0.4906, -0.4011], [-0.412, -0.4263], [-0.3773, -0.449], [-0.336, -0.4604], [-0.2956, -0.4747], [-0.2564, -0.4894], [-0.1719, -0.4952], [-0.128, -0.4939], [-0.0852, -0.4998], [-0.0411, -0.5], [0.0457, -0.4939], [0.087, -0.4822], [0.1293, -0.4738], [0.1698, -0.46], [0.2091, -0.4441], [0.2899, -0.4169], [0.3293, -0.4009], [0.3665, -0.3819], [0.4045, -0.3666], [0.4438, -0.3509], [0.4912, -0.2957], [0.4912, -0.2589], [0.4865, -0.223], [0.495, -0.188], [0.5, -0.1522], [0.483, -0.082], [0.4824, -0.0452], [0.4736, -0.01], [0.4736, 0.0268], [0.4709, 0.0632], [0.4649, 0.1356], [0.4649, 0.1724], [0.4649, 0.2092], [0.4649, 0.246], [0.4649, 0.2828], [0.4334, 0.3482], [0.411, 0.3789], [0.3786, 0.4034], [0.3514, 0.4318], [0.2775, 0.4645], [0.2343, 0.4687], [0.1919, 0.4768], [0.1492, 0.4833], [0.1063, 0.4902], [0.0204, 0.5], [-0.0234, 0.498]], "right_points": [[-0.0935, 0.4987], [-0.1358, 0.4882], [-0.1805, 0.4835], [-0.2456, 0.4718], [-0.2896, 0.4659], [-0.3336, 0.4599], [-0.3708, 0.4436], [-0.4352, 0.432], [-0.4577, 0.3981], [-0.4843, 0.3661], [-0.5, 0.3299], [-0.5, 0.2874], [-0.5, 0.2237], [-0.4925, 0.184], [-0.4916, 0.1416], [-0.4847, 0.1017], [-0.4771, 0.0408], [-0.4752, 0.0038], [-0.4694, -0.0363], [-0.4618, -0.0761], [-0.466, -0.117], [-0.4692, -0.1795], [-0.4618, -0.2192], [-0.4618, -0.2617], [-0.4478, -0.2989], [-0.4311, -0.3565], [-0.3955, -0.3766], [-0.3527, -0.3873], [-0.3096, -0.3956], [-0.2708, -0.4155], [-0.2078, -0.4331], [-0.1639, -0.4407], [-0.1231, -0.4557], [-0.085, -0.477], [-0.0192, -0.4804], [0.0238, -0.4843], [0.0647, -0.5], [0.1094, -0.4954], [0.1535, -0.4898], [0.2225, -0.4901], [0.2666, -0.4954], [0.3082, -0.4819], [0.3438, -0.4559], [0.4068, -0.4379], [0.4475, -0.4234], [0.479, -0.3947], [0.5, -0.3639], [0.4882, -0.3258], [0.4694, -0.2687], [0.4545, -0.2317], [0.4448, -0.1923], [0.4313, -0.155], [0.415, -0.0968], [0.4005, -0.0598], [0.3901, -0.021], [0.3702, 0.0143], [0.3622, 0.054], [0.3238, 0.1018], [0.2939, 0.1313], [0.286, 0.1711], [0.2855, 0.2135], [0.2707, 0.2718], [0.2673, 0.3131], [0.2554, 0.3513], [0.2403, 0.3882], [0.2241, 0.4244], [0.1646, 0.4495], [0.1206, 0.4553], [0.0746, 0.4562], [0.0348, 0.4739], [-0.0247, 0.4999], [-0.0708, 0.5]], "left_bbox_uv": [0.0098, 0.1817, 0.4544, 0.8451], "right_bbox_uv": [0.4473, 0.1817, 0.9583, 0.8718]}}, "outline_svg_url": "https://drive.google.com/uc?export=view&id=1CxSKor1DxaMEmpo8hoad8KqXWzYHsss7", "pixel_map_hex": "#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#516B6D,#485E5B,#516D6C,#708783,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#838F86,#71827A,#5E716E,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#647E87,#3E5758,#2C4243,#42504A,#465C58,#445F5E,#4D625F,#707667,#FFFFFF,#84908D,#708486,#667870,#53655E,#5A675F,#55635D,#3E4E4B,#415756,#4B625F,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#647A7D,#304749,#304B4E,#2F4F54,#2E4E52,#454F46,#3A5B5D,#325559,#626555,#FFFFFF,#6E7A6D,#576E6B,#7B918B,#485750,#4C625E,#3C5B5E,#345054,#3C5553,#6F7F78,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#668A90,#456265,#3C5455,#375455,#37514F,#404D44,#3F5753,#41534E,#605C49,#687065,#746E58,#60726A,#556C67,#42534E,#3E5A5A,#547170,#4B6563,#546C68,#466463,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#5D716C,#48574F,#3F504A,#394D49,#334844,#344A48,#566459,#5C6B63,#515B51,#737565,#737565,#495954,#435652,#4A5A54,#3D514F,#37504F,#3D5554,#445651,#3C4F4A,#666E62,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#606E69,#2D4D4E,#3C5755,#2E5052,#264D52,#2B5158,#556053,#465953,#3E5958,#5B5542,#3D5756,#3C5454,#4C625E,#3D5F63,#2D535B,#416165,#335255,#426264,#375659,#545C54,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#3F666B,#2E4F52,#284C50,#395959,#2D5154,#3E5855,#3E5450,#3B5755,#375A5C,#456060,#2E5055,#305154,#516057,#556E6B,#31575E,#345459,#335154,#345356,#516967,#637B77,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#446B74,#2A5056,#244E54,#3A5F62,#3B504C,#485C56,#486C70,#39504C,#345252,#45615E,#255055,#234E55,#3C5350,#264E56,#5D6D67,#375659,#274D54,#2E5259,#436365,#5E6659,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#595D53,#355357,#3B5352,#405756,#324846,#4B5E5B,#335658,#44605F,#335556,#365D5F,#3D5C5C,#3E5C5C,#3A5858,#29535A,#4E6E70,#455F61,#495D59,#28494E,#3F5350,#40524E,#52615B,#FFFFFF,#FFFFFF,#717871,#5B594B,#515F59,#375659,#395A5F,#325256,#515C56,#2E555A,#3F5C5A,#455D59,#486461,#3D6166,#405C5B,#3A6268,#527173,#3A595C,#28545D,#29565E,#324E4F,#48544B,#3E514B,#575F53,#FFFFFF,#FFFFFF,#6F8886,#4B5C59,#607773,#3A5A5D,#2F5359,#355559,#625B49,#585B4C,#5C5D4D,#5A5A4B,#44544E,#4A5F5C,#4A615F,#365457,#2E5259,#4B6565,#355C64,#255059,#3B5456,#224A51,#2E4C4E,#52625A,#FFFFFF,#FFFFFF,#5D6F6B,#54615D,#405859,#475E5E,#435958,#4C5851,#54635C,#455855,#465F5C,#545E52,#5B685F,#5A6056,#435451,#37575C,#4A5D59,#4D5E5A,#42504C,#40524F,#586054,#384C48,#3D4C46,#3C504B,#6A776A,#FFFFFF,#627F7F,#5C6661,#446166,#4A6869,#455756,#37585D,#365B5F,#395E5F,#4E6764,#485750,#60746C,#566D69,#495E5B,#436468,#476565,#40676D,#385A5C,#57645D,#355456,#3F6367,#5A7576,#405653,#5E6B62,#FFFFFF,#64726D,#3F5151,#48514D,#485E5F,#455B5A,#2F5258,#34585F,#3D6064,#436464,#556E6A,#6B7163,#576E6B,#4A5A55,#405D60,#416569,#2F5961,#345B61,#4C6767,#3E5654,#3C5B5C,#587273,#516059,#4B6460,#FFFFFF,#707064,#59625E,#485654,#4D5B59,#475E5E,#3A5659,#3D5C5F,#456567,#57726D,#64766C,#FFFFFF,#7D7767,#67807B,#587876,#5A7775,#557474,#3F6267,#426063,#506460,#636556,#595F53,#4C5B54,#5F614F,#FFFFFF,#FFFFFF,#818B85,#60665E,#5A5B4E,#536560,#546A66,#4B6968,#5D726C,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#717D75,#5B7772,#688480,#3A5B5E,#4A6462,#3A5353,#6A705F,#696A57,#7C7F6F,#6E807A,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#6E634C,#67766F,#7C8E87,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#728D8A,#5B7775,#667D7C,#707C75,#646250,#86806C,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF", "hex_dimensions": "24x24", "generated_at": "2026-11-08T22:45:51Z"};
 window.ONYX_ITEM_3D = ITEM;
 const MASK_ATTR = ITEM.mask_attractions || {};
 
@@ -251,7 +251,7 @@ function applyBoxUVsInSubregion(geom, bboxUv = [0, 0, 1, 1]) {
     let lu = 0, lv = 0;
     if (ny > nx && ny > nz) {
       lu = (x - bb.min.x) / spanX;
-      lv = (z - bb.min.z) / spanZ;
+      lv = 1.0 - (z - bb.min.z) / spanZ;
     } else if (nx > nz) {
       lu = (z - bb.min.z) / spanZ;
       lv = (y - bb.min.y) / spanY;
@@ -421,66 +421,139 @@ const arch = ITEM.archetype;
 const shapeLower = (ITEM.shape || '').toLowerCase();
 
 if (arch === 'bowl') {
-  // Task C: Multi-view Bowl with top_down radial rim contour r(theta) + side wall flare profile r(y)
+  // Task C: Multi-view Bowl lofted directly from exact 2D SVG rim contour (`rim_contour_xz` / `rim_radii`)
+  // and monotonic side-profile wall flare (`wall_profile_r`), guaranteeing an open concave vessel with
+  // exact W x H x L dimensions and zero mirror-flipped UVs or self-intersecting top lids.
   const vc = MASK_ATTR.vessel_contours || {};
-  const rimRadii = vc.rim_radii || null;
-  const wallProf = vc.wall_profile_r || null;
-  const rx = W * 0.5;
-  const rz = L * 0.5;
-  const avgR = (rx + rz) * 0.5;
-  const rBot = avgR * (wallProf && wallProf.length ? Math.max(0.32, Math.min(0.68, wallProf[0])) : 0.48);
-  const pts = [];
-  const steps = 28;
+  const rimContour = (Array.isArray(vc.rim_contour_xz) && vc.rim_contour_xz.length >= 16) ? vc.rim_contour_xz : null;
+  const rimRadii = (Array.isArray(vc.rim_radii) && vc.rim_radii.length >= 8) ? vc.rim_radii : null;
+  const rawWallProf = (Array.isArray(vc.wall_profile_r) && vc.wall_profile_r.length >= 4) ? vc.wall_profile_r : null;
 
-  pts.push(new THREE.Vector2(0.001, 0));
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    let flare = Math.pow(t, 0.72);
-    if (wallProf && wallProf.length >= 4) {
-      const wfIdx = Math.min(wallProf.length - 1, Math.floor(t * (wallProf.length - 1)));
-      flare = Math.max(0, Math.min(1, (wallProf[wfIdx] - wallProf[0]) / Math.max(0.08, 1.0 - wallProf[0])));
+  // Enforce monotonic non-decreasing outer wall flare from foot (t=0) to open rim (t=1)
+  let wallProf = null;
+  if (rawWallProf) {
+    wallProf = rawWallProf.slice();
+    wallProf[0] = Math.max(0.36, Math.min(0.56, wallProf[0]));
+    for (let wi = 1; wi < wallProf.length; wi++) {
+      wallProf[wi] = Math.max(wallProf[wi], wallProf[wi - 1]);
     }
-    const r = rBot + (avgR - rBot) * flare;
-    const y = t * H;
-    pts.push(new THREE.Vector2(r, y));
-  }
-  const wall = Math.max(0.055, avgR * 0.11);
-  for (let i = steps; i >= 0; i--) {
-    const t = i / steps;
-    const r = Math.max(0.01, (rBot + (avgR - rBot) * Math.pow(t, 0.78)) - wall);
-    const y = wall * 1.15 + t * (H - wall * 1.15);
-    pts.push(new THREE.Vector2(r, y));
-  }
-  pts.push(new THREE.Vector2(0.001, wall * 1.15));
-
-  const segs = 72;
-  const lathe = new THREE.LatheGeometry(pts, segs);
-  const pos = lathe.attributes.position;
-  const scaleX = rx / Math.max(0.001, avgR);
-  const scaleZ = rz / Math.max(0.001, avgR);
-
-  for (let i = 0; i < pos.count; i++) {
-    let vx = pos.getX(i) * scaleX;
-    let vy = pos.getY(i);
-    let vz = pos.getZ(i) * scaleZ;
-    if (rimRadii && rimRadii.length > 8) {
-      const th = Math.atan2(vz, vx);
-      const normTh = ((th + Math.PI) / (2 * Math.PI)) * rimRadii.length;
-      const idx0 = ((Math.floor(normTh) % rimRadii.length) + rimRadii.length) % rimRadii.length;
-      const idx1 = (idx0 + 1) % rimRadii.length;
-      const frac = normTh - Math.floor(normTh);
-      const rMod = rimRadii[idx0] * (1 - frac) + rimRadii[idx1] * frac;
-      const hRatio = Math.max(0, Math.min(1, vy / Math.max(0.001, H)));
-      const factor = 1.0 + (rMod - 1.0) * Math.pow(hRatio, 0.85);
-      vx *= factor;
-      vz *= factor;
+    const wMax = Math.max(0.1, wallProf[wallProf.length - 1]);
+    for (let wi = 0; wi < wallProf.length; wi++) {
+      wallProf[wi] = Math.max(0.36, Math.min(1.0, wallProf[wi] / wMax));
     }
-    pos.setXYZ(i, vx, vy, vz);
+    wallProf[wallProf.length - 1] = 1.0;
   }
-  lathe.computeVertexNormals();
-  applyBoxUVsInSubregion(lathe, [0, 0, 1, 1]);
-  addShadowMesh(lathe, stoneMat, 0, 0, 0);
-  internalLight.position.set(0, H * 0.55, 0);
+
+  const rFootFrac = wallProf ? wallProf[0] : 0.44;
+  const wallRatio = 0.095;
+  const floorY = Math.max(H * 0.08, Math.min(W, L) * 0.5 * wallRatio * 1.15);
+  const uSteps = 96;
+  const vSteps = 40;
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+
+  function sampleFlare(t01) {
+    if (!wallProf) return rFootFrac + (1.0 - rFootFrac) * Math.pow(t01, 0.62);
+    const f = Math.max(0, Math.min(1, t01)) * (wallProf.length - 1);
+    const i0 = Math.floor(f);
+    const i1 = Math.min(wallProf.length - 1, i0 + 1);
+    return wallProf[i0] * (1 - (f - i0)) + wallProf[i1] * (f - i0);
+  }
+
+  for (let iu = 0; iu <= uSteps; iu++) {
+    const uFrac = (iu % uSteps) / uSteps;
+    const theta = uFrac * Math.PI * 2 - Math.PI;
+    let uxRim = 0.5 * Math.cos(theta);
+    let uyRim = 0.5 * Math.sin(theta);
+
+    if (rimContour) {
+      const f = uFrac * rimContour.length;
+      const i0 = Math.floor(f) % rimContour.length;
+      const i1 = (i0 + 1) % rimContour.length;
+      const frac = f - Math.floor(f);
+      uxRim = rimContour[i0][0] * (1 - frac) + rimContour[i1][0] * frac;
+      uyRim = rimContour[i0][1] * (1 - frac) + rimContour[i1][1] * frac;
+    } else if (rimRadii) {
+      const f = uFrac * rimRadii.length;
+      const i0 = Math.floor(f) % rimRadii.length;
+      const i1 = (i0 + 1) % rimRadii.length;
+      const frac = f - Math.floor(f);
+      const rMod = rimRadii[i0] * (1 - frac) + rimRadii[i1] * frac;
+      uxRim = 0.5 * Math.cos(theta) * rMod;
+      uyRim = 0.5 * Math.sin(theta) * rMod;
+    }
+
+    // Natural hand-carved rim height undulation where wider organic lobes rise gently to H
+    const rLobe = Math.min(1.25, Math.hypot(uxRim, uyRim) / 0.5);
+    const yRim = H * (0.93 + 0.07 * rLobe);
+
+    for (let iv = 0; iv <= vSteps; iv++) {
+      const v = iv / vSteps;
+      let rFrac = 0;
+      let py = 0;
+      let rUv = 0;
+
+      if (v <= 0.08) {
+        // Flat bottom pedestal base from center (0) to foot ring (rFootFrac)
+        const t = v / 0.08;
+        rFrac = rFootFrac * t;
+        py = 0;
+        rUv = 0.84 * t;
+      } else if (v <= 0.46) {
+        // Monotonically flaring exterior stone wall from foot (t=0) to outer rim (t=1)
+        const t = (v - 0.08) / 0.38;
+        rFrac = sampleFlare(t);
+        py = yRim * Math.pow(t, 0.90);
+        // Sample outer stone band (0.84..1.0) on exterior wall so interior labels/tape never project outside
+        rUv = 0.84 + 0.16 * t;
+      } else if (v <= 0.54) {
+        // Thick rounded hand-carved stone rim lip
+        const t = (v - 0.46) / 0.08;
+        rFrac = 1.0 - wallRatio * (0.5 - 0.5 * Math.cos(t * Math.PI));
+        py = yRim + Math.sin(t * Math.PI) * (H * 0.024);
+        rUv = rFrac;
+      } else {
+        // Smooth concave hollowed interior basin descending to floorY
+        const t = 1.0 - (v - 0.54) / 0.46;
+        const innerRimR = 1.0 - wallRatio;
+        rFrac = innerRimR * Math.sin(t * Math.PI * 0.5);
+        py = floorY + (yRim - floorY) * Math.pow(t, 1.32);
+        rUv = rFrac;
+      }
+
+      // Map image (uxRim, uyRim) to 3D (px, pz) with +uy (top of image) at -Z (back/top of 3D view)
+      const px = uxRim * W * rFrac;
+      const pz = -uyRim * L * rFrac;
+      positions.push(px, py, pz);
+
+      const uCoord = Math.max(0.01, Math.min(0.99, uxRim * rUv + 0.5));
+      const vCoord = Math.max(0.01, Math.min(0.99, uyRim * rUv + 0.5));
+      uvs.push(uCoord, vCoord);
+    }
+  }
+
+  const bowlStride = vSteps + 1;
+  for (let iu = 0; iu < uSteps; iu++) {
+    for (let iv = 0; iv < vSteps; iv++) {
+      const a = iu * bowlStride + iv;
+      const b = (iu + 1) * bowlStride + iv;
+      const c = (iu + 1) * bowlStride + (iv + 1);
+      const d = iu * bowlStride + (iv + 1);
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  const bowlGeo = new THREE.BufferGeometry();
+  bowlGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  bowlGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  bowlGeo.setIndex(indices);
+  bowlGeo.computeVertexNormals();
+  addShadowMesh(bowlGeo, stoneMat, 0, 0, 0);
+  internalLight.color.setHex(0xfff8ed);
+  internalLight.intensity = 1.85;
+  internalLight.position.set(0, H * 0.38, 0);
 
 } else if (arch === 'canoe') {
   // Task B: Multi-view Canoe lofted from top_down rim contour (plan_half_widths) + side_profile prow/rocker (profile_top_y, profile_bot_y)
@@ -551,13 +624,9 @@ if (arch === 'bowl') {
       const py = yVal;
 
       positions.push(px, py, pz);
-      const bbox = [0, 0, 1, 1];
-      const uRaw = (px / Math.max(0.001, len)) + 0.5;
-      const vRaw = (pz / Math.max(0.001, wid)) + 0.5;
-      uvs.push(
-        bbox[0] + uRaw * (bbox[2] - bbox[0]),
-        (1.0 - bbox[3]) + vRaw * (bbox[3] - bbox[1])
-      );
+      const uRaw = Math.max(0.01, Math.min(0.99, (px / Math.max(0.001, len)) + 0.5));
+      const vRaw = Math.max(0.01, Math.min(0.99, 0.5 - (pz / Math.max(0.001, wid))));
+      uvs.push(uRaw, vRaw);
     }
   }
 
@@ -805,10 +874,11 @@ if (arch === 'bowl') {
 }
 
 // Frame camera nicely
-const centerY = H * 0.52;
+const centerY = H * 0.48;
 controls.target.set(0, centerY, 0);
 const camDist = Math.max(W, H, L) * 2.05;
-camera.position.set(camDist * 0.72, centerY + camDist * 0.35, camDist * 0.92);
+const camElev = (arch === 'bowl' || arch === 'canoe') ? 0.68 : 0.35;
+camera.position.set(camDist * 0.62, centerY + camDist * camElev, camDist * 0.88);
 controls.update();
 
 // Progressive enhancement: blend real clean-room cutout PNG and SVG vein mask if accessible
