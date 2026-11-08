@@ -646,7 +646,7 @@ function normalizeGeometryUVs(geom: THREE.BufferGeometry): void {
         let u = 0, v = 0;
         if (ny > nx && ny > nz) {
             u = (x - bb.min.x) / spanX;
-            v = (z - bb.min.z) / spanZ;
+            v = 1.0 - (z - bb.min.z) / spanZ;
         } else if (nx > nz) {
             u = (z - bb.min.z) / spanZ;
             v = (y - bb.min.y) / spanY;
@@ -687,7 +687,7 @@ function applyBoxUVsInSubregion(geom: THREE.BufferGeometry, bboxUv: number[] = [
         let lu = 0, lv = 0;
         if (ny > nx && ny > nz) {
             lu = (x - bb.min.x) / spanX;
-            lv = (z - bb.min.z) / spanZ;
+            lv = 1.0 - (z - bb.min.z) / spanZ;
         } else if (nx > nz) {
             lu = (z - bb.min.z) / spanZ;
             lv = (y - bb.min.y) / spanY;
@@ -809,88 +809,150 @@ function buildArchetype3DScene(
         case 'bowl':
         case 'plate': {
             const isPlate = specs.archetype === 'plate';
-            const rx = W * 0.5;
-            const rz = D * 0.5;
-            const avgR = (rx + rz) * 0.5;
-            const wallThick = Math.max(0.14, avgR * (isPlate ? 0.09 : 0.12));
-            const footR = avgR * (isPlate ? 0.55 : 0.42);
-            const footH = Math.max(0.08, H * 0.1);
+            const vc = specs.maskAttractions?.vessel_contours;
+            const rimContour: number[][] | null =
+                Array.isArray(vc?.rim_contour_xz) && vc.rim_contour_xz.length >= 16
+                    ? vc.rim_contour_xz
+                    : null;
+            const rimRadii: number[] | null =
+                Array.isArray(vc?.rim_radii) && vc.rim_radii.length >= 8
+                    ? vc.rim_radii
+                    : null;
+            const rawWallProf: number[] | null =
+                Array.isArray(vc?.wall_profile_r) && vc.wall_profile_r.length >= 4
+                    ? vc.wall_profile_r
+                    : null;
 
-            // Profile curve in (r, y) for LatheGeometry: outer curve from center bottom -> foot -> rim -> inner cavity -> center floor
-            const pts: THREE.Vector2[] = [];
-            pts.push(new THREE.Vector2(0.001, 0));
-            pts.push(new THREE.Vector2(footR * 0.92, 0));
-            pts.push(new THREE.Vector2(footR, footH));
-
-            const steps = 28;
-            for (let i = 0; i <= steps; i++) {
-                const t = i / steps;
-                const r = footR + (avgR - footR) * Math.pow(t, isPlate ? 0.65 : 0.52);
-                const y = footH + (H - footH) * Math.pow(t, isPlate ? 1.25 : 0.92);
-                pts.push(new THREE.Vector2(r, y));
-            }
-            // Rounded lip at rim
-            pts.push(new THREE.Vector2(avgR - wallThick * 0.25, H + wallThick * 0.12));
-            pts.push(new THREE.Vector2(avgR - wallThick * 0.75, H));
-
-            // Inner carved cavity descending to floor
-            for (let i = steps; i >= 0; i--) {
-                const t = i / steps;
-                const r = Math.max(0.001, (avgR - wallThick) * Math.pow(t, isPlate ? 0.72 : 0.62));
-                const y = footH + wallThick + (H - footH - wallThick) * Math.pow(t, isPlate ? 1.45 : 1.15);
-                pts.push(new THREE.Vector2(r, y));
+            let wallProf: number[] | null = null;
+            if (rawWallProf) {
+                wallProf = rawWallProf.slice();
+                wallProf[0] = Math.max(0.36, Math.min(0.56, wallProf[0]));
+                for (let wi = 1; wi < wallProf.length; wi++) {
+                    wallProf[wi] = Math.max(wallProf[wi], wallProf[wi - 1]);
+                }
+                const wMax = Math.max(0.1, wallProf[wallProf.length - 1]);
+                for (let wi = 0; wi < wallProf.length; wi++) {
+                    wallProf[wi] = Math.max(0.36, Math.min(1.0, wallProf[wi] / wMax));
+                }
+                wallProf[wallProf.length - 1] = 1.0;
             }
 
-            const segs = 96;
-            const geom = new THREE.LatheGeometry(pts, segs);
-
-            // Apply elliptical aspect ratio (W vs D) and optional organic petal/free-form rim modulation
+            const rFootFrac = isPlate ? 0.55 : (wallProf ? wallProf[0] : 0.44);
+            const wallRatio = isPlate ? 0.085 : 0.095;
+            const floorY = Math.max(H * 0.08, Math.min(W, D) * 0.5 * wallRatio * 1.15);
             const isPetalOrFree = /\b(petal|flower|flor|free|organic|ruffle|wave|scallop)\b/i.test(combinedText);
-            const rimRadii: number[] | null = specs.maskAttractions?.vessel_contours?.rim_radii || null;
-            const pos = geom.attributes.position;
-            const scaleX = rx / Math.max(0.001, avgR);
-            const scaleZ = rz / Math.max(0.001, avgR);
 
-            for (let i = 0; i < pos.count; i++) {
-                let x = pos.getX(i) * scaleX;
-                let y = pos.getY(i);
-                let z = pos.getZ(i) * scaleZ;
-                const theta = Math.atan2(z, x);
-                const heightRatio = Math.max(0, Math.min(1, y / Math.max(0.001, H)));
+            const uSteps = 96;
+            const vSteps = 40;
+            const positions: number[] = [];
+            const uvs: number[] = [];
+            const indices: number[] = [];
 
-                if (rimRadii && rimRadii.length > 8) {
-                    const normTh = ((theta + Math.PI) / (2 * Math.PI)) * rimRadii.length;
-                    const idx0 = ((Math.floor(normTh) % rimRadii.length) + rimRadii.length) % rimRadii.length;
-                    const idx1 = (idx0 + 1) % rimRadii.length;
-                    const frac = normTh - Math.floor(normTh);
-                    const rMod = rimRadii[idx0] * (1 - frac) + rimRadii[idx1] * frac;
-                    const factor = 1.0 + (rMod - 1.0) * Math.pow(heightRatio, 0.85);
-                    x *= factor;
-                    z *= factor;
+            const sampleFlare = (t01: number): number => {
+                if (!wallProf) {
+                    return rFootFrac + (1.0 - rFootFrac) * Math.pow(t01, isPlate ? 0.65 : 0.58);
+                }
+                const f = Math.max(0, Math.min(1, t01)) * (wallProf.length - 1);
+                const i0 = Math.floor(f);
+                const i1 = Math.min(wallProf.length - 1, i0 + 1);
+                return wallProf[i0] * (1 - (f - i0)) + wallProf[i1] * (f - i0);
+            };
+
+            for (let iu = 0; iu <= uSteps; iu++) {
+                const uFrac = (iu % uSteps) / uSteps;
+                const theta = uFrac * Math.PI * 2 - Math.PI;
+                let uxRim = 0.5 * Math.cos(theta);
+                let uyRim = 0.5 * Math.sin(theta);
+
+                if (rimContour) {
+                    const f = uFrac * rimContour.length;
+                    const i0 = Math.floor(f) % rimContour.length;
+                    const i1 = (i0 + 1) % rimContour.length;
+                    const frac = f - Math.floor(f);
+                    uxRim = rimContour[i0][0] * (1 - frac) + rimContour[i1][0] * frac;
+                    uyRim = rimContour[i0][1] * (1 - frac) + rimContour[i1][1] * frac;
+                } else if (rimRadii) {
+                    const f = uFrac * rimRadii.length;
+                    const i0 = Math.floor(f) % rimRadii.length;
+                    const i1 = (i0 + 1) % rimRadii.length;
+                    const frac = f - Math.floor(f);
+                    const rMod = rimRadii[i0] * (1 - frac) + rimRadii[i1] * frac;
+                    uxRim = 0.5 * Math.cos(theta) * rMod;
+                    uyRim = 0.5 * Math.sin(theta) * rMod;
                 } else if (isPetalOrFree) {
                     const petals = combinedText.includes('6') ? 6 : 8;
-                    const wave = Math.sin(theta * petals) * 0.065 + Math.cos(theta * 3) * 0.03;
-                    const radialFactor = 1 + wave * Math.pow(heightRatio, 1.3);
-                    x *= radialFactor;
-                    z *= radialFactor;
-                    y += Math.sin(theta * petals) * H * 0.055 * Math.pow(heightRatio, 1.6);
-                } else {
-                    // Subtle natural stone hand-turned organic variation
-                    const subtle = Math.sin(theta * 3 + 0.5) * 0.015 * heightRatio;
-                    x *= 1 + subtle;
-                    z *= 1 + subtle;
+                    const wave = 1.0 + Math.sin(theta * petals) * 0.055 + Math.cos(theta * 3) * 0.025;
+                    uxRim *= wave;
+                    uyRim *= wave;
                 }
-                pos.setXYZ(i, x, y - H * 0.5, z);
+
+                const rLobe = Math.min(1.25, Math.hypot(uxRim, uyRim) / 0.5);
+                const yRim = H * (0.93 + 0.07 * rLobe);
+
+                for (let iv = 0; iv <= vSteps; iv++) {
+                    const v = iv / vSteps;
+                    let rFrac = 0;
+                    let py = 0;
+                    let rUv = 0;
+
+                    if (v <= 0.08) {
+                        const t = v / 0.08;
+                        rFrac = rFootFrac * t;
+                        py = 0;
+                        rUv = 0.84 * t;
+                    } else if (v <= 0.46) {
+                        const t = (v - 0.08) / 0.38;
+                        rFrac = sampleFlare(t);
+                        py = yRim * Math.pow(t, isPlate ? 1.15 : 0.90);
+                        rUv = 0.84 + 0.16 * t;
+                    } else if (v <= 0.54) {
+                        const t = (v - 0.46) / 0.08;
+                        rFrac = 1.0 - wallRatio * (0.5 - 0.5 * Math.cos(t * Math.PI));
+                        py = yRim + Math.sin(t * Math.PI) * (H * 0.024);
+                        rUv = rFrac;
+                    } else {
+                        const t = 1.0 - (v - 0.54) / 0.46;
+                        const innerRimR = 1.0 - wallRatio;
+                        rFrac = innerRimR * Math.sin(t * Math.PI * 0.5);
+                        py = floorY + (yRim - floorY) * Math.pow(t, isPlate ? 1.42 : 1.32);
+                        rUv = rFrac;
+                    }
+
+                    const x = uxRim * W * rFrac;
+                    const z = -uyRim * D * rFrac;
+                    const y = py - H * 0.5;
+                    positions.push(x, y, z);
+
+                    const uCoord = Math.max(0.01, Math.min(0.99, uxRim * rUv + 0.5));
+                    const vCoord = Math.max(0.01, Math.min(0.99, uyRim * rUv + 0.5));
+                    uvs.push(uCoord, vCoord);
+                }
             }
+
+            const stride = vSteps + 1;
+            for (let iu = 0; iu < uSteps; iu++) {
+                for (let iv = 0; iv < vSteps; iv++) {
+                    const a = iu * stride + iv;
+                    const b = (iu + 1) * stride + iv;
+                    const c = (iu + 1) * stride + (iv + 1);
+                    const d = iu * stride + (iv + 1);
+                    indices.push(a, b, d);
+                    indices.push(b, c, d);
+                }
+            }
+
+            const geom = new THREE.BufferGeometry();
+            geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            geom.setIndex(indices);
             geom.computeVertexNormals();
-            normalizeGeometryUVs(geom);
 
             const mesh = new THREE.Mesh(geom, stoneMat);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             group.add(mesh);
 
-            addWarmLight(0, -H * 0.08, 0, 4.5, 14);
+            addWarmLight(0, -H * 0.12, 0, 2.8, 14);
             break;
         }
 
@@ -918,7 +980,7 @@ function buildArchetype3DScene(
                 const planW: number[] | null = vc?.plan_half_widths || null;
                 const profTop: number[] | null = vc?.profile_top_y || null;
                 const longitudinal = Math.abs(cosT);
-                const sIdx = Math.min(40, Math.max(0, Math.round(((cosT + 1) * 0.5) * 40)));
+                const sIdx = Math.min(32, Math.max(0, Math.round(((cosT + 1) * 0.5) * 32)));
                 const pinchZ = (planW && planW.length > sIdx)
                     ? Math.max(0.08, planW[sIdx])
                     : Math.pow(1 - Math.pow(longitudinal, 2.2) * 0.35, 0.7);
@@ -956,8 +1018,8 @@ function buildArchetype3DScene(
                     const y = yVal - H * 0.5;
 
                     positions.push(x, y, z);
-                    const lu = Math.max(0, Math.min(1, (x / W) + 0.5));
-                    const lv = Math.max(0, Math.min(1, (z / D) + 0.5));
+                    const lu = Math.max(0.01, Math.min(0.99, (x / W) + 0.5));
+                    const lv = Math.max(0.01, Math.min(0.99, 0.5 - (z / D)));
                     uvs.push(lu, lv);
                 }
             }

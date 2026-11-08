@@ -97,7 +97,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const ITEM = {"id": "81903e52-cb73-4d48-956e-1cdedbc85ce0", "barcode": "JM8264OMN", "item_id": "JM-004", "workbook": "v826", "title": "Smooth Polished Distinctive Pearlescent White Cream Banded Onyx Canoe", "short_description": "Canoe", "shape": "Small", "material": "Onyx", "color": "White, Cream", "archetype": "canoe", "width_cm": 70.0, "height_cm": 11.0, "length_cm": 24.0, "weight_kg": null, "vein_colors": ["#c0b4aa", "#dccec6", "#a2978d", "#857c74", "#676059", "#080706"], "cutout_url": "https://lh3.googleusercontent.com/d/1-3pHGojWwQkg4I5sKeTBwMabDO2nzHPN", "plan_cutout_url": "https://lh3.googleusercontent.com/d/1-3pHGojWwQkg4I5sKeTBwMabDO2nzHPN", "profile_cutout_url": "", "vein_svg_url": "https://lh3.googleusercontent.com/d/1LkuiNhdFB7Tbo1kV5hXVOnepRkevQ4NF", "plan_vein_svg_url": "https://lh3.googleusercontent.com/d/1LkuiNhdFB7Tbo1kV5hXVOnepRkevQ4NF", "angle_views": null, "mask_attractions": {"archetype_task": "canoe", "bbox_uv": [0.0036, 0.0152, 0.9957, 0.9787], "subpath_count": 1, "vessel_contours": {"plan_points": [[0.0706, 0.5], [0.2678, 0.4873], [0.3945, 0.4177], [0.444, 0.3608], [0.4956, 0.2342], [0.5, 0.1962], [0.4913, 0.0949], [0.4782, 0.0443], [0.4614, -0.0443], [0.4265, -0.1266], [0.4294, -0.1392], [0.4309, -0.1392], [0.4345, -0.1424], [0.4279, -0.1646], [0.4287, -0.1519], [0.4199, -0.1867], [0.3901, -0.25], [0.393, -0.231], [0.3705, -0.288], [0.369, -0.2722], [0.3624, -0.2911], [0.353, -0.3006], [0.3552, -0.3038], [0.3486, -0.3354], [0.3362, -0.3513], [0.3413, -0.3259], [0.3282, -0.3639], [0.2147, -0.4715], [-0.0902, -0.5], [-0.0997, -0.4842], [-0.1237, -0.481], [-0.1215, -0.481], [-0.1274, -0.4747], [-0.1281, -0.4652], [-0.1303, -0.4747], [-0.1208, -0.4715], [-0.1194, -0.4652], [-0.1135, -0.4557], [-0.1179, -0.4462], [-0.1208, -0.443], [-0.1281, -0.4525], [-0.1426, -0.4494], [-0.139, -0.4652], [-0.1368, -0.4589], [-0.1332, -0.4557], [-0.131, -0.4652], [-0.1434, -0.4778], [-0.1507, -0.4778], [-0.1507, -0.4873], [-0.1579, -0.4873], [-0.1623, -0.4905], [-0.1776, -0.4873], [-0.1863, -0.4968], [-0.1951, -0.4937], [-0.2089, -0.481], [-0.2256, -0.4842], [-0.2467, -0.4747], [-0.2795, -0.4494], [-0.2868, -0.4272], [-0.2933, -0.4241], [-0.2948, -0.4082], [-0.2991, -0.4146], [-0.2948, -0.4209], [-0.31, -0.4051], [-0.3224, -0.4082], [-0.3537, -0.3544], [-0.3595, -0.3449], [-0.361, -0.3513], [-0.3901, -0.2911], [-0.3872, -0.288], [-0.4032, -0.2658], [-0.4381, -0.1804], [-0.4956, 0.0665], [-0.5, 0.1108], [-0.4985, 0.1614], [-0.4592, 0.2785], [-0.393, 0.3639], [-0.1958, 0.4715], [-0.0757, 0.4937], [0.0699, 0.4968]], "plan_bbox_uv": [0.0036, 0.0152, 0.9957, 0.9787], "rim_radii": [0.9823, 0.9823, 0.9307, 0.9307, 0.9307, 0.9307, 0.9487, 0.9487, 0.9562, 0.9836, 1.0218, 1.0095, 1.0396, 1.0493, 1.0189, 0.9655, 0.9981, 0.9981, 0.9981, 0.9981, 1.0177, 1.0177, 1.0177, 1.0177, 1.0177, 0.9626, 0.9626, 0.9503, 0.9108, 0.9007, 0.8955, 0.9027, 0.8934, 0.874, 0.9105, 0.9105, 0.9434, 0.9434, 0.983, 0.983, 1.0551, 1.0768, 1.0768, 1.1239, 1.1239, 1.1286, 1.1286, 1.0923, 1.0923, 1.0923, 1.0923, 0.9919, 0.9919, 0.9855, 0.9855, 0.9812, 0.9812, 0.9812, 1.0029, 1.0029, 1.0029, 1.0521, 1.0521, 1.0521, 1.0521, 1.055, 1.055, 1.055, 1.0293, 1.006, 0.9823, 0.9823], "plan_half_widths": [0.557, 0.557, 0.7278, 0.7278, 0.8164, 0.8988, 0.8988, 0.9684, 0.9936, 0.9936, 0.9936, 0.9936, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.943, 0.943, 0.9746, 0.9746, 0.9746, 0.9746, 0.8354, 0.8354, 0.8354, 0.8354, 0.7216, 0.7216]}}, "outline_svg_url": "https://drive.google.com/uc?export=view&id=1aIy8An6qGYndjjHcGth7VRf8mc7iROZZ", "pixel_map_hex": "#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F9DDDD,#FFEEDB,#FFFFFA,#FFFFFF,#FFFFF6,#FFFFFF,#FFFFFF,#FFFFF7,#FFFAE8,#FFFFF2,#B2A49B,#E9D1C3,#EBD6D1,#FFFCF0,#FFF2E8,#E2CCC8,#BDACA5,#C0A9A2,#BDAAA6,#FBE8DF,#F8E2D2,#FFFFF2,#FFFBED,#FFFFF4,#FFFFFF,#EAD5CE,#D0BBB4,#D4C1BA,#FFF4ED,#FFF0E9,#F0DBD6,#FFFFFE,#FFFDF5,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#C3AEA7,#FFFFF7,#FFFFFA,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF5,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF8EC,#FFF1E7,#FFEFE5,#FFFAF1,#FFFFFF,#FFFFFF,#FFF2E6,#FADECD,#E0C1B0,#F1D4C4,#F9DACC,#F2D8C8,#FFFFFC,#FFFFFA,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFA,#FFFCF3,#FFFFF1,#FFDDCC,#FFFFFF,#FFFFF8,#FFF7EC,#FFE6DB,#FFECDB,#FFE9D9,#FFFFF3,#FFECCF,#FFFFF0,#FFFFFF,#FFFFFF,#FFE7DC,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF5D9,#FFF5DB,#FFFFFF,#FFFFF5,#FFFFFB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFEF4,#FFFFFF,#FFFFFF,#FFEADE,#FFEFE3,#FFECE3,#FFFFF9,#FFF2E4,#FFFFF3,#FFFCEC,#F2D1BF,#F8D7C4,#FFE7D6,#FDE0D0,#F7DACC,#FFF9EF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFEF9,#FFFFFF,#FFFFFD,#FFFBEF,#FFFCF1,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF7E7,#FFFCE6,#FFFBE1,#FFEED4,#FFEAD0,#FFE7CD,#FFFBE6,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#E3C7BD,#FED8C5,#FFF3D2,#FFE0B8,#FFFFF0,#FFEEE5,#FFFFFD,#FFF8F1,#FFEFE3,#FFE6D8,#FFFFF8,#FFF0E9,#FFF9F5,#FFF8F3,#FFF6F1,#FFF2E8,#FFF6F2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFCF5,#FBEBE6,#FFF1EA,#FBE1DC,#F0D8D3,#F6DED9,#FFEAE1,#D7BDB9,#DAC0BB,#CFBAB0,#FFE6DA,#FFFFF1,#EDD3C7,#FFFFFD,#FFFFF8,#FFE5D7,#FFFFF2,#F3D6CD,#F5D6CA,#FFFFFE,#FFFEEE,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFED,#FFFFFC,#FFFFFF,#FFFFFF,#FFFEE9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFE6,#E9CAAB,#F3D2B6,#FFE3C9,#FFF7E9,#FFFDF6,#CBA797,#D3B4A1,#FEE2CF,#FFF9F0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFB,#EDD6CC,#FFFFFF,#FFFFFF,#FFF8F3,#FFFFFF,#FFFFF9,#FFF2EB,#FFFFFF,#FFFFFF,#F1D9D2,#FFF2ED,#FFFFFF,#E3D0CC,#BDAAA6,#D2C4BD,#F5E2DD,#EFDAD0,#BDB1AD,#C3B7B0,#A4968F,#A0948D,#FFFFFF,#A9968F,#A5948B,#FDE8DC,#E1CAC3,#B3A094,#A1958C,#BBABA8,#C9B9B4,#FFFAF3,#FFFFFF,#D5B9AF,#FFF2E9,#F8DED7,#FBDCCE,#FFFAE7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFC,#FFFFE4,#FFD9BB,#FFECD0,#FFFFFE,#FFFAE5,#E8C5A6,#FBDEC4,#FFEDDF,#FFE0D0,#FEDDCD,#DCBEAB,#FFFFFF,#FFF9EB,#FFFFFF,#FFFFFF,#FFFFFF,#D7BFB8,#D4BDB8,#D5BFBB,#E2D2CF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF8F3,#D6CAC6,#D5C7C7,#C3B4B2,#C7B8AF,#B1A69F,#C9B8AF,#C0B0A8,#DFD3C9,#C9B8AC,#AA998D,#A4968A,#AE9B92,#A9988C,#B29D94,#A29488,#A99D96,#FFFFFF,#FFFEFB,#FFFFFF,#FFFEFE,#FFFFFF,#FFFFFF,#FFE3D5,#F4D5C2,#FFFFED,#FFFFF0,#FFFFEA,#FFFFFF,#FFFFFF,#FFFFF1,#FFFFFF,#FFFFFE,#FFFFFF,#FFFFF2,#F2D6BE,#ECC6AC,#DCBBA1,#FFE5D0,#FFFFFF,#FFFFF6,#E3C9BD,#ECD2C8,#F0D8CA,#E5CDC6,#C2ADA3,#C4AAA6,#D0B8B3,#D8C0BB,#F2DAD3,#E0CDC8,#E1D1CC,#C4B1AD,#FFEBDB,#FFEFDF,#FFFDEA,#F8DECE,#FCE4DB,#C1B5B0,#A7988D,#CEB9AF,#F4E5DE,#B3A59E,#F4DFD5,#FFFFFF,#FFFFFF,#FFFFFF,#FFEFEF,#F0DBD6,#FFFFFF,#FFEBE9,#FAE0D9,#FFFFFF,#FFF4EB,#FFECE4,#FFFFFC,#D7B9AA,#C1A7A0,#FFE3DA,#FFFFFF,#D1BEB2,#FFFFFF,#FFFFF6,#FFFFF8,#FFF7E4,#FFFBE5,#FFFFFC,#FFD9BB,#FFFFFE,#FFFFF0,#FFFFF1,#F2D6C3,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFA,#FFFFFF,#FFFFF8,#FFFFFF,#E6C7B4,#E3C2B4,#FFFEE9,#AB9A8F,#98837C,#D6BEB2,#E2CDBF,#E6CFC3,#F1DED2,#C9B4A8,#A29183,#AE9D8F,#B7A796,#C1B0A0,#CEB9AB,#E5CEC0,#F0D9C8,#DEC8B8,#D3BEAB,#FADECD,#FFF2E4,#F3D7C8,#DFC5B9,#FFFBED,#FFFFF6,#FFF0E7,#FFFFF1,#E7CBBD,#D8C2B2,#FFFFF3,#FFFFF3,#FFFFF6,#FFFAF1,#FFEDE2,#FFFFF4,#FFFFF9,#FFF0E2,#FFF9E6,#FFEBDA,#FFE8DC,#FFF2EB,#FFFFFF,#F6D5C0,#FFE5C6,#FFDDBF,#FFE3C4,#FFF1D2,#FFEACE,#E7D0B6,#FFEAD0,#E1C5B2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFE,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFEED9,#E7C8B3,#E0C4B1,#FFEED8,#FFFEE9,#FFFFEF,#FFFFFC,#FFFFF1,#FFFFEF,#FFEFDD,#FFEFDC,#FFFFF2,#FFFFF3,#FCDBCA,#FFF1DE,#FFFFFF,#FFFFF1,#FFE5D4,#FFFFFD,#FFFFFE,#FFFDEA,#FFE8D3,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFE,#FFF6DF,#FFFFF7,#FFFFFF,#FFFFFF,#FFF8D9,#FFECCB,#FFE9CC,#FFF9DF,#FFEFD3,#FFE3C4,#FFE6C7,#F7D6B7,#FFEBD1,#F1D5BF,#EDDAC2,#EBDDC5,#D6D1BA,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFE8,#FFFFFD,#FFF3DC,#FFFFEC,#FFFFFE,#FFFFFF,#FFFFFF,#FFFFF4,#FFFFF9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFDE5,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF7,#FFFFEB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFAE2,#FFF3E2,#FFF9DF,#FFFFFF,#FFFFFF,#FFFFF7,#FFFFF6,#FFFFF3,#FFFFED,#FFFFEF,#E7D7BD,#FDE8C9,#FFEBC7,#FFFFF1,#FFFFF2,#FFFFE8,#FFFFF5,#FFFFE3,#FFFFE1,#FADBB5,#EED2AE,#FFF2D3,#FFFFE8,#FFFFE3,#FCE7CD,#E0D4BA,#C2B69A,#C8C8AE,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF3,#FFFFF8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFC,#FFFFFF,#FFEDD7,#FFFFF8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF5,#FFF4DD,#FFFFFD,#FFFFF9,#FFF5DD,#DFCAB2,#DFCAB2,#DFCCB2,#D5C4B2,#C4B5A0,#CBB8A1,#CFBCA0,#D1C0A6,#D4C4A7,#EAD5B6,#D5C7AA,#DACCB7,#D5C9B4,#D9CBB6,#E3D3BB,#DBC8AE,#DFCCB2,#D1BCA2,#CAB598,#E4CAA9,#FFEECF,#FFEACB,#FFFDDA,#FFECD0,#C8C3A7,#D1CCB5,#838370,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F4EBCE,#EEE2CD,#FFFDE0,#FFFADE,#FFFFFF,#FFFAE5,#FFFFFF,#FFFFF8,#FEEBCE,#FFFEE7,#ECD7BF,#DCCCB6,#DECDB5,#F6E0C9,#FFEEDB,#DFCEB9,#DCC9B4,#EBDAC0,#E8D5BB,#DCCCB4,#D2C7AF,#ECD7BD,#D8CAAE,#D7CDB1,#CCC5A7,#D1C6AC,#D1CAAB,#D6C8A9,#EFE1BB,#F1E3C2,#F8E8C4,#E7DBBF,#ECE3C6,#F1E5CE,#E8E3C9,#F1E3CD,#E6D8C3,#C9C2B4,#C5C1A9,#BEB7A1,#D2CDB8,#E7DEC4,#DBCFB7,#C4BBAA,#B0B09D,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFE5,#D6D4BC,#E2D6C1,#D8CFBC,#F8EAD2,#DDCFB7,#ECDEC9,#DCD3BB,#E3D7C2,#C7BBA3,#D0C4AF,#EBE0C6,#CFC6B0,#DFD5BE,#D5CCB4,#E2D9BD,#D5CCB2,#D8D1B5,#E1D5B7,#EFE4C3,#F9EBC5,#FFFFE0,#F6EAC2,#E7D9B8,#E4DAB9,#DFD8BC,#FDF4CE,#FCF5CD,#EAE5BD,#FAF0CA,#FFFAD2,#E4DAB9,#DAD1B2,#FFF7D1,#CBC39B,#FFF7CB,#FFFFCA,#DED2AF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#CDC4BA,#D9D9BD,#C0B69C,#C9C0AD,#8B887D,#B2ADA1,#C1BAAE,#D1CFBA,#D1CCBB,#CBC6B6,#C4C2B1,#D0CBB1,#E9E4C8,#F5EED1,#F1EACB,#E7E0BF,#F3EBCA,#CBC4A5,#B0AB8F,#D7D2AE,#C5C09D,#FFFFD9,#FFFFD1,#FFFACB,#FFFFDB,#F7F7C8,#FFFFEC,#FFFFD0,#FFFFD8,#FFFFDE,#FFFFD3,#CFCFA7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF", "hex_dimensions": "60x60", "generated_at": "2026-11-08T22:28:38Z"};
+const ITEM = {"id": "81903e52-cb73-4d48-956e-1cdedbc85ce0", "barcode": "JM8264OMN", "item_id": "JM-004", "workbook": "v826", "title": "Smooth Polished Distinctive Pearlescent White Cream Banded Onyx Canoe", "short_description": "Canoe", "shape": "Small", "material": "Onyx", "color": "White, Cream", "archetype": "canoe", "width_cm": 70.0, "height_cm": 11.0, "length_cm": 24.0, "weight_kg": null, "vein_colors": ["#c0b4aa", "#dccec6", "#a2978d", "#857c74", "#676059", "#080706"], "cutout_url": "https://lh3.googleusercontent.com/d/1-3pHGojWwQkg4I5sKeTBwMabDO2nzHPN", "plan_cutout_url": "https://lh3.googleusercontent.com/d/1-3pHGojWwQkg4I5sKeTBwMabDO2nzHPN", "profile_cutout_url": "", "vein_svg_url": "https://lh3.googleusercontent.com/d/1LkuiNhdFB7Tbo1kV5hXVOnepRkevQ4NF", "plan_vein_svg_url": "https://lh3.googleusercontent.com/d/1LkuiNhdFB7Tbo1kV5hXVOnepRkevQ4NF", "angle_views": null, "mask_attractions": {"archetype_task": "canoe", "bbox_uv": [0.0036, 0.0152, 0.9957, 0.9787], "subpath_count": 1, "vessel_contours": {"plan_points": [[0.0706, 0.5], [0.2678, 0.4873], [0.3224, 0.4652], [0.444, 0.3608], [0.4782, 0.2943], [0.4956, 0.2342], [0.5, 0.1962], [0.5, 0.1614], [0.4782, 0.0443], [0.4614, -0.0443], [0.4432, -0.0981], [0.4265, -0.1266], [0.4294, -0.1392], [0.4389, -0.1139], [0.4345, -0.1424], [0.4309, -0.1582], [0.4279, -0.1646], [0.4287, -0.1519], [0.4199, -0.1867], [0.3901, -0.25], [0.393, -0.231], [0.3872, -0.2405], [0.3705, -0.288], [0.369, -0.2722], [0.3624, -0.2911], [0.353, -0.3006], [0.3552, -0.3038], [0.3464, -0.3291], [0.3486, -0.3354], [0.3362, -0.3513], [0.3413, -0.3259], [0.3282, -0.3639], [0.2147, -0.4715], [-0.0451, -0.5], [-0.0902, -0.5], [-0.1201, -0.4873], [-0.1237, -0.481], [-0.1215, -0.481], [-0.1215, -0.4715], [-0.1274, -0.4747], [-0.1303, -0.4747], [-0.1295, -0.4652], [-0.1208, -0.4715], [-0.1194, -0.4652], [-0.123, -0.4557], [-0.1135, -0.4557], [-0.1208, -0.4525], [-0.1208, -0.443], [-0.1281, -0.4525], [-0.1426, -0.4494], [-0.1434, -0.4557], [-0.1368, -0.4589], [-0.1346, -0.4684], [-0.1332, -0.4557], [-0.131, -0.4652], [-0.1448, -0.4652], [-0.1434, -0.4778], [-0.1507, -0.4873], [-0.1579, -0.4778], [-0.1579, -0.4873], [-0.1623, -0.4905], [-0.1594, -0.5], [-0.1863, -0.4968], [-0.1936, -0.4842], [-0.1951, -0.4937], [-0.2089, -0.481], [-0.2256, -0.4842], [-0.2467, -0.4747], [-0.2795, -0.4494], [-0.2868, -0.4367], [-0.2868, -0.4272], [-0.2933, -0.4241], [-0.2948, -0.4082], [-0.2991, -0.4146], [-0.2948, -0.4209], [-0.2984, -0.4209], [-0.31, -0.4051], [-0.3224, -0.4082], [-0.3537, -0.3544], [-0.3595, -0.3449], [-0.361, -0.3513], [-0.3865, -0.307], [-0.3901, -0.2911], [-0.3901, -0.2785], [-0.4032, -0.2658], [-0.4381, -0.1804], [-0.4854, 0.0095], [-0.4956, 0.0665], [-0.5, 0.1108], [-0.4905, 0.2025], [-0.4592, 0.2785], [-0.393, 0.3639], [-0.2999, 0.4335], [-0.1958, 0.4715], [0.0247, 0.4873], [0.0699, 0.4968]], "plan_bbox_uv": [0.0036, 0.0152, 0.9957, 0.9787], "rim_contour_xz": [[-0.4848, 0.0009], [-0.4774, -0.0304], [-0.4697, -0.061], [-0.4622, -0.091], [-0.4548, -0.1209], [-0.4473, -0.1509], [-0.4388, -0.1808], [-0.4279, -0.21], [-0.4157, -0.239], [-0.403, -0.2683], [-0.39, -0.2982], [-0.3747, -0.3276], [-0.3564, -0.3553], [-0.3365, -0.3825], [-0.3129, -0.4065], [-0.2891, -0.4314], [-0.2654, -0.4583], [-0.2364, -0.4779], [-0.2033, -0.4892], [-0.1677, -0.4922], [-0.1308, -0.4858], [-0.0987, -0.4934], [-0.0663, -0.5], [-0.0332, -0.4992], [-0.0004, -0.4961], [0.0319, -0.4926], [0.0641, -0.489], [0.0963, -0.4855], [0.1289, -0.482], [0.1622, -0.4783], [0.1955, -0.4724], [0.2261, -0.4586], [0.2524, -0.4371], [0.2767, -0.414], [0.3005, -0.3914], [0.3232, -0.3683], [0.3418, -0.3415], [0.3559, -0.3118], [0.3708, -0.2841], [0.3845, -0.2564], [0.3993, -0.23], [0.4127, -0.2029], [0.4239, -0.175], [0.4333, -0.1464], [0.4402, -0.1172], [0.4479, -0.0883], [0.4568, -0.0594], [0.4647, -0.0296], [0.4711, 0.0009], [0.477, 0.0322], [0.4831, 0.0645], [0.4895, 0.0983], [0.4958, 0.1339], [0.5, 0.1708], [0.4992, 0.2079], [0.4934, 0.2445], [0.4832, 0.2802], [0.4692, 0.3148], [0.4511, 0.3475], [0.4276, 0.3764], [0.4002, 0.4016], [0.3721, 0.4258], [0.3436, 0.4494], [0.3129, 0.4699], [0.2784, 0.484], [0.2413, 0.4911], [0.2039, 0.4943], [0.1678, 0.4966], [0.133, 0.4988], [0.0988, 0.5], [0.065, 0.4976], [0.0318, 0.4924], [-0.0004, 0.4885], [-0.0322, 0.486], [-0.064, 0.4837], [-0.096, 0.4814], [-0.1285, 0.4791], [-0.1619, 0.4768], [-0.1956, 0.4723], [-0.2281, 0.4628], [-0.2602, 0.4511], [-0.2922, 0.4377], [-0.3219, 0.42], [-0.35, 0.3997], [-0.3775, 0.3781], [-0.4028, 0.3539], [-0.4252, 0.3269], [-0.4461, 0.2988], [-0.4645, 0.2689], [-0.4791, 0.237], [-0.4903, 0.2039], [-0.4962, 0.1692], [-0.4993, 0.1346], [-0.5, 0.1003], [-0.497, 0.0663], [-0.4915, 0.0331]], "rim_radii": [0.9564, 0.9437, 0.9346, 0.9297, 0.9288, 0.9318, 0.9368, 0.941, 0.9469, 0.956, 0.9696, 0.983, 0.9939, 1.0063, 1.0134, 1.026, 1.0464, 1.0535, 1.0469, 1.0276, 0.9944, 0.9945, 0.997, 0.9891, 0.9808, 0.9759, 0.9752, 0.9787, 0.9864, 0.9987, 1.0109, 1.011, 0.9981, 0.9848, 0.9759, 0.969, 0.9554, 0.9357, 0.9237, 0.9139, 0.9112, 0.9094, 0.9067, 0.9042, 0.9005, 0.9024, 0.9106, 0.9203, 0.9308, 0.9446, 0.9629, 0.9861, 1.0142, 1.0434, 1.0677, 1.0871, 1.1026, 1.1151, 1.1237, 1.1239, 1.1186, 1.1154, 1.1157, 1.1134, 1.101, 1.0788, 1.0541, 1.0332, 1.0174, 1.0044, 0.9888, 0.9722, 0.9624, 0.9595, 0.9612, 0.967, 0.9772, 0.9919, 1.0071, 1.0164, 1.026, 1.0368, 1.0426, 1.0468, 1.0528, 1.0566, 1.0571, 1.0583, 1.0579, 1.0537, 1.047, 1.0338, 1.0198, 1.0057, 0.9889, 0.9716], "plan_half_widths": [0.557, 0.557, 0.7278, 0.7278, 0.8164, 0.8988, 0.8988, 0.9684, 0.9936, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.943, 0.943, 0.9746, 0.9746, 0.9746, 0.9746, 0.9304, 0.9304, 0.7216, 0.7216, 0.7216, 0.7216]}}, "outline_svg_url": "https://drive.google.com/uc?export=view&id=1aIy8An6qGYndjjHcGth7VRf8mc7iROZZ", "pixel_map_hex": "#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F9DDDD,#FFEEDB,#FFFFFA,#FFFFFF,#FFFFF6,#FFFFFF,#FFFFFF,#FFFFF7,#FFFAE8,#FFFFF2,#B2A49B,#E9D1C3,#EBD6D1,#FFFCF0,#FFF2E8,#E2CCC8,#BDACA5,#C0A9A2,#BDAAA6,#FBE8DF,#F8E2D2,#FFFFF2,#FFFBED,#FFFFF4,#FFFFFF,#EAD5CE,#D0BBB4,#D4C1BA,#FFF4ED,#FFF0E9,#F0DBD6,#FFFFFE,#FFFDF5,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#C3AEA7,#FFFFF7,#FFFFFA,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF5,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF8EC,#FFF1E7,#FFEFE5,#FFFAF1,#FFFFFF,#FFFFFF,#FFF2E6,#FADECD,#E0C1B0,#F1D4C4,#F9DACC,#F2D8C8,#FFFFFC,#FFFFFA,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFA,#FFFCF3,#FFFFF1,#FFDDCC,#FFFFFF,#FFFFF8,#FFF7EC,#FFE6DB,#FFECDB,#FFE9D9,#FFFFF3,#FFECCF,#FFFFF0,#FFFFFF,#FFFFFF,#FFE7DC,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF5D9,#FFF5DB,#FFFFFF,#FFFFF5,#FFFFFB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFEF4,#FFFFFF,#FFFFFF,#FFEADE,#FFEFE3,#FFECE3,#FFFFF9,#FFF2E4,#FFFFF3,#FFFCEC,#F2D1BF,#F8D7C4,#FFE7D6,#FDE0D0,#F7DACC,#FFF9EF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFEF9,#FFFFFF,#FFFFFD,#FFFBEF,#FFFCF1,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF7E7,#FFFCE6,#FFFBE1,#FFEED4,#FFEAD0,#FFE7CD,#FFFBE6,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#E3C7BD,#FED8C5,#FFF3D2,#FFE0B8,#FFFFF0,#FFEEE5,#FFFFFD,#FFF8F1,#FFEFE3,#FFE6D8,#FFFFF8,#FFF0E9,#FFF9F5,#FFF8F3,#FFF6F1,#FFF2E8,#FFF6F2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFCF5,#FBEBE6,#FFF1EA,#FBE1DC,#F0D8D3,#F6DED9,#FFEAE1,#D7BDB9,#DAC0BB,#CFBAB0,#FFE6DA,#FFFFF1,#EDD3C7,#FFFFFD,#FFFFF8,#FFE5D7,#FFFFF2,#F3D6CD,#F5D6CA,#FFFFFE,#FFFEEE,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFED,#FFFFFC,#FFFFFF,#FFFFFF,#FFFEE9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFE6,#E9CAAB,#F3D2B6,#FFE3C9,#FFF7E9,#FFFDF6,#CBA797,#D3B4A1,#FEE2CF,#FFF9F0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFB,#EDD6CC,#FFFFFF,#FFFFFF,#FFF8F3,#FFFFFF,#FFFFF9,#FFF2EB,#FFFFFF,#FFFFFF,#F1D9D2,#FFF2ED,#FFFFFF,#E3D0CC,#BDAAA6,#D2C4BD,#F5E2DD,#EFDAD0,#BDB1AD,#C3B7B0,#A4968F,#A0948D,#FFFFFF,#A9968F,#A5948B,#FDE8DC,#E1CAC3,#B3A094,#A1958C,#BBABA8,#C9B9B4,#FFFAF3,#FFFFFF,#D5B9AF,#FFF2E9,#F8DED7,#FBDCCE,#FFFAE7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFC,#FFFFE4,#FFD9BB,#FFECD0,#FFFFFE,#FFFAE5,#E8C5A6,#FBDEC4,#FFEDDF,#FFE0D0,#FEDDCD,#DCBEAB,#FFFFFF,#FFF9EB,#FFFFFF,#FFFFFF,#FFFFFF,#D7BFB8,#D4BDB8,#D5BFBB,#E2D2CF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF8F3,#D6CAC6,#D5C7C7,#C3B4B2,#C7B8AF,#B1A69F,#C9B8AF,#C0B0A8,#DFD3C9,#C9B8AC,#AA998D,#A4968A,#AE9B92,#A9988C,#B29D94,#A29488,#A99D96,#FFFFFF,#FFFEFB,#FFFFFF,#FFFEFE,#FFFFFF,#FFFFFF,#FFE3D5,#F4D5C2,#FFFFED,#FFFFF0,#FFFFEA,#FFFFFF,#FFFFFF,#FFFFF1,#FFFFFF,#FFFFFE,#FFFFFF,#FFFFF2,#F2D6BE,#ECC6AC,#DCBBA1,#FFE5D0,#FFFFFF,#FFFFF6,#E3C9BD,#ECD2C8,#F0D8CA,#E5CDC6,#C2ADA3,#C4AAA6,#D0B8B3,#D8C0BB,#F2DAD3,#E0CDC8,#E1D1CC,#C4B1AD,#FFEBDB,#FFEFDF,#FFFDEA,#F8DECE,#FCE4DB,#C1B5B0,#A7988D,#CEB9AF,#F4E5DE,#B3A59E,#F4DFD5,#FFFFFF,#FFFFFF,#FFFFFF,#FFEFEF,#F0DBD6,#FFFFFF,#FFEBE9,#FAE0D9,#FFFFFF,#FFF4EB,#FFECE4,#FFFFFC,#D7B9AA,#C1A7A0,#FFE3DA,#FFFFFF,#D1BEB2,#FFFFFF,#FFFFF6,#FFFFF8,#FFF7E4,#FFFBE5,#FFFFFC,#FFD9BB,#FFFFFE,#FFFFF0,#FFFFF1,#F2D6C3,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFA,#FFFFFF,#FFFFF8,#FFFFFF,#E6C7B4,#E3C2B4,#FFFEE9,#AB9A8F,#98837C,#D6BEB2,#E2CDBF,#E6CFC3,#F1DED2,#C9B4A8,#A29183,#AE9D8F,#B7A796,#C1B0A0,#CEB9AB,#E5CEC0,#F0D9C8,#DEC8B8,#D3BEAB,#FADECD,#FFF2E4,#F3D7C8,#DFC5B9,#FFFBED,#FFFFF6,#FFF0E7,#FFFFF1,#E7CBBD,#D8C2B2,#FFFFF3,#FFFFF3,#FFFFF6,#FFFAF1,#FFEDE2,#FFFFF4,#FFFFF9,#FFF0E2,#FFF9E6,#FFEBDA,#FFE8DC,#FFF2EB,#FFFFFF,#F6D5C0,#FFE5C6,#FFDDBF,#FFE3C4,#FFF1D2,#FFEACE,#E7D0B6,#FFEAD0,#E1C5B2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFE,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFEED9,#E7C8B3,#E0C4B1,#FFEED8,#FFFEE9,#FFFFEF,#FFFFFC,#FFFFF1,#FFFFEF,#FFEFDD,#FFEFDC,#FFFFF2,#FFFFF3,#FCDBCA,#FFF1DE,#FFFFFF,#FFFFF1,#FFE5D4,#FFFFFD,#FFFFFE,#FFFDEA,#FFE8D3,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFE,#FFF6DF,#FFFFF7,#FFFFFF,#FFFFFF,#FFF8D9,#FFECCB,#FFE9CC,#FFF9DF,#FFEFD3,#FFE3C4,#FFE6C7,#F7D6B7,#FFEBD1,#F1D5BF,#EDDAC2,#EBDDC5,#D6D1BA,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFE8,#FFFFFD,#FFF3DC,#FFFFEC,#FFFFFE,#FFFFFF,#FFFFFF,#FFFFF4,#FFFFF9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFDE5,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF7,#FFFFEB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFAE2,#FFF3E2,#FFF9DF,#FFFFFF,#FFFFFF,#FFFFF7,#FFFFF6,#FFFFF3,#FFFFED,#FFFFEF,#E7D7BD,#FDE8C9,#FFEBC7,#FFFFF1,#FFFFF2,#FFFFE8,#FFFFF5,#FFFFE3,#FFFFE1,#FADBB5,#EED2AE,#FFF2D3,#FFFFE8,#FFFFE3,#FCE7CD,#E0D4BA,#C2B69A,#C8C8AE,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF3,#FFFFF8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFC,#FFFFFF,#FFEDD7,#FFFFF8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF5,#FFF4DD,#FFFFFD,#FFFFF9,#FFF5DD,#DFCAB2,#DFCAB2,#DFCCB2,#D5C4B2,#C4B5A0,#CBB8A1,#CFBCA0,#D1C0A6,#D4C4A7,#EAD5B6,#D5C7AA,#DACCB7,#D5C9B4,#D9CBB6,#E3D3BB,#DBC8AE,#DFCCB2,#D1BCA2,#CAB598,#E4CAA9,#FFEECF,#FFEACB,#FFFDDA,#FFECD0,#C8C3A7,#D1CCB5,#838370,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F4EBCE,#EEE2CD,#FFFDE0,#FFFADE,#FFFFFF,#FFFAE5,#FFFFFF,#FFFFF8,#FEEBCE,#FFFEE7,#ECD7BF,#DCCCB6,#DECDB5,#F6E0C9,#FFEEDB,#DFCEB9,#DCC9B4,#EBDAC0,#E8D5BB,#DCCCB4,#D2C7AF,#ECD7BD,#D8CAAE,#D7CDB1,#CCC5A7,#D1C6AC,#D1CAAB,#D6C8A9,#EFE1BB,#F1E3C2,#F8E8C4,#E7DBBF,#ECE3C6,#F1E5CE,#E8E3C9,#F1E3CD,#E6D8C3,#C9C2B4,#C5C1A9,#BEB7A1,#D2CDB8,#E7DEC4,#DBCFB7,#C4BBAA,#B0B09D,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFE5,#D6D4BC,#E2D6C1,#D8CFBC,#F8EAD2,#DDCFB7,#ECDEC9,#DCD3BB,#E3D7C2,#C7BBA3,#D0C4AF,#EBE0C6,#CFC6B0,#DFD5BE,#D5CCB4,#E2D9BD,#D5CCB2,#D8D1B5,#E1D5B7,#EFE4C3,#F9EBC5,#FFFFE0,#F6EAC2,#E7D9B8,#E4DAB9,#DFD8BC,#FDF4CE,#FCF5CD,#EAE5BD,#FAF0CA,#FFFAD2,#E4DAB9,#DAD1B2,#FFF7D1,#CBC39B,#FFF7CB,#FFFFCA,#DED2AF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#CDC4BA,#D9D9BD,#C0B69C,#C9C0AD,#8B887D,#B2ADA1,#C1BAAE,#D1CFBA,#D1CCBB,#CBC6B6,#C4C2B1,#D0CBB1,#E9E4C8,#F5EED1,#F1EACB,#E7E0BF,#F3EBCA,#CBC4A5,#B0AB8F,#D7D2AE,#C5C09D,#FFFFD9,#FFFFD1,#FFFACB,#FFFFDB,#F7F7C8,#FFFFEC,#FFFFD0,#FFFFD8,#FFFFDE,#FFFFD3,#CFCFA7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF", "hex_dimensions": "60x60", "generated_at": "2026-11-08T22:45:51Z"};
 window.ONYX_ITEM_3D = ITEM;
 const MASK_ATTR = ITEM.mask_attractions || {};
 
@@ -251,7 +251,7 @@ function applyBoxUVsInSubregion(geom, bboxUv = [0, 0, 1, 1]) {
     let lu = 0, lv = 0;
     if (ny > nx && ny > nz) {
       lu = (x - bb.min.x) / spanX;
-      lv = (z - bb.min.z) / spanZ;
+      lv = 1.0 - (z - bb.min.z) / spanZ;
     } else if (nx > nz) {
       lu = (z - bb.min.z) / spanZ;
       lv = (y - bb.min.y) / spanY;
@@ -421,66 +421,139 @@ const arch = ITEM.archetype;
 const shapeLower = (ITEM.shape || '').toLowerCase();
 
 if (arch === 'bowl') {
-  // Task C: Multi-view Bowl with top_down radial rim contour r(theta) + side wall flare profile r(y)
+  // Task C: Multi-view Bowl lofted directly from exact 2D SVG rim contour (`rim_contour_xz` / `rim_radii`)
+  // and monotonic side-profile wall flare (`wall_profile_r`), guaranteeing an open concave vessel with
+  // exact W x H x L dimensions and zero mirror-flipped UVs or self-intersecting top lids.
   const vc = MASK_ATTR.vessel_contours || {};
-  const rimRadii = vc.rim_radii || null;
-  const wallProf = vc.wall_profile_r || null;
-  const rx = W * 0.5;
-  const rz = L * 0.5;
-  const avgR = (rx + rz) * 0.5;
-  const rBot = avgR * (wallProf && wallProf.length ? Math.max(0.32, Math.min(0.68, wallProf[0])) : 0.48);
-  const pts = [];
-  const steps = 28;
+  const rimContour = (Array.isArray(vc.rim_contour_xz) && vc.rim_contour_xz.length >= 16) ? vc.rim_contour_xz : null;
+  const rimRadii = (Array.isArray(vc.rim_radii) && vc.rim_radii.length >= 8) ? vc.rim_radii : null;
+  const rawWallProf = (Array.isArray(vc.wall_profile_r) && vc.wall_profile_r.length >= 4) ? vc.wall_profile_r : null;
 
-  pts.push(new THREE.Vector2(0.001, 0));
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    let flare = Math.pow(t, 0.72);
-    if (wallProf && wallProf.length >= 4) {
-      const wfIdx = Math.min(wallProf.length - 1, Math.floor(t * (wallProf.length - 1)));
-      flare = Math.max(0, Math.min(1, (wallProf[wfIdx] - wallProf[0]) / Math.max(0.08, 1.0 - wallProf[0])));
+  // Enforce monotonic non-decreasing outer wall flare from foot (t=0) to open rim (t=1)
+  let wallProf = null;
+  if (rawWallProf) {
+    wallProf = rawWallProf.slice();
+    wallProf[0] = Math.max(0.36, Math.min(0.56, wallProf[0]));
+    for (let wi = 1; wi < wallProf.length; wi++) {
+      wallProf[wi] = Math.max(wallProf[wi], wallProf[wi - 1]);
     }
-    const r = rBot + (avgR - rBot) * flare;
-    const y = t * H;
-    pts.push(new THREE.Vector2(r, y));
-  }
-  const wall = Math.max(0.055, avgR * 0.11);
-  for (let i = steps; i >= 0; i--) {
-    const t = i / steps;
-    const r = Math.max(0.01, (rBot + (avgR - rBot) * Math.pow(t, 0.78)) - wall);
-    const y = wall * 1.15 + t * (H - wall * 1.15);
-    pts.push(new THREE.Vector2(r, y));
-  }
-  pts.push(new THREE.Vector2(0.001, wall * 1.15));
-
-  const segs = 72;
-  const lathe = new THREE.LatheGeometry(pts, segs);
-  const pos = lathe.attributes.position;
-  const scaleX = rx / Math.max(0.001, avgR);
-  const scaleZ = rz / Math.max(0.001, avgR);
-
-  for (let i = 0; i < pos.count; i++) {
-    let vx = pos.getX(i) * scaleX;
-    let vy = pos.getY(i);
-    let vz = pos.getZ(i) * scaleZ;
-    if (rimRadii && rimRadii.length > 8) {
-      const th = Math.atan2(vz, vx);
-      const normTh = ((th + Math.PI) / (2 * Math.PI)) * rimRadii.length;
-      const idx0 = ((Math.floor(normTh) % rimRadii.length) + rimRadii.length) % rimRadii.length;
-      const idx1 = (idx0 + 1) % rimRadii.length;
-      const frac = normTh - Math.floor(normTh);
-      const rMod = rimRadii[idx0] * (1 - frac) + rimRadii[idx1] * frac;
-      const hRatio = Math.max(0, Math.min(1, vy / Math.max(0.001, H)));
-      const factor = 1.0 + (rMod - 1.0) * Math.pow(hRatio, 0.85);
-      vx *= factor;
-      vz *= factor;
+    const wMax = Math.max(0.1, wallProf[wallProf.length - 1]);
+    for (let wi = 0; wi < wallProf.length; wi++) {
+      wallProf[wi] = Math.max(0.36, Math.min(1.0, wallProf[wi] / wMax));
     }
-    pos.setXYZ(i, vx, vy, vz);
+    wallProf[wallProf.length - 1] = 1.0;
   }
-  lathe.computeVertexNormals();
-  applyBoxUVsInSubregion(lathe, [0, 0, 1, 1]);
-  addShadowMesh(lathe, stoneMat, 0, 0, 0);
-  internalLight.position.set(0, H * 0.55, 0);
+
+  const rFootFrac = wallProf ? wallProf[0] : 0.44;
+  const wallRatio = 0.095;
+  const floorY = Math.max(H * 0.08, Math.min(W, L) * 0.5 * wallRatio * 1.15);
+  const uSteps = 96;
+  const vSteps = 40;
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+
+  function sampleFlare(t01) {
+    if (!wallProf) return rFootFrac + (1.0 - rFootFrac) * Math.pow(t01, 0.62);
+    const f = Math.max(0, Math.min(1, t01)) * (wallProf.length - 1);
+    const i0 = Math.floor(f);
+    const i1 = Math.min(wallProf.length - 1, i0 + 1);
+    return wallProf[i0] * (1 - (f - i0)) + wallProf[i1] * (f - i0);
+  }
+
+  for (let iu = 0; iu <= uSteps; iu++) {
+    const uFrac = (iu % uSteps) / uSteps;
+    const theta = uFrac * Math.PI * 2 - Math.PI;
+    let uxRim = 0.5 * Math.cos(theta);
+    let uyRim = 0.5 * Math.sin(theta);
+
+    if (rimContour) {
+      const f = uFrac * rimContour.length;
+      const i0 = Math.floor(f) % rimContour.length;
+      const i1 = (i0 + 1) % rimContour.length;
+      const frac = f - Math.floor(f);
+      uxRim = rimContour[i0][0] * (1 - frac) + rimContour[i1][0] * frac;
+      uyRim = rimContour[i0][1] * (1 - frac) + rimContour[i1][1] * frac;
+    } else if (rimRadii) {
+      const f = uFrac * rimRadii.length;
+      const i0 = Math.floor(f) % rimRadii.length;
+      const i1 = (i0 + 1) % rimRadii.length;
+      const frac = f - Math.floor(f);
+      const rMod = rimRadii[i0] * (1 - frac) + rimRadii[i1] * frac;
+      uxRim = 0.5 * Math.cos(theta) * rMod;
+      uyRim = 0.5 * Math.sin(theta) * rMod;
+    }
+
+    // Natural hand-carved rim height undulation where wider organic lobes rise gently to H
+    const rLobe = Math.min(1.25, Math.hypot(uxRim, uyRim) / 0.5);
+    const yRim = H * (0.93 + 0.07 * rLobe);
+
+    for (let iv = 0; iv <= vSteps; iv++) {
+      const v = iv / vSteps;
+      let rFrac = 0;
+      let py = 0;
+      let rUv = 0;
+
+      if (v <= 0.08) {
+        // Flat bottom pedestal base from center (0) to foot ring (rFootFrac)
+        const t = v / 0.08;
+        rFrac = rFootFrac * t;
+        py = 0;
+        rUv = 0.84 * t;
+      } else if (v <= 0.46) {
+        // Monotonically flaring exterior stone wall from foot (t=0) to outer rim (t=1)
+        const t = (v - 0.08) / 0.38;
+        rFrac = sampleFlare(t);
+        py = yRim * Math.pow(t, 0.90);
+        // Sample outer stone band (0.84..1.0) on exterior wall so interior labels/tape never project outside
+        rUv = 0.84 + 0.16 * t;
+      } else if (v <= 0.54) {
+        // Thick rounded hand-carved stone rim lip
+        const t = (v - 0.46) / 0.08;
+        rFrac = 1.0 - wallRatio * (0.5 - 0.5 * Math.cos(t * Math.PI));
+        py = yRim + Math.sin(t * Math.PI) * (H * 0.024);
+        rUv = rFrac;
+      } else {
+        // Smooth concave hollowed interior basin descending to floorY
+        const t = 1.0 - (v - 0.54) / 0.46;
+        const innerRimR = 1.0 - wallRatio;
+        rFrac = innerRimR * Math.sin(t * Math.PI * 0.5);
+        py = floorY + (yRim - floorY) * Math.pow(t, 1.32);
+        rUv = rFrac;
+      }
+
+      // Map image (uxRim, uyRim) to 3D (px, pz) with +uy (top of image) at -Z (back/top of 3D view)
+      const px = uxRim * W * rFrac;
+      const pz = -uyRim * L * rFrac;
+      positions.push(px, py, pz);
+
+      const uCoord = Math.max(0.01, Math.min(0.99, uxRim * rUv + 0.5));
+      const vCoord = Math.max(0.01, Math.min(0.99, uyRim * rUv + 0.5));
+      uvs.push(uCoord, vCoord);
+    }
+  }
+
+  const bowlStride = vSteps + 1;
+  for (let iu = 0; iu < uSteps; iu++) {
+    for (let iv = 0; iv < vSteps; iv++) {
+      const a = iu * bowlStride + iv;
+      const b = (iu + 1) * bowlStride + iv;
+      const c = (iu + 1) * bowlStride + (iv + 1);
+      const d = iu * bowlStride + (iv + 1);
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+
+  const bowlGeo = new THREE.BufferGeometry();
+  bowlGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  bowlGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  bowlGeo.setIndex(indices);
+  bowlGeo.computeVertexNormals();
+  addShadowMesh(bowlGeo, stoneMat, 0, 0, 0);
+  internalLight.color.setHex(0xfff8ed);
+  internalLight.intensity = 1.85;
+  internalLight.position.set(0, H * 0.38, 0);
 
 } else if (arch === 'canoe') {
   // Task B: Multi-view Canoe lofted from top_down rim contour (plan_half_widths) + side_profile prow/rocker (profile_top_y, profile_bot_y)
@@ -551,13 +624,9 @@ if (arch === 'bowl') {
       const py = yVal;
 
       positions.push(px, py, pz);
-      const bbox = [0, 0, 1, 1];
-      const uRaw = (px / Math.max(0.001, len)) + 0.5;
-      const vRaw = (pz / Math.max(0.001, wid)) + 0.5;
-      uvs.push(
-        bbox[0] + uRaw * (bbox[2] - bbox[0]),
-        (1.0 - bbox[3]) + vRaw * (bbox[3] - bbox[1])
-      );
+      const uRaw = Math.max(0.01, Math.min(0.99, (px / Math.max(0.001, len)) + 0.5));
+      const vRaw = Math.max(0.01, Math.min(0.99, 0.5 - (pz / Math.max(0.001, wid))));
+      uvs.push(uRaw, vRaw);
     }
   }
 
@@ -805,10 +874,11 @@ if (arch === 'bowl') {
 }
 
 // Frame camera nicely
-const centerY = H * 0.52;
+const centerY = H * 0.48;
 controls.target.set(0, centerY, 0);
 const camDist = Math.max(W, H, L) * 2.05;
-camera.position.set(camDist * 0.72, centerY + camDist * 0.35, camDist * 0.92);
+const camElev = (arch === 'bowl' || arch === 'canoe') ? 0.68 : 0.35;
+camera.position.set(camDist * 0.62, centerY + camDist * camElev, camDist * 0.88);
 controls.update();
 
 // Progressive enhancement: blend real clean-room cutout PNG and SVG vein mask if accessible
