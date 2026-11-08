@@ -80,17 +80,24 @@ export interface GeometryClass {
 export function classifyGeometry(shapeStr: string = '', descStr: string = ''): GeometryClass {
     const s = String(shapeStr ?? '').toLowerCase();
     const t = String(descStr ?? '').toLowerCase();
+    const text = `${s} ${t}`;
     const has = (...words: string[]) => words.some(w => s.includes(w) || t.includes(w));
+    const hasWord = (...words: string[]) =>
+        words.some(w => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text));
+    const shapeHasWord = (...words: string[]) =>
+        words.some(w => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(s));
 
-    if (has('bowl', 'canoe', 'canoa')) return { geom: 'bowl', isMirror: false };
+    if (has('bowl', 'canoe', 'canoa', 'basin', 'sink', 'lavabo', 'tazon', 'cuenco')) return { geom: 'bowl', isMirror: false };
 
     if (has('plate', 'plato', 'tray', 'dish')) return { geom: 'plate', isMirror: false };
 
-    if (has('mirror')) {
+    if (hasWord('mirror', 'mirrors', 'espejo', 'espejos')) {
         // A mirror's outline decides the mesh; everything unqualified is a box,
         // because a rectangular mirror is by far the common case.
-        if (has('rectangular', 'squared')) return { geom: 'box', isMirror: true };
-        if (has('round', 'circle', 'redondo', 'oval')) return { geom: 'mirror', isMirror: true };
+        if (shapeHasWord('rectangular', 'rectangulo', 'squared', 'square', 'cuadrado')) return { geom: 'box', isMirror: true };
+        if (shapeHasWord('round', 'circle', 'redondo', 'oval')) return { geom: 'mirror', isMirror: true };
+        if (hasWord('rectangular', 'rectangulo', 'squared', 'square', 'cuadrado')) return { geom: 'box', isMirror: true };
+        if (hasWord('round', 'circle', 'redondo', 'oval')) return { geom: 'mirror', isMirror: true };
         return { geom: 'box', isMirror: true };
     }
 
@@ -98,13 +105,13 @@ export function classifyGeometry(shapeStr: string = '', descStr: string = ''): G
     // The original only tested it against the description; testing `shape` too
     // is the one deliberate widening in this extraction, and it can only pull
     // misspelled rows into the class they already belonged in.
-    if (has('cylinder', 'cilinder', 'round', 'pendant')) return { geom: 'cylinder', isMirror: false };
+    if (has('cylinder', 'cilinder', 'cilindro', 'pendant') || hasWord('round', 'redondo')) return { geom: 'cylinder', isMirror: false };
 
-    if (has('sphere', 'esfera')) return { geom: 'sphere', isMirror: false };
+    if (has('sphere', 'esfera') || hasWord('ball', 'bola', 'orb', 'globe')) return { geom: 'sphere', isMirror: false };
 
-    if (has('sculpture')) return { geom: 'octahedron', isMirror: false };
+    if (has('sculpture', 'escultura')) return { geom: 'octahedron', isMirror: false };
 
-    if (has('rock', 'fountain')) return { geom: 'polyhedron', isMirror: false };
+    if (has('rock', 'piedra', 'boulder', 'fountain', 'fuente', 'cactus')) return { geom: 'polyhedron', isMirror: false };
 
     return { geom: 'box', isMirror: false };
 }

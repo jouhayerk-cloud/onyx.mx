@@ -163,13 +163,33 @@ export function classifyExtra(shape: string = '', type: string = ''): AxoExtraCl
         return 'hull';
     }
 
-    // 1b. Yin-Yang Rectangular Fountains (AN8261MAMO, AN8262OOOH) & stone fountains
+    // 2. Existing core classes that MUST stay with base taxonomy
+    // (mirror, bowl/basin/sink without canoe, plate, sphere/ball, sculpture)
+    if (has('mirror', 'espejo')) {
+        return null;
+    }
+    if (has('bowl', 'tazon', 'cuenco', 'basin', 'sink', 'lavabo')) {
+        return null;
+    }
+    if (has('plate', 'plato', 'tray', 'dish')) {
+        return null;
+    }
+    if (has('sphere', 'esfera', 'ball', 'bola', 'orb')) {
+        return null;
+    }
+    if (has('sculpture', 'escultura') && !has('table', 'mesa', 'lamp', 'lampara')) {
+        return null;
+    }
+    if (has('rock', 'piedra', 'boulder', 'cactus') && !has('table', 'mesa', 'lamp', 'lampara', 'panel')) {
+        return null;
+    }
+
+    // 1b. Yin-Yang Rectangular Fountains (AN8261MAMO, AN8262OOOH, AN3261MAMO)
     if (
-        has('an8261', 'an8262') ||
-        has('yin yang', 'ying gang', 'yinyang', 'yinyang-rect', 's-shaped', 's-shape', 's shape') ||
+        has('an8261', 'an8262', 'an3261') ||
+        has('yin yang', 'ying gang', 'yinyang', 'yinyang-rect') ||
         shapeHas('s-shaped', 's-shape', 's shape', 'yinyang', 'ying gang', 'yin yang') ||
-        (has('fountain', 'fuente', 'cascada') && !has('sphere', 'esfera', 'boulder', 'ball')) ||
-        shapeHas('fountain', 'fuente')
+        (has('fountain', 'fuente') && has('s-shaped', 's-shape', 's shape', 'rectangular', 'rectangulo'))
     ) {
         return 'fountain-yinyang-rect';
     }
@@ -195,34 +215,19 @@ export function classifyExtra(shape: string = '', type: string = ''): AxoExtraCl
         return 'bar-l-shaped';
     }
 
-    // 2. Existing core classes that MUST stay with base taxonomy
-    // (mirror, bowl without canoe, plate, sphere, sculpture, standalone rock)
-    if (has('mirror', 'espejo')) {
-        return null;
-    }
-    if (has('bowl', 'tazon', 'cuenco')) {
-        return null;
-    }
-    if (has('plate', 'plato', 'tray', 'dish')) {
-        return null;
-    }
-    if (has('sphere', 'esfera')) {
-        return null;
-    }
-    if (has('sculpture', 'escultura') && !has('table', 'mesa', 'lamp', 'lampara')) {
-        return null;
-    }
-    if ((has('rock', 'piedra')) && !has('table', 'mesa', 'lamp', 'lampara', 'panel', 'fountain', 'fuente')) {
-        return null;
+    // 3. Lamps — check specific tower & pendant lamps FIRST so prose mentioning floor/table never hijacks them
+    // Pendant lamp (any shape)
+    if (has('pendant lamp', 'lampara colgante', 'pendant', 'colgante')) {
+        return 'lamp-pendant';
     }
 
-    // 3. Lamps
-    // Table lamp
+    // Tower lamp & freestanding stone pillars/columns
     if (
-        has('table lamp', 'lampara de mesa', 'lamp table', 'lampara mesa', 'desk lamp', 'lampara de escritorio') ||
-        (has('lamp', 'lampara') && has('table', 'mesa', 'escritorio'))
+        has('tower lamp', 'lamp tower', 'lampara torre', 'lampara de torre') ||
+        has('torre', 'pillar', 'pilar') ||
+        (has('lamp', 'lampara') && has('tower', 'columna', 'column'))
     ) {
-        return 'lamp-table';
+        return 'lamp-tower';
     }
 
     // Floor lamp
@@ -233,18 +238,13 @@ export function classifyExtra(shape: string = '', type: string = ''): AxoExtraCl
         return 'lamp-floor';
     }
 
-    // Tower lamp
+    // Table lamp & generic cylinder/stone lamps
     if (
-        has('tower lamp', 'lamp tower', 'lampara torre', 'lampara de torre') ||
-        has('torre') ||
-        (has('lamp', 'lampara') && has('tower', 'columna'))
+        has('table lamp', 'lampara de mesa', 'lamp table', 'lampara mesa', 'desk lamp', 'lampara de escritorio') ||
+        (has('lamp', 'lampara') && has('table', 'mesa', 'escritorio')) ||
+        has('lamp', 'lampara')
     ) {
-        return 'lamp-tower';
-    }
-
-    // Pendant lamp (any shape)
-    if (has('pendant lamp', 'lampara colgante', 'pendant', 'colgante')) {
-        return 'lamp-pendant';
+        return 'lamp-table';
     }
 
     // 4. Wall panels and luminaries

@@ -83,6 +83,7 @@ import { COLOR_PALETTE, ALLOWED_SHOPIFY_COLORS } from '../../lib/colorExtractor'
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, Truck, CreditCard, Link } from 'lucide-react';
 import { tr } from '../../lib/i18n';
 import { ItemDetailsModal } from './ItemDetailsModal';
+import { ThreeModelFullscreenModal } from './ThreeModelViewer';
 import { canonicalColor } from '../../lib/inventoryTaxonomy';
 
 
@@ -423,6 +424,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
     const [showFullBody, setShowFullBody] = useState(false);
     const [isHoveringCard, setIsHoveringCard] = useState(false);
     const [isCutoutModalOpen, setIsCutoutModalOpen] = useState(false);
+    const [is3dModalOpen, setIs3dModalOpen] = useState(false);
     // Each drawer photo's width / height, read on load, so the gallery rows keep every photo's true shape.
     const [photoRatios, setPhotoRatios] = useState<Record<number, number>>({});
 
@@ -824,7 +826,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 <div className="inv-specs-body">
                     {!hasAxoOverlay && (
                         <div className="inv-axo-col">
-                            <div className="inv-axo" title={tr("Proportions")} aria-hidden="true">
+                            <div
+                                className="inv-axo cursor-pointer hover:scale-105 transition-transform"
+                                role="button"
+                                tabIndex={0}
+                                title={tr("Click for Fullscreen Interactive 3D Onyx Model")}
+                                onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } }}
+                            >
                                 <WireframeIcon item={norm} />
                             </div>
                             {renderColorBubbles('inv-axo-bubbles-floating')}
@@ -978,6 +987,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
             title={tr("View PNG cutouts & 3D axo")}>
             <Layers size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Cutouts")}</span>
         </button>
+        <button type="button"
+            onClick={(e) => {
+                e.stopPropagation();
+                setIs3dModalOpen(true);
+            }}
+            title={tr("Open Interactive 3D Onyx Model")}>
+            <Box size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("3D Model")}</span>
+        </button>
         {isEditable && (
             <button type="button" onClick={handleEdit} title={tr("Edit Item")}>
                 <Pencil size={15} strokeWidth={2.25} aria-hidden="true" /><span>{tr("Edit")}</span>
@@ -1088,7 +1105,7 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             ? cutoutUrls.map(c => <DriveImage key={c.url} loading="lazy" src={c.url} matte={c.matte} width={c.matte ? 128 : undefined} alt="" className="inv-png" />)
                             : (imageUrl && !isVideoFile(imageUrl)
                                 ? <DriveImage loading="lazy" src={imageUrl} width={128} alt="" className="inv-png object-cover rounded-md" />
-                                : <div className="inv-png inv-png-axo"><WireframeIcon item={norm} /></div>)}
+                                : <div className="inv-png inv-png-axo cursor-pointer" title={tr("Click for Fullscreen Interactive 3D Onyx Model")} onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}><WireframeIcon item={norm} /></div>)}
                     </div>
 
                     {/* TAG */}
@@ -1172,7 +1189,14 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                                         {isVideoFile(u) && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80"><Video size={12} /></span>}
                                     </div>
                                 ))}
-                                <div className="inv-dtile inv-daxo" title={tr("Proportions")}>
+                                <div
+                                    className="inv-dtile inv-daxo cursor-pointer hover:ring-1 hover:ring-sky-400/50 transition-all"
+                                    role="button"
+                                    tabIndex={0}
+                                    title={tr("Click for Fullscreen Interactive 3D Onyx Model")}
+                                    onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } }}
+                                >
                                     <div className="inv-axo-fig" aria-hidden="true"><WireframeIcon item={norm} /></div>
                                     <dl className="inv-dims" aria-label={tr("Size and weight")}>
                                         {imperialParts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
@@ -1205,6 +1229,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     onClose={() => setIsCutoutModalOpen(false)}
                     item={item}
                     onEdit={isEditable ? handleEdit : undefined}
+                />
+                <ThreeModelFullscreenModal
+                    isOpen={is3dModalOpen}
+                    onClose={() => setIs3dModalOpen(false)}
+                    item={item}
                 />
             </div>
         );
@@ -1375,8 +1404,15 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                             {heroMedia(sheetIdx, 'inv-gal-img')}
                             {mediaUrls.length > 0 && (
                                 <>
-                                    <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
-                                        <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
+                                    <div
+                                        className="inv-hero-axo-overlay cursor-pointer hover:scale-105 transition-transform"
+                                        role="button"
+                                        tabIndex={0}
+                                        title={tr("Click for Fullscreen Interactive 3D Onyx Model")}
+                                        onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } }}
+                                    >
+                                        <div className="inv-hero-axo-figure" title={tr("Click for Fullscreen Interactive 3D Onyx Model")} aria-hidden="true">
                                             <WireframeIcon item={norm} />
                                         </div>
                                     </div>
@@ -1468,6 +1504,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     item={item}
                     onEdit={isEditable ? handleEdit : undefined}
                 />
+                <ThreeModelFullscreenModal
+                    isOpen={is3dModalOpen}
+                    onClose={() => setIs3dModalOpen(false)}
+                    item={item}
+                />
             </>
         );
     }
@@ -1491,8 +1532,15 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     {heroMedia(heroIdx, 'inv-card-img')}
                     {mediaUrls.length > 0 && (
                         <>
-                            <div className="inv-hero-axo-overlay" onClick={(e) => { e.stopPropagation(); }}>
-                                <div className="inv-hero-axo-figure" title={tr("Proportions")} aria-hidden="true">
+                            <div
+                                className="inv-hero-axo-overlay cursor-pointer hover:scale-105 transition-transform"
+                                role="button"
+                                tabIndex={0}
+                                title={tr("Click for Fullscreen Interactive 3D Onyx Model")}
+                                onClick={(e) => { e.stopPropagation(); setIs3dModalOpen(true); }}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setIs3dModalOpen(true); } }}
+                            >
+                                <div className="inv-hero-axo-figure" title={tr("Click for Fullscreen Interactive 3D Onyx Model")} aria-hidden="true">
                                     <WireframeIcon item={norm} />
                                 </div>
                             </div>
@@ -1526,6 +1574,11 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                 onClose={() => setIsCutoutModalOpen(false)}
                 item={item}
                 onEdit={isEditable ? handleEdit : undefined}
+            />
+            <ThreeModelFullscreenModal
+                isOpen={is3dModalOpen}
+                onClose={() => setIs3dModalOpen(false)}
+                item={item}
             />
         </>
     );

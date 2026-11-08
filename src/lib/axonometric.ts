@@ -749,7 +749,9 @@ export function resolveAxoGeometry(
         // Plates are forced shallow and round regardless of what was measured, so this
         // test cannot be folded into classifyGeometry — it rewrites dimensions, and it
         // runs before classification because the mirror pass below reads the result.
-        if (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish')) {
+        // Guard against canoes ("Canoe Tray") and bowls so they keep their real proportions.
+        const isCanoeOrBowl = s.includes('canoe') || t.includes('canoe') || s.includes('canoa') || t.includes('canoa') || s.includes('bowl') || t.includes('bowl') || s.includes('basin') || t.includes('basin');
+        if (!isCanoeOrBowl && (s.includes('plate') || t.includes('plate') || s.includes('plato') || t.includes('plato') || s.includes('tray') || t.includes('tray') || s.includes('dish') || t.includes('dish'))) {
             if (!H) H = 5;
             // Force shallow round shape
             H = 5;

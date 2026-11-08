@@ -31,6 +31,7 @@ import {
 import { exchangeRateAtom } from '../../lib/atoms';
 import { tr } from '../../lib/i18n';
 import toast from '../onyxIsland/notify/toast';
+import { ThreeModelViewer } from './ThreeModelViewer';
 
 export interface ItemDetailsModalProps {
     isOpen: boolean;
@@ -38,6 +39,7 @@ export interface ItemDetailsModalProps {
     item: any;
     onEdit?: (item: any) => void;
     initialCutoutIndex?: number;
+    initialTab?: 'gallery' | 'axo';
 }
 
 /**
@@ -186,11 +188,13 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
     onClose,
     item,
     onEdit,
-    initialCutoutIndex = 0
+    initialCutoutIndex = 0,
+    initialTab = 'gallery'
 }) => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const [activeCutoutIdx, setActiveCutoutIdx] = useState(initialCutoutIndex);
-    const [activeTab, setActiveTab] = useState<'gallery' | 'axo'>('gallery');
+    const [activeTab, setActiveTab] = useState<'gallery' | 'axo'>(initialTab);
+    const [is3dFullscreen, setIs3dFullscreen] = useState(false);
     const [dynamicCutouts, setDynamicCutouts] = useState<string[]>([]);
     const [axoDataUrl, setAxoDataUrl] = useState<string | null>(null);
     const [isGeneratingAxo, setIsGeneratingAxo] = useState(false);
@@ -206,8 +210,6 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
         rawData.description,
         rawData.shortDescription,
         rawData.short_description,
-        rawData.detailedDescription,
-        rawData.detailed_description,
         rawData.material,
         rawData.color,
         rawData.bookBarcode,
@@ -408,10 +410,23 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                                         ? 'bg-sky-500/20 text-sky-300 border border-sky-400/30 shadow-sm'
                                         : 'text-slate-400 hover:text-white'
                                 }`}
-                                title={tr('Axo 3D Frame')}
+                                title={tr('Interactive 3D Onyx Model & Axo')}
                             >
                                 <Box size={13} strokeWidth={2.2} />
-                                <span>{tr('Axo 3D Frame')}</span>
+                                <span>{tr('3D Onyx Model')}</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setActiveTab('axo');
+                                    setIs3dFullscreen(true);
+                                }}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-white hover:bg-amber-500/20 transition-all"
+                                title={tr('Open 3D Model in Fullscreen')}
+                            >
+                                <Maximize2 size={13} strokeWidth={2.2} />
+                                <span className="hidden sm:inline">{tr('3D Fullscreen')}</span>
                             </button>
                         </div>
 
@@ -565,36 +580,14 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                             )}
                         </>
                     ) : (
-                        /* 3D Axonometric Projection with Hex Map Texture & 3D Bounding Cube */
+                        /* Interactive Realistic Translucent Onyx 3D Model Viewer + Stone Spec Sheet */
                         <div className="flex flex-col md:flex-row gap-5 items-stretch">
-                            {/* Axo Canvas Container */}
-                            <div className="liquid-panel flex-1 p-5 flex flex-col items-center justify-center relative min-h-[360px] shadow-inner overflow-hidden">
-                                <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
-                                    <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-400/30">
-                                        {tr('3D Bounding Frame')}
-                                    </span>
-                                    {shape && (
-                                        <span className="text-xs uppercase tracking-wider text-slate-400">
-                                            {shape}
-                                        </span>
-                                    )}
-                                </div>
-
-                                {isGeneratingAxo ? (
-                                    <div className="flex flex-col items-center gap-3 text-slate-400">
-                                        <div className="w-8 h-8 rounded-full border-2 border-sky-400 border-t-transparent animate-spin" />
-                                        <p className="text-xs font-mono">{tr('Preparing…')}</p>
-                                    </div>
-                                ) : axoDataUrl ? (
-                                    <img
-                                        src={axoDataUrl}
-                                        alt={`${title} - Axonometric 3D`}
-                                        className="max-h-[360px] w-auto max-w-full object-contain filter drop-shadow-2xl animate-in zoom-in-95 duration-200"
-                                    />
-                                ) : (
-                                    <p className="text-xs text-slate-500">{tr('No axo preview available')}</p>
-                                )}
-                            </div>
+                            <ThreeModelViewer
+                                item={rawData}
+                                axoFallbackUrl={axoDataUrl}
+                                initialFullscreen={is3dFullscreen}
+                                onCloseFullscreen={() => setIs3dFullscreen(false)}
+                            />
 
                             {/* Stone Spec Sheet Card */}
                             <div className="liquid-panel w-full md:w-72 p-4 flex flex-col gap-3.5">

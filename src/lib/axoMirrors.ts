@@ -63,18 +63,31 @@ export function classifyMirror(shape: string = '', type: string = ''): AxoMirror
     const t = norm(type);
     const text = `${s} ${t}`;
 
-    const has = (...words: string[]) => words.some(w => text.includes(norm(w)));
+    const hasWord = (...words: string[]) =>
+        words.some(w => new RegExp(`\\b${norm(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text));
+    const shapeHasWord = (...words: string[]) =>
+        words.some(w => new RegExp(`\\b${norm(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(s));
 
-    if (!has('mirror', 'espejo')) {
+    if (!hasWord('mirror', 'mirrors', 'espejo', 'espejos')) {
         return null;
     }
 
-    if (has('round', 'circle', 'oval', 'redondo', 'redonda')) {
+    // Check shape field first so explicit shape column ('Rectangular', 'Squared', 'Round') wins
+    if (shapeHasWord('squared', 'square', 'cuadrado', 'cuadrada')) {
+        return 'mirror-square';
+    }
+    if (shapeHasWord('rectangular', 'rectangulo', 'rect')) {
+        return 'mirror-rect';
+    }
+    if (shapeHasWord('round', 'circle', 'circular', 'oval', 'redondo', 'redonda')) {
         return 'mirror-round';
     }
 
-    if (has('squared', 'square', 'cuadrado', 'cuadrada')) {
+    if (hasWord('squared', 'square', 'cuadrado', 'cuadrada')) {
         return 'mirror-square';
+    }
+    if (hasWord('round', 'circle', 'circular', 'oval', 'redondo', 'redonda')) {
+        return 'mirror-round';
     }
 
     return 'mirror-rect';
