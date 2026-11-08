@@ -202,7 +202,19 @@ export const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
     const title = rawData.title || rawData.name || rawData.shortDescription || rawData.short_description || tr('Untitled Item');
     const stone = rawData.color || rawData.variety || rawData.material || '';
     const shape = rawData.shape || '';
-    const desc = rawData.description || rawData.shortDescription || rawData.short_description || '';
+    const desc = [
+        rawData.description,
+        rawData.shortDescription,
+        rawData.short_description,
+        rawData.detailedDescription,
+        rawData.detailed_description,
+        rawData.material,
+        rawData.color,
+        rawData.bookBarcode,
+        rawData.book_barcode,
+        rawData.itemId,
+        rawData.item_id,
+    ].filter(Boolean).join(' ');
 
     const widthCm = parseFloat(rawData.widthCm || rawData.width_cm) || 0;
     const heightCm = parseFloat(rawData.heightCm || rawData.height_cm) || 0;

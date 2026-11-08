@@ -1,6 +1,8 @@
 
 
 import { segmentationColors, SCRIPT_URL, vendors , DEFAULT_EXCHANGE_RATE} from './consts';
+import { isHeic, convertHeicBlobToJpegBlob, convertHeicFileToJpegFile, getRenderableHeicUrl } from './heic';
+export { isHeic, convertHeicBlobToJpegBlob, convertHeicFileToJpegFile, getRenderableHeicUrl } from './heic';
 import type { BoundingBoxMaskType } from './Types';
 import type { UserRole } from './atoms';
 import { supabase } from './supabase';

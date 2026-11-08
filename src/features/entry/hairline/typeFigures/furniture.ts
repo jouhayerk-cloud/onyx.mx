@@ -37,7 +37,7 @@ export const DEFAULTS: Record<string, Dims> = {
     'table':              { w: 96, h: 50, d: 96 },
     'coffee-table':       { w: 120, h: 42, d: 75 },
     'table-set':          { w: 120, h: 50, d: 60 },
-    'couch':              { w: 210, h: 75, d: 210 },
+    'couch':              { w: 95, h: 80, d: 85 },
     'chair':              { w: 45, h: 90, d: 50 },
     'bar':                { w: 180, h: 105, d: 140 },
 };
@@ -1081,58 +1081,105 @@ function buildTable(cam: Cam, dims: Dims, variant?: string | null): FigurePart[]
 
 // ── couch (v-shaped) ────────────────────────────────────────────────────────
 
+/**
+ * Angled Monolithic Stone Couch / Armchair (EM326115OOOH):
+ * Monolithic stone block with inward-chamfered front base apron,
+ * flared trapezoidal side flanks, reclined backrest, and sunken seat well.
+ */
 function buildCouch(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
-    const seatH = h * 0.52;
-    const depth = Math.min(w, d) * 0.38;
-    const bt = depth * 0.28;
 
-    const backX = prism(cam, 0, 0, 0, w, bt, h, 0.5);
-    const backY = prism(cam, 0, bt, 0, bt, d - bt, h, 0.5);
+    const seatH = h * 0.44;
+    const armH = h * 0.68;
+    const backH = h;
+    const armW = w * 0.16;
 
-    const cornerSeat = prism(cam, bt, bt, 0, depth - bt, depth - bt, seatH, 0.5);
-    const seatX = prism(cam, depth, bt, 0, w - depth, depth - bt, seatH, 0.5);
-    const seatY = prism(cam, bt, depth, 0, depth - bt, d - depth, seatH, 0.5);
+    // 1. Lower base apron (recessed/chamfered inward towards floor)
+    const bW = w * 0.84;
+    const bD = d * 0.82;
+    const bX = (w - bW) / 2;
+    const bY = (d - bD) / 2;
+    const baseApron = prism(cam, bX, bY, 0, bW, bD, seatH * 0.55, Math.min(bW, bD) * 0.08);
 
-    const seamX = pathOf([proj(cam, depth, bt, seatH), proj(cam, depth, depth, seatH)], false);
-    const seamY = pathOf([proj(cam, bt, depth, seatH), proj(cam, depth, depth, seatH)], false);
+    // 2. Left and right flared armrest slabs
+    const leftArm = prism(cam, 0, 0, 0, armW, d, armH, armW * 0.25);
+    const rightArm = prism(cam, w - armW, 0, 0, armW, d, armH, armW * 0.25);
 
-    const pw = (depth - bt) * 0.55;
-    const pd = (depth - bt) * 0.55;
-    const pillow = prism(cam, bt + 0.6, bt + 0.6, seatH, pw, pd, seatH * 0.38, 0.4);
+    // 3. Reclined backrest slab
+    const backD = d * 0.24;
+    const backrest = prism(cam, armW * 0.6, 0, seatH * 0.35, w - armW * 1.2, backD, backH - seatH * 0.35, backD * 0.3);
+
+    // 4. Sunken seat well slab
+    const seatW = w - armW * 2;
+    const seatD = d - backD;
+    const seat = prism(cam, armW, backD, 0, seatW, seatD, seatH, seatW * 0.08);
+
+    // Apron angle creases: from floor base corner up to front seat lip
+    const apronCreaseL = pathOf([proj(cam, bX, bY + bD, 0), proj(cam, armW, d, seatH)], false);
+    const apronCreaseR = pathOf([proj(cam, bX + bW, bY + bD, 0), proj(cam, w - armW, d, seatH)], false);
+
+    // Seat well front lip crease
+    const seatLip = pathOf([proj(cam, armW, d, seatH), proj(cam, w - armW, d, seatH)], false);
+
+    // Bright accent: armrest front-top corner
+    const pBright = proj(cam, armW * 0.5, d, armH);
+    const brightMark = pathOf([
+        [pBright[0] - 2, pBright[1]],
+        [pBright[0], pBright[1] - 2],
+        [pBright[0] + 2, pBright[1]],
+        [pBright[0], pBright[1] + 2],
+    ]);
 
     return [
-        ...solidParts(backX),
-        ...solidParts(backY),
-        ...solidParts(cornerSeat),
-        ...solidParts(seatX),
-        ...solidParts(seatY),
-        { d: seamX, kind: 'crease' },
-        { d: seamY, kind: 'crease' },
-        { d: pillow.body, kind: 'bright' },
+        ...solidParts(baseApron),
+        ...solidParts(leftArm),
+        ...solidParts(rightArm),
+        ...solidParts(backrest),
+        ...solidParts(seat),
+        { d: apronCreaseL, kind: 'crease' },
+        { d: apronCreaseR, kind: 'crease' },
+        { d: seatLip, kind: 'crease' },
+        { d: brightMark, kind: 'bright' },
     ];
 }
 
 // ── bar (l-shaped) ──────────────────────────────────────────────────────────
 
+/**
+ * 90° L-Shaped Bar (TE32626HXFX):
+ * Two perpendicular wings meeting at a 90° corner apex,
+ * illuminated front facade panels, dark recessed toe-kick base,
+ * and overhanging countertop with 45° mitered corner seam.
+ */
 function buildBar(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
-    const topZ = h * 0.9;
+    const topZ = h * 0.90;
     const slabH = h - topZ;
-    const cw = d * 0.4;
+    const cw = d * 0.40;
     const cd = w * 0.38;
 
-    const base2 = prism(cam, 0, 0, 0, cd, d, topZ, 0.4);
-    const base1 = prism(cam, cd, 0, 0, w - cd, cw, topZ, 0.4);
+    // Recessed dark toe-kick base
+    const tkH = topZ * 0.12;
+    const tk2 = prism(cam, 0.8, 0.8, 0, cd - 0.8, d - 1.6, tkH, 0.3);
+    const tk1 = prism(cam, cd, 0.8, 0, w - cd - 1.6, cw - 0.8, tkH, 0.3);
+
+    // Main facade wings
+    const base2 = prism(cam, 0, 0, tkH, cd, d, topZ - tkH, 0.4);
+    const base1 = prism(cam, cd, 0, tkH, w - cd, cw, topZ - tkH, 0.4);
 
     const inset = 1.0;
-    const panel1 = rectY(cam, cw, cd + inset, w - inset, 1.2, topZ - 1.2);
-    const panel2 = rectX(cam, cd, cw + inset, d - inset, 1.2, topZ - 1.2);
+    const panel1 = rectY(cam, cw, cd + inset, w - inset, tkH + 1.2, topZ - 1.2);
+    const panel2 = rectX(cam, cd, cw + inset, d - inset, tkH + 1.2, topZ - 1.2);
 
-    const rail = pathOf([proj(cam, cd, cw + 0.8, topZ * 0.15), proj(cam, w, cw + 0.8, topZ * 0.15)], false);
+    // Toe-kick crease line
+    const toeLine = pathOf([proj(cam, cd, cw + 0.8, tkH), proj(cam, w, cw + 0.8, tkH)], false);
 
-    const top2 = prism(cam, 0, 0, topZ, cd + 1.0, d, slabH, 0.5);
-    const top1 = prism(cam, cd, 0, topZ, w - cd, cw + 1.0, slabH, 0.5);
+    // Overhanging countertop with 90° L meeting
+    const top2 = prism(cam, 0, 0, topZ, cd + 1.2, d, slabH, 0.5);
+    const top1 = prism(cam, cd, 0, topZ, w - cd, cw + 1.2, slabH, 0.5);
+
+    // 45° corner miter seam crease on top surface
+    const miterSeam = pathOf([proj(cam, 0, 0, h), proj(cam, cd + 1.2, cw + 1.2, h)], false);
 
     const shakerW = Math.max(1.8, w * 0.06);
     const shakerD = Math.max(1.8, d * 0.06);
@@ -1140,13 +1187,16 @@ function buildBar(cam: Cam, dims: Dims): FigurePart[] {
     const shaker = prism(cam, w * 0.72, cw * 0.35, h, shakerW, shakerD, shakerH, Math.min(shakerW, shakerD) / 2);
 
     return [
+        ...solidParts(tk2),
+        ...solidParts(tk1),
         ...solidParts(base2),
         ...solidParts(base1),
         { d: panel1, kind: 'face' },
         { d: panel2, kind: 'face' },
-        { d: rail, kind: 'crease' },
+        { d: toeLine, kind: 'crease' },
         ...solidParts(top2),
         ...solidParts(top1),
+        { d: miterSeam, kind: 'crease' },
         { d: shaker.body, kind: 'bright' },
     ];
 }

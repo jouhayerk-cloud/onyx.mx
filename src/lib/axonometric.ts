@@ -797,6 +797,14 @@ export function resolveAxoGeometry(
         H = Math.min(H, W * 0.25, 20);
     } else if (extra === 'wine-rack') {
         D = Math.min(D, 20);
+    } else if (extra === 'fountain-yinyang-rect') {
+        if (!h_cm || H <= W * 1.2) H = Math.max(H, W * 2.0, 95);
+        if (!d_cm) D = Math.round(W * 0.85);
+    } else if (extra === 'couch-angled') {
+        if (!h_cm) H = Math.round(W * 0.84);
+        if (!d_cm) D = Math.round(W * 0.90);
+    } else if (extra === 'bar-l-shaped') {
+        if (!h_cm) H = Math.round(Math.min(W, D) * 0.75);
     }
 
     return { W, H, D, geom, isMirror, extra, mirrorClass, panelVariant };

@@ -61,7 +61,7 @@ import { rowWorkbook } from '../../lib/seasons';
 import { rowMatchesShape, rowMatchesMaterialColor } from '../../lib/smartFilters';
 import { rowMatchesContent } from '../../lib/aiContent';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, extractFileId, collectAllImages, toTitleCase, extractItemHexString, getSizedImageUrl } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, formatWeightMetricOnly, formatDimensionsMetricOnly, formatWeightImperialOnly, formatDimensionsImperialOnly, getStatusClass, extractFileId, collectAllImages, toTitleCase, extractItemHexString, getSizedImageUrl, isHeic, getRenderableHeicUrl } from '../../lib/utils';
 import { parseHexMapString } from '../../lib/axonometric';
 import { itemShades } from '../../lib/itemShades';
 import { selectAtom } from 'jotai/utils';
@@ -1082,12 +1082,13 @@ const UnifiedInventoryCard = React.memo(({ item, isExpanded = 0, onToggleExpand,
                     {/* EDGE — the payment colour as a hairline down the row. */}
                     <div className="inv-c-edge" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
 
-                    {/* MEDIA — the cutout PNG floating free, or the axo when the piece has no cutout yet.
-                        Not a gallery: the clean photos open with the row, in its panel. */}
-                    <div className={`inv-c-media inv-c-media--png${cutoutUrls.length ? '' : ' is-axo'}`} data-n={cutoutUrls.length}>
+                    {/* MEDIA — the cutout PNG floating free, or the photo, or axo fallback when the piece has no image yet. */}
+                    <div className={`inv-c-media inv-c-media--png${(cutoutUrls.length || (imageUrl && !isVideoFile(imageUrl))) ? '' : ' is-axo'}`} data-n={cutoutUrls.length || (imageUrl ? 1 : 0)}>
                         {cutoutUrls.length
                             ? cutoutUrls.map(c => <DriveImage key={c.url} loading="lazy" src={c.url} matte={c.matte} width={c.matte ? 128 : undefined} alt="" className="inv-png" />)
-                            : <div className="inv-png inv-png-axo"><WireframeIcon item={norm} /></div>}
+                            : (imageUrl && !isVideoFile(imageUrl)
+                                ? <DriveImage loading="lazy" src={imageUrl} width={128} alt="" className="inv-png object-cover rounded-md" />
+                                : <div className="inv-png inv-png-axo"><WireframeIcon item={norm} /></div>)}
                     </div>
 
                     {/* TAG */}

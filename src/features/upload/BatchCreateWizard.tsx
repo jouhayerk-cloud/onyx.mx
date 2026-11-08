@@ -719,7 +719,7 @@ function ReviewStep(props: {
 
     return (
         <div className="ui-root bc">
-            <input ref={rowInput} type="file" hidden multiple accept="image/*"
+            <input ref={rowInput} type="file" hidden multiple accept="image/*,.heic,.heif,.HEIC,.HEIF"
                 onChange={(e) => { const id = rowInputTarget.current; if (id && e.target.files) void addFiles(id, e.target.files); e.target.value = ''; }} />
 
             {/* ── bar: what is loaded, and the one action ── */}
@@ -808,7 +808,7 @@ function ReviewStep(props: {
                                 <strong>{matching ? tr('Matching photos…') : tr('Drop a photo folder here')}</strong>
                                 <span>{tr('Each photo goes to the row whose item number is in its name: EM-004.jpg, EM-004-2.jpg, 004b.jpg. Item subfolders (EM-004/) work too.')}</span>
                             </div>
-                            <input ref={filesInput} type="file" hidden multiple accept="image/*"
+                            <input ref={filesInput} type="file" hidden multiple accept="image/*,.heic,.heif,.HEIC,.HEIF"
                                 onChange={(e) => { if (e.target.files) void attachPhotos(collectInputFiles(e.target.files)); e.target.value = ''; }} />
                             {/* webkitdirectory isn't in React's input props, so it is set on the element. */}
                             <input type="file" hidden multiple

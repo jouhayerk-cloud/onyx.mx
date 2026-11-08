@@ -35,7 +35,9 @@ const FORM_DISPLAY_NAMES: Readonly<Record<string, string>> = {
     'diamond': 'Diamond',
     'sphere': 'Sphere',
     'l-shaped': 'L-Shaped',
-    's-shaped': 'S-Shaped',
+    's-shaped': 'Yin-Yang Rectangular',
+    'yinyang-rect': 'Yin-Yang Rectangular',
+    'yin-yang-rectangular': 'Yin-Yang Rectangular',
 };
 
 /**

@@ -699,7 +699,7 @@ function PhotosField({ photos, onChange, note, disabled }: {
                     <Upload size={14} aria-hidden="true" />
                     <span>{photos.length ? tr('Add photos') : tr('Drop photos or videos here, or click to pick')}</span>
                 </button>
-                <input ref={inputRef} type="file" hidden multiple accept="image/*,video/*"
+                <input ref={inputRef} type="file" hidden multiple accept="image/*,video/*,.heic,.heif,.HEIC,.HEIF"
                     onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ''; void add(files); }} />
             </div>
             <div className="entry-inline">

@@ -57,9 +57,10 @@ const ROCK_FALLBACKS: Record<string, Dims> = {
 };
 
 const FOUNTAIN_FALLBACKS: Record<string, Dims> = {
-    'boulder':  { w: 60, h: 75,  d: 55 },
-    'sphere':   { w: 50, h: 72,  d: 50 },
-    's-shaped': { w: 45, h: 100, d: 40 },
+    'boulder':      { w: 60, h: 75,  d: 55 },
+    'sphere':       { w: 50, h: 72,  d: 50 },
+    'yinyang-rect': { w: 45, h: 100, d: 40 },
+    's-shaped':     { w: 45, h: 100, d: 40 },
 };
 
 const SCULPTURE_FALLBACKS: Record<string, Dims> = {
@@ -403,54 +404,73 @@ function buildFountainSphere(cam: Cam, dims: Dims): FigurePart[] {
 }
 
 /**
- * Fountain S-shaped: an S-curve column with a water channel crease
- * and top cascading spill crest.
+ * Fountain Yin-Yang Rectangular (AN8261MAMO, AN8262OOOH):
+ * Broad low rectangular water basin trough with horizontal fluting,
+ * twin vertical rectangular monolith slabs with fluted ribs, and
+ * a central S-curved Yin-Yang waterfall crevice.
  */
-function buildFountainSShaped(cam: Cam, dims: Dims): FigurePart[] {
+function buildFountainYinYangRect(cam: Cam, dims: Dims): FigurePart[] {
     const { w, h, d } = dims;
-    const cx = w / 2;
-    const cy = d / 2;
 
-    // Plinth base at z = 0
-    const plinthH = h * 0.10;
-    const pw = w * 0.88;
-    const pd = d * 0.88;
-    const plinth = prism(cam, cx - pw / 2, cy - pd / 2, 0, pw, pd, plinthH, Math.min(pw, pd) / 2);
+    // 1. Broad low rectangular water basin trough at z = 0
+    const basinH = Math.max(1.5, h * 0.18);
+    const basinR = Math.min(w, d) * 0.04;
+    const basin = prism(cam, 0, 0, 0, w, d, basinH, basinR);
 
-    // S-curve column rising from plinthH to h
-    const colH = h - plinthH;
-    const levels = 6;
-    const allColPts: P2[] = [];
-    const colTopPts: P2[] = [];
-    const groovePts: P2[] = [];
-
-    const colW = w * 0.36;
-    const colD = d * 0.36;
-    const colR = Math.min(colW, colD) / 2;
-
-    for (let i = 0; i <= levels; i++) {
-        const u = i / levels;
-        const z = plinthH + u * colH;
-        const shiftX = (w * 0.18) * Math.sin(u * Math.PI * 2);
-        const curCx = cx + shiftX;
-        const curCy = cy;
-
-        const rPts = ring(curCx - colW / 2, curCy - colD / 2, colW, colD, colR, 6);
-        for (const [rx, ry] of rPts) {
-            const p = proj(cam, rx, ry, z);
-            allColPts.push(p);
-            if (i === levels) colTopPts.push(p);
-        }
-
-        groovePts.push(proj(cam, curCx, curCy + colD / 2, z));
+    // Front horizontal fluting creases on basin
+    const flutes: string[] = [];
+    const nFlutes = 2;
+    for (let i = 1; i <= nFlutes; i++) {
+        const fz = basinH * (i / (nFlutes + 1));
+        const pLeft = proj(cam, 0.05 * w, d, fz);
+        const pRight = proj(cam, 0.95 * w, d, fz);
+        flutes.push(pathOf([pLeft, pRight], false));
     }
 
-    const colBody = pathOf(hull(allColPts));
-    const topCrease = pathOf(colTopPts);
-    const waterGroove = pathOf(groovePts, false);
+    // 2. Twin rectangular monolith slabs rising from basinH to h
+    const colH = h - basinH;
+    const slabD = d * 0.52;
+    const slabY = (d - slabD) / 2;
+    const slabR = Math.min(w, d) * 0.03;
 
-    // Water spillover spout at top crest (bright accent)
-    const [topX, topY] = proj(cam, cx, cy, h);
+    // Left slab
+    const slab1W = w * 0.36;
+    const slab1X = w * 0.10;
+    const slab1 = prism(cam, slab1X, slabY, basinH, slab1W, slabD, colH, slabR);
+
+    // Right slab
+    const slab2W = w * 0.36;
+    const slab2X = w * 0.54;
+    const slab2 = prism(cam, slab2X, slabY, basinH, slab2W, slabD, colH, slabR);
+
+    // Horizontal fluted rib creases across slabs
+    const slabFlutes: string[] = [];
+    for (let i = 1; i <= 3; i++) {
+        const fz = basinH + colH * (i / 4);
+        const p1L = proj(cam, slab1X + 0.02 * w, slabY + slabD, fz);
+        const p1R = proj(cam, slab1X + slab1W - 0.02 * w, slabY + slabD, fz);
+        slabFlutes.push(pathOf([p1L, p1R], false));
+
+        const p2L = proj(cam, slab2X + 0.02 * w, slabY + slabD, fz);
+        const p2R = proj(cam, slab2X + slab2W - 0.02 * w, slabY + slabD, fz);
+        slabFlutes.push(pathOf([p2L, p2R], false));
+    }
+
+    // 3. Central S-curved Yin-Yang cascade seam between slabs
+    const midX = w / 2;
+    const midY = slabY + slabD;
+    const seamPts: P2[] = [];
+    const seamSteps = 8;
+    for (let i = 0; i <= seamSteps; i++) {
+        const u = i / seamSteps;
+        const z = basinH + colH * (1 - u);
+        const sX = midX + Math.sin(u * Math.PI * 2) * (w * 0.045);
+        seamPts.push(proj(cam, sX, midY, z));
+    }
+    const yinYangCrease = pathOf(seamPts, false);
+
+    // 4. Bright water crest spout at top apex
+    const [topX, topY] = proj(cam, midX, slabY + slabD / 2, h);
     const spout = pathOf([
         [topX - 1.8, topY],
         [topX, topY - 2.2],
@@ -459,13 +479,17 @@ function buildFountainSShaped(cam: Cam, dims: Dims): FigurePart[] {
     ]);
 
     return [
-        ...solidParts(plinth),
-        { d: colBody, kind: 'plate' },
-        { d: topCrease, kind: 'crease' },
-        { d: waterGroove, kind: 'crease' },
+        ...solidParts(basin),
+        ...flutes.map(d => ({ d, kind: 'crease' as const })),
+        ...solidParts(slab1),
+        ...solidParts(slab2),
+        ...slabFlutes.map(d => ({ d, kind: 'crease' as const })),
+        { d: yinYangCrease, kind: 'crease' },
         { d: spout, kind: 'bright' },
     ];
 }
+
+const buildFountainSShaped = buildFountainYinYangRect;
 
 /**
  * Sculpture flame: a tapering dynamic flame silhouette rising from a square plinth.
@@ -1180,7 +1204,7 @@ export function buildStoneFigure(
             return buildBag(cam, dims);
         case 'fountain':
             if (opt === 'sphere') return buildFountainSphere(cam, dims);
-            if (opt === 's-shaped') return buildFountainSShaped(cam, dims);
+            if (opt === 'yinyang-rect' || opt === 's-shaped') return buildFountainYinYangRect(cam, dims);
             return buildFountainBoulder(cam, dims);
         case 'fountain-set':
             return buildFountainSet(cam, dims);

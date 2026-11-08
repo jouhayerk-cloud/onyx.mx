@@ -429,7 +429,7 @@ export const TYPE_PROMPT_SPECS: readonly TypePromptSpec[] = [
             pattern: '{Form} {Colour} {Material} Water Fountain',
             examples: [
                 'Boulder Green Talan Onyx Natural Water Fountain',
-                'S-Shaped Yellow Travertine Outdoor Water Fountain',
+                'Yin-Yang Rectangular Beige Travertine Outdoor Water Fountain',
                 'Sphere Concrete Architectural Outdoor Water Fountain',
             ],
             mustInclude: ['form', 'colour', 'material', 'type'],

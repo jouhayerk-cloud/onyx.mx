@@ -3486,6 +3486,8 @@ export const esCatalog: Record<string, string> = {
   'Boulder': 'Roca',
   'Sphere': 'Esfera',
   'S-shaped': 'Forma de S',
+  'Yin-Yang Rectangular': 'Rectangular Yin-Yang',
+  'Angled Monolithic': 'Monolítico Angular',
   'Flame': 'Flama',
   'Venus': 'Venus',
   'Cactus': 'Cactus',

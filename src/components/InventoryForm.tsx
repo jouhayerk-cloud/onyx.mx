@@ -5,6 +5,7 @@ import { vendors } from '../lib/consts';
 import { useTranslation } from '../lib/hooks';
 import { InventoryItemData, UploadedFile } from '../lib/Types';
 import { readFileAsDataURL, extractFileId, fetchImageBatch, imageCache, generateVideoThumbnail, resizeImage } from '../lib/utils';
+import { isHeic, convertHeicFileToJpegFile } from '../lib/heic';
 import { Play, FileVideo, ImageIcon, Plus } from 'lucide-react';
 import { tr } from '../lib/i18n';
 
@@ -422,7 +423,7 @@ export function InventoryForm({
                 multiple
                 id="inventory-media-upload"
                 onChange={handleNewFiles}
-                accept="image/*,video/*"
+                accept="image/*,video/*,.heic,.heif,.HEIC,.HEIF"
                 className="hidden"
               />
               <label 

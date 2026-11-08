@@ -22,7 +22,10 @@ export type AxoExtraClass =
     | 'panel'
     | 'wine-rack'
     | 'table'
-    | 'tube';
+    | 'tube'
+    | 'fountain-yinyang-rect'
+    | 'couch-angled'
+    | 'bar-l-shaped';
 
 export const AXO_EXTRA_CLASSES: AxoExtraClass[] = [
     'lamp-table',
@@ -34,6 +37,9 @@ export const AXO_EXTRA_CLASSES: AxoExtraClass[] = [
     'wine-rack',
     'table',
     'tube',
+    'fountain-yinyang-rect',
+    'couch-angled',
+    'bar-l-shaped',
 ];
 
 export interface AxoPoint2D {
@@ -127,6 +133,12 @@ export function getAxoExtraLabel(cls: AxoExtraClass): string {
             return tr('Table');
         case 'tube':
             return tr('Tube');
+        case 'fountain-yinyang-rect':
+            return tr('Yin-Yang Rectangular Fountain');
+        case 'couch-angled':
+            return tr('Angled Stone Couch');
+        case 'bar-l-shaped':
+            return tr('L-Shaped Bar');
     }
 }
 
@@ -151,6 +163,38 @@ export function classifyExtra(shape: string = '', type: string = ''): AxoExtraCl
         return 'hull';
     }
 
+    // 1b. Yin-Yang Rectangular Fountains (AN8261MAMO, AN8262OOOH) & stone fountains
+    if (
+        has('an8261', 'an8262') ||
+        has('yin yang', 'ying gang', 'yinyang', 'yinyang-rect', 's-shaped', 's-shape', 's shape') ||
+        shapeHas('s-shaped', 's-shape', 's shape', 'yinyang', 'ying gang', 'yin yang') ||
+        (has('fountain', 'fuente', 'cascada') && !has('sphere', 'esfera', 'boulder', 'ball')) ||
+        shapeHas('fountain', 'fuente')
+    ) {
+        return 'fountain-yinyang-rect';
+    }
+
+    // 1c. Angled Stone Couch & Armchair (EM326115OOOH)
+    if (
+        has('em326115') ||
+        (has('couch', 'sofa', 'sillon', 'chair', 'silla') || shapeHas('chair', 'couch', 'sofa', 'silla', 'sillon')) &&
+        (has('v shaped', 'v-shaped', 'v shape', 'v-shape', 'couch', 'sofa', 'sillon', 'lounge', 'angled', 'forma v') || shapeHas('v shaped', 'v-shaped', 'v shape', 'v-shape', 'couch', 'sofa'))
+    ) {
+        return 'couch-angled';
+    }
+
+    // 1d. L-Shaped Bar (TE32626HXFX)
+    if (
+        has('te32626') ||
+        (has('bar', 'barra') || shapeHas('bar', 'barra')) &&
+        (has('l shaped', 'l-shaped', 'l shape', 'l-shape', 'esquinera', 'corner') || shapeHas('l shaped', 'l-shaped', 'l shape', 'l-shape'))
+    ) {
+        return 'bar-l-shaped';
+    }
+    if (has('bar', 'barra') && !has('table', 'mesa', 'lamp', 'panel')) {
+        return 'bar-l-shaped';
+    }
+
     // 2. Existing core classes that MUST stay with base taxonomy
     // (mirror, bowl without canoe, plate, sphere, sculpture, standalone rock)
     if (has('mirror', 'espejo')) {
@@ -168,7 +212,7 @@ export function classifyExtra(shape: string = '', type: string = ''): AxoExtraCl
     if (has('sculpture', 'escultura') && !has('table', 'mesa', 'lamp', 'lampara')) {
         return null;
     }
-    if ((has('rock', 'piedra', 'fountain', 'fuente')) && !has('table', 'mesa', 'lamp', 'lampara', 'panel')) {
+    if ((has('rock', 'piedra')) && !has('table', 'mesa', 'lamp', 'lampara', 'panel', 'fountain', 'fuente')) {
         return null;
     }
 
@@ -1677,6 +1721,709 @@ function drawTube(
 }
 
 /**
+ * Yin-Yang Rectangular Fountain: Broad low rectangular water basin trough at base
+ * with horizontal carved fluting, dual rectangular support plinths, and twin vertical
+ * rectangular monolith slabs featuring dense horizontal fluted ribs and a central
+ * vertical S-curve / Yin-Yang dividing fissure. (e.g. AN8261MAMO, AN8262OOOH).
+ */
+function drawFountainYinYangRect(
+    ctx: CanvasRenderingContext2D,
+    geo: { W: number; H: number; D: number },
+    helpers: AxoDrawHelpers,
+): void {
+    const { W, H, D } = geo;
+
+    const yBasin = 0.18 * H;
+    const yPool = 0.14 * H;
+    const yPlinth = 0.22 * H;
+
+    // 1. Broad Low Rectangular Water Basin Trough at Base (y = 0 to yBasin)
+    // Outer front face
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: 0, y: 0, z: D },
+            { x: W, y: 0, z: D },
+            { x: W, y: yBasin, z: D },
+            { x: 0, y: yBasin, z: D },
+        ],
+        helpers.colorRight,
+    );
+    // Outer right face
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: W, y: 0, z: 0 },
+            { x: W, y: 0, z: D },
+            { x: W, y: yBasin, z: D },
+            { x: W, y: yBasin, z: 0 },
+        ],
+        helpers.colorRight,
+    );
+
+    // Front horizontal fluting grooves along basin facade
+    ctx.save();
+    ctx.lineWidth = Math.max(1, (helpers.lineWidth ?? 1.8) * 0.7);
+    ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+    for (const yh of [0.04 * H, 0.08 * H, 0.12 * H, 0.16 * H]) {
+        const p1 = toCanvas(helpers, 0, yh, D);
+        const p2 = toCanvas(helpers, W, yh, D);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+    }
+    ctx.restore();
+
+    // Top Rim of Basin
+    const rimW = 0.07 * W;
+    const rimD = 0.09 * D;
+    // Front rim top
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: 0, y: yBasin, z: D - rimD },
+            { x: W, y: yBasin, z: D - rimD },
+            { x: W, y: yBasin, z: D },
+            { x: 0, y: yBasin, z: D },
+        ],
+        helpers.colorTop,
+    );
+    // Right rim top
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: W - rimW, y: yBasin, z: 0 },
+            { x: W, y: yBasin, z: 0 },
+            { x: W, y: yBasin, z: D },
+            { x: W - rimW, y: yBasin, z: D },
+        ],
+        helpers.colorTop,
+    );
+    // Left rim top
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: 0, y: yBasin, z: 0 },
+            { x: rimW, y: yBasin, z: 0 },
+            { x: rimW, y: yBasin, z: D },
+            { x: 0, y: yBasin, z: D },
+        ],
+        helpers.colorTop,
+    );
+
+    // Recessed Water Pool Surface
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: rimW, y: yPool, z: rimD },
+            { x: W - rimW, y: yPool, z: rimD },
+            { x: W - rimW, y: yPool, z: D - rimD },
+            { x: rimW, y: yPool, z: D - rimD },
+        ],
+        '#67E8F9',
+        'rgba(6, 182, 212, 0.4)',
+    );
+
+    // 2. Dual Plinth Blocks supporting the vertical monoliths
+    const plinthZ0 = 0.35 * D, plinthZ1 = 0.65 * D;
+    // Left plinth
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: 0.20 * W, y: yPool, z: plinthZ1 },
+            { x: 0.46 * W, y: yPool, z: plinthZ1 },
+            { x: 0.46 * W, y: yPlinth, z: plinthZ1 },
+            { x: 0.20 * W, y: yPlinth, z: plinthZ1 },
+        ],
+        helpers.colorRight,
+    );
+    // Right plinth
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: 0.54 * W, y: yPool, z: plinthZ1 },
+            { x: 0.80 * W, y: yPool, z: plinthZ1 },
+            { x: 0.80 * W, y: yPlinth, z: plinthZ1 },
+            { x: 0.54 * W, y: yPlinth, z: plinthZ1 },
+        ],
+        helpers.colorRight,
+    );
+
+    // 3. Twin Rectangular Monolith Slabs with Central Yin-Yang Seam
+    const mZ0 = 0.38 * D, mZ1 = 0.62 * D;
+    const mLeftX = 0.18 * W;
+    const mRightX = 0.82 * W;
+    const STEPS = 16;
+    const yTop = 1.0 * H;
+
+    // Seam coordinate function
+    function getSeamX(u: number): number {
+        return 0.50 * W + 0.085 * W * Math.sin(2 * Math.PI * u);
+    }
+
+    const gapHalf = 0.018 * W;
+
+    // Draw Right Monolith Outer Side
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: mRightX, y: yPlinth, z: mZ0 },
+            { x: mRightX, y: yPlinth, z: mZ1 },
+            { x: mRightX, y: yTop, z: mZ1 },
+            { x: mRightX, y: yTop, z: mZ0 },
+        ],
+        helpers.colorRight,
+    );
+
+    // Draw Left Monolith Outer Side
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: mLeftX, y: yPlinth, z: mZ0 },
+            { x: mLeftX, y: yPlinth, z: mZ1 },
+            { x: mLeftX, y: yTop, z: mZ1 },
+            { x: mLeftX, y: yTop, z: mZ0 },
+        ],
+        helpers.colorLeft,
+    );
+
+    // Draw Front Facets for Left Monolith
+    for (let i = 0; i < STEPS; i++) {
+        const u0 = i / STEPS;
+        const u1 = (i + 1) / STEPS;
+        const y0 = yPlinth + (yTop - yPlinth) * u0;
+        const y1 = yPlinth + (yTop - yPlinth) * u1;
+        const sX0 = getSeamX(u0) - gapHalf;
+        const sX1 = getSeamX(u1) - gapHalf;
+
+        drawPolygonFace(
+            ctx,
+            helpers,
+            [
+                { x: mLeftX, y: y0, z: mZ1 },
+                { x: sX0, y: y0, z: mZ1 },
+                { x: sX1, y: y1, z: mZ1 },
+                { x: mLeftX, y: y1, z: mZ1 },
+            ],
+            helpers.colorRight,
+        );
+    }
+
+    // Draw Front Facets for Right Monolith
+    for (let i = 0; i < STEPS; i++) {
+        const u0 = i / STEPS;
+        const u1 = (i + 1) / STEPS;
+        const y0 = yPlinth + (yTop - yPlinth) * u0;
+        const y1 = yPlinth + (yTop - yPlinth) * u1;
+        const sX0 = getSeamX(u0) + gapHalf;
+        const sX1 = getSeamX(u1) + gapHalf;
+
+        drawPolygonFace(
+            ctx,
+            helpers,
+            [
+                { x: sX0, y: y0, z: mZ1 },
+                { x: mRightX, y: y0, z: mZ1 },
+                { x: mRightX, y: y1, z: mZ1 },
+                { x: sX1, y: y1, z: mZ1 },
+            ],
+            helpers.colorRight,
+        );
+    }
+
+    // Interior Yin-Yang Crevice Wall (Right wall of left monolith / Left wall of right monolith)
+    for (let i = 0; i < STEPS; i++) {
+        const u0 = i / STEPS;
+        const u1 = (i + 1) / STEPS;
+        const y0 = yPlinth + (yTop - yPlinth) * u0;
+        const y1 = yPlinth + (yTop - yPlinth) * u1;
+        const sX0 = getSeamX(u0) - gapHalf;
+        const sX1 = getSeamX(u1) - gapHalf;
+
+        drawPolygonFace(
+            ctx,
+            helpers,
+            [
+                { x: sX0, y: y0, z: mZ1 },
+                { x: sX0, y: y0, z: mZ0 },
+                { x: sX1, y: y1, z: mZ0 },
+                { x: sX1, y: y1, z: mZ1 },
+            ],
+            helpers.colorLeft,
+        );
+    }
+
+    // Top Slabs of Twin Monoliths
+    const topSeamL = getSeamX(1.0) - gapHalf;
+    const topSeamR = getSeamX(1.0) + gapHalf;
+    // Left monolith top
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: mLeftX, y: yTop, z: mZ0 },
+            { x: topSeamL, y: yTop, z: mZ0 },
+            { x: topSeamL, y: yTop, z: mZ1 },
+            { x: mLeftX, y: yTop, z: mZ1 },
+        ],
+        helpers.colorTop,
+    );
+    // Right monolith top
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: topSeamR, y: yTop, z: mZ0 },
+            { x: mRightX, y: yTop, z: mZ0 },
+            { x: mRightX, y: yTop, z: mZ1 },
+            { x: topSeamR, y: yTop, z: mZ1 },
+        ],
+        helpers.colorTop,
+    );
+
+    // Horizontal Fluting Rib Lines across both monoliths
+    ctx.save();
+    ctx.lineWidth = Math.max(1, (helpers.lineWidth ?? 1.8) * 0.65);
+    ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+    for (let i = 1; i < STEPS; i++) {
+        const u = i / STEPS;
+        const yh = yPlinth + (yTop - yPlinth) * u;
+        const sL = getSeamX(u) - gapHalf;
+        const sR = getSeamX(u) + gapHalf;
+
+        // Left monolith rib
+        const pL0 = toCanvas(helpers, mLeftX, yh, mZ1);
+        const pL1 = toCanvas(helpers, sL, yh, mZ1);
+        ctx.beginPath();
+        ctx.moveTo(pL0.x, pL0.y);
+        ctx.lineTo(pL1.x, pL1.y);
+        ctx.stroke();
+
+        // Right monolith rib
+        const pR0 = toCanvas(helpers, sR, yh, mZ1);
+        const pR1 = toCanvas(helpers, mRightX, yh, mZ1);
+        ctx.beginPath();
+        ctx.moveTo(pR0.x, pR0.y);
+        ctx.lineTo(pR1.x, pR1.y);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+/**
+ * Angled Stone Couch / Armchair: Monolithic stone couch with compound angles:
+ * backward-reclined backrest, inward-chamfered front base apron, outward-splayed
+ * trapezoidal side flanks, sunken stone seat platform, and flat slab armrests. (EM326115OOOH).
+ */
+function drawCouchAngled(
+    ctx: CanvasRenderingContext2D,
+    geo: { W: number; H: number; D: number },
+    helpers: AxoDrawHelpers,
+): void {
+    const { W, H, D } = geo;
+
+    const ySeat = 0.40 * H;
+    const yArm = 0.65 * H;
+    const yBack = 1.0 * H;
+
+    // Floor base points (narrower footprint)
+    const bX0 = 0.12 * W, bX1 = 0.88 * W;
+    const bZ0 = 0.14 * D, bZ1 = 0.84 * D;
+
+    // Top arm outer corners (flared outward)
+    const armX0 = 0, armX1 = W;
+    const armZ0 = 0.10 * D, armZ1 = 0.94 * D;
+
+    // Seat front corners (reached by chamfered front apron)
+    const sFrontZ = 0.94 * D;
+    const sLeftX = 0.22 * W, sRightX = 0.78 * W;
+
+    // 1. Inward-Chamfered Front Apron (from floor bZ1 up to seat sFrontZ)
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: bX0, y: 0, z: bZ1 },
+            { x: bX1, y: 0, z: bZ1 },
+            { x: sRightX, y: ySeat, z: sFrontZ },
+            { x: sLeftX, y: ySeat, z: sFrontZ },
+        ],
+        helpers.colorRight,
+    );
+
+    // Front armrest lower chamfer panels
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: bX0, y: 0, z: bZ1 },
+            { x: sLeftX, y: ySeat, z: sFrontZ },
+            { x: sLeftX, y: yArm, z: sFrontZ },
+            { x: armX0, y: yArm, z: armZ1 },
+        ],
+        helpers.colorRight,
+    );
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: bX1, y: 0, z: bZ1 },
+            { x: armX1, y: yArm, z: armZ1 },
+            { x: sRightX, y: yArm, z: sFrontZ },
+            { x: sRightX, y: ySeat, z: sFrontZ },
+        ],
+        helpers.colorRight,
+    );
+
+    // 2. Outward-Splayed Flanks
+    // Right side flank (flares from bX1 at bottom to armX1 at armrest top)
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: bX1, y: 0, z: bZ0 },
+            { x: bX1, y: 0, z: bZ1 },
+            { x: armX1, y: yArm, z: armZ1 },
+            { x: armX1, y: yArm, z: armZ0 },
+        ],
+        helpers.colorRight,
+    );
+    // Left side flank
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: bX0, y: 0, z: bZ0 },
+            { x: bX0, y: 0, z: bZ1 },
+            { x: armX0, y: yArm, z: armZ1 },
+            { x: armX0, y: yArm, z: armZ0 },
+        ],
+        helpers.colorLeft,
+    );
+
+    // 3. Flat Slab Armrest Tops
+    // Right armrest top
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: sRightX, y: yArm, z: armZ0 },
+            { x: armX1, y: yArm, z: armZ0 },
+            { x: armX1, y: yArm, z: armZ1 },
+            { x: sRightX, y: yArm, z: sFrontZ },
+        ],
+        helpers.colorTop,
+    );
+    // Left armrest top
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: armX0, y: yArm, z: armZ0 },
+            { x: sLeftX, y: yArm, z: armZ0 },
+            { x: sLeftX, y: yArm, z: sFrontZ },
+            { x: armX0, y: yArm, z: armZ1 },
+        ],
+        helpers.colorTop,
+    );
+
+    // Inner arm drops to seat
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: sRightX, y: ySeat, z: armZ0 },
+            { x: sRightX, y: ySeat, z: sFrontZ },
+            { x: sRightX, y: yArm, z: sFrontZ },
+            { x: sRightX, y: yArm, z: armZ0 },
+        ],
+        helpers.colorLeft,
+    );
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: sLeftX, y: ySeat, z: armZ0 },
+            { x: sLeftX, y: ySeat, z: sFrontZ },
+            { x: sLeftX, y: yArm, z: sFrontZ },
+            { x: sLeftX, y: yArm, z: armZ0 },
+        ],
+        helpers.colorRight,
+    );
+
+    // 4. Sunken Seat Platform
+    const backZ_bottom = 0.32 * D;
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: sLeftX, y: ySeat, z: backZ_bottom },
+            { x: sRightX, y: ySeat, z: backZ_bottom },
+            { x: sRightX, y: ySeat, z: sFrontZ },
+            { x: sLeftX, y: ySeat, z: sFrontZ },
+        ],
+        helpers.colorTop,
+    );
+
+    // 5. Backward-Reclined Monolithic Backrest
+    const backZ_top = 0.12 * D;
+    const backX0 = 0.20 * W, backX1 = 0.80 * W;
+    const backTopX0 = 0.22 * W, backTopX1 = 0.78 * W;
+
+    // Front reclined face of backrest
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: sLeftX, y: ySeat, z: backZ_bottom },
+            { x: sRightX, y: ySeat, z: backZ_bottom },
+            { x: backTopX1, y: yBack, z: backZ_top },
+            { x: backTopX0, y: yBack, z: backZ_top },
+        ],
+        helpers.colorRight,
+    );
+
+    // Right side of reclined backrest
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: sRightX, y: ySeat, z: backZ_bottom },
+            { x: backTopX1, y: yBack, z: backZ_top },
+            { x: backTopX1, y: yBack, z: backZ_top - 0.08 * D },
+            { x: sRightX, y: ySeat, z: backZ_bottom - 0.08 * D },
+        ],
+        helpers.colorRight,
+    );
+
+    // Top beveled cap of backrest
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: backTopX0, y: yBack, z: backZ_top - 0.08 * D },
+            { x: backTopX1, y: yBack, z: backZ_top - 0.08 * D },
+            { x: backTopX1, y: yBack, z: backZ_top },
+            { x: backTopX0, y: yBack, z: backZ_top },
+        ],
+        helpers.colorTop,
+    );
+}
+
+/**
+ * 90-Degree L-Shaped Bar: Two perpendicular counter wings meeting at a 90-degree corner apex,
+ * with thick overhanging translucent mitered countertop, illuminated front facade panels,
+ * and recessed dark toe-kick base. (TE32626HXFX).
+ */
+function drawBarLShaped(
+    ctx: CanvasRenderingContext2D,
+    geo: { W: number; H: number; D: number },
+    helpers: AxoDrawHelpers,
+): void {
+    const { W, H, D } = geo;
+
+    const yPlinth = 0.10 * H;
+    const yCounterBottom = 0.88 * H;
+    const yTop = 1.0 * H;
+
+    // Apex corner at (0.50 W, 0.88 D)
+    const apex = { x: 0.50 * W, z: 0.88 * D };
+    const leftWingEnd = { x: 0.08 * W, z: 0.36 * D };
+    const rightWingEnd = { x: 0.92 * W, z: 0.36 * D };
+
+    const cThick = 0.32 * Math.min(W, D);
+    // Inner crotch corner
+    const crotch = { x: 0.50 * W, z: 0.52 * D };
+    const leftInnerEnd = { x: leftWingEnd.x + 0.22 * W, z: leftWingEnd.z - 0.16 * D };
+    const rightInnerEnd = { x: rightWingEnd.x - 0.22 * W, z: rightWingEnd.z - 0.16 * D };
+
+    // 1. Recessed Toe-Kick Plinth Base (y = 0 to yPlinth)
+    const pInset = 0.04 * Math.min(W, D);
+    const pApex = { x: apex.x, z: apex.z - pInset };
+    const pLeft = { x: leftWingEnd.x + pInset * 0.7, z: leftWingEnd.z };
+    const pRight = { x: rightWingEnd.x - pInset * 0.7, z: rightWingEnd.z };
+
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: pLeft.x, y: 0, z: pLeft.z },
+            { x: pApex.x, y: 0, z: pApex.z },
+            { x: pApex.x, y: yPlinth, z: pApex.z },
+            { x: pLeft.x, y: yPlinth, z: pLeft.z },
+        ],
+        '#0f172a',
+    );
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: pApex.x, y: 0, z: pApex.z },
+            { x: pRight.x, y: 0, z: pRight.z },
+            { x: pRight.x, y: yPlinth, z: pRight.z },
+            { x: pApex.x, y: yPlinth, z: pApex.z },
+        ],
+        '#1e293b',
+    );
+
+    // 2. Vertical Front Illuminated Onyx Facade Panels (yPlinth to yCounterBottom)
+    // Left front panel (facing viewer left)
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: leftWingEnd.x, y: yPlinth, z: leftWingEnd.z },
+            { x: apex.x, y: yPlinth, z: apex.z },
+            { x: apex.x, y: yCounterBottom, z: apex.z },
+            { x: leftWingEnd.x, y: yCounterBottom, z: leftWingEnd.z },
+        ],
+        helpers.colorLeft,
+    );
+    // Right front panel (facing viewer right)
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: apex.x, y: yPlinth, z: apex.z },
+            { x: rightWingEnd.x, y: yPlinth, z: rightWingEnd.z },
+            { x: rightWingEnd.x, y: yCounterBottom, z: rightWingEnd.z },
+            { x: apex.x, y: yCounterBottom, z: apex.z },
+        ],
+        helpers.colorRight,
+    );
+
+    // Vertical bookmatched veining lines on front panels
+    ctx.save();
+    ctx.lineWidth = Math.max(1, (helpers.lineWidth ?? 1.8) * 0.6);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    for (let f = 0.2; f <= 0.8; f += 0.2) {
+        // Left panel vein
+        const vxL = leftWingEnd.x + (apex.x - leftWingEnd.x) * f;
+        const vzL = leftWingEnd.z + (apex.z - leftWingEnd.z) * f;
+        const ptL0 = toCanvas(helpers, vxL, yPlinth, vzL);
+        const ptL1 = toCanvas(helpers, vxL, yCounterBottom, vzL);
+        ctx.beginPath();
+        ctx.moveTo(ptL0.x, ptL0.y);
+        ctx.lineTo(ptL1.x, ptL1.y);
+        ctx.stroke();
+
+        // Right panel vein
+        const vxR = apex.x + (rightWingEnd.x - apex.x) * f;
+        const vzR = apex.z + (rightWingEnd.z - apex.z) * f;
+        const ptR0 = toCanvas(helpers, vxR, yPlinth, vzR);
+        const ptR1 = toCanvas(helpers, vxR, yCounterBottom, vzR);
+        ctx.beginPath();
+        ctx.moveTo(ptR0.x, ptR0.y);
+        ctx.lineTo(ptR1.x, ptR1.y);
+        ctx.stroke();
+    }
+    ctx.restore();
+
+    // End caps of wings
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: leftInnerEnd.x, y: yPlinth, z: leftInnerEnd.z },
+            { x: leftWingEnd.x, y: yPlinth, z: leftWingEnd.z },
+            { x: leftWingEnd.x, y: yCounterBottom, z: leftWingEnd.z },
+            { x: leftInnerEnd.x, y: yCounterBottom, z: leftInnerEnd.z },
+        ],
+        helpers.colorLeft,
+    );
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: rightWingEnd.x, y: yPlinth, z: rightWingEnd.z },
+            { x: rightInnerEnd.x, y: yPlinth, z: rightInnerEnd.z },
+            { x: rightInnerEnd.x, y: yCounterBottom, z: rightInnerEnd.z },
+            { x: rightWingEnd.x, y: yCounterBottom, z: rightWingEnd.z },
+        ],
+        helpers.colorRight,
+    );
+
+    // 3. Thick Overhanging Countertop with 45° Mitered Chevron Seam (yCounterBottom to yTop)
+    const oHang = 0.035 * Math.min(W, D);
+    const oApex = { x: apex.x, z: apex.z + oHang };
+    const oLeft = { x: leftWingEnd.x - oHang * 0.7, z: leftWingEnd.z };
+    const oRight = { x: rightWingEnd.x + oHang * 0.7, z: rightWingEnd.z };
+
+    // Countertop front drop edge (left)
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: oLeft.x, y: yCounterBottom, z: oLeft.z },
+            { x: oApex.x, y: yCounterBottom, z: oApex.z },
+            { x: oApex.x, y: yTop, z: oApex.z },
+            { x: oLeft.x, y: yTop, z: oLeft.z },
+        ],
+        helpers.colorLeft,
+    );
+    // Countertop front drop edge (right)
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: oApex.x, y: yCounterBottom, z: oApex.z },
+            { x: oRight.x, y: yCounterBottom, z: oRight.z },
+            { x: oRight.x, y: yTop, z: oRight.z },
+            { x: oApex.x, y: yTop, z: oApex.z },
+        ],
+        helpers.colorRight,
+    );
+
+    // Top surface left wing
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: leftInnerEnd.x, y: yTop, z: leftInnerEnd.z },
+            { x: oLeft.x, y: yTop, z: oLeft.z },
+            { x: oApex.x, y: yTop, z: oApex.z },
+            { x: crotch.x, y: yTop, z: crotch.z },
+        ],
+        helpers.colorTop,
+    );
+    // Top surface right wing
+    drawPolygonFace(
+        ctx,
+        helpers,
+        [
+            { x: crotch.x, y: yTop, z: crotch.z },
+            { x: oApex.x, y: yTop, z: oApex.z },
+            { x: oRight.x, y: yTop, z: oRight.z },
+            { x: rightInnerEnd.x, y: yTop, z: rightInnerEnd.z },
+        ],
+        helpers.colorTop,
+    );
+
+    // 45° Mitered Chevron Seam Line on Countertop
+    ctx.save();
+    ctx.lineWidth = Math.max(1, (helpers.lineWidth ?? 1.8) * 0.8);
+    ctx.strokeStyle = helpers.colorOutline ?? '#111111';
+    const pCrotch = toCanvas(helpers, crotch.x, yTop, crotch.z);
+    const pApexTop = toCanvas(helpers, oApex.x, yTop, oApex.z);
+    ctx.beginPath();
+    ctx.moveTo(pCrotch.x, pCrotch.y);
+    ctx.lineTo(pApexTop.x, pApexTop.y);
+    ctx.stroke();
+    ctx.restore();
+}
+
+/**
  * Dispatches drawing of an extra axonometric geometry class onto a 2D canvas.
  * Follows the exact shading, stroke, and projection conventions of axonometric.ts.
  */
@@ -1719,6 +2466,15 @@ export function drawExtra(
             break;
         case 'tube':
             drawTube(ctx, geo, helpers);
+            break;
+        case 'fountain-yinyang-rect':
+            drawFountainYinYangRect(ctx, geo, helpers);
+            break;
+        case 'couch-angled':
+            drawCouchAngled(ctx, geo, helpers);
+            break;
+        case 'bar-l-shaped':
+            drawBarLShaped(ctx, geo, helpers);
             break;
     }
 

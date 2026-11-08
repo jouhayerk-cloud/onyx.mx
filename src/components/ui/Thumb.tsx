@@ -1,6 +1,6 @@
 import React from 'react';
 import { cx } from './types';
-import { getCleanImageUrl, getSizedImageUrl } from '../../lib/utils';
+import { getCleanImageUrl, getSizedImageUrl, isHeic, getRenderableHeicUrl } from '../../lib/utils';
 
 /** `cutout`: the transparent PNG of the piece alone, when it is not the clean PNG itself (bgreplace + mask). */
 export type ThumbKind = 'photo' | 'png' | 'cutout' | 'mask' | 'svg' | 'axo';

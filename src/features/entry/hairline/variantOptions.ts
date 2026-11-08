@@ -97,7 +97,7 @@ export const SUB_SHAPES: Readonly<Record<string, TypeSubShapes>> = {
     'rock': ids('rock', 'form', 'Form', [opt('boulder', 'Boulder'), FORM_FREE], 'boulder'),
     'boulder': none('boulder'),
     'pebble-stone': none('pebble-stone'),
-    'fountain': ids('fountain', 'form', 'Form', [opt('boulder', 'Boulder'), opt('sphere', 'Sphere', ['ball']), opt('s-shaped', 'S-shaped', ['s shaped', 's'])], 'boulder'),
+    'fountain': ids('fountain', 'form', 'Form', [opt('boulder', 'Boulder'), opt('sphere', 'Sphere', ['ball']), opt('yinyang-rect', 'Yin-Yang Rectangular', ['ying gang', 'yin yang', 'yinyang', 's-shaped', 's shaped', 's', 'rectangular'])], 'boulder'),
     'fountain-set': none('fountain-set'),
     // One hairline for every sculpture (owner decision, 11 Oct 2026): flame, venus and cactus are not sub-shapes.
     'sculpture': none('sculpture'),
@@ -114,7 +114,7 @@ export const SUB_SHAPES: Readonly<Record<string, TypeSubShapes>> = {
     'table': ids('table', 'form', 'Form', [opt('diamond', 'Diamond'), FORM_ROUND, FORM_FREE, FORM_RECT], 'diamond'),
     'coffee-table': none('coffee-table'),
     'table-set': none('table-set'),
-    'couch': ids('couch', 'form', 'Form', [opt('v-shaped', 'V-shaped', ['v shaped', 'v'])], 'v-shaped'),
+    'couch': ids('couch', 'form', 'Form', [opt('angled', 'Angled Monolithic', ['v-shaped', 'v shaped', 'v', 'angled', 'armchair'])], 'angled'),
     'chair': none('chair'),
     'bar': ids('bar', 'form', 'Form', [opt('l-shaped', 'L-shaped', ['l shaped', 'l'])], 'l-shaped'),
     'chess-set': none('chess-set'),

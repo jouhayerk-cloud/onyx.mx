@@ -61,6 +61,10 @@ export function describeAxoIcon(item: any, colorOverride?: string): AxoIconReque
         item?.shortDescription,
         item?.short_description,
         item?.description,
+        item?.detailedDescription,
+        item?.detailed_description,
+        item?.generatedDescription,
+        item?.generated_description,
         item?.title,
         item?.name,
         item?.material,
@@ -70,6 +74,10 @@ export function describeAxoIcon(item: any, colorOverride?: string): AxoIconReque
         item?.color_en,
         item?.color_es,
         item?.finish,
+        item?.bookBarcode,
+        item?.book_barcode,
+        item?.itemId,
+        item?.item_id,
     ].filter(Boolean).join(' ');
     const color = colorOverride || resolveItemColor(item || {});
 

@@ -615,7 +615,7 @@ function EditStagedItemModal({
                                     <input
                                         ref={fileInputRef}
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/*,.heic,.heif,.HEIC,.HEIF"
                                         onChange={handlePhotoChange}
                                         className="hidden"
                                     />
@@ -1647,7 +1647,7 @@ export function AddShow({ onSaved, onCancel }: AddShowProps) {
                                     <input
                                         ref={singlePhotoInputRef}
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/*,.heic,.heif,.HEIC,.HEIF"
                                         onChange={handleSinglePhotoSelect}
                                         className="hidden"
                                     />
@@ -1844,7 +1844,7 @@ export function AddShow({ onSaved, onCancel }: AddShowProps) {
                                 ref={photoInputRef}
                                 type="file"
                                 multiple
-                                accept="image/*"
+                                accept="image/*,.heic,.heif,.HEIC,.HEIF"
                                 onChange={handlePhotosDrop}
                                 className="hidden"
                             />

@@ -205,7 +205,7 @@ export const CANONICAL_TYPES: readonly CanonicalType[] = [
         family: 'furniture',
         shopifyProductType: 'NONE: needs owner decision',
         shopifyCategory: 'Furniture > Chairs',
-        hairlineFigure: 'UNKNOWN',
+        hairlineFigure: 'chair',
     },
     {
         id: 'couch',
@@ -214,7 +214,7 @@ export const CANONICAL_TYPES: readonly CanonicalType[] = [
         family: 'furniture',
         shopifyProductType: 'NONE: needs owner decision',
         shopifyCategory: 'Furniture > Sofas',
-        hairlineFigure: 'UNKNOWN',
+        hairlineFigure: 'couch',
     },
     {
         id: 'bar',
@@ -223,7 +223,7 @@ export const CANONICAL_TYPES: readonly CanonicalType[] = [
         family: 'furniture',
         shopifyProductType: 'Home Decor > Tables',
         shopifyCategory: 'Furniture > Bars & Bar Carts',
-        hairlineFigure: 'table',
+        hairlineFigure: 'bar',
     },
     {
         // Rock is kept as its own canonical Type (owner direction: the owner has not decided yet between fountain and boulder).
@@ -405,6 +405,7 @@ export const CANONICAL_FORMS = [
     'diamond',
     'sphere',
     'l-shaped',
+    'yin-yang-rectangular',
     's-shaped',
 ] as const;
 
@@ -805,9 +806,14 @@ const FORM_ALIASES: Readonly<Record<string, CanonicalForm>> = {
     'l shaped': 'l-shaped',
     'l shape': 'l-shaped',
     'forma l': 'l-shaped',
-    's shape': 's-shaped',
-    's shaped': 's-shaped',
-    'forma s': 's-shaped',
+    'yin yang': 'yin-yang-rectangular',
+    'ying gang': 'yin-yang-rectangular',
+    'yin yang rectangular': 'yin-yang-rectangular',
+    'ying gang rectangular': 'yin-yang-rectangular',
+    'yinyang': 'yin-yang-rectangular',
+    's shape': 'yin-yang-rectangular',
+    's shaped': 'yin-yang-rectangular',
+    'forma s': 'yin-yang-rectangular',
 };
 
 /**

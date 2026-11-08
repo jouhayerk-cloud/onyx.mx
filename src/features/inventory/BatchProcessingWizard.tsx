@@ -1501,7 +1501,7 @@ function CatalogHub({ items, onClose }: { items: readonly any[]; onClose: () => 
                     </Dialog>
                 )}
 
-                <input ref={uploadRef} type="file" accept="image/png,image/jpeg" hidden onChange={onUploadPicked} />
+                <input ref={uploadRef} type="file" accept="image/*,.heic,.heif,.HEIC,.HEIF" hidden onChange={onUploadPicked} />
             </div>
 
             {/* Outside .ui-root on purpose: the crop tool is a legacy component
