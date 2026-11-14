@@ -3603,6 +3603,21 @@ function drawStoneBand(doc: any, norm: any, itemDataObj: any, x: number, y: numb
 }
 
 /**
+ * Label content area that prints whole on A4 AND on US Letter (drivers in Mexico default to
+ * Letter, which drops the bottom 17.6 mm of an A4 page): the 210 x 279.4 mm both share, with a
+ * 9 mm margin so a centred print (8.8 mm clipped each end) and printer edge limits are safe too.
+ */
+export function sharedPrintArea(PW: number, PH: number): { x0: number; y0: number; w: number; h: number } {
+    const M = 9;
+    const [short, long] = [210, 279.4];
+    const w = Math.min(PW, PW < PH ? short : long);
+    const h = Math.min(PH, PW < PH ? long : short);
+    return { x0: M, y0: M, w: w - 2 * M, h: h - 2 * M };
+}
+// self-check: portrait A4 content ends 9 mm above Letter's bottom edge (279.4).
+console.assert(sharedPrintArea(210, 297).y0 + sharedPrintArea(210, 297).h === 270.4 && sharedPrintArea(297, 210).w === 261.4, 'sharedPrintArea');
+
+/**
  * Ribbon Labels (owner's mockup, 2026-11-03): label strips edge to edge inside a 6 mm printable safe area, 7 per
  * portrait A4 page, dotted cut guides around and between them.
  *   left   the cutout PNG(s) on a light grey panel
@@ -3618,9 +3633,8 @@ async function drawRibbonPage(
     const S1 = 1.5, S2 = 3.0;
     const TITLE_PT = 12, DETAIL_PT = 9.5, MICRO_PT = 6.5;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
-    // Printable safe area: 6 mm inside every page edge (most printers cannot print to the edge).
-    const SAFE = 6;
-    const X0 = SAFE, Y0 = SAFE, W = PW - 2 * SAFE, H = PH - 2 * SAFE;
+    // Printable safe area shared by A4 and Letter (see sharedPrintArea).
+    const { x0: X0, y0: Y0, w: W, h: H } = sharedPrintArea(PW, PH);
     const rowH = H / perPage;
     const PAD = 2.5;
     // Upright logos, turned once per page.
@@ -3648,7 +3662,8 @@ async function drawRibbonPage(
             const canvas = document.createElement('canvas');
             JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 40, lineColor: '#141414' });
             const v = await rotateCcw(canvas);
-            if (v) doc.addImage(v.dataUrl, 'PNG', barX, top, barThick, rowH);
+            // Inset half of BAR_PAD at each end so stacked rows' barcodes keep a 1 mm gap and scan apart.
+            if (v) doc.addImage(v.dataUrl, 'PNG', barX, top + BAR_PAD / 2, barThick, rowH - BAR_PAD);
         } catch (e) {}
 
         // Vertical colour band beside the barcode, the row's full height.
@@ -3779,8 +3794,7 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
     const S1 = 1.5, S2 = 3.0;
     const TITLE_PT = 12, DETAIL_PT = 9.5, TAG_PT = 14;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
-    const SAFE = 6;
-    const X0 = SAFE, Y0 = SAFE, W = PW - 2 * SAFE, H = PH - 2 * SAFE;
+    const { x0: X0, y0: Y0, w: W, h: H } = sharedPrintArea(PW, PH);
     const rowH = H / perPage;
     const PAD = 2.5;
     const codeW = 70;
@@ -3880,10 +3894,12 @@ async function drawCatalogCompactGridPage(
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
 
     const COLS = layout.cols, ROWS = layout.rows;
-    const gridX0 = 2 * S2; // 6.0 mm outer horizontal margin
-    const gridY0 = 2 * S2; // 6.0 mm outer vertical margin
-    const cellW = (PW - 2 * gridX0) / COLS; // 95.0 mm
-    const cellH = (PH - 2 * gridY0) / ROWS; // 99.0 mm (equal panel heights)
+    // Content area that prints whole on A4 and Letter (see sharedPrintArea).
+    const area = sharedPrintArea(PW, PH);
+    const gridX0 = area.x0;
+    const gridY0 = area.y0;
+    const cellW = area.w / COLS;
+    const cellH = area.h / ROWS; // equal panel heights
     const PAD = S2; // 3.0 mm inner padding
     const innerW = cellW - 2 * PAD; // 89.0 mm
     const pageItems = items.slice(startIndex, startIndex + COLS * ROWS);
