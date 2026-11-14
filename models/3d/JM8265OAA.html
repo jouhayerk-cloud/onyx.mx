@@ -97,7 +97,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const ITEM = {"id": "6c057a11-fac5-42c1-9acb-ee5459764166", "barcode": "JM8265OAA", "item_id": "JM-005", "workbook": "v826", "title": "Elegant Pearlescent Cream Veining Grey Banded Onyx Canoe Tray Vessel", "short_description": "Canoe", "shape": "Medium", "material": "Onyx", "color": "Cream, White, Gray", "archetype": "canoe", "width_cm": 90.0, "height_cm": 11.0, "length_cm": 23.0, "weight_kg": null, "vein_colors": ["#b5b2af", "#a29d92", "#b0a994", "#c5c4bf", "#8b8881", "#69665e", "#44433e"], "cutout_url": "https://lh3.googleusercontent.com/d/1W4yQmQI-fe9vR3Ak3fCr4vtuMWrtCcnK", "plan_cutout_url": "https://lh3.googleusercontent.com/d/1W4yQmQI-fe9vR3Ak3fCr4vtuMWrtCcnK", "profile_cutout_url": "", "vein_svg_url": "https://lh3.googleusercontent.com/d/1jBSA7ucNefR3m13fLFYAdciEu0uONXJZ", "plan_vein_svg_url": "https://lh3.googleusercontent.com/d/1jBSA7ucNefR3m13fLFYAdciEu0uONXJZ", "angle_views": null, "mask_attractions": {"archetype_task": "canoe", "bbox_uv": [0.0031, 0.0144, 0.9953, 0.9511], "subpath_count": 1, "vessel_contours": {"plan_points": [[0.088, 0.5], [0.248, 0.4693], [0.3217, 0.4448], [0.3201, 0.4601], [0.3146, 0.4785], [0.3082, 0.4847], [0.4287, 0.3558], [0.4525, 0.3129], [0.4834, 0.2086], [0.496, 0.0798], [0.4952, 0.0245], [0.4889, -0.0767], [0.4881, -0.1104], [0.4358, -0.2853], [0.3138, -0.4294], [0.3177, -0.4387], [0.3043, -0.4479], [0.2987, -0.4571], [0.2892, -0.4509], [0.2781, -0.4601], [0.2488, -0.4571], [0.2433, -0.4724], [0.1704, -0.4693], [0.1727, -0.454], [0.1632, -0.4479], [0.1704, -0.4325], [0.1347, -0.4632], [0.1347, -0.4816], [0.1181, -0.4816], [0.1125, -0.4908], [0.0816, -0.4877], [0.0959, -0.4755], [0.0737, -0.4663], [0.0452, -0.4816], [0.0341, -0.4939], [0.0357, -0.4816], [-0.0127, -0.4632], [-0.0468, -0.4387], [-0.0483, -0.4325], [-0.0539, -0.4141], [-0.0586, -0.4356], [-0.1101, -0.4663], [-0.1165, -0.4663], [-0.1331, -0.4693], [-0.1212, -0.4509], [-0.187, -0.408], [-0.1815, -0.4387], [-0.1854, -0.4202], [-0.2029, -0.3988], [-0.2163, -0.4356], [-0.2171, -0.4141], [-0.2211, -0.3926], [-0.2536, -0.411], [-0.3019, -0.4049], [-0.313, -0.4141], [-0.313, -0.4356], [-0.3542, -0.4325], [-0.4691, -0.2301], [-0.4976, -0.092], [-0.4802, 0.1687], [-0.4382, 0.2853], [-0.4326, 0.2853], [-0.4437, 0.2239], [-0.454, 0.181], [-0.4588, 0.1503], [-0.4699, 0.0951], [-0.4762, 0.0798], [-0.4723, 0.0491], [-0.4746, 0.0184], [-0.4778, 0.0184], [-0.4842, -0.0552], [-0.4794, -0.1074], [-0.4699, -0.1718], [-0.4635, -0.2086], [-0.4548, -0.2393], [-0.4723, -0.0828], [-0.4635, 0.1012], [-0.4493, 0.138], [-0.4501, 0.1595], [-0.4382, 0.2117], [-0.4184, 0.3344], [-0.3106, 0.4172], [-0.2441, 0.4018], [-0.2718, 0.4356], [-0.2892, 0.411], [-0.2948, 0.4264], [-0.3035, 0.4202], [-0.1997, 0.4663], [-0.2132, 0.4325], [-0.2242, 0.4049], [-0.1735, 0.4448], [-0.1815, 0.4601], [-0.1894, 0.4509], [-0.1902, 0.4387], [-0.1846, 0.4724], [-0.1704, 0.4755]], "plan_bbox_uv": [0.0031, 0.0144, 0.9953, 0.9511], "rim_contour_xz": [[-0.496, -0.0068], [-0.4982, -0.0397], [-0.5, -0.0732], [-0.4992, -0.107], [-0.494, -0.1404], [-0.4872, -0.1738], [-0.4802, -0.2077], [-0.4708, -0.2412], [-0.4558, -0.2725], [-0.4388, -0.3029], [-0.4216, -0.3335], [-0.4041, -0.3647], [-0.3861, -0.3967], [-0.3647, -0.4267], [-0.329, -0.4397], [-0.2781, -0.4271], [-0.2339, -0.4159], [-0.2039, -0.4244], [-0.1796, -0.4447], [-0.1515, -0.4576], [-0.1237, -0.473], [-0.0904, -0.4657], [-0.0578, -0.4503], [-0.0296, -0.4636], [0.0, -0.4827], [0.0315, -0.4916], [0.0635, -0.4938], [0.0972, -0.5], [0.1287, -0.4917], [0.1578, -0.4761], [0.1949, -0.4818], [0.2334, -0.4846], [0.2682, -0.4759], [0.301, -0.4616], [0.3259, -0.4355], [0.3479, -0.4073], [0.3703, -0.3806], [0.3924, -0.3542], [0.4145, -0.3279], [0.4344, -0.2999], [0.4482, -0.2681], [0.4584, -0.235], [0.468, -0.2025], [0.4775, -0.1704], [0.4862, -0.1383], [0.492, -0.1056], [0.4944, -0.0725], [0.4963, -0.0396], [0.4982, -0.0068], [0.4997, 0.0263], [0.5, 0.0597], [0.4985, 0.0934], [0.4956, 0.1273], [0.4922, 0.162], [0.4877, 0.1972], [0.4799, 0.2322], [0.47, 0.2672], [0.4583, 0.3024], [0.4423, 0.3359], [0.4214, 0.3664], [0.3972, 0.3943], [0.372, 0.4215], [0.3465, 0.4491], [0.3146, 0.4686], [0.2727, 0.4702], [0.2348, 0.474], [0.2002, 0.4813], [0.1663, 0.4879], [0.133, 0.4943], [0.0997, 0.4993], [0.0661, 0.5], [0.0328, 0.4975], [0.0, 0.4944], [-0.0323, 0.4913], [-0.0645, 0.4882], [-0.0968, 0.4851], [-0.1296, 0.482], [-0.1616, 0.4742], [-0.1918, 0.4609], [-0.2249, 0.4539], [-0.2574, 0.4435], [-0.2884, 0.4292], [-0.3186, 0.4126], [-0.3468, 0.3926], [-0.3743, 0.3713], [-0.4009, 0.3483], [-0.4209, 0.3194], [-0.4338, 0.286], [-0.4497, 0.2555], [-0.4636, 0.2241], [-0.4747, 0.1918], [-0.4834, 0.1589], [-0.4873, 0.1251], [-0.4895, 0.0916], [-0.4917, 0.0586], [-0.4938, 0.0259]], "rim_radii": [0.9667, 0.973, 0.9829, 0.9921, 0.9968, 1.0028, 1.0131, 1.0231, 1.0259, 1.0286, 1.0358, 1.0476, 1.0643, 1.0781, 1.0533, 0.9756, 0.9118, 0.8986, 0.9148, 0.9188, 0.9315, 0.9031, 0.8633, 0.8835, 0.9184, 0.9377, 0.948, 0.9705, 0.969, 0.9565, 0.9923, 1.0282, 1.0453, 1.0557, 1.043, 1.0281, 1.0203, 1.017, 1.018, 1.0182, 1.0085, 0.996, 0.9872, 0.9827, 0.9809, 0.9775, 0.9718, 0.9692, 0.9709, 0.9759, 0.9827, 0.9904, 0.9998, 1.013, 1.0286, 1.0427, 1.0575, 1.0741, 1.0863, 1.0922, 1.0945, 1.0993, 1.1089, 1.1034, 1.0628, 1.0345, 1.0195, 1.008, 1.0011, 0.9958, 0.9864, 0.9752, 0.9671, 0.9632, 0.9634, 0.9678, 0.9764, 0.9803, 0.9769, 0.9913, 1.0033, 1.0118, 1.0201, 1.0251, 1.0317, 1.0393, 1.0339, 1.0169, 1.0122, 1.0075, 1.0015, 0.9949, 0.9833, 0.9727, 0.9665, 0.9645], "plan_half_widths": [0.5706, 0.6688, 0.6688, 0.865, 0.8712, 0.8712, 0.8712, 0.8712, 0.9326, 0.951, 0.951, 0.951, 0.951, 0.9386, 0.9326, 0.9264, 0.9878, 1.0, 1.0, 1.0, 1.0, 0.9816, 0.9632, 0.9448, 0.9694, 0.9694, 0.9694, 0.9694, 0.957, 0.7116, 0.7116, 0.7116, 0.6258]}}, "outline_svg_url": "https://drive.google.com/uc?export=view&id=1CHMv6PuUGLi22anxIgppIqiQOc9exI7Y", "pixel_map_hex": "#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#B8B8BD,#F3F3F7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#E2E4F5,#C3C3CF,#CFCFCF,#FFFFFF,#FFFFFF,#C9C9C2,#CCCCC7,#C8CBCF,#C2C5C9,#A8A8A8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D3D3D3,#EAEAE3,#E8E8EF,#E2DFE6,#DED9DE,#E1DEE1,#DCDCDC,#E5E3E8,#D2D2DA,#C6C4C9,#C0BBB2,#E3DCC2,#E8E1D5,#CFCDC4,#C7C4C4,#EFF1EF,#E7E7E7,#E6E6E6,#E8E6E3,#E8E8E8,#EFF1EC,#E0E3E0,#F3F3F3,#EEEBEB,#DFDFDA,#D7D3C9,#D5CEC2,#BEB9A6,#D2CDBA,#D9D4C6,#EFEDDA,#FFFFF0,#FFFFF6,#FFFFFA,#FFFFFF,#FFFFEF,#C0BBAD,#CCC7B9,#B1AC9E,#C9C4BF,#DEDEDB,#FFFEFE,#EDEDEF,#E9E9EE,#D9DEE9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F5F3FF,#F1EEFC,#C2BDB4,#BFB5B1,#D6D1BC,#F4EDDC,#F4EDD8,#DFDBC5,#C4BFAC,#C0B9A6,#D5CEBB,#CAC1B0,#DAD6C3,#EFE8DA,#FFFFF7,#FFFFE5,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF3,#EFE8E1,#C4C1B8,#A6A49A,#C7C2B9,#FFFDEA,#FFFFF2,#FFFFFC,#FFFFFC,#FFFFED,#FFFFF0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF4,#FFFFED,#FFFFF5,#FDFAEF,#B9B7AD,#FFFFFF,#FFFFF8,#FFFFFB,#DBD9E5,#C4C4C9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#DFDAE6,#AAA8AC,#B7ADA6,#CAC0B5,#FFFDF1,#FFFFFF,#FFFFFD,#FFFAF8,#FFFFFD,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF3,#F2E4CF,#FEF2DF,#FBEFE4,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFD,#FFFFEE,#FFFFDE,#FFFFE1,#FFECCB,#FFF6D0,#FFFFE3,#FFFFE6,#FFFFF1,#FFFFF1,#FFFFFF,#FFFFFB,#FFFFF2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFCF9,#FFFFFF,#F8F4EF,#FFFFFF,#FFFCFF,#FFFFFF,#FFFFFF,#FFFFFF,#C4BDC9,#E3DEED,#C5C1BC,#B8B1A3,#D4CDC1,#FFFFF7,#FFFFFF,#FFFFFF,#FFFFFE,#F6EFEA,#EDE9EB,#EEECF6,#FAF5FF,#FFFFFF,#FFFFFF,#FDFBFF,#FCF9FF,#FFFCFF,#FFF3F1,#FBEADA,#F8E7CB,#F5E4C5,#EFDCC0,#FFF6DE,#FFFFF1,#FFF9EB,#FFFEEB,#B2A294,#F0E5DB,#DFD1C8,#F1E0D7,#FAECE0,#FBF0E1,#F9E6D6,#E1C5B4,#FFF2CA,#FFFED1,#FFFFDC,#FFFFDA,#FFFFDA,#FFFFDA,#FFFFD8,#FFFECF,#FFFCD4,#FFF4CE,#F7E6C8,#F8E5D2,#F1E8D9,#F3E7E2,#FFFAF8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFE,#FFFEFE,#F4EDF6,#FFFFFF,#FFFFFF,#F9F4FF,#D9CFCD,#C5BEB3,#CEC7B9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFEF9,#F8ECE2,#F7E9DD,#BBA395,#B09692,#968171,#9D887A,#EFE3DA,#D4C4BA,#D7C5BE,#FFF7F9,#FFFFF0,#F9E9CC,#FFF9CE,#FFF9CC,#FFF3C8,#FFFBD1,#FFFFE8,#FFFFD9,#FFF0C8,#FFF5CF,#FFFBD5,#FFF1CC,#FFF4CC,#FFF9CE,#FFF5C8,#FFECC1,#FFF3C1,#FFFFCC,#FFFFD2,#FFFFDB,#FFFFDD,#FFFFE6,#FFFFEC,#FFFFEB,#FFFFE3,#FFFFDF,#FFF8C6,#FFF2C5,#FFF2C7,#E2D4B5,#F7EED9,#FFEED9,#FFFFF1,#DDCFC1,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFD,#FFFFFB,#FFFFFF,#FAFAFF,#E3E3F1,#E1DCE4,#CAC3B9,#B0A99B,#E0D7CD,#FDF8F4,#FEFAF3,#FFFFFF,#F9EEDB,#D8C5B0,#F2E6D6,#F6EDDC,#F3EADC,#FFFFFF,#FFFFFE,#F0E4CD,#F4E3CE,#FFFFFF,#FFFFFD,#FFFFEF,#FFFFFF,#FFFFF1,#FFFFDD,#FFFFD8,#FFFECD,#FFFAC6,#FFF3BF,#FFFACF,#FFFED2,#FFF5C9,#FFF1C2,#FFF7C1,#FFF9C1,#FFEEB2,#FFEAB6,#FFEDB9,#FFFFC1,#FFFFC5,#FFFFC8,#FFFFD5,#FFFFDE,#FFFFEE,#FFFFF1,#FFFFEA,#FFFFD8,#FFF3C9,#FFF4C9,#FDEEC6,#EDE1BE,#E3D8B9,#FBEDD0,#FFF7DD,#FFEED4,#FFFFEC,#FFFFFF,#FFFFFF,#FFFFF5,#E3DCC2,#FFFFFA,#C9C7C2,#F9F7FF,#CBC7C2,#CFC8BC,#A09E92,#D9D0C0,#EFE5D5,#FCF5E9,#FFFAF0,#F1E0C4,#F1D5BD,#FFFFF6,#FFFFFB,#FFF1D9,#FFF7D9,#FFF3D9,#FFFADE,#F7EDD3,#F2E8CE,#F5E9D4,#FFFFE7,#FFF6D5,#FFFFDB,#FFF3C4,#FCEAB6,#FFF2BE,#FFEFBD,#FFEFBD,#FFF8CB,#FFFFD2,#FFFBCE,#FFF1C2,#FFF0BC,#FFF1BA,#FFF0B8,#FCEAB6,#FBE8B4,#FFF4B7,#FFFDC2,#FFFFD0,#FFFFD9,#FFFFE6,#FFFFF6,#FFFFFD,#FFFFFE,#FFFFE9,#FEF4D6,#F8EFD0,#FCF8D9,#F3EECD,#EDE1C0,#FFF9DF,#FFFFE9,#FFFFEB,#FEEDD1,#FFF5EE,#FFFFFB,#FFFFFD,#FFFFFB,#FFFFFA,#F2EDF0,#FCF9FF,#D5CDC6,#CEC7BB,#A19A8B,#F2E6D8,#ECDAC4,#F4E4CC,#F4E9D8,#FCE9D2,#E3D5BB,#E0D5C2,#FEEEE2,#FFFFF9,#FAECD5,#F5E5CF,#FFFFF1,#FFF5D4,#E3D9BA,#EBDDC5,#F2E6C0,#FFFBD3,#FFFCD1,#FFF4C3,#FEF0BC,#FFF0BE,#FFF5C3,#FFF3C6,#FFF5C6,#FFF8CB,#FFF5C8,#FFEEBF,#FDEFBB,#FEF0BC,#FFF5BD,#FFF2BB,#FFF4C0,#FFFCCA,#FFFFD8,#FFFFE2,#FFFFF1,#FFFFFC,#FFFFFF,#FFFFFF,#FFFFFC,#FFFFF4,#FFFFEA,#FFFBDF,#FFFBDF,#FFFBDC,#FFFCDF,#FFFFFA,#FFFFFF,#FFFAE0,#FAE7CD,#FFFFFB,#FFFFFF,#FFFFFF,#FBF9F0,#FFFCF7,#BCB4B0,#F4EFFD,#D2CDCD,#D1CABE,#B7B0A6,#EDE5DA,#F5EEE2,#EADEC7,#E5D9C4,#F2E2D8,#F8E7E3,#D0BDA8,#E1D1B9,#FCF0D6,#FBF2DA,#FFFFFF,#FFFFE3,#FFF4D5,#FBEFD3,#FFF8DE,#FFFADE,#FFFFF4,#FFFFE2,#FFF3C8,#FFEFC3,#FFEEC4,#FFF4CA,#FFFCCF,#FFFDD0,#FFF4C7,#FEF0C3,#FFEEC4,#FFF2C1,#FCEEBA,#FFF7C3,#FFF9C5,#FFFDCE,#FFFFDC,#FFFFE9,#FFFFED,#FFFFFB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFE,#FFFFEF,#FEFEE8,#FEFAE2,#FFFADD,#FFFCDE,#FFFFE6,#FFFFE7,#FFFFE9,#FDEFD7,#FAEAD2,#FFFFFD,#FFFFFF,#FFFFFC,#FFFFFF,#FFFCFC,#FFFFFF,#FFFFFF,#B9B9C3,#DCD4D0,#C4C1B6,#C8C3B8,#F6EFE3,#F8F1E6,#F3EBE0,#F7EDE6,#F1EFEF,#E1DADC,#BDAEAE,#E1C7B1,#EDDFCE,#FFFDEB,#ECE0BF,#E7DEC1,#E6DDC0,#F2E8CC,#F1E5BF,#F8ECC6,#FDEEC4,#F9E8BE,#F9E8BE,#F5E9BC,#FCF0C3,#FFF5C8,#FFFDD0,#FCF3C6,#FBEFC2,#FBEFC2,#FCEEBE,#FEF3C3,#FFF9C9,#FFF9CC,#FFFFD3,#FFFFE3,#FFFFE1,#FFFFE0,#FFFFED,#FFFFF6,#FFFFE9,#FFFFF0,#FFFFF1,#FEFFED,#FCFCE7,#F9F7DA,#FDF9DC,#FFFFE6,#FFFFFE,#FFFFF5,#FCF3D9,#F6EDD5,#FFFCEA,#FFFFFB,#FFFBF7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#9F9FAB,#D6D6EC,#DFDCD8,#BFBDB1,#D8D3C7,#EAE3D7,#F5EEE2,#F4EDE1,#F7F2E4,#F0E9DF,#DEDAD3,#FFF9F6,#FCE9DA,#F5E9D4,#E3D7C6,#E8DDCE,#E2D8CA,#E7DDCD,#E0D7C9,#DED7BF,#D4CBB1,#E0D4B3,#EADEC9,#EEE4D4,#F1EDD3,#F8F1D5,#ECE4C1,#F4EDC7,#EFEABF,#EAE5BB,#EEE9BC,#F4E8BB,#FAF1C4,#FFF6CA,#FFFFD6,#FFFFE1,#FFFFDA,#FFFFD8,#FFFFDE,#FEFEDD,#FFFFE3,#F5F7D9,#F9F9DF,#F8F5DB,#FAF8DE,#F4EFD3,#F6F1D5,#FFFFFD,#FFFBE1,#FFFDE7,#FCF5E2,#FDEEDB,#FFFFF2,#FFFFFF,#FFFFFF,#FFFFFE,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#CAC6D1,#C1C1C3,#D9D6D2,#D6D3C7,#D5D0C7,#DBD4C8,#F4EDE1,#F6EFE3,#F7F0E4,#F8F0E0,#FFFCE7,#FFFFED,#FFFFFF,#FFFFFD,#F4EFE8,#FFFFFF,#F5F0E9,#E0DBD2,#E5E3D7,#FFFEF7,#F6F6EF,#F9F6F2,#FFFFFF,#FFFFFF,#F0F0E2,#D1CCBE,#BFBAAA,#BEBCA9,#D1D1B9,#E8E3CB,#E6DFC5,#EBE4C3,#F3EFC6,#F6F4C7,#FEFACD,#FCF5CD,#F4F1CB,#F3EECD,#F6F3D4,#F6F3D4,#ECEACB,#E8E3CB,#FDF8E1,#FFFFF0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF6E6,#F8EEE7,#FFFFF2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FEFBFF,#F4F2FF,#DBDDD6,#D7D9D5,#DFDADD,#E9E7E7,#ECE5E0,#EFF1E8,#E9E7E2,#EAEAE7,#DEDEDB,#ECECE7,#EEEEEE,#F1F3F1,#E6E8DF,#ECE9E5,#F2F2E7,#F6F6EF,#FAFAFA,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFD,#FFFFFF,#FFFFFF,#FFFFFF,#FDFDF6,#FDFDF4,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D9D9D4,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#C4C4CB,#EAEAED,#E3E3F3,#B9C3D3,#CFD4E7,#A2A4B0,#B8B6BA,#B9B7B9,#A09EA5,#A5A3AA,#A3A5B1,#D3D5DC,#EEEBEE,#E1DFD8,#E6E6E4,#EBEEE9,#E7E9E2,#D9D9D4,#C3C1BC,#E1DCCE,#DAD5C9,#CDC9B6,#E7E2C8,#E6E3C9,#F6F3E5,#FFFFF3,#FAFCEE,#FBFFF4,#FFFFFF,#FFFFF3,#BAB197,#E2E0C8,#CAC6A9,#BCB596,#C4BD9E,#CBC4A1,#C1BC9D,#C5BEA4,#CEC7B0,#CDC9B3,#C4BBA8,#C0BCA9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#AFAF98,#A8A395,#A79E90,#A2997F,#A49580,#A69F83,#9D9387,#A39C89,#A19A8E,#B2A99B,#B6AA95,#FFFFFF,#90907B,#908C7E,#9D9D8F,#A69887,#A89F85,#9D957E,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF", "hex_dimensions": "60x60", "generated_at": "2026-11-08T22:45:51Z"};
+const ITEM = {"id": "6c057a11-fac5-42c1-9acb-ee5459764166", "barcode": "JM8265OAA", "item_id": "JM-005", "workbook": "v826", "title": "Elegant Pearlescent Cream Veining Grey Banded Onyx Canoe Tray Vessel", "short_description": "Canoe", "shape": "Medium", "material": "Onyx", "color": "Cream, White, Gray", "archetype": "canoe", "width_cm": 90.0, "height_cm": 11.0, "length_cm": 23.0, "weight_kg": null, "vein_colors": ["#b5b2af", "#a29d92", "#b0a994", "#c5c4bf", "#8b8881", "#69665e", "#44433e"], "cutout_url": "https://lh3.googleusercontent.com/d/1W4yQmQI-fe9vR3Ak3fCr4vtuMWrtCcnK", "plan_cutout_url": "https://lh3.googleusercontent.com/d/1W4yQmQI-fe9vR3Ak3fCr4vtuMWrtCcnK", "profile_cutout_url": "", "vein_svg_url": "https://lh3.googleusercontent.com/d/1jBSA7ucNefR3m13fLFYAdciEu0uONXJZ", "plan_vein_svg_url": "https://lh3.googleusercontent.com/d/1jBSA7ucNefR3m13fLFYAdciEu0uONXJZ", "angle_views": null, "mask_attractions": {"archetype_task": "canoe", "bbox_uv": [0.0031, 0.0144, 0.9953, 0.9511], "subpath_count": 1, "vessel_contours": {"plan_points": [[0.088, 0.5], [0.248, 0.4693], [0.3217, 0.4448], [0.3201, 0.4601], [0.3146, 0.4785], [0.3082, 0.4847], [0.4287, 0.3558], [0.4525, 0.3129], [0.4834, 0.2086], [0.496, 0.0798], [0.4952, 0.0245], [0.4889, -0.0767], [0.4881, -0.1104], [0.4358, -0.2853], [0.3138, -0.4294], [0.3177, -0.4387], [0.3043, -0.4479], [0.2987, -0.4571], [0.2892, -0.4509], [0.2781, -0.4601], [0.2488, -0.4571], [0.2433, -0.4724], [0.1704, -0.4693], [0.1727, -0.454], [0.1632, -0.4479], [0.1704, -0.4325], [0.1347, -0.4632], [0.1347, -0.4816], [0.1181, -0.4816], [0.1125, -0.4908], [0.0816, -0.4877], [0.0959, -0.4755], [0.0737, -0.4663], [0.0452, -0.4816], [0.0341, -0.4939], [0.0357, -0.4816], [-0.0127, -0.4632], [-0.0468, -0.4387], [-0.0483, -0.4325], [-0.0539, -0.4141], [-0.0586, -0.4356], [-0.1101, -0.4663], [-0.1165, -0.4663], [-0.1331, -0.4693], [-0.1212, -0.4509], [-0.187, -0.408], [-0.1815, -0.4387], [-0.1854, -0.4202], [-0.2029, -0.3988], [-0.2163, -0.4356], [-0.2171, -0.4141], [-0.2211, -0.3926], [-0.2536, -0.411], [-0.3019, -0.4049], [-0.313, -0.4141], [-0.313, -0.4356], [-0.3542, -0.4325], [-0.4691, -0.2301], [-0.4976, -0.092], [-0.4802, 0.1687], [-0.4382, 0.2853], [-0.4326, 0.2853], [-0.4437, 0.2239], [-0.454, 0.181], [-0.4588, 0.1503], [-0.4699, 0.0951], [-0.4762, 0.0798], [-0.4723, 0.0491], [-0.4746, 0.0184], [-0.4778, 0.0184], [-0.4842, -0.0552], [-0.4794, -0.1074], [-0.4699, -0.1718], [-0.4635, -0.2086], [-0.4548, -0.2393], [-0.4723, -0.0828], [-0.4635, 0.1012], [-0.4493, 0.138], [-0.4501, 0.1595], [-0.4382, 0.2117], [-0.4184, 0.3344], [-0.3106, 0.4172], [-0.2441, 0.4018], [-0.2718, 0.4356], [-0.2892, 0.411], [-0.2948, 0.4264], [-0.3035, 0.4202], [-0.1997, 0.4663], [-0.2132, 0.4325], [-0.2242, 0.4049], [-0.1735, 0.4448], [-0.1815, 0.4601], [-0.1894, 0.4509], [-0.1902, 0.4387], [-0.1846, 0.4724], [-0.1704, 0.4755]], "plan_bbox_uv": [0.0031, 0.0144, 0.9953, 0.9511], "rim_contour_xz": [[-0.496, -0.0068], [-0.4982, -0.0397], [-0.5, -0.0732], [-0.4992, -0.107], [-0.494, -0.1404], [-0.4872, -0.1738], [-0.4802, -0.2077], [-0.4708, -0.2412], [-0.4558, -0.2725], [-0.4388, -0.3029], [-0.4216, -0.3335], [-0.4041, -0.3647], [-0.3861, -0.3967], [-0.3647, -0.4267], [-0.329, -0.4397], [-0.2781, -0.4271], [-0.2339, -0.4159], [-0.2039, -0.4244], [-0.1796, -0.4447], [-0.1515, -0.4576], [-0.1237, -0.473], [-0.0904, -0.4657], [-0.0578, -0.4503], [-0.0296, -0.4636], [0.0, -0.4827], [0.0315, -0.4916], [0.0635, -0.4938], [0.0972, -0.5], [0.1287, -0.4917], [0.1578, -0.4761], [0.1949, -0.4818], [0.2334, -0.4846], [0.2682, -0.4759], [0.301, -0.4616], [0.3259, -0.4355], [0.3479, -0.4073], [0.3703, -0.3806], [0.3924, -0.3542], [0.4145, -0.3279], [0.4344, -0.2999], [0.4482, -0.2681], [0.4584, -0.235], [0.468, -0.2025], [0.4775, -0.1704], [0.4862, -0.1383], [0.492, -0.1056], [0.4944, -0.0725], [0.4963, -0.0396], [0.4982, -0.0068], [0.4997, 0.0263], [0.5, 0.0597], [0.4985, 0.0934], [0.4956, 0.1273], [0.4922, 0.162], [0.4877, 0.1972], [0.4799, 0.2322], [0.47, 0.2672], [0.4583, 0.3024], [0.4423, 0.3359], [0.4214, 0.3664], [0.3972, 0.3943], [0.372, 0.4215], [0.3465, 0.4491], [0.3146, 0.4686], [0.2727, 0.4702], [0.2348, 0.474], [0.2002, 0.4813], [0.1663, 0.4879], [0.133, 0.4943], [0.0997, 0.4993], [0.0661, 0.5], [0.0328, 0.4975], [0.0, 0.4944], [-0.0323, 0.4913], [-0.0645, 0.4882], [-0.0968, 0.4851], [-0.1296, 0.482], [-0.1616, 0.4742], [-0.1918, 0.4609], [-0.2249, 0.4539], [-0.2574, 0.4435], [-0.2884, 0.4292], [-0.3186, 0.4126], [-0.3468, 0.3926], [-0.3743, 0.3713], [-0.4009, 0.3483], [-0.4209, 0.3194], [-0.4338, 0.286], [-0.4497, 0.2555], [-0.4636, 0.2241], [-0.4747, 0.1918], [-0.4834, 0.1589], [-0.4873, 0.1251], [-0.4895, 0.0916], [-0.4917, 0.0586], [-0.4938, 0.0259]], "rim_radii": [0.9667, 0.973, 0.9829, 0.9921, 0.9968, 1.0028, 1.0131, 1.0231, 1.0259, 1.0286, 1.0358, 1.0476, 1.0643, 1.0781, 1.0533, 0.9756, 0.9118, 0.8986, 0.9148, 0.9188, 0.9315, 0.9031, 0.8633, 0.8835, 0.9184, 0.9377, 0.948, 0.9705, 0.969, 0.9565, 0.9923, 1.0282, 1.0453, 1.0557, 1.043, 1.0281, 1.0203, 1.017, 1.018, 1.0182, 1.0085, 0.996, 0.9872, 0.9827, 0.9809, 0.9775, 0.9718, 0.9692, 0.9709, 0.9759, 0.9827, 0.9904, 0.9998, 1.013, 1.0286, 1.0427, 1.0575, 1.0741, 1.0863, 1.0922, 1.0945, 1.0993, 1.1089, 1.1034, 1.0628, 1.0345, 1.0195, 1.008, 1.0011, 0.9958, 0.9864, 0.9752, 0.9671, 0.9632, 0.9634, 0.9678, 0.9764, 0.9803, 0.9769, 0.9913, 1.0033, 1.0118, 1.0201, 1.0251, 1.0317, 1.0393, 1.0339, 1.0169, 1.0122, 1.0075, 1.0015, 0.9949, 0.9833, 0.9727, 0.9665, 0.9645], "plan_half_widths": [0.5706, 0.6688, 0.6688, 0.865, 0.8712, 0.8712, 0.8712, 0.8712, 0.9326, 0.951, 0.951, 0.951, 0.951, 0.9386, 0.9326, 0.9264, 0.9878, 1.0, 1.0, 1.0, 1.0, 0.9816, 0.9632, 0.9448, 0.9694, 0.9694, 0.9694, 0.9694, 0.957, 0.7116, 0.7116, 0.7116, 0.6258]}}, "outline_svg_url": "https://drive.google.com/uc?export=view&id=1CHMv6PuUGLi22anxIgppIqiQOc9exI7Y", "pixel_map_hex": "#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#B8B8BD,#F3F3F7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#E2E4F5,#C3C3CF,#CFCFCF,#FFFFFF,#FFFFFF,#C9C9C2,#CCCCC7,#C8CBCF,#C2C5C9,#A8A8A8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D3D3D3,#EAEAE3,#E8E8EF,#E2DFE6,#DED9DE,#E1DEE1,#DCDCDC,#E5E3E8,#D2D2DA,#C6C4C9,#C0BBB2,#E3DCC2,#E8E1D5,#CFCDC4,#C7C4C4,#EFF1EF,#E7E7E7,#E6E6E6,#E8E6E3,#E8E8E8,#EFF1EC,#E0E3E0,#F3F3F3,#EEEBEB,#DFDFDA,#D7D3C9,#D5CEC2,#BEB9A6,#D2CDBA,#D9D4C6,#EFEDDA,#FFFFF0,#FFFFF6,#FFFFFA,#FFFFFF,#FFFFEF,#C0BBAD,#CCC7B9,#B1AC9E,#C9C4BF,#DEDEDB,#FFFEFE,#EDEDEF,#E9E9EE,#D9DEE9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#F5F3FF,#F1EEFC,#C2BDB4,#BFB5B1,#D6D1BC,#F4EDDC,#F4EDD8,#DFDBC5,#C4BFAC,#C0B9A6,#D5CEBB,#CAC1B0,#DAD6C3,#EFE8DA,#FFFFF7,#FFFFE5,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF3,#EFE8E1,#C4C1B8,#A6A49A,#C7C2B9,#FFFDEA,#FFFFF2,#FFFFFC,#FFFFFC,#FFFFED,#FFFFF0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF4,#FFFFED,#FFFFF5,#FDFAEF,#B9B7AD,#FFFFFF,#FFFFF8,#FFFFFB,#DBD9E5,#C4C4C9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#DFDAE6,#AAA8AC,#B7ADA6,#CAC0B5,#FFFDF1,#FFFFFF,#FFFFFD,#FFFAF8,#FFFFFD,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFF3,#F2E4CF,#FEF2DF,#FBEFE4,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFD,#FFFFEE,#FFFFDE,#FFFFE1,#FFECCB,#FFF6D0,#FFFFE3,#FFFFE6,#FFFFF1,#FFFFF1,#FFFFFF,#FFFFFB,#FFFFF2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFCF9,#FFFFFF,#F8F4EF,#FFFFFF,#FFFCFF,#FFFFFF,#FFFFFF,#FFFFFF,#C4BDC9,#E3DEED,#C5C1BC,#B8B1A3,#D4CDC1,#FFFFF7,#FFFFFF,#FFFFFF,#FFFFFE,#F6EFEA,#EDE9EB,#EEECF6,#FAF5FF,#FFFFFF,#FFFFFF,#FDFBFF,#FCF9FF,#FFFCFF,#FFF3F1,#FBEADA,#F8E7CB,#F5E4C5,#EFDCC0,#FFF6DE,#FFFFF1,#FFF9EB,#FFFEEB,#B2A294,#F0E5DB,#DFD1C8,#F1E0D7,#FAECE0,#FBF0E1,#F9E6D6,#E1C5B4,#FFF2CA,#FFFED1,#FFFFDC,#FFFFDA,#FFFFDA,#FFFFDA,#FFFFD8,#FFFECF,#FFFCD4,#FFF4CE,#F7E6C8,#F8E5D2,#F1E8D9,#F3E7E2,#FFFAF8,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFE,#FFFEFE,#F4EDF6,#FFFFFF,#FFFFFF,#F9F4FF,#D9CFCD,#C5BEB3,#CEC7B9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFEF9,#F8ECE2,#F7E9DD,#BBA395,#B09692,#968171,#9D887A,#EFE3DA,#D4C4BA,#D7C5BE,#FFF7F9,#FFFFF0,#F9E9CC,#FFF9CE,#FFF9CC,#FFF3C8,#FFFBD1,#FFFFE8,#FFFFD9,#FFF0C8,#FFF5CF,#FFFBD5,#FFF1CC,#FFF4CC,#FFF9CE,#FFF5C8,#FFECC1,#FFF3C1,#FFFFCC,#FFFFD2,#FFFFDB,#FFFFDD,#FFFFE6,#FFFFEC,#FFFFEB,#FFFFE3,#FFFFDF,#FFF8C6,#FFF2C5,#FFF2C7,#E2D4B5,#F7EED9,#FFEED9,#FFFFF1,#DDCFC1,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFD,#FFFFFB,#FFFFFF,#FAFAFF,#E3E3F1,#E1DCE4,#CAC3B9,#B0A99B,#E0D7CD,#FDF8F4,#FEFAF3,#FFFFFF,#F9EEDB,#D8C5B0,#F2E6D6,#F6EDDC,#F3EADC,#FFFFFF,#FFFFFE,#F0E4CD,#F4E3CE,#FFFFFF,#FFFFFD,#FFFFEF,#FFFFFF,#FFFFF1,#FFFFDD,#FFFFD8,#FFFECD,#FFFAC6,#FFF3BF,#FFFACF,#FFFED2,#FFF5C9,#FFF1C2,#FFF7C1,#FFF9C1,#FFEEB2,#FFEAB6,#FFEDB9,#FFFFC1,#FFFFC5,#FFFFC8,#FFFFD5,#FFFFDE,#FFFFEE,#FFFFF1,#FFFFEA,#FFFFD8,#FFF3C9,#FFF4C9,#FDEEC6,#EDE1BE,#E3D8B9,#FBEDD0,#FFF7DD,#FFEED4,#FFFFEC,#FFFFFF,#FFFFFF,#FFFFF5,#E3DCC2,#FFFFFA,#C9C7C2,#F9F7FF,#CBC7C2,#CFC8BC,#A09E92,#D9D0C0,#EFE5D5,#FCF5E9,#FFFAF0,#F1E0C4,#F1D5BD,#FFFFF6,#FFFFFB,#FFF1D9,#FFF7D9,#FFF3D9,#FFFADE,#F7EDD3,#F2E8CE,#F5E9D4,#FFFFE7,#FFF6D5,#FFFFDB,#FFF3C4,#FCEAB6,#FFF2BE,#FFEFBD,#FFEFBD,#FFF8CB,#FFFFD2,#FFFBCE,#FFF1C2,#FFF0BC,#FFF1BA,#FFF0B8,#FCEAB6,#FBE8B4,#FFF4B7,#FFFDC2,#FFFFD0,#FFFFD9,#FFFFE6,#FFFFF6,#FFFFFD,#FFFFFE,#FFFFE9,#FEF4D6,#F8EFD0,#FCF8D9,#F3EECD,#EDE1C0,#FFF9DF,#FFFFE9,#FFFFEB,#FEEDD1,#FFF5EE,#FFFFFB,#FFFFFD,#FFFFFB,#FFFFFA,#F2EDF0,#FCF9FF,#D5CDC6,#CEC7BB,#A19A8B,#F2E6D8,#ECDAC4,#F4E4CC,#F4E9D8,#FCE9D2,#E3D5BB,#E0D5C2,#FEEEE2,#FFFFF9,#FAECD5,#F5E5CF,#FFFFF1,#FFF5D4,#E3D9BA,#EBDDC5,#F2E6C0,#FFFBD3,#FFFCD1,#FFF4C3,#FEF0BC,#FFF0BE,#FFF5C3,#FFF3C6,#FFF5C6,#FFF8CB,#FFF5C8,#FFEEBF,#FDEFBB,#FEF0BC,#FFF5BD,#FFF2BB,#FFF4C0,#FFFCCA,#FFFFD8,#FFFFE2,#FFFFF1,#FFFFFC,#FFFFFF,#FFFFFF,#FFFFFC,#FFFFF4,#FFFFEA,#FFFBDF,#FFFBDF,#FFFBDC,#FFFCDF,#FFFFFA,#FFFFFF,#FFFAE0,#FAE7CD,#FFFFFB,#FFFFFF,#FFFFFF,#FBF9F0,#FFFCF7,#BCB4B0,#F4EFFD,#D2CDCD,#D1CABE,#B7B0A6,#EDE5DA,#F5EEE2,#EADEC7,#E5D9C4,#F2E2D8,#F8E7E3,#D0BDA8,#E1D1B9,#FCF0D6,#FBF2DA,#FFFFFF,#FFFFE3,#FFF4D5,#FBEFD3,#FFF8DE,#FFFADE,#FFFFF4,#FFFFE2,#FFF3C8,#FFEFC3,#FFEEC4,#FFF4CA,#FFFCCF,#FFFDD0,#FFF4C7,#FEF0C3,#FFEEC4,#FFF2C1,#FCEEBA,#FFF7C3,#FFF9C5,#FFFDCE,#FFFFDC,#FFFFE9,#FFFFED,#FFFFFB,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFE,#FFFFEF,#FEFEE8,#FEFAE2,#FFFADD,#FFFCDE,#FFFFE6,#FFFFE7,#FFFFE9,#FDEFD7,#FAEAD2,#FFFFFD,#FFFFFF,#FFFFFC,#FFFFFF,#FFFCFC,#FFFFFF,#FFFFFF,#B9B9C3,#DCD4D0,#C4C1B6,#C8C3B8,#F6EFE3,#F8F1E6,#F3EBE0,#F7EDE6,#F1EFEF,#E1DADC,#BDAEAE,#E1C7B1,#EDDFCE,#FFFDEB,#ECE0BF,#E7DEC1,#E6DDC0,#F2E8CC,#F1E5BF,#F8ECC6,#FDEEC4,#F9E8BE,#F9E8BE,#F5E9BC,#FCF0C3,#FFF5C8,#FFFDD0,#FCF3C6,#FBEFC2,#FBEFC2,#FCEEBE,#FEF3C3,#FFF9C9,#FFF9CC,#FFFFD3,#FFFFE3,#FFFFE1,#FFFFE0,#FFFFED,#FFFFF6,#FFFFE9,#FFFFF0,#FFFFF1,#FEFFED,#FCFCE7,#F9F7DA,#FDF9DC,#FFFFE6,#FFFFFE,#FFFFF5,#FCF3D9,#F6EDD5,#FFFCEA,#FFFFFB,#FFFBF7,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#9F9FAB,#D6D6EC,#DFDCD8,#BFBDB1,#D8D3C7,#EAE3D7,#F5EEE2,#F4EDE1,#F7F2E4,#F0E9DF,#DEDAD3,#FFF9F6,#FCE9DA,#F5E9D4,#E3D7C6,#E8DDCE,#E2D8CA,#E7DDCD,#E0D7C9,#DED7BF,#D4CBB1,#E0D4B3,#EADEC9,#EEE4D4,#F1EDD3,#F8F1D5,#ECE4C1,#F4EDC7,#EFEABF,#EAE5BB,#EEE9BC,#F4E8BB,#FAF1C4,#FFF6CA,#FFFFD6,#FFFFE1,#FFFFDA,#FFFFD8,#FFFFDE,#FEFEDD,#FFFFE3,#F5F7D9,#F9F9DF,#F8F5DB,#FAF8DE,#F4EFD3,#F6F1D5,#FFFFFD,#FFFBE1,#FFFDE7,#FCF5E2,#FDEEDB,#FFFFF2,#FFFFFF,#FFFFFF,#FFFFFE,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#CAC6D1,#C1C1C3,#D9D6D2,#D6D3C7,#D5D0C7,#DBD4C8,#F4EDE1,#F6EFE3,#F7F0E4,#F8F0E0,#FFFCE7,#FFFFED,#FFFFFF,#FFFFFD,#F4EFE8,#FFFFFF,#F5F0E9,#E0DBD2,#E5E3D7,#FFFEF7,#F6F6EF,#F9F6F2,#FFFFFF,#FFFFFF,#F0F0E2,#D1CCBE,#BFBAAA,#BEBCA9,#D1D1B9,#E8E3CB,#E6DFC5,#EBE4C3,#F3EFC6,#F6F4C7,#FEFACD,#FCF5CD,#F4F1CB,#F3EECD,#F6F3D4,#F6F3D4,#ECEACB,#E8E3CB,#FDF8E1,#FFFFF0,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFF6E6,#F8EEE7,#FFFFF2,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FEFBFF,#F4F2FF,#DBDDD6,#D7D9D5,#DFDADD,#E9E7E7,#ECE5E0,#EFF1E8,#E9E7E2,#EAEAE7,#DEDEDB,#ECECE7,#EEEEEE,#F1F3F1,#E6E8DF,#ECE9E5,#F2F2E7,#F6F6EF,#FAFAFA,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFD,#FFFFFF,#FFFFFF,#FFFFFF,#FDFDF6,#FDFDF4,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#D9D9D4,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#C4C4CB,#EAEAED,#E3E3F3,#B9C3D3,#CFD4E7,#A2A4B0,#B8B6BA,#B9B7B9,#A09EA5,#A5A3AA,#A3A5B1,#D3D5DC,#EEEBEE,#E1DFD8,#E6E6E4,#EBEEE9,#E7E9E2,#D9D9D4,#C3C1BC,#E1DCCE,#DAD5C9,#CDC9B6,#E7E2C8,#E6E3C9,#F6F3E5,#FFFFF3,#FAFCEE,#FBFFF4,#FFFFFF,#FFFFF3,#BAB197,#E2E0C8,#CAC6A9,#BCB596,#C4BD9E,#CBC4A1,#C1BC9D,#C5BEA4,#CEC7B0,#CDC9B3,#C4BBA8,#C0BCA9,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#AFAF98,#A8A395,#A79E90,#A2997F,#A49580,#A69F83,#9D9387,#A39C89,#A19A8E,#B2A99B,#B6AA95,#FFFFFF,#90907B,#908C7E,#9D9D8F,#A69887,#A89F85,#9D957E,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF", "hex_dimensions": "60x60", "generated_at": "2026-11-09T00:24:43Z"};
 window.ONYX_ITEM_3D = ITEM;
 const MASK_ATTR = ITEM.mask_attractions || {};
 
@@ -300,10 +300,11 @@ function applyCornerLampUVs(geom, cornerSpec) {
     const tz = (z - bb.min.z) / spanZ; // 0 at -hd, 1 at +hd (corner)
 
     let u = uCorner;
-    const v = vMinGL + ty * (vMaxGL - vMinGL);
+    let v = vMinGL + ty * (vMaxGL - vMinGL);
 
     if (Math.abs(ny) > 0.75) {
       u = uMin + tx * (uMax - uMin);
+      v = vMinGL + (0.2 + 0.6 * tz) * (vMaxGL - vMinGL);
     } else if (Math.abs(nz) >= Math.abs(nx)) {
       if (nz >= 0) {
         // Left-Front face (+Z): x goes from -hw (tx=0 -> uMin) to +hw corner (tx=1 -> uCorner)
@@ -395,11 +396,11 @@ const stoneMat = new THREE.MeshPhysicalMaterial({
   side: THREE.FrontSide,
 });
 
-const baseW = Math.max(8, Number(ITEM.width_cm) || 40);
-const rawH = Math.max(8, Number(ITEM.height_cm) || 40);
+const baseW = Math.max(1, Number(ITEM.width_cm) || 40);
+const rawH = Math.max(1, Number(ITEM.height_cm) || 40);
 const rawW = (ITEM.archetype === 'wall_panel_pair' && baseW < rawH * 0.68) ? Math.round(baseW * 2.04) : baseW;
-const rawL = (ITEM.archetype === 'wall_panel_pair' || ITEM.archetype === 'wall_panel') ? Math.min(8, Math.max(4, Number(ITEM.length_cm) || 8)) : Math.max(6, Number(ITEM.length_cm) || 25);
-const maxDim = Math.max(rawW, rawH, rawL);
+const rawL = Math.max(1, Number(ITEM.length_cm) || ((ITEM.archetype === 'wall_panel_pair' || ITEM.archetype === 'wall_panel' || ITEM.archetype === 'mirror') ? 10 : 25));
+const maxDim = Math.max(rawW, rawH, rawL, 1);
 const scale = 2.1 / maxDim;
 const W = rawW * scale;
 const H = rawH * scale;
@@ -651,8 +652,8 @@ if (arch === 'bowl') {
   internalLight.position.set(0, H * 0.48, 0);
 
 } else if (arch === 'mirror') {
-  // Task A: SVG-cut Mirror using exact outer stone contour + inner hand-carved mirror opening
-  const depth = Math.max(0.09, Math.min(L, 0.22));
+  // Task A: SVG-cut Mirror using outer geometric shape + inner hand-carved mirror opening at exact W x H x L cm dimensions
+  const depth = L;
   const mc = MASK_ATTR.mirror_contours || null;
   const frameSh = new THREE.Shape();
   const glassSh = new THREE.Shape();
@@ -674,8 +675,8 @@ if (arch === 'bowl') {
     holePts.forEach((pt, idx) => {
       const hx = pt[0] * W;
       const hy = pt[1] * H;
-      const gx = hx * 1.02;
-      const gy = hy * 1.02;
+      const gx = hx * 1.03;
+      const gy = hy * 1.03;
       if (idx === 0) { hole.moveTo(hx, hy); glassSh.moveTo(gx, gy); }
       else { hole.lineTo(hx, hy); glassSh.lineTo(gx, gy); }
     });
@@ -700,14 +701,18 @@ if (arch === 'bowl') {
     }
   }
 
-  const frameGeo = new THREE.ExtrudeGeometry(frameSh, { depth, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.015, bevelSegments: 4 });
+  const bv = Math.min(0.012, depth * 0.08);
+  const frameGeo = new THREE.ExtrudeGeometry(frameSh, { depth, bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 4 });
+  frameGeo.translate(0, 0, -depth * 0.5);
   applyBoxUVsInSubregion(frameGeo, [0, 0, 1, 1]);
-  addShadowMesh(frameGeo, stoneMat, 0, rh + 0.1, -depth * 0.5);
+  addShadowMesh(frameGeo, stoneMat, 0, rh + 0.08, 0);
 
   const mirrorMat = new THREE.MeshPhysicalMaterial({ color: 0xdbeafe, metalness: 0.98, roughness: 0.02, clearcoat: 1.0, reflectivity: 1.0 });
-  const glassGeo = new THREE.ExtrudeGeometry(glassSh, { depth: 0.018, bevelEnabled: false });
-  addShadowMesh(glassGeo, mirrorMat, 0, rh + 0.1, -depth * 0.15);
-  internalLight.position.set(0, rh + 0.1, -depth * 1.4);
+  const glassDepth = Math.max(0.012, depth * 0.22);
+  const glassGeo = new THREE.ExtrudeGeometry(glassSh, { depth: glassDepth, bevelEnabled: false });
+  glassGeo.translate(0, 0, -glassDepth * 0.5);
+  addShadowMesh(glassGeo, mirrorMat, 0, rh + 0.08, -depth * 0.12);
+  internalLight.position.set(0, rh + 0.08, -depth * 1.4);
 
 } else if (arch === 'yin_yang_fountain') {
   const plinthH = H * 0.16;
@@ -718,7 +723,7 @@ if (arch === 'bowl') {
   const gap = W * 0.025;
   const halfW = (W - gap) * 0.5;
   const rHole = Math.min(W, bodyH) * 0.19;
-  const slabDepth = Math.max(0.14, L * 0.65);
+  const slabDepth = L;
 
   const leftSh = new THREE.Shape();
   leftSh.moveTo(-halfW, -bodyH * 0.5);
@@ -746,8 +751,8 @@ if (arch === 'bowl') {
 } else if (arch === 'wall_panel_pair') {
   // Task D: Wall Panel Pair — single photo contains both panels side-by-side!
   // Extract left & right contours and map Left Panel UVs to left_bbox_uv and Right Panel UVs to right_bbox_uv.
-  const thick = Math.max(0.06, Math.min(L, 0.14));
-  const panelW = W * 0.47;
+  const thick = L;
+  const panelW = W * 0.48;
   const gap = W * 0.04;
   const ppc = MASK_ATTR.panel_pair_contours || {};
   const leftBbox = [0.0, 0.0, 0.492, 1.0];
@@ -764,7 +769,8 @@ if (arch === 'bowl') {
         else sh.lineTo(px, py);
       });
       sh.closePath();
-      geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 3 });
+      const bv = Math.min(0.010, thick * 0.08);
+      geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 3 });
       geo.center();
     } else {
       geo = new THREE.BoxGeometry(panelW, H, thick, 4, 4, 2);
@@ -780,7 +786,7 @@ if (arch === 'bowl') {
   internalLight.position.set(0, H * 0.5 + 0.08, -thick * 2.2);
 
 } else if (arch === 'wall_panel') {
-  const thick = Math.max(0.07, Math.min(L, 0.16));
+  const thick = L;
   const wpc = MASK_ATTR.wall_panel_contours || {};
   const isFree = shapeLower.includes('free') || shapeLower.includes('organic');
   let geo;
@@ -791,7 +797,8 @@ if (arch === 'bowl') {
       else sh.lineTo(pt[0] * W, pt[1] * H);
     });
     sh.closePath();
-    geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.012, bevelSegments: 3 });
+    const bv = Math.min(0.010, thick * 0.08);
+    geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 3 });
     geo.center();
   } else {
     geo = new THREE.BoxGeometry(W, H, thick);
@@ -801,42 +808,39 @@ if (arch === 'bowl') {
   internalLight.position.set(0, H * 0.5 + 0.08, -thick * 2.2);
 
 } else if (arch === 'tower_lamp' || arch === 'floor_lamp') {
-  // Task E: Tower Lamp photos are taken at a side corner showing two adjacent faces meeting at the central vertical corner edge!
+  // Task E: Tower & Floor Lamps have solid closed tops like stone pedestals (no hollow opening at the top)
+  // and side-corner 2-face UV unwrapping across the front corner ridge (+hw, +hd) at exact W x H x L cm dimensions!
   const isCyl = shapeLower.includes('cylin') || shapeLower.includes('round') || shapeLower.includes('oval');
   const isSphere = shapeLower.includes('sphere') || shapeLower.includes('ball') || shapeLower.includes('globe');
   const isPyr = shapeLower.includes('pyram') || shapeLower.includes('trian');
   const cornerSpec = MASK_ATTR.tower_lamp_corner_uv || null;
 
-  const baseH = Math.min(0.12, H * 0.08);
+  const baseH = Math.min(0.08, H * 0.05);
   const baseMat = new THREE.MeshStandardMaterial({ color: 0x1e2028, roughness: 0.4, metalness: 0.6 });
-  addShadowMesh(new THREE.BoxGeometry(W * 0.92, baseH, L * 0.92), baseMat, 0, baseH * 0.5, 0);
+  addShadowMesh(new THREE.BoxGeometry(W * 1.02, baseH, L * 1.02), baseMat, 0, baseH * 0.5, 0);
 
   const bodyH = H - baseH;
   if (isSphere) {
     const r = Math.max(W, H, L) * 0.48;
     const g = new THREE.SphereGeometry(r, 64, 48);
-    applyBoxUVsInSubregion(g, MASK_ATTR.bbox_uv || [0, 0, 1, 1]);
+    applyBoxUVsInSubregion(g, [0, 0, 1, 1]);
     addShadowMesh(g, stoneMat, 0, baseH + r * 0.95, 0);
   } else if (isCyl) {
-    const r = Math.max(W, L) * 0.46;
-    const g = new THREE.CylinderGeometry(r * 0.88, r, bodyH, 64, 1, false);
+    const r = W * 0.5;
+    const g = new THREE.CylinderGeometry(r, r, bodyH, 72, 24, false);
+    applyBoxUVsInSubregion(g, [0, 0, 1, 1]);
     const cyl = addShadowMesh(g, stoneMat, 0, baseH + bodyH * 0.5, 0);
-    if (Math.abs(W - L) > 0.08) cyl.scale.set(1, 1, L / W);
+    if (Math.abs(W - L) > 0.04) cyl.scale.set(1, 1, L / Math.max(0.05, W));
   } else {
-    // Hollowed 4-sided stone column with side-corner UV unwrapping across the front corner ridge (+hw, +hd)
-    const colW = W * 0.88;
-    const colL = L * 0.88;
-    const wallT = Math.max(0.035, Math.min(colW, colL) * 0.12);
+    // Solid closed-top 4-sided stone pedestal column with side-corner UV unwrapping across the front corner ridge (+hw, +hd)
+    const colW = W;
+    const colL = L;
     const outerSh = new THREE.Shape();
     const hw = colW * 0.5, hd = colL * 0.5;
     outerSh.moveTo(-hw, -hd); outerSh.lineTo(hw, -hd); outerSh.lineTo(hw, hd); outerSh.lineTo(-hw, hd); outerSh.closePath();
 
-    const innerHole = new THREE.Path();
-    const ihw = Math.max(0.04, hw - wallT), ihd = Math.max(0.04, hd - wallT);
-    innerHole.moveTo(-ihw, -ihd); innerHole.lineTo(ihw, -ihd); innerHole.lineTo(ihw, ihd); innerHole.lineTo(-ihw, ihd); innerHole.closePath();
-    outerSh.holes.push(innerHole);
-
-    const colGeo = new THREE.ExtrudeGeometry(outerSh, { depth: bodyH, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2 });
+    const bv = Math.min(0.012, Math.min(colW, colL) * 0.03);
+    const colGeo = new THREE.ExtrudeGeometry(outerSh, { depth: bodyH, bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 2 });
     colGeo.rotateX(-Math.PI / 2);
     colGeo.center();
 
@@ -959,9 +963,18 @@ if (primaryVeinSvg) {
   vimg.crossOrigin = 'anonymous';
   vimg.onload = () => {
     const bctx = bumpCanvas.getContext('2d');
+    const vw = vimg.naturalWidth || vimg.width || 1024;
+    const vh = vimg.naturalHeight || vimg.height || 1024;
+    const bb = (MASK_ATTR && Array.isArray(MASK_ATTR.bbox_uv) && MASK_ATTR.bbox_uv.length === 4)
+      ? MASK_ATTR.bbox_uv
+      : [0, 0, 1, 1];
+    const vsx = bb[0] * vw;
+    const vsy = bb[1] * vh;
+    const vsw = Math.max(1, (bb[2] - bb[0]) * vw);
+    const vsh = Math.max(1, (bb[3] - bb[1]) * vh);
     bctx.save();
     bctx.globalAlpha = 0.9;
-    bctx.drawImage(vimg, 0, 0, bumpCanvas.width, bumpCanvas.height);
+    bctx.drawImage(vimg, vsx, vsy, vsw, vsh, 0, 0, bumpCanvas.width, bumpCanvas.height);
     bctx.restore();
     bumpTex.needsUpdate = true;
   };
