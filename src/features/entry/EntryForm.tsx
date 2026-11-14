@@ -18,7 +18,7 @@ import { cleanSuggestions, type SuggestField } from '../../lib/entrySuggestions'
 import { useTypeLibrary } from '../../lib/typeLibraryStore';
 import { DEFAULT_ENTRY_STATUS, ENTRY_BOOKS, ENTRY_STATUSES, normalizeWorkbook } from '../../lib/inventoryCreate';
 import { Field, Input, Key, Segmented, Select, VendorPicker, cx } from '../../components/ui';
-import { VENDOR_CODES, photoKey, type EntryPhoto, type EntryState } from './entryModel';
+import { VENDOR_CODES, movePhoto, photoKey, type EntryPhoto, type EntryState } from './entryModel';
 import { readPickedFiles } from './entryMedia';
 import { canonicalType } from '../../lib/canonicalType';
 import { isLampOrVesselFamily } from '../../lib/taxonomy/onyx826';
@@ -603,6 +603,9 @@ function PhotosField({ photos, onChange, note, disabled }: {
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [over, setOver] = useState(false);
+    // Tile being dragged (internal reorder) and the tile under it; null when no tile drag is live.
+    const dragFrom = useRef<number | null>(null);
+    const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
     // Media already hosted (a Drive link, another item's photo) is attached
     // by its URL, without downloading and uploading it again.
     const [urlOpen, setUrlOpen] = useState(false);
@@ -666,7 +669,26 @@ function PhotosField({ photos, onChange, note, disabled }: {
         <Field group label={tr('Photos')} aside={aside} hint={note}>
             <div className="entry-photos" ref={boxRef}>
                 {photos.map((p, i) => (
-                    <div key={p.key} data-photo={p.key} className={cx('entry-photo', i === 0 && 'entry-photo--hero')}>
+                    <div key={p.key} data-photo={p.key} title={disabled ? undefined : tr('Drag to reorder')}
+                        className={cx('entry-photo', i === 0 && 'entry-photo--hero', drag?.from === i && 'entry-photo--dragging', drag && drag.from !== i && drag.to === i && 'entry-photo--target')}
+                        draggable={!disabled}
+                        onDragStart={(e) => {
+                            dragFrom.current = i;
+                            setDrag({ from: i, to: i });
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('application/x-entry-photo', String(i));
+                        }}
+                        onDragOver={(e) => {
+                            if (dragFrom.current === null) return;
+                            e.preventDefault();
+                            if (drag && drag.to !== i) setDrag({ from: drag.from, to: i });
+                        }}
+                        onDrop={(e) => {
+                            if (dragFrom.current === null) return;
+                            e.preventDefault();
+                            onChange(movePhoto(photos, dragFrom.current, i));
+                        }}
+                        onDragEnd={() => { dragFrom.current = null; setDrag(null); }}>
                         <span className="ui-thumb ui-thumb--xl">
                             <img src={p.preview} alt={i === 0 ? tr('First photo') : trf('Photo {n}', { n: i + 1 })} loading="lazy" draggable={false} />
                             {(p.isVideo || !p.url) && (
@@ -688,9 +710,10 @@ function PhotosField({ photos, onChange, note, disabled }: {
                     className={cx('entry-drop', over && 'entry-drop--over')}
                     disabled={disabled}
                     onClick={() => inputRef.current?.click()}
-                    onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+                    onDragOver={(e) => { if (dragFrom.current !== null) return; e.preventDefault(); setOver(true); }}
                     onDragLeave={() => setOver(false)}
                     onDrop={(e) => {
+                        if (dragFrom.current !== null) return;
                         e.preventDefault();
                         setOver(false);
                         if (!disabled) void add(Array.from(e.dataTransfer.files || []));

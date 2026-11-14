@@ -211,6 +211,79 @@ export const sameEntry = (a: EntryState, b: EntryState): boolean =>
 export const mediaValues = (photos: readonly EntryPhoto[]): string[] =>
     photos.map(p => p.url).filter((u): u is string => !!u);
 
+/** Move the item at `from` to index `to`, shifting the rest (not a swap). */
+export function movePhoto<T>(list: readonly T[], from: number, to: number): T[] {
+    const next = list.slice();
+    if (from === to || from < 0 || to < 0 || from >= next.length || to >= next.length) return next;
+    next.splice(to, 0, ...next.splice(from, 1));
+    return next;
+}
+
+/**
+ * Reorder a comma list that is index-aligned with media_urls (generated_image_urls)
+ * to follow the new photo order. Entries of removed photos, or past the photo count,
+ * are kept at the end so nothing generated is lost.
+ * shortcut: alignment is by position only; a new photo inserted mid-list has no generated slot.
+ */
+export function reorderAligned(oldMedia: string | null | undefined, newMedia: readonly string[], aligned: string | null | undefined): string | null {
+    const split = (v: unknown) => String(v ?? '').split(/[,;]/).map(s => s.trim()).filter(Boolean);
+    const old = split(oldMedia);
+    const gen = split(aligned);
+    if (!gen.length) return aligned ?? null;
+    const used = new Set<number>();
+    const out: string[] = [];
+    for (const u of newMedia) {
+        const i = old.findIndex((o, j) => o === u && !used.has(j));
+        if (i < 0) continue;
+        used.add(i);
+        if (i < gen.length) out.push(gen[i]);
+    }
+    gen.forEach((g, i) => { if (!used.has(i)) out.push(g); });
+    return out.join(',');
+}
+// self-check: swapping photos swaps their generated images; extras stay at the end.
+console.assert(reorderAligned('a,b,c', ['c', 'a', 'b'], 'A,B,C,X') === 'C,A,B,X', 'reorderAligned');
+
+/**
+ * newIndex -> oldIndex when `newMedia` is a pure reorder of the stored media_urls
+ * (same URLs, same count, duplicates kept); null when a photo was added or removed.
+ */
+export function photoPermutation(oldMedia: string | null | undefined, newMedia: readonly string[]): number[] | null {
+    const old = String(oldMedia ?? '').split(/[,;]/).map(s => s.trim()).filter(Boolean);
+    if (old.length !== newMedia.length) return null;
+    const used = new Set<number>();
+    const perm: number[] = [];
+    for (const u of newMedia) {
+        const i = old.findIndex((o, j) => o === u && !used.has(j));
+        if (i < 0) return null;
+        used.add(i);
+        perm.push(i);
+    }
+    return perm;
+}
+
+/**
+ * Remap the position-keyed entries (`angle_N`, `_pixel_map_hex_N`) of an object so each
+ * follows its photo; every other key is kept as is. Also reaches `vein_svg_urls` / `vein_svg_meta`.
+ */
+export function remapIndexKeys<T extends Record<string, any>>(obj: T, perm: readonly number[]): T {
+    const re = /^(angle_|_pixel_map_hex_)(\d+)$/;
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(obj)) {
+        const m = re.exec(k);
+        if (!m || +m[2] >= perm.length) out[k] = (k === 'vein_svg_urls' || k === 'vein_svg_meta') && v && typeof v === 'object' ? remapIndexKeys(v, perm) : v;
+    }
+    perm.forEach((from, to) => {
+        for (const pre of ['angle_', '_pixel_map_hex_']) if (`${pre}${from}` in obj) out[`${pre}${to}`] = obj[`${pre}${from}`];
+    });
+    return out as T;
+}
+// self-check: a swap moves angle_/pixel-map entries with their photo; unindexed keys stay.
+{
+    const r = remapIndexKeys({ angle_0: 'a', angle_1: 'b', _pixel_map_hex: 'x', vein_svg_urls: { angle_1: 'v' } }, photoPermutation('p,q', ['q', 'p'])!);
+    console.assert(r.angle_0 === 'b' && r.angle_1 === 'a' && r._pixel_map_hex === 'x' && (r.vein_svg_urls as any).angle_0 === 'v', 'remapIndexKeys');
+}
+
 /** Did the photos change from what is stored (order included)? A pending file is a change. */
 export function photosChanged(initial: readonly EntryPhoto[], now: readonly EntryPhoto[]): boolean {
     if (now.some(p => !p.url)) return true;

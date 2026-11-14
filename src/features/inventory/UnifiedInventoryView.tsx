@@ -91,6 +91,7 @@ const IS_LOCAL_3D_VIEWER_ENABLED = Boolean(
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
 );
 import { canonicalColor } from '../../lib/inventoryTaxonomy';
+import { unitPhotoIndex } from '../../lib/unitPhoto';
 
 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -165,9 +166,8 @@ const StoneBand = ({ data, norm, dir }: { data: any; norm: any; dir: 'h' | 'v' |
     );
 };
 
-// The item's transparent cutout PNGs, by the catalog compact rule (pdfExport getItemCutoutPngs): one per unit when the
-// quantity and the photos allow it, else one; lamps take the lights-on photos (angle 1 and 3) before the lights-off ones.
-// shortcut: a copy of that rule, kept here so the list does not pull jsPDF in; move both to utils if a third caller appears.
+// The item's transparent cutout PNGs, by the label rule (unitPhotoIndex): one per unit when the
+// quantity and the photos allow it, else one; lamps take each unit's lights-on photo before its lights-off one.
 // Each cutout comes with its stored black-and-white matte when there is one (see DriveImage `matte`).
 const listCutoutUrls = (data: any, norm: any, photoCount: number): { url: string; matte?: string }[] => {
     let masks = data?.spatial_masks ?? data?.spatialMasks;
@@ -184,9 +184,10 @@ const listCutoutUrls = (data: any, norm: any, photoCount: number): { url: string
     const qty = parseInt(String(norm.quantity), 10) || 1;
     const max = qty > 1 && photoCount > 1 ? Math.min(qty, photoCount, 3) : 1;
     const kind = `${norm.shape || ''} ${norm.shortDescription || ''} ${norm.generatedType || ''}`.toLowerCase();
-    const picks = /lamp|lantern|pendant|sconce|light/.test(kind) && photoCount >= 2
-        ? [at(1) || at(0), at(3) || at(2)]
-        : [0, 1, 2, 3, 4, 5].map(at);
+    const isLamp = /lamp|lantern|pendant|sconce|light/.test(kind);
+    let picks = Array.from({ length: max }, (_, i) => at(unitPhotoIndex(i + 1, qty, photoCount, isLamp)));
+    // No cutout at the rule's angles: keep the old behaviour of the first angle that has one.
+    if (picks.every(x => !x)) picks = [[0, 1, 2, 3, 4, 5].map(at).find(Boolean)];
     const out: string[] = [];
     const seen = new Set<string>();
     for (const u of [...picks, norm.generatedPngUrl, data?.generated_png_url, data?.mask_url]) {

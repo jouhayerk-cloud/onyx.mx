@@ -249,6 +249,13 @@
     gap: 2px;
 }
 
+.entry .entry-photo[draggable="true"] { cursor: grab; }
+.entry .entry-photo--dragging { opacity: 0.45; }
+.entry .entry-photo--target .ui-thumb {
+    outline: 2px dashed var(--ui-accent);
+    outline-offset: 1px;
+}
+
 .entry .entry-photo--hero .ui-thumb {
     outline: 2px solid var(--ui-accent);
     outline-offset: 1px;

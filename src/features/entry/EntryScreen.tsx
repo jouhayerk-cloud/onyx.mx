@@ -44,7 +44,7 @@ import {
 import { Dialog, ItemTag, Key, cx } from '../../components/ui';
 import { LivePreviewCard } from '../../components/inventory/LivePreviewCard';
 import {
-    EMPTY_ENTRY, entryFromRow, hasTypedContent, isKnownVendor, mediaValues, photosChanged, photosFromRow,
+    EMPTY_ENTRY, entryFromRow, hasTypedContent, isKnownVendor, mediaValues, photoPermutation, photosChanged, photosFromRow, remapIndexKeys, reorderAligned,
     sameEntry, toInventoryForm, typedChanged, type EntryPhoto, type EntryState,
 } from './entryModel';
 import { uploadEntryPhotos } from './entryMedia';
@@ -586,7 +586,24 @@ function EntryEditor({ variant, mode, preset, onClose, onSaved, shortcuts = true
             let savedRow: InventoryRow | null = null;
             if (formChanged || changedMedia) {
                 setStage(tr('Saving…'));
-                const entryPatch = buildInventoryRow(toInventoryForm(form, changedMedia ? urls : undefined), { mode: 'edit', existing });
+                const entryPatch: Record<string, any> = buildInventoryRow(toInventoryForm(form, changedMedia ? urls : undefined), { mode: 'edit', existing });
+                // Generated images, masks and the processed map are keyed by photo position
+                // (generated_image_urls[i], angle_N, _pixel_map_hex_N). A pure reorder moves them
+                // with their photos; added/removed photos leave them alone.
+                const perm = changedMedia ? photoPermutation(existing.media_urls, urls) : null;
+                if (perm && existing.generated_image_urls) {
+                    entryPatch.generated_image_urls = reorderAligned(existing.media_urls, urls, existing.generated_image_urls);
+                }
+                if (perm) {
+                    for (const col of ['spatial_masks', 'processed_media_urls'] as const) {
+                        const raw = (existing as any)[col];
+                        let obj: unknown = raw;
+                        if (typeof raw === 'string') { try { obj = JSON.parse(raw); } catch { obj = null; } }
+                        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) continue;
+                        const next = remapIndexKeys(obj as Record<string, any>, perm);
+                        entryPatch[col] = typeof raw === 'string' ? JSON.stringify(next) : next;
+                    }
+                }
                 savedRow = await updateInventoryItem(String(existing.id), entryPatch);
                 // Written: a second Save (after a failed AI save below) does
                 // not resend the entry.

@@ -647,8 +647,9 @@ export function draw3DBoundingDimensionFrame(
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            const drawHaloText = (text: string, x: number, y: number) => {
+            const drawHaloText = (text: string, x: number, y: number, align: CanvasTextAlign = 'center') => {
                 ctx.save();
+                ctx.textAlign = align;
                 ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)';
                 ctx.lineWidth = 7 * pxScale;
                 ctx.lineJoin = 'round';
@@ -667,8 +668,6 @@ export function draw3DBoundingDimensionFrame(
             let wNx = -wDy / wLen;
             let wNy = wDx / wLen;
             if (wNy < 0) { wNx = -wNx; wNy = -wNy; }
-            drawHaloText(formatDim(rawW), wMidX + wNx * 26 * pxScale, wMidY + wNy * 26 * pxScale);
-
             // Depth label (b0 -> b3)
             const dMidX = (b0.x + b3.x) / 2;
             const dMidY = (b0.y + b3.y) / 2;
@@ -678,7 +677,18 @@ export function draw3DBoundingDimensionFrame(
             let dNx = dDy / dLen;
             let dNy = -dDx / dLen;
             if (dNy < 0) { dNx = -dNx; dNy = -dNy; }
-            drawHaloText(formatDim(rawD), dMidX + dNx * 26 * pxScale, dMidY + dNy * 26 * pxScale);
+
+            // Slender pieces have tiny base edges, so the width and depth labels can land on top of each other:
+            // when their anchors are closer than a label box, anchor each on the outer side of its own edge.
+            const wTxt = formatDim(rawW), dTxt = formatDim(rawD);
+            const wAx = wMidX + wNx * 26 * pxScale, wAy = wMidY + wNy * 26 * pxScale;
+            const dAx = dMidX + dNx * 26 * pxScale, dAy = dMidY + dNy * 26 * pxScale;
+            const labelW = Math.max(ctx.measureText(wTxt).width, ctx.measureText(dTxt).width);
+            const labelH = ctx.measureText('M').width * 1.6;
+            const labelsClash = Math.abs(wAx - dAx) < labelW && Math.abs(wAy - dAy) < labelH;
+            const wOutRight = wAx >= dAx;
+            drawHaloText(wTxt, wAx, wAy, labelsClash ? (wOutRight ? 'left' : 'right') : 'center');
+            drawHaloText(dTxt, dAx, dAy, labelsClash ? (wOutRight ? 'right' : 'left') : 'center');
 
             // Height label (b1 -> t1)
             const hMidX = (b1.x + t1.x) / 2;

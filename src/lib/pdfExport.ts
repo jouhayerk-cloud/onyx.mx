@@ -3,6 +3,7 @@ import { DEFAULT_EXCHANGE_RATE } from './consts';
 import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import { getVendorColor } from './excelStyles';
+import { unitPhotoIndex } from './unitPhoto';
 import JsBarcode from 'jsbarcode';
 import { generateAxonometricDataUrl, resolveItemColor, normalizeHexMapTexture, parseHexMapString, extractItemHexMapString } from './axonometric';
 import { itemBandShades } from './canonicalColors';
@@ -1549,7 +1550,19 @@ function resolveCleanProductType(norm: any, itemDataObj: any, shapeStr?: string)
  * - Multi-quantity items with multiple photos: shows multiple cutouts (up to quantity).
  * - Prefers cutout of element with lights ON.
  */
-export function getItemCutoutPngs(item: any): string[] {
+
+/** A per-unit label copy of a qty-N item (see expandUnits): label k of N. */
+type UnitItem = CatalogArtifact & { _unit?: number; _unitTotal?: number };
+const unitOf = (item: any): { k: number; n: number } | undefined => item?._unitTotal > 1 ? { k: item._unit, n: item._unitTotal } : undefined;
+/** Compact labels: a qty-N item becomes N copies tagged with their unit; qty 1 stays as is. Pages only: summaries keep the originals. */
+const expandUnits = (items: CatalogArtifact[]): CatalogArtifact[] => items.flatMap(it => {
+    const n = parseInt(String(normalizeInventoryData(it.data || it).quantity), 10) || 1;
+    return n > 1 ? Array.from({ length: n }, (_, i) => ({ ...it, _unit: i + 1, _unitTotal: n } as UnitItem)) : [it];
+});
+/** The cutouts one compact label draws: exactly one for a unit copy, else the item's own list (max 3). */
+const labelCutouts = (item: any): string[] => getItemCutoutPngs(item, unitOf(item)).slice(0, 3);
+
+export function getItemCutoutPngs(item: any, unit?: { k: number; n: number }): string[] {
     if (!item) return [];
     const it = item.data || item;
     const norm = normalizeInventoryData(it);
@@ -1610,6 +1623,15 @@ export function getItemCutoutPngs(item: any): string[] {
         resolvedCutouts.push(clean);
     };
 
+    if (unit) {
+        // One label of a qty-N item: this unit's own photo, cutout from spatial_masks, else the index-aligned generated PNG.
+        const i = unitPhotoIndex(unit.k, unit.n, totalPhotos, isLamp);
+        const gen = it.generated_image_urls ?? it.generatedImageUrls;
+        const g = (Array.isArray(gen) ? gen : String(gen ?? '').split(/[,;]/).map(s => s.trim()).filter(Boolean))[i];
+        addCutout(getAngleCutout(i) || (typeof g === 'string' && isPngCutoutUrl(g) ? g : null));
+        if (resolvedCutouts.length) return resolvedCutouts;
+    }
+
     if (isLamp && totalPhotos >= 2) {
         // Floor lamp / lamps rule: Photo 2 and 4 in gallery have lights ON!
         // (Photo 2 = angle_1 lights ON; Photo 4 = angle_3 lights ON)
@@ -1665,6 +1687,7 @@ export function getItemCutoutPngs(item: any): string[] {
     }
 
     // Guard: If only 1 distinct photo exists or maxCutouts === 1, strictly at most 1 cutout
+    if (unit) return [resolvedCutouts[unit.k - 1] ?? resolvedCutouts[0]].filter(Boolean);
     if (maxCutouts === 1 && resolvedCutouts.length > 1) {
         return [resolvedCutouts[0]];
     }
@@ -3518,8 +3541,8 @@ function drawCompactColorBubbles(
  * The compact title runs: qty + shape/type bold, colour/material regular; sizes start their own line,
  * cm bold, imperial regular. Shared by the compact list and the compact grid.
  */
-function compactTitleChunks(norm: any, itemDataObj: any): TitleChunk[] {
-    const qtyNum = String(parseInt(String(norm.quantity), 10) || 1); // compact shows the number; grid keeps the word
+function compactTitleChunks(norm: any, itemDataObj: any, unit?: { k: number; n: number }): TitleChunk[] {
+    const qtyNum = unit ? `${unit.k} of ${unit.n}` : String(parseInt(String(norm.quantity), 10) || 1); // compact shows the number; grid keeps the word
     const rawShape = (norm.shape || (itemDataObj ? itemDataObj.Shape : '') || '').trim();
     const cleanType = resolveCleanProductType(norm, itemDataObj, rawShape);
     let shape = rawShape;
@@ -3683,7 +3706,7 @@ async function drawRibbonPage(
         doc.rect(X0, top, photoW, rowH, 'F');
         const boxW = photoW - 2 * PAD, boxH = rowH - 2 * PAD;
         const cutouts: { dataUrl: string; w: number; h: number }[] = [];
-        for (const u of getItemCutoutPngs(item).slice(0, 3)) {
+        for (const u of labelCutouts(item)) {
             try {
                 const c = await loadImgData(u, 600, true);
                 if (c && c.dataUrl && c.w && c.h) cutouts.push({ dataUrl: c.dataUrl, w: c.w, h: c.h });
@@ -3705,7 +3728,7 @@ async function drawRibbonPage(
         drawStoneBand(doc, norm, itemDataObj, X0 + photoW, top, divX - X0 - photoW, S2, 'horizontal');
         const capH = TITLE_PT * PT * CAP, descH = TITLE_PT * PT * DESC;
         const lineH = capH + descH + S1;
-        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), textW, TITLE_PT).slice(0, 3);
+        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj, unitOf(item)), textW, TITLE_PT).slice(0, 3);
         const firstBaseline = top + S2 + S2 + capH;
         drawMeasuredTitle(doc, titleLines, textX, firstBaseline, lineH, TITLE_PT);
         const colors = getItemExtractedColors(norm, itemDataObj);
@@ -3737,7 +3760,7 @@ async function prepareControlRow(item: CatalogArtifact): Promise<ControlRowImage
     const itemDataObj = item.data || item;
     const norm = normalizeInventoryData(itemDataObj);
     const [cutouts, axo] = await Promise.all([
-        Promise.all(getItemCutoutPngs(item).slice(0, 3).map(u => loadImgData(u, 600, true).catch(() => null))),
+        Promise.all(labelCutouts(item).map(u => loadImgData(u, 600, true).catch(() => null))),
         getAdvancedAxoDataUrl(norm, itemDataObj).catch(() => null),
     ]);
     const imgs: ControlRowImages = [];
@@ -3822,7 +3845,7 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
         drawStoneBand(doc, norm, itemDataObj, X0 + panelW, top, divX - X0 - panelW, S2, 'horizontal');
         const capH = TITLE_PT * PT * CAP, descH = TITLE_PT * PT * DESC;
         const lineH = capH + descH + S1;
-        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), textW, TITLE_PT).slice(0, 3);
+        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj, unitOf(item)), textW, TITLE_PT).slice(0, 3);
         const firstBaseline = top + S2 + S2 + capH;
         drawMeasuredTitle(doc, titleLines, textX, firstBaseline, lineH, TITLE_PT);
         const colors = getItemExtractedColors(norm, itemDataObj);
@@ -3891,7 +3914,7 @@ async function drawCatalogCompactGridPage(
         const capH = TITLE_PT * PT * CAP;
         const descH = TITLE_PT * PT * DESC;
         const lineH = capH + descH + S1;
-        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj), innerW, TITLE_PT).slice(0, 3);
+        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj, unitOf(item)), innerW, TITLE_PT).slice(0, 3);
         const firstBaseline = y + bandH + S2 + capH;
         drawMeasuredTitle(doc, titleLines, ix, firstBaseline, lineH, TITLE_PT);
         const titleBottom = firstBaseline + (titleLines.length - 1) * lineH + descH;
@@ -3954,7 +3977,7 @@ async function drawCatalogCompactGridPage(
             const boxTop = contentTop + S1;
             const boxH = Math.max(12, (blockTop - boxTop) * 0.94);
             const cutouts: { dataUrl: string; w: number; h: number }[] = [];
-            for (const u of getItemCutoutPngs(item).slice(0, 3)) {
+            for (const u of labelCutouts(item)) {
                 try {
                     const c = await loadImgData(u, 900, true);
                     if (c && c.dataUrl && c.w && c.h) cutouts.push({ dataUrl: c.dataUrl, w: c.w, h: c.h });
@@ -4057,7 +4080,7 @@ async function drawCatalogCompactGridPage(
 
         let cutoutH = 0;
         const cutouts: { dataUrl: string; w: number; h: number }[] = [];
-        for (const u of getItemCutoutPngs(item).slice(0, 3)) {
+        for (const u of labelCutouts(item)) {
             try {
                 const c = await loadImgData(u, layout.large ? 900 : 400, true);
                 if (c && c.dataUrl && c.w && c.h) cutouts.push({ dataUrl: c.dataUrl, w: c.w, h: c.h });
@@ -4344,22 +4367,24 @@ export async function exportCatalogPdf(
                 await drawCatalogSummaryPages(doc, list, M, PW, PH, addPage, isLandscape, config.title, v, cursor, true);
             }
         }
-        const totalPages = Math.ceil(results.length / itemsPerPage);
+        // One label per unit of a qty-N item; the summaries above and the totals use the originals
+        const labels = expandUnits(results);
+        const totalPages = Math.ceil(labels.length / itemsPerPage);
         // Control pages: load the next page's images while this one draws
-        const prepPage = (p: number) => Promise.all(results.slice(p * itemsPerPage, (p + 1) * itemsPerPage).map(prepareControlRow));
+        const prepPage = (p: number) => Promise.all(labels.slice(p * itemsPerPage, (p + 1) * itemsPerPage).map(prepareControlRow));
         let nextPrep = config.control && totalPages > 0 ? prepPage(0) : null;
         for (let page = 0; page < totalPages; page++) {
             addPage();
             onProgress?.(Math.round(10 + ((page + 1) / totalPages) * 85), `Rendering compact page ${page + 1}/${totalPages}...`);
             await yieldToUi();
-            if (isCompactGrid || isLargeColor) await drawCatalogCompactGridPage(doc, results, page * itemsPerPage, M, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo, onyx: onyxLogo },
+            if (isCompactGrid || isLargeColor) await drawCatalogCompactGridPage(doc, labels, page * itemsPerPage, M, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo, onyx: onyxLogo },
                 isLargeColor ? { cols: 2, rows: 2, large: true } : undefined);
             else if (config.control && nextPrep) {
                 const rows = await nextPrep;
                 nextPrep = page + 1 < totalPages ? prepPage(page + 1) : null;
-                await drawControlRibbonPage(doc, results, page * itemsPerPage, itemsPerPage, PW, PH, rows);
+                await drawControlRibbonPage(doc, labels, page * itemsPerPage, itemsPerPage, PW, PH, rows);
             }
-            else await drawRibbonPage(doc, results, page * itemsPerPage, itemsPerPage, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo });
+            else await drawRibbonPage(doc, labels, page * itemsPerPage, itemsPerPage, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo });
         }
     };
 
