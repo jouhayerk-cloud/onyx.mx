@@ -97,7 +97,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const ITEM = {"id": "98569126-3cc8-4c5f-ac62-da4de318154f", "barcode": "EM8261XXXA", "item_id": "EM-001", "workbook": "v826", "title": "Striated Deep Blue Onyx Free Form Wall Panel Pair Sculptural Decor", "short_description": "Wall Panel Pair", "shape": "Free Form", "material": "Onyx", "color": "Blue, White, Brown", "archetype": "wall_panel_pair", "width_cm": 56.0, "height_cm": 94.0, "length_cm": 2.0, "weight_kg": null, "vein_colors": ["#275054", "#406364", "#5f7e7c", "#3b4d47", "#615d4b", "#846f4f", "#92a89b"], "cutout_url": "https://lh3.googleusercontent.com/d/1W6scc64Z-xaCQuDrcYqqndT-3Zt6E2Zq", "plan_cutout_url": "https://lh3.googleusercontent.com/d/1W6scc64Z-xaCQuDrcYqqndT-3Zt6E2Zq", "profile_cutout_url": "", "vein_svg_url": "https://lh3.googleusercontent.com/d/1_AyRFmZt5W3LwmEOV-wBFtcw70g5dyzs", "plan_vein_svg_url": "https://lh3.googleusercontent.com/d/1_AyRFmZt5W3LwmEOV-wBFtcw70g5dyzs", "angle_views": null, "mask_attractions": {"archetype_task": "wall_panel_pair", "bbox_uv": [0.4473, 0.1817, 0.9583, 0.8718], "subpath_count": 2, "panel_pair_contours": {"mode": "dual_subpaths", "left_points": [[-0.0234, 0.498], [-0.0666, 0.4939], [-0.1091, 0.4869], [-0.1864, 0.4529], [-0.2277, 0.4413], [-0.2704, 0.4358], [-0.3127, 0.4275], [-0.3526, 0.4138], [-0.377, 0.3457], [-0.3854, 0.3106], [-0.3858, 0.2738], [-0.3924, 0.2384], [-0.3946, 0.2018], [-0.3959, 0.1282], [-0.4152, 0.0957], [-0.4315, 0.0625], [-0.4385, 0.0271], [-0.4473, -0.0449], [-0.4561, -0.0801], [-0.4649, -0.1152], [-0.4675, -0.1517], [-0.4736, -0.1872], [-0.4824, -0.2592], [-0.4905, -0.2944], [-0.5, -0.3293], [-0.5, -0.3663], [-0.4906, -0.4011], [-0.412, -0.4263], [-0.3773, -0.449], [-0.336, -0.4604], [-0.2956, -0.4747], [-0.2564, -0.4894], [-0.1719, -0.4952], [-0.128, -0.4939], [-0.0852, -0.4998], [-0.0411, -0.5], [0.0457, -0.4939], [0.087, -0.4822], [0.1293, -0.4738], [0.1698, -0.46], [0.2091, -0.4441], [0.2899, -0.4169], [0.3293, -0.4009], [0.3665, -0.3819], [0.4045, -0.3666], [0.4438, -0.3509], [0.4912, -0.2957], [0.4912, -0.2589], [0.4865, -0.223], [0.495, -0.188], [0.5, -0.1522], [0.483, -0.082], [0.4824, -0.0452], [0.4736, -0.01], [0.4736, 0.0268], [0.4709, 0.0632], [0.4649, 0.1356], [0.4649, 0.1724], [0.4649, 0.2092], [0.4649, 0.246], [0.4649, 0.2828], [0.4334, 0.3482], [0.411, 0.3789], [0.3786, 0.4034], [0.3514, 0.4318], [0.2775, 0.4645], [0.2343, 0.4687], [0.1919, 0.4768], [0.1492, 0.4833], [0.1063, 0.4902], [0.0204, 0.5], [-0.0234, 0.498]], "right_points": [[-0.0935, 0.4987], [-0.1358, 0.4882], [-0.1805, 0.4835], [-0.2456, 0.4718], [-0.2896, 0.4659], [-0.3336, 0.4599], [-0.3708, 0.4436], [-0.4352, 0.432], [-0.4577, 0.3981], [-0.4843, 0.3661], [-0.5, 0.3299], [-0.5, 0.2874], [-0.5, 0.2237], [-0.4925, 0.184], [-0.4916, 0.1416], [-0.4847, 0.1017], [-0.4771, 0.0408], [-0.4752, 0.0038], [-0.4694, -0.0363], [-0.4618, -0.0761], [-0.466, -0.117], [-0.4692, -0.1795], [-0.4618, -0.2192], [-0.4618, -0.2617], [-0.4478, -0.2989], [-0.4311, -0.3565], [-0.3955, -0.3766], [-0.3527, -0.3873], [-0.3096, -0.3956], [-0.2708, -0.4155], [-0.2078, -0.4331], [-0.1639, -0.4407], [-0.1231, -0.4557], [-0.085, -0.477], [-0.0192, -0.4804], [0.0238, -0.4843], [0.0647, -0.5], [0.1094, -0.4954], [0.1535, -0.4898], [0.2225, -0.4901], [0.2666, -0.4954], [0.3082, -0.4819], [0.3438, -0.4559], [0.4068, -0.4379], [0.4475, -0.4234], [0.479, -0.3947], [0.5, -0.3639], [0.4882, -0.3258], [0.4694, -0.2687], [0.4545, -0.2317], [0.4448, -0.1923], [0.4313, -0.155], [0.415, -0.0968], [0.4005, -0.0598], [0.3901, -0.021], [0.3702, 0.0143], [0.3622, 0.054], [0.3238, 0.1018], [0.2939, 0.1313], [0.286, 0.1711], [0.2855, 0.2135], [0.2707, 0.2718], [0.2673, 0.3131], [0.2554, 0.3513], [0.2403, 0.3882], [0.2241, 0.4244], [0.1646, 0.4495], [0.1206, 0.4553], [0.0746, 0.4562], [0.0348, 0.4739], [-0.0247, 0.4999], [-0.0708, 0.5]], "left_bbox_uv": [0.0098, 0.1817, 0.4544, 0.8451], "right_bbox_uv": [0.4473, 0.1817, 0.9583, 0.8718]}}, "outline_svg_url": "https://drive.google.com/uc?export=view&id=1CxSKor1DxaMEmpo8hoad8KqXWzYHsss7", "pixel_map_hex": "#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#516B6D,#485E5B,#516D6C,#708783,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#838F86,#71827A,#5E716E,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#647E87,#3E5758,#2C4243,#42504A,#465C58,#445F5E,#4D625F,#707667,#FFFFFF,#84908D,#708486,#667870,#53655E,#5A675F,#55635D,#3E4E4B,#415756,#4B625F,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#647A7D,#304749,#304B4E,#2F4F54,#2E4E52,#454F46,#3A5B5D,#325559,#626555,#FFFFFF,#6E7A6D,#576E6B,#7B918B,#485750,#4C625E,#3C5B5E,#345054,#3C5553,#6F7F78,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#668A90,#456265,#3C5455,#375455,#37514F,#404D44,#3F5753,#41534E,#605C49,#687065,#746E58,#60726A,#556C67,#42534E,#3E5A5A,#547170,#4B6563,#546C68,#466463,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#5D716C,#48574F,#3F504A,#394D49,#334844,#344A48,#566459,#5C6B63,#515B51,#737565,#737565,#495954,#435652,#4A5A54,#3D514F,#37504F,#3D5554,#445651,#3C4F4A,#666E62,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#606E69,#2D4D4E,#3C5755,#2E5052,#264D52,#2B5158,#556053,#465953,#3E5958,#5B5542,#3D5756,#3C5454,#4C625E,#3D5F63,#2D535B,#416165,#335255,#426264,#375659,#545C54,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#3F666B,#2E4F52,#284C50,#395959,#2D5154,#3E5855,#3E5450,#3B5755,#375A5C,#456060,#2E5055,#305154,#516057,#556E6B,#31575E,#345459,#335154,#345356,#516967,#637B77,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#446B74,#2A5056,#244E54,#3A5F62,#3B504C,#485C56,#486C70,#39504C,#345252,#45615E,#255055,#234E55,#3C5350,#264E56,#5D6D67,#375659,#274D54,#2E5259,#436365,#5E6659,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#595D53,#355357,#3B5352,#405756,#324846,#4B5E5B,#335658,#44605F,#335556,#365D5F,#3D5C5C,#3E5C5C,#3A5858,#29535A,#4E6E70,#455F61,#495D59,#28494E,#3F5350,#40524E,#52615B,#FFFFFF,#FFFFFF,#717871,#5B594B,#515F59,#375659,#395A5F,#325256,#515C56,#2E555A,#3F5C5A,#455D59,#486461,#3D6166,#405C5B,#3A6268,#527173,#3A595C,#28545D,#29565E,#324E4F,#48544B,#3E514B,#575F53,#FFFFFF,#FFFFFF,#6F8886,#4B5C59,#607773,#3A5A5D,#2F5359,#355559,#625B49,#585B4C,#5C5D4D,#5A5A4B,#44544E,#4A5F5C,#4A615F,#365457,#2E5259,#4B6565,#355C64,#255059,#3B5456,#224A51,#2E4C4E,#52625A,#FFFFFF,#FFFFFF,#5D6F6B,#54615D,#405859,#475E5E,#435958,#4C5851,#54635C,#455855,#465F5C,#545E52,#5B685F,#5A6056,#435451,#37575C,#4A5D59,#4D5E5A,#42504C,#40524F,#586054,#384C48,#3D4C46,#3C504B,#6A776A,#FFFFFF,#627F7F,#5C6661,#446166,#4A6869,#455756,#37585D,#365B5F,#395E5F,#4E6764,#485750,#60746C,#566D69,#495E5B,#436468,#476565,#40676D,#385A5C,#57645D,#355456,#3F6367,#5A7576,#405653,#5E6B62,#FFFFFF,#64726D,#3F5151,#48514D,#485E5F,#455B5A,#2F5258,#34585F,#3D6064,#436464,#556E6A,#6B7163,#576E6B,#4A5A55,#405D60,#416569,#2F5961,#345B61,#4C6767,#3E5654,#3C5B5C,#587273,#516059,#4B6460,#FFFFFF,#707064,#59625E,#485654,#4D5B59,#475E5E,#3A5659,#3D5C5F,#456567,#57726D,#64766C,#FFFFFF,#7D7767,#67807B,#587876,#5A7775,#557474,#3F6267,#426063,#506460,#636556,#595F53,#4C5B54,#5F614F,#FFFFFF,#FFFFFF,#818B85,#60665E,#5A5B4E,#536560,#546A66,#4B6968,#5D726C,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#717D75,#5B7772,#688480,#3A5B5E,#4A6462,#3A5353,#6A705F,#696A57,#7C7F6F,#6E807A,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#6E634C,#67766F,#7C8E87,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#728D8A,#5B7775,#667D7C,#707C75,#646250,#86806C,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF", "hex_dimensions": "24x24", "generated_at": "2026-11-08T22:45:51Z"};
+const ITEM = {"id": "98569126-3cc8-4c5f-ac62-da4de318154f", "barcode": "EM8261XXXA", "item_id": "EM-001", "workbook": "v826", "title": "Striated Deep Blue Onyx Free Form Wall Panel Pair Sculptural Decor", "short_description": "Wall Panel Pair", "shape": "Free Form", "material": "Onyx", "color": "Blue, White, Brown", "archetype": "wall_panel_pair", "width_cm": 56.0, "height_cm": 94.0, "length_cm": 2.0, "weight_kg": null, "vein_colors": ["#275054", "#406364", "#5f7e7c", "#3b4d47", "#615d4b", "#846f4f", "#92a89b"], "cutout_url": "https://lh3.googleusercontent.com/d/1W6scc64Z-xaCQuDrcYqqndT-3Zt6E2Zq", "plan_cutout_url": "https://lh3.googleusercontent.com/d/1W6scc64Z-xaCQuDrcYqqndT-3Zt6E2Zq", "profile_cutout_url": "", "vein_svg_url": "https://lh3.googleusercontent.com/d/1_AyRFmZt5W3LwmEOV-wBFtcw70g5dyzs", "plan_vein_svg_url": "https://lh3.googleusercontent.com/d/1_AyRFmZt5W3LwmEOV-wBFtcw70g5dyzs", "angle_views": null, "mask_attractions": {"archetype_task": "wall_panel_pair", "bbox_uv": [0.4473, 0.1817, 0.9583, 0.8718], "subpath_count": 2, "panel_pair_contours": {"mode": "dual_subpaths", "left_points": [[-0.0234, 0.498], [-0.0666, 0.4939], [-0.1091, 0.4869], [-0.1864, 0.4529], [-0.2277, 0.4413], [-0.2704, 0.4358], [-0.3127, 0.4275], [-0.3526, 0.4138], [-0.377, 0.3457], [-0.3854, 0.3106], [-0.3858, 0.2738], [-0.3924, 0.2384], [-0.3946, 0.2018], [-0.3959, 0.1282], [-0.4152, 0.0957], [-0.4315, 0.0625], [-0.4385, 0.0271], [-0.4473, -0.0449], [-0.4561, -0.0801], [-0.4649, -0.1152], [-0.4675, -0.1517], [-0.4736, -0.1872], [-0.4824, -0.2592], [-0.4905, -0.2944], [-0.5, -0.3293], [-0.5, -0.3663], [-0.4906, -0.4011], [-0.412, -0.4263], [-0.3773, -0.449], [-0.336, -0.4604], [-0.2956, -0.4747], [-0.2564, -0.4894], [-0.1719, -0.4952], [-0.128, -0.4939], [-0.0852, -0.4998], [-0.0411, -0.5], [0.0457, -0.4939], [0.087, -0.4822], [0.1293, -0.4738], [0.1698, -0.46], [0.2091, -0.4441], [0.2899, -0.4169], [0.3293, -0.4009], [0.3665, -0.3819], [0.4045, -0.3666], [0.4438, -0.3509], [0.4912, -0.2957], [0.4912, -0.2589], [0.4865, -0.223], [0.495, -0.188], [0.5, -0.1522], [0.483, -0.082], [0.4824, -0.0452], [0.4736, -0.01], [0.4736, 0.0268], [0.4709, 0.0632], [0.4649, 0.1356], [0.4649, 0.1724], [0.4649, 0.2092], [0.4649, 0.246], [0.4649, 0.2828], [0.4334, 0.3482], [0.411, 0.3789], [0.3786, 0.4034], [0.3514, 0.4318], [0.2775, 0.4645], [0.2343, 0.4687], [0.1919, 0.4768], [0.1492, 0.4833], [0.1063, 0.4902], [0.0204, 0.5], [-0.0234, 0.498]], "right_points": [[-0.0935, 0.4987], [-0.1358, 0.4882], [-0.1805, 0.4835], [-0.2456, 0.4718], [-0.2896, 0.4659], [-0.3336, 0.4599], [-0.3708, 0.4436], [-0.4352, 0.432], [-0.4577, 0.3981], [-0.4843, 0.3661], [-0.5, 0.3299], [-0.5, 0.2874], [-0.5, 0.2237], [-0.4925, 0.184], [-0.4916, 0.1416], [-0.4847, 0.1017], [-0.4771, 0.0408], [-0.4752, 0.0038], [-0.4694, -0.0363], [-0.4618, -0.0761], [-0.466, -0.117], [-0.4692, -0.1795], [-0.4618, -0.2192], [-0.4618, -0.2617], [-0.4478, -0.2989], [-0.4311, -0.3565], [-0.3955, -0.3766], [-0.3527, -0.3873], [-0.3096, -0.3956], [-0.2708, -0.4155], [-0.2078, -0.4331], [-0.1639, -0.4407], [-0.1231, -0.4557], [-0.085, -0.477], [-0.0192, -0.4804], [0.0238, -0.4843], [0.0647, -0.5], [0.1094, -0.4954], [0.1535, -0.4898], [0.2225, -0.4901], [0.2666, -0.4954], [0.3082, -0.4819], [0.3438, -0.4559], [0.4068, -0.4379], [0.4475, -0.4234], [0.479, -0.3947], [0.5, -0.3639], [0.4882, -0.3258], [0.4694, -0.2687], [0.4545, -0.2317], [0.4448, -0.1923], [0.4313, -0.155], [0.415, -0.0968], [0.4005, -0.0598], [0.3901, -0.021], [0.3702, 0.0143], [0.3622, 0.054], [0.3238, 0.1018], [0.2939, 0.1313], [0.286, 0.1711], [0.2855, 0.2135], [0.2707, 0.2718], [0.2673, 0.3131], [0.2554, 0.3513], [0.2403, 0.3882], [0.2241, 0.4244], [0.1646, 0.4495], [0.1206, 0.4553], [0.0746, 0.4562], [0.0348, 0.4739], [-0.0247, 0.4999], [-0.0708, 0.5]], "left_bbox_uv": [0.0098, 0.1817, 0.4544, 0.8451], "right_bbox_uv": [0.4473, 0.1817, 0.9583, 0.8718]}}, "outline_svg_url": "https://drive.google.com/uc?export=view&id=1CxSKor1DxaMEmpo8hoad8KqXWzYHsss7", "pixel_map_hex": "#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#516B6D,#485E5B,#516D6C,#708783,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#838F86,#71827A,#5E716E,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#647E87,#3E5758,#2C4243,#42504A,#465C58,#445F5E,#4D625F,#707667,#FFFFFF,#84908D,#708486,#667870,#53655E,#5A675F,#55635D,#3E4E4B,#415756,#4B625F,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#647A7D,#304749,#304B4E,#2F4F54,#2E4E52,#454F46,#3A5B5D,#325559,#626555,#FFFFFF,#6E7A6D,#576E6B,#7B918B,#485750,#4C625E,#3C5B5E,#345054,#3C5553,#6F7F78,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#668A90,#456265,#3C5455,#375455,#37514F,#404D44,#3F5753,#41534E,#605C49,#687065,#746E58,#60726A,#556C67,#42534E,#3E5A5A,#547170,#4B6563,#546C68,#466463,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#5D716C,#48574F,#3F504A,#394D49,#334844,#344A48,#566459,#5C6B63,#515B51,#737565,#737565,#495954,#435652,#4A5A54,#3D514F,#37504F,#3D5554,#445651,#3C4F4A,#666E62,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#606E69,#2D4D4E,#3C5755,#2E5052,#264D52,#2B5158,#556053,#465953,#3E5958,#5B5542,#3D5756,#3C5454,#4C625E,#3D5F63,#2D535B,#416165,#335255,#426264,#375659,#545C54,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#3F666B,#2E4F52,#284C50,#395959,#2D5154,#3E5855,#3E5450,#3B5755,#375A5C,#456060,#2E5055,#305154,#516057,#556E6B,#31575E,#345459,#335154,#345356,#516967,#637B77,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#446B74,#2A5056,#244E54,#3A5F62,#3B504C,#485C56,#486C70,#39504C,#345252,#45615E,#255055,#234E55,#3C5350,#264E56,#5D6D67,#375659,#274D54,#2E5259,#436365,#5E6659,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#595D53,#355357,#3B5352,#405756,#324846,#4B5E5B,#335658,#44605F,#335556,#365D5F,#3D5C5C,#3E5C5C,#3A5858,#29535A,#4E6E70,#455F61,#495D59,#28494E,#3F5350,#40524E,#52615B,#FFFFFF,#FFFFFF,#717871,#5B594B,#515F59,#375659,#395A5F,#325256,#515C56,#2E555A,#3F5C5A,#455D59,#486461,#3D6166,#405C5B,#3A6268,#527173,#3A595C,#28545D,#29565E,#324E4F,#48544B,#3E514B,#575F53,#FFFFFF,#FFFFFF,#6F8886,#4B5C59,#607773,#3A5A5D,#2F5359,#355559,#625B49,#585B4C,#5C5D4D,#5A5A4B,#44544E,#4A5F5C,#4A615F,#365457,#2E5259,#4B6565,#355C64,#255059,#3B5456,#224A51,#2E4C4E,#52625A,#FFFFFF,#FFFFFF,#5D6F6B,#54615D,#405859,#475E5E,#435958,#4C5851,#54635C,#455855,#465F5C,#545E52,#5B685F,#5A6056,#435451,#37575C,#4A5D59,#4D5E5A,#42504C,#40524F,#586054,#384C48,#3D4C46,#3C504B,#6A776A,#FFFFFF,#627F7F,#5C6661,#446166,#4A6869,#455756,#37585D,#365B5F,#395E5F,#4E6764,#485750,#60746C,#566D69,#495E5B,#436468,#476565,#40676D,#385A5C,#57645D,#355456,#3F6367,#5A7576,#405653,#5E6B62,#FFFFFF,#64726D,#3F5151,#48514D,#485E5F,#455B5A,#2F5258,#34585F,#3D6064,#436464,#556E6A,#6B7163,#576E6B,#4A5A55,#405D60,#416569,#2F5961,#345B61,#4C6767,#3E5654,#3C5B5C,#587273,#516059,#4B6460,#FFFFFF,#707064,#59625E,#485654,#4D5B59,#475E5E,#3A5659,#3D5C5F,#456567,#57726D,#64766C,#FFFFFF,#7D7767,#67807B,#587876,#5A7775,#557474,#3F6267,#426063,#506460,#636556,#595F53,#4C5B54,#5F614F,#FFFFFF,#FFFFFF,#818B85,#60665E,#5A5B4E,#536560,#546A66,#4B6968,#5D726C,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#717D75,#5B7772,#688480,#3A5B5E,#4A6462,#3A5353,#6A705F,#696A57,#7C7F6F,#6E807A,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#6E634C,#67766F,#7C8E87,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#728D8A,#5B7775,#667D7C,#707C75,#646250,#86806C,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF,#FFFFFF", "hex_dimensions": "24x24", "generated_at": "2026-11-09T00:24:43Z"};
 window.ONYX_ITEM_3D = ITEM;
 const MASK_ATTR = ITEM.mask_attractions || {};
 
@@ -300,10 +300,11 @@ function applyCornerLampUVs(geom, cornerSpec) {
     const tz = (z - bb.min.z) / spanZ; // 0 at -hd, 1 at +hd (corner)
 
     let u = uCorner;
-    const v = vMinGL + ty * (vMaxGL - vMinGL);
+    let v = vMinGL + ty * (vMaxGL - vMinGL);
 
     if (Math.abs(ny) > 0.75) {
       u = uMin + tx * (uMax - uMin);
+      v = vMinGL + (0.2 + 0.6 * tz) * (vMaxGL - vMinGL);
     } else if (Math.abs(nz) >= Math.abs(nx)) {
       if (nz >= 0) {
         // Left-Front face (+Z): x goes from -hw (tx=0 -> uMin) to +hw corner (tx=1 -> uCorner)
@@ -395,11 +396,11 @@ const stoneMat = new THREE.MeshPhysicalMaterial({
   side: THREE.FrontSide,
 });
 
-const baseW = Math.max(8, Number(ITEM.width_cm) || 40);
-const rawH = Math.max(8, Number(ITEM.height_cm) || 40);
+const baseW = Math.max(1, Number(ITEM.width_cm) || 40);
+const rawH = Math.max(1, Number(ITEM.height_cm) || 40);
 const rawW = (ITEM.archetype === 'wall_panel_pair' && baseW < rawH * 0.68) ? Math.round(baseW * 2.04) : baseW;
-const rawL = (ITEM.archetype === 'wall_panel_pair' || ITEM.archetype === 'wall_panel') ? Math.min(8, Math.max(4, Number(ITEM.length_cm) || 8)) : Math.max(6, Number(ITEM.length_cm) || 25);
-const maxDim = Math.max(rawW, rawH, rawL);
+const rawL = Math.max(1, Number(ITEM.length_cm) || ((ITEM.archetype === 'wall_panel_pair' || ITEM.archetype === 'wall_panel' || ITEM.archetype === 'mirror') ? 10 : 25));
+const maxDim = Math.max(rawW, rawH, rawL, 1);
 const scale = 2.1 / maxDim;
 const W = rawW * scale;
 const H = rawH * scale;
@@ -651,8 +652,8 @@ if (arch === 'bowl') {
   internalLight.position.set(0, H * 0.48, 0);
 
 } else if (arch === 'mirror') {
-  // Task A: SVG-cut Mirror using exact outer stone contour + inner hand-carved mirror opening
-  const depth = Math.max(0.09, Math.min(L, 0.22));
+  // Task A: SVG-cut Mirror using outer geometric shape + inner hand-carved mirror opening at exact W x H x L cm dimensions
+  const depth = L;
   const mc = MASK_ATTR.mirror_contours || null;
   const frameSh = new THREE.Shape();
   const glassSh = new THREE.Shape();
@@ -674,8 +675,8 @@ if (arch === 'bowl') {
     holePts.forEach((pt, idx) => {
       const hx = pt[0] * W;
       const hy = pt[1] * H;
-      const gx = hx * 1.02;
-      const gy = hy * 1.02;
+      const gx = hx * 1.03;
+      const gy = hy * 1.03;
       if (idx === 0) { hole.moveTo(hx, hy); glassSh.moveTo(gx, gy); }
       else { hole.lineTo(hx, hy); glassSh.lineTo(gx, gy); }
     });
@@ -700,14 +701,18 @@ if (arch === 'bowl') {
     }
   }
 
-  const frameGeo = new THREE.ExtrudeGeometry(frameSh, { depth, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.015, bevelSegments: 4 });
+  const bv = Math.min(0.012, depth * 0.08);
+  const frameGeo = new THREE.ExtrudeGeometry(frameSh, { depth, bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 4 });
+  frameGeo.translate(0, 0, -depth * 0.5);
   applyBoxUVsInSubregion(frameGeo, [0, 0, 1, 1]);
-  addShadowMesh(frameGeo, stoneMat, 0, rh + 0.1, -depth * 0.5);
+  addShadowMesh(frameGeo, stoneMat, 0, rh + 0.08, 0);
 
   const mirrorMat = new THREE.MeshPhysicalMaterial({ color: 0xdbeafe, metalness: 0.98, roughness: 0.02, clearcoat: 1.0, reflectivity: 1.0 });
-  const glassGeo = new THREE.ExtrudeGeometry(glassSh, { depth: 0.018, bevelEnabled: false });
-  addShadowMesh(glassGeo, mirrorMat, 0, rh + 0.1, -depth * 0.15);
-  internalLight.position.set(0, rh + 0.1, -depth * 1.4);
+  const glassDepth = Math.max(0.012, depth * 0.22);
+  const glassGeo = new THREE.ExtrudeGeometry(glassSh, { depth: glassDepth, bevelEnabled: false });
+  glassGeo.translate(0, 0, -glassDepth * 0.5);
+  addShadowMesh(glassGeo, mirrorMat, 0, rh + 0.08, -depth * 0.12);
+  internalLight.position.set(0, rh + 0.08, -depth * 1.4);
 
 } else if (arch === 'yin_yang_fountain') {
   const plinthH = H * 0.16;
@@ -718,7 +723,7 @@ if (arch === 'bowl') {
   const gap = W * 0.025;
   const halfW = (W - gap) * 0.5;
   const rHole = Math.min(W, bodyH) * 0.19;
-  const slabDepth = Math.max(0.14, L * 0.65);
+  const slabDepth = L;
 
   const leftSh = new THREE.Shape();
   leftSh.moveTo(-halfW, -bodyH * 0.5);
@@ -746,8 +751,8 @@ if (arch === 'bowl') {
 } else if (arch === 'wall_panel_pair') {
   // Task D: Wall Panel Pair — single photo contains both panels side-by-side!
   // Extract left & right contours and map Left Panel UVs to left_bbox_uv and Right Panel UVs to right_bbox_uv.
-  const thick = Math.max(0.06, Math.min(L, 0.14));
-  const panelW = W * 0.47;
+  const thick = L;
+  const panelW = W * 0.48;
   const gap = W * 0.04;
   const ppc = MASK_ATTR.panel_pair_contours || {};
   const leftBbox = [0.0, 0.0, 0.492, 1.0];
@@ -764,7 +769,8 @@ if (arch === 'bowl') {
         else sh.lineTo(px, py);
       });
       sh.closePath();
-      geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 3 });
+      const bv = Math.min(0.010, thick * 0.08);
+      geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 3 });
       geo.center();
     } else {
       geo = new THREE.BoxGeometry(panelW, H, thick, 4, 4, 2);
@@ -780,7 +786,7 @@ if (arch === 'bowl') {
   internalLight.position.set(0, H * 0.5 + 0.08, -thick * 2.2);
 
 } else if (arch === 'wall_panel') {
-  const thick = Math.max(0.07, Math.min(L, 0.16));
+  const thick = L;
   const wpc = MASK_ATTR.wall_panel_contours || {};
   const isFree = shapeLower.includes('free') || shapeLower.includes('organic');
   let geo;
@@ -791,7 +797,8 @@ if (arch === 'bowl') {
       else sh.lineTo(pt[0] * W, pt[1] * H);
     });
     sh.closePath();
-    geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.012, bevelSegments: 3 });
+    const bv = Math.min(0.010, thick * 0.08);
+    geo = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 3 });
     geo.center();
   } else {
     geo = new THREE.BoxGeometry(W, H, thick);
@@ -801,42 +808,39 @@ if (arch === 'bowl') {
   internalLight.position.set(0, H * 0.5 + 0.08, -thick * 2.2);
 
 } else if (arch === 'tower_lamp' || arch === 'floor_lamp') {
-  // Task E: Tower Lamp photos are taken at a side corner showing two adjacent faces meeting at the central vertical corner edge!
+  // Task E: Tower & Floor Lamps have solid closed tops like stone pedestals (no hollow opening at the top)
+  // and side-corner 2-face UV unwrapping across the front corner ridge (+hw, +hd) at exact W x H x L cm dimensions!
   const isCyl = shapeLower.includes('cylin') || shapeLower.includes('round') || shapeLower.includes('oval');
   const isSphere = shapeLower.includes('sphere') || shapeLower.includes('ball') || shapeLower.includes('globe');
   const isPyr = shapeLower.includes('pyram') || shapeLower.includes('trian');
   const cornerSpec = MASK_ATTR.tower_lamp_corner_uv || null;
 
-  const baseH = Math.min(0.12, H * 0.08);
+  const baseH = Math.min(0.08, H * 0.05);
   const baseMat = new THREE.MeshStandardMaterial({ color: 0x1e2028, roughness: 0.4, metalness: 0.6 });
-  addShadowMesh(new THREE.BoxGeometry(W * 0.92, baseH, L * 0.92), baseMat, 0, baseH * 0.5, 0);
+  addShadowMesh(new THREE.BoxGeometry(W * 1.02, baseH, L * 1.02), baseMat, 0, baseH * 0.5, 0);
 
   const bodyH = H - baseH;
   if (isSphere) {
     const r = Math.max(W, H, L) * 0.48;
     const g = new THREE.SphereGeometry(r, 64, 48);
-    applyBoxUVsInSubregion(g, MASK_ATTR.bbox_uv || [0, 0, 1, 1]);
+    applyBoxUVsInSubregion(g, [0, 0, 1, 1]);
     addShadowMesh(g, stoneMat, 0, baseH + r * 0.95, 0);
   } else if (isCyl) {
-    const r = Math.max(W, L) * 0.46;
-    const g = new THREE.CylinderGeometry(r * 0.88, r, bodyH, 64, 1, false);
+    const r = W * 0.5;
+    const g = new THREE.CylinderGeometry(r, r, bodyH, 72, 24, false);
+    applyBoxUVsInSubregion(g, [0, 0, 1, 1]);
     const cyl = addShadowMesh(g, stoneMat, 0, baseH + bodyH * 0.5, 0);
-    if (Math.abs(W - L) > 0.08) cyl.scale.set(1, 1, L / W);
+    if (Math.abs(W - L) > 0.04) cyl.scale.set(1, 1, L / Math.max(0.05, W));
   } else {
-    // Hollowed 4-sided stone column with side-corner UV unwrapping across the front corner ridge (+hw, +hd)
-    const colW = W * 0.88;
-    const colL = L * 0.88;
-    const wallT = Math.max(0.035, Math.min(colW, colL) * 0.12);
+    // Solid closed-top 4-sided stone pedestal column with side-corner UV unwrapping across the front corner ridge (+hw, +hd)
+    const colW = W;
+    const colL = L;
     const outerSh = new THREE.Shape();
     const hw = colW * 0.5, hd = colL * 0.5;
     outerSh.moveTo(-hw, -hd); outerSh.lineTo(hw, -hd); outerSh.lineTo(hw, hd); outerSh.lineTo(-hw, hd); outerSh.closePath();
 
-    const innerHole = new THREE.Path();
-    const ihw = Math.max(0.04, hw - wallT), ihd = Math.max(0.04, hd - wallT);
-    innerHole.moveTo(-ihw, -ihd); innerHole.lineTo(ihw, -ihd); innerHole.lineTo(ihw, ihd); innerHole.lineTo(-ihw, ihd); innerHole.closePath();
-    outerSh.holes.push(innerHole);
-
-    const colGeo = new THREE.ExtrudeGeometry(outerSh, { depth: bodyH, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2 });
+    const bv = Math.min(0.012, Math.min(colW, colL) * 0.03);
+    const colGeo = new THREE.ExtrudeGeometry(outerSh, { depth: bodyH, bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 2 });
     colGeo.rotateX(-Math.PI / 2);
     colGeo.center();
 
@@ -959,9 +963,18 @@ if (primaryVeinSvg) {
   vimg.crossOrigin = 'anonymous';
   vimg.onload = () => {
     const bctx = bumpCanvas.getContext('2d');
+    const vw = vimg.naturalWidth || vimg.width || 1024;
+    const vh = vimg.naturalHeight || vimg.height || 1024;
+    const bb = (MASK_ATTR && Array.isArray(MASK_ATTR.bbox_uv) && MASK_ATTR.bbox_uv.length === 4)
+      ? MASK_ATTR.bbox_uv
+      : [0, 0, 1, 1];
+    const vsx = bb[0] * vw;
+    const vsy = bb[1] * vh;
+    const vsw = Math.max(1, (bb[2] - bb[0]) * vw);
+    const vsh = Math.max(1, (bb[3] - bb[1]) * vh);
     bctx.save();
     bctx.globalAlpha = 0.9;
-    bctx.drawImage(vimg, 0, 0, bumpCanvas.width, bumpCanvas.height);
+    bctx.drawImage(vimg, vsx, vsy, vsw, vsh, 0, 0, bumpCanvas.width, bumpCanvas.height);
     bctx.restore();
     bumpTex.needsUpdate = true;
   };

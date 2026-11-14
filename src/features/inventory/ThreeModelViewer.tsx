@@ -733,10 +733,11 @@ function applyCornerLampUVs(geom: THREE.BufferGeometry, cornerSpec?: any): void 
         const tz = (z - bb.min.z) / spanZ;
 
         let u = uCorner;
-        const v = vMinGL + ty * (vMaxGL - vMinGL);
+        let v = vMinGL + ty * (vMaxGL - vMinGL);
 
         if (Math.abs(ny) > 0.75) {
             u = uMin + tx * (uMax - uMin);
+            v = vMinGL + (0.2 + 0.6 * tz) * (vMaxGL - vMinGL);
         } else if (Math.abs(nz) >= Math.abs(nx)) {
             if (nz >= 0) {
                 // Left-Front face (+Z): x goes from -hw (tx=0 -> uMin) to +hw corner (tx=1 -> uCorner)
@@ -777,23 +778,19 @@ function buildArchetype3DScene(
     const backlights: THREE.Light[] = [];
     const glowMeshes: THREE.Mesh[] = [];
 
-    // For panel pairs where widthCm is recorded per-slab (e.g. 64 x 145 cm -> 131 x 145 cm total pair),
-    // match 2D axo resolveAxoGeometry by widening total pair width to W * (2 + PANEL_PAIR_GAP_RATIO).
+    // Use recorded cm dimensions directly (for panel pairs where widthCm is per-slab, e.g. 64 x 145 cm -> 131 x 145 cm total pair)
     const effectiveWidthCm =
         specs.archetype === 'panel-pair' && specs.widthCm < specs.heightCm * 0.68
             ? Math.round(specs.widthCm * (2 + PANEL_PAIR_GAP_RATIO))
             : specs.widthCm;
-    const effectiveDepthCm =
-        (specs.archetype === 'wall-panel' || specs.archetype === 'panel-pair' || specs.archetype === 'painted-wall-panel')
-            ? Math.min(specs.lengthCm, 8)
-            : specs.lengthCm;
+    const effectiveDepthCm = Math.max(1, specs.lengthCm);
 
-    // Scale real cm dimensions so the largest dimension is ~8.0 scene units
+    // Scale real cm dimensions so the largest dimension is 8.0 scene units while preserving exact W:H:L cm proportions
     const maxCm = Math.max(effectiveWidthCm, specs.heightCm, effectiveDepthCm, 1);
     const unitScale = 8.0 / maxCm;
-    const W = Math.max(0.6, effectiveWidthCm * unitScale);
-    const H = Math.max(0.4, specs.heightCm * unitScale);
-    const D = Math.max(0.24, effectiveDepthCm * unitScale);
+    const W = Math.max(0.05, effectiveWidthCm * unitScale);
+    const H = Math.max(0.05, specs.heightCm * unitScale);
+    const D = Math.max(0.05, effectiveDepthCm * unitScale);
 
     const addWarmLight = (x: number, y: number, z: number, intensity = 5.5, distance = 18) => {
         const pt = new THREE.PointLight(0xffae52, intensity, distance, 1.4);
@@ -1053,9 +1050,10 @@ function buildArchetype3DScene(
 
         case 'mirror': {
             // Thick stone slab frame with hand-cut central aperture + reflective metallic mirror glass backing + warm halo LED backlight
-            const slabDepth = Math.min(Math.max(D, 0.35), Math.min(W, H) * 0.16);
+            const slabDepth = D;
             const outerShape = new THREE.Shape();
             const holePath = new THREE.Path();
+            const glassShape = new THREE.Shape();
             const segs = 96;
 
             const rx = W * 0.5;
@@ -1092,7 +1090,7 @@ function buildArchetype3DScene(
                     oy = sinT * ry * w;
                 } else {
                     // Rounded superellipse for square/rectangular slab frame
-                    const exp = 0.18;
+                    const exp = 0.08;
                     const sx = cosT >= 0 ? Math.pow(cosT, exp) : -Math.pow(-cosT, exp);
                     const sy = sinT >= 0 ? Math.pow(sinT, exp) : -Math.pow(-sinT, exp);
                     ox = sx * rx;
@@ -1109,10 +1107,18 @@ function buildArchetype3DScene(
                 mc.inner_hole_points.forEach((pt: number[], i: number) => {
                     const ix = pt[0] * W;
                     const iy = pt[1] * H;
-                    if (i === 0) holePath.moveTo(ix, iy);
-                    else holePath.lineTo(ix, iy);
+                    const gx = ix * 1.03;
+                    const gy = iy * 1.03;
+                    if (i === 0) {
+                        holePath.moveTo(ix, iy);
+                        glassShape.moveTo(gx, gy);
+                    } else {
+                        holePath.lineTo(ix, iy);
+                        glassShape.lineTo(gx, gy);
+                    }
                 });
                 holePath.closePath();
+                glassShape.closePath();
             } else {
                 for (let i = 0; i <= segs; i++) {
                 const t = (i / segs) * Math.PI * 2;
@@ -1132,21 +1138,27 @@ function buildArchetype3DScene(
                     iy = sy * iry * wig;
                 }
 
-                if (i === 0) holePath.moveTo(ix, iy);
-                else holePath.lineTo(ix, iy);
+                if (i === 0) {
+                    holePath.moveTo(ix, iy);
+                    glassShape.moveTo(ix * 1.03, iy * 1.03);
+                } else {
+                    holePath.lineTo(ix, iy);
+                    glassShape.lineTo(ix * 1.03, iy * 1.03);
                 }
+                }
+                glassShape.closePath();
             }
             outerShape.holes.push(holePath);
 
             const frameGeom = new THREE.ExtrudeGeometry(outerShape, {
                 depth: slabDepth,
                 bevelEnabled: true,
-                bevelThickness: slabDepth * 0.12,
-                bevelSize: slabDepth * 0.1,
+                bevelThickness: slabDepth * 0.08,
+                bevelSize: slabDepth * 0.06,
                 bevelSegments: 4,
                 curveSegments: 64
             });
-            frameGeom.center();
+            frameGeom.translate(0, 0, -slabDepth * 0.5);
             normalizeGeometryUVs(frameGeom);
 
             const frameMesh = new THREE.Mesh(frameGeom, stoneMat);
@@ -1154,7 +1166,7 @@ function buildArchetype3DScene(
             frameMesh.receiveShadow = true;
             group.add(frameMesh);
 
-            // Reflective metallic mirror glass backing plane
+            // Reflective metallic mirror glass backing shaped to the inner opening
             const mirrorMat = new THREE.MeshPhysicalMaterial({
                 color: 0xf0f6ff,
                 metalness: 0.98,
@@ -1164,15 +1176,9 @@ function buildArchetype3DScene(
                 reflectivity: 1.0,
                 envMapIntensity: 2.4
             });
-            const glassGeom =
-                specs.mirrorSubClass === 'mirror-round' || specs.mirrorSubClass === 'mirror-freeform'
-                    ? new THREE.CircleGeometry(Math.max(irx, iry) * 1.08, 64)
-                    : new THREE.PlaneGeometry(irx * 2.15, iry * 2.15);
+            const glassGeom = new THREE.ShapeGeometry(glassShape, 64);
             const glassMesh = new THREE.Mesh(glassGeom, mirrorMat);
-            if (specs.mirrorSubClass === 'mirror-round' || specs.mirrorSubClass === 'mirror-freeform') {
-                glassMesh.scale.set(irx / Math.max(irx, iry), iry / Math.max(irx, iry), 1);
-            }
-            glassMesh.position.z = -slabDepth * 0.15;
+            glassMesh.position.z = -slabDepth * 0.12;
             group.add(glassMesh);
 
             // Dark backing board behind glass so mirror doesn't show from rear
@@ -1180,8 +1186,7 @@ function buildArchetype3DScene(
                 glassGeom.clone(),
                 new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.85 })
             );
-            backBoard.scale.copy(glassMesh.scale);
-            backBoard.position.z = -slabDepth * 0.22;
+            backBoard.position.z = -slabDepth * 0.20;
             backBoard.rotation.y = Math.PI;
             group.add(backBoard);
 
@@ -1201,34 +1206,27 @@ function buildArchetype3DScene(
             const isPyramid = /\b(pyramid|piramide|obelisk|obelisco|taper)\b/i.test(combinedText);
             const isPendant = specs.archetype === 'pendant';
 
-            const wallThick = Math.max(0.14, Math.min(W, D) * 0.12);
-
             if (isSphere) {
-                const radius = Math.max(W, H, D) * 0.45;
+                const radius = Math.max(W, H, D) * 0.48;
                 const geom = new THREE.SphereGeometry(radius, 64, 48);
                 normalizeGeometryUVs(geom);
                 const orb = new THREE.Mesh(geom, stoneMat);
                 orb.castShadow = true;
                 group.add(orb);
             } else if (isRound) {
-                // Hollowed cylindrical stone column via LatheGeometry
-                const rOut = (W + D) * 0.25;
-                const rIn = Math.max(0.1, rOut - wallThick);
-                const pts = [
-                    new THREE.Vector2(rIn, -H * 0.5),
-                    new THREE.Vector2(rOut, -H * 0.5),
-                    new THREE.Vector2(rOut, H * 0.5),
-                    new THREE.Vector2(rIn, H * 0.5),
-                    new THREE.Vector2(rIn, -H * 0.46)
-                ];
-                const geom = new THREE.LatheGeometry(pts, 72);
+                // Solid closed-top cylindrical stone pedestal column (not hollow top)
+                const rOut = W * 0.5;
+                const geom = new THREE.CylinderGeometry(rOut, rOut, H, 72, 24, false);
                 normalizeGeometryUVs(geom);
                 const col = new THREE.Mesh(geom, stoneMat);
+                if (Math.abs(W - D) > 0.04) {
+                    col.scale.set(1, 1, D / Math.max(0.05, W));
+                }
                 col.castShadow = true;
                 col.receiveShadow = true;
                 group.add(col);
             } else {
-                // Hollowed squared / tapered column with 4 mitered translucent stone walls
+                // Solid closed-top pedestal column (4 mitered translucent stone walls + closed top cap like pedestal)
                 const outerShape = new THREE.Shape();
                 const hw = W * 0.5;
                 const hd = D * 0.5;
@@ -1238,21 +1236,11 @@ function buildArchetype3DScene(
                 outerShape.lineTo(-hw, hd);
                 outerShape.closePath();
 
-                const hole = new THREE.Path();
-                const ihw = Math.max(0.1, hw - wallThick);
-                const ihd = Math.max(0.1, hd - wallThick);
-                hole.moveTo(-ihw, -ihd);
-                hole.lineTo(ihw, -ihd);
-                hole.lineTo(ihw, ihd);
-                hole.lineTo(-ihw, ihd);
-                hole.closePath();
-                outerShape.holes.push(hole);
-
                 const extrudeGeom = new THREE.ExtrudeGeometry(outerShape, {
                     depth: H,
                     bevelEnabled: true,
-                    bevelThickness: 0.04,
-                    bevelSize: 0.04,
+                    bevelThickness: Math.min(0.03, Math.min(W, D) * 0.03),
+                    bevelSize: Math.min(0.03, Math.min(W, D) * 0.03),
                     bevelSegments: 2
                 });
                 extrudeGeom.rotateX(-Math.PI / 2);
@@ -1282,18 +1270,6 @@ function buildArchetype3DScene(
                 group.add(colMesh);
             }
 
-            // Internal warm glowing core bulb column + PointLights
-            const coreH = H * 0.72;
-            const coreR = Math.min(W, D) * 0.16;
-            const coreMat = new THREE.MeshBasicMaterial({
-                color: 0xffb866,
-                transparent: true,
-                opacity: 0.85
-            });
-            const coreMesh = new THREE.Mesh(new THREE.CylinderGeometry(coreR, coreR, coreH, 24), coreMat);
-            group.add(coreMesh);
-            glowMeshes.push(coreMesh);
-
             addWarmLight(0, -H * 0.18, 0, 7.5, 20);
             addWarmLight(0, H * 0.18, 0, 6.5, 18);
 
@@ -1306,8 +1282,8 @@ function buildArchetype3DScene(
             } else {
                 // Dark brushed stone plinth base
                 const plinthMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.4, metalness: 0.2 });
-                const plinth = new THREE.Mesh(new THREE.BoxGeometry(W * 1.04, H * 0.045, D * 1.04), plinthMat);
-                plinth.position.y = -H * 0.5 - H * 0.022;
+                const plinth = new THREE.Mesh(new THREE.BoxGeometry(W * 1.02, H * 0.04, D * 1.02), plinthMat);
+                plinth.position.y = -H * 0.5 - H * 0.02;
                 group.add(plinth);
             }
             break;
@@ -1316,7 +1292,7 @@ function buildArchetype3DScene(
         case 'wall-panel':
         case 'panel-pair':
         case 'painted-wall-panel': {
-            const slabDepth = Math.min(Math.max(D, 0.24), 0.48);
+            const slabDepth = D;
             const pc = specs.maskAttractions?.panel_pair_contours;
             const wpc = specs.maskAttractions?.wall_panel_contours;
             const isPair = specs.archetype === 'panel-pair' || Boolean(pc);
@@ -2023,9 +1999,9 @@ const mat = new THREE.MeshPhysicalMaterial({
 
 const maxCm = Math.max(SPECS.widthCm, SPECS.heightCm, SPECS.lengthCm, 1);
 const s = 8.0 / maxCm;
-const W = Math.max(0.6, SPECS.widthCm * s);
-const H = Math.max(0.4, SPECS.heightCm * s);
-const D = Math.max(0.35, SPECS.lengthCm * s);
+const W = Math.max(0.05, SPECS.widthCm * s);
+const H = Math.max(0.05, SPECS.heightCm * s);
+const D = Math.max(0.05, SPECS.lengthCm * s);
 
 let geom;
 if (SPECS.archetype === 'bowl' || SPECS.archetype === 'plate') {
