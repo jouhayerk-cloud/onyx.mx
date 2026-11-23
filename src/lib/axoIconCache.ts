@@ -90,7 +90,8 @@ export function describeAxoIcon(item: any, colorOverride?: string): AxoIconReque
         }
     }
     const texIdentity = hexMapString ? `hex:${itemId || hexMapString.slice(0, 32)}:${(hexHash >>> 0).toString(36)}` : `c:${color}`;
-    const key = `${g.extra ? 'x:' + g.extra + (g.panelVariant ? ':' + g.panelVariant : '') : g.geom}|${g.isMirror ? 'm' : ''}|${dims}|${texIdentity}`;
+    const sconceKey = g.sconceDiameters ? ':' + g.sconceDiameters.map(v => v.toFixed(1)).join('-') : '';
+    const key = `${g.extra ? 'x:' + g.extra + (g.panelVariant ? ':' + g.panelVariant : '') + sconceKey : g.geom}|${g.isMirror ? 'm' : ''}|${dims}|${texIdentity}`;
 
     return { key, w, h, d, shape, desc, color, hexMapString };
 }

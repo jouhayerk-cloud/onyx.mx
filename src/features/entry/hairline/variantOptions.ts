@@ -85,6 +85,7 @@ export const SUB_SHAPES: Readonly<Record<string, TypeSubShapes>> = {
     'pendant': ids('pendant', 'form', 'Form', [FORM_CYLINDER, FORM_SQUARED_COLUMN], 'cylinder'),
     'table-lamp': ids('table-lamp', 'form', 'Form', [FORM_SQUARED_COLUMN, FORM_CYLINDER, FORM_CUBE], 'squared', [TOP_AXIS]),
     'floor-lamp': ids('floor-lamp', 'form', 'Form', [FORM_SQUARED_COLUMN], 'squared', [TOP_AXIS]),
+    'sconce-set': ids('sconce-set', 'form', 'Form', [opt('round-3-set', 'Round 3 Pieces Set', ['round', 'round sconces 3 pieces set', '3 pieces set', '3 piece set', 'sconces 3 pieces set', 'set', 'redondo'])], 'round-3-set'),
     'bowl': ids('bowl', 'size', 'Size', SIZES_ALL, 'medium'),
     'canoe': ids('canoe', 'size', 'Size', SIZES_ALL.slice(0, 3), 'medium'),
     'tray': ids('tray', 'form', 'Form', [FORM_RECT, FORM_ROUND, FORM_OVAL], 'rectangular'),

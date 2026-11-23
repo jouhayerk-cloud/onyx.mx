@@ -154,6 +154,55 @@ export const TYPE_PROMPT_SPECS: readonly TypePromptSpec[] = [
         notes: 'Tower Lamp is unified into Floor Lamp (owner decision, 11 Oct 2026). Never use the word lamp in description copy; describe as Luminary.',
     },
 
+    // 3b. Sconce Set
+    {
+        typeId: 'sconce-set',
+        noun: 'Sconce Set',
+        nounPlural: 'Sconce Sets',
+        descriptionNoun: 'Luminary',
+        lit: true,
+        shopifyType: 'Home Decor > Pendant Lights',
+        title: {
+            pattern: '{Form} {Colour} {Material} Backlit Wall Sconce Set',
+            examples: [
+                'Round Translucent Teal Banded Aqua Onyx Backlit Sconce Set',
+                'Round Honey Banded Cream Aqua Onyx Wall Sconce Luminary',
+                'Round Mint Veined Cream Aqua Onyx Trio Wall Sconce Set',
+            ],
+            mustInclude: ['form', 'colour', 'material', 'type'],
+        },
+        description: {
+            angle: 'How this 3-piece circular backlit wall luminary set mounts as a staggered circular trio and diffuses ambient illumination across wall surfaces.',
+            structure: [
+                'One opening sentence: identify as a 3-piece round wall luminary set with stone variety and dominant color tone.',
+                'One sentence explaining that the three recorded centimetre measurements specify the three individual circular disc diameters.',
+                'One sentence describing the visible bookmatched stone veining, band colors, and rear wall backlighting.',
+                'One closing sentence noting living room, hallway, or dining feature wall installation and confirming mounting hardware with the sales team.',
+            ],
+            maxWords: 100,
+            facts: ['dimensions', 'form', 'material', 'colour', 'variety'],
+            useCases: [
+                'Staggered architectural feature wall arrangement in a living room or dining space',
+                'Entry foyer wall grouping providing warm diffused stone illumination',
+                'Primary bedroom or dressing wall composition with three graduated round fixtures',
+                'Hospitality corridor or lounge wall focal trio',
+            ],
+        },
+        colours: {
+            max: 3,
+            note: 'Dominant stone colors observed across the three circular illuminated wall discs.',
+        },
+        forbidden: [
+            'lamp',
+            'lamps',
+            'tabletop placement',
+            'floor standing',
+            'hanging cord',
+            'ceiling pendant',
+        ],
+        notes: 'Width, height, and length fields store the diameters (cm) of the 3 individual round sconces (e.g., 100, 75, 50 cm). Describe strictly as Luminary / Sconce Set.',
+    },
+
     // 4. Bowl
     {
         typeId: 'bowl',
@@ -1052,7 +1101,7 @@ export const FAMILY_826_SPECS: readonly Family826Spec[] = [
     {
         family: 'lamps',
         name: 'Lamps',
-        typeIds: ['pendant', 'table-lamp', 'floor-lamp'],
+        typeIds: ['pendant', 'table-lamp', 'floor-lamp', 'sconce-set'],
         lit: true,
         descriptionNoun: 'Luminary',
         angle: 'Standing or suspended stone luminary with material, variety, colour, shape, dimensions, and how light passes through translucent stone.',

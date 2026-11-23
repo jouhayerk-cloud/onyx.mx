@@ -2,7 +2,9 @@ import type { Dims, FigurePart } from '../types';
 import { normalizeDims, centeredCam } from '../types';
 import {
     type Cam,
+    type P2,
     proj,
+    hull,
     pathOf,
     prism,
     rectY,
@@ -10,12 +12,13 @@ import {
 } from '../../../welcome/hairline/engine';
 import { resolveVariant } from '../variantOptions';
 
-export type LampId = 'pendant' | 'table-lamp' | 'floor-lamp';
+export type LampId = 'pendant' | 'table-lamp' | 'floor-lamp' | 'sconce-set';
 
 export const LAMP_FIGURE_IDS: readonly string[] = [
     'pendant',
     'table-lamp',
     'floor-lamp',
+    'sconce-set',
 ];
 
 export type LampVariant = 'cylinder' | 'squared' | 'cube' | 'rectangular';
@@ -107,6 +110,7 @@ export const DEFAULTS: Record<LampId, Dims> = {
     'pendant':    { w: 10, h: 32, d: 10 },
     'table-lamp': { w: 15, h: 42, d: 15 },
     'floor-lamp': { w: 28, h: 145, d: 28 },
+    'sconce-set': { w: 192, h: 142, d: 6 },
 };
 
 /**
@@ -127,6 +131,9 @@ export const VARIANT_DEFAULTS: Record<LampId, Record<string, Dims>> = {
     'floor-lamp': {
         squared:     { w: 28, h: 145, d: 28 },
         rectangular: { w: 42, h: 140, d: 18 },
+    },
+    'sconce-set': {
+        'round-3-set': { w: 192, h: 142, d: 6 },
     },
 };
 
@@ -868,6 +875,76 @@ function buildFloorLampRectangular(cam: Cam, dims: Dims, top: LampTop): FigurePa
     ];
 }
 
+// ── sconce set (3 circular staggered wall sconces, symbolic scale) ───────────
+
+const SYMBOLIC_SCONCE_DIMS: Dims = { w: 192, h: 142, d: 6 };
+
+/**
+ * Simple 2D/isometric line drawing (not to real scale) representing the 3-piece
+ * staggered round backlit wall sconce cluster. Uses fixed symbolic proportions so
+ * recorded individual disc diameters (e.g. 100 x 75 x 50 cm) do not distort slab depth.
+ */
+function buildSconceSet(): FigurePart[] {
+    const cam = centeredCam(SYMBOLIC_SCONCE_DIMS);
+    const d = SYMBOLIC_SCONCE_DIMS.d;
+
+    // Paint back-to-front: medium upper-right, large upper-left, small lower-center
+    const specs: ReadonlyArray<{ cx: number; cz: number; r: number }> = [
+        { cx: 154, cz: 96, r: 37.5 },
+        { cx: 50, cz: 90, r: 50 },
+        { cx: 115, cz: 25, r: 25 },
+    ];
+
+    const parts: FigurePart[] = [];
+    const nRing = 28;
+    const nRib = 10;
+
+    for (const { cx, cz, r } of specs) {
+        const ptsBack: P2[] = [];
+        const ptsFront: P2[] = [];
+        for (let i = 0; i < nRing; i++) {
+            const a = (i / nRing) * Math.PI * 2;
+            const x = cx + r * Math.cos(a);
+            const z = cz + r * Math.sin(a);
+            ptsBack.push(proj(cam, x, 0, z));
+            ptsFront.push(proj(cam, x, d, z));
+        }
+
+        // 1. Opaque circular stone disc body with slim depth edge
+        parts.push({ d: pathOf(hull([...ptsBack, ...ptsFront])), kind: 'plate' });
+        // 2. Clean front circular contour
+        parts.push({ d: pathOf(ptsFront), kind: 'face' });
+
+        // 3. Slender organic vertical backlit translucent core ribbon down center
+        const leftEdge: P2[] = [];
+        const rightEdge: P2[] = [];
+        for (let i = 0; i <= nRib; i++) {
+            const t = i / nRib;
+            const z = cz - r * 0.84 + r * 1.68 * t;
+            const sway = Math.sin(t * Math.PI * 2.5) * 0.03 * r;
+            const halfW = r * (0.11 + 0.025 * Math.cos(t * Math.PI * 3));
+            leftEdge.push(proj(cam, cx - halfW + sway, d, z));
+            rightEdge.unshift(proj(cam, cx + halfW + sway, d, z));
+        }
+        parts.push({ d: pathOf([...leftEdge, ...rightEdge], true), kind: 'bright' });
+
+        // 4. Symmetrical flanking mineral strata crease lines inside disc circle
+        for (const side of [-1, 1] as const) {
+            const veinPts: P2[] = [];
+            for (let i = 0; i <= 8; i++) {
+                const t = i / 8;
+                const z = cz - r * 0.72 + r * 1.44 * t;
+                const arcBow = Math.cos((t - 0.5) * Math.PI) * 0.08 * r;
+                const x = cx + side * (r * 0.44 + arcBow);
+                veinPts.push(proj(cam, x, d, z));
+            }
+            parts.push({ d: pathOf(veinPts, false), kind: 'crease' });
+        }
+    }
+
+    return parts;
+}
+
 // ── public entry point ────────────────────────────────────────────────────────
 
 /**
@@ -881,8 +958,10 @@ export function buildLampFigure(
     variant?: string | null,
     top?: string | null,
 ): FigurePart[] | null {
-    if (!id || !LAMP_FIGURE_IDS.includes(id)) return null;
-    const key = id as LampId;
+    const normalizedId = id === 'sconce' ? 'sconce-set' : id;
+    if (!normalizedId || !LAMP_FIGURE_IDS.includes(normalizedId)) return null;
+    const key = normalizedId as LampId;
+    if (key === 'sconce-set') return buildSconceSet();
     const resolvedVariant = (resolveVariant(key, variant) ?? lampVariantOf(variant, key)) as LampVariant;
     const resolvedTop = lampTopOf(top);
     const dims = normalizeDims(rawDims, defaultDimsFor(key, resolvedVariant));

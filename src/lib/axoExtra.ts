@@ -25,7 +25,8 @@ export type AxoExtraClass =
     | 'tube'
     | 'fountain-yinyang-rect'
     | 'couch-angled'
-    | 'bar-l-shaped';
+    | 'bar-l-shaped'
+    | 'sconce-set';
 
 export const AXO_EXTRA_CLASSES: AxoExtraClass[] = [
     'lamp-table',
@@ -40,6 +41,7 @@ export const AXO_EXTRA_CLASSES: AxoExtraClass[] = [
     'fountain-yinyang-rect',
     'couch-angled',
     'bar-l-shaped',
+    'sconce-set',
 ];
 
 export interface AxoPoint2D {
@@ -86,6 +88,8 @@ export interface AxoDrawHelpers {
     shapeText?: string;
     /** Optional flag to render 3D bounding dimension frame */
     showBoundingCube?: boolean;
+    /** Original raw dimensions passed to rasteriser (used for multi-piece sets like sconce-set) */
+    rawDimensions?: { w: number; h: number; d: number };
 }
 
 /**
@@ -139,6 +143,8 @@ export function getAxoExtraLabel(cls: AxoExtraClass): string {
             return tr('Angled Stone Couch');
         case 'bar-l-shaped':
             return tr('L-Shaped Bar');
+        case 'sconce-set':
+            return tr('Round Sconces 3 Pieces Set');
     }
 }
 
@@ -213,6 +219,14 @@ export function classifyExtra(shape: string = '', type: string = ''): AxoExtraCl
     }
     if (has('bar', 'barra') && !has('table', 'mesa', 'lamp', 'panel')) {
         return 'bar-l-shaped';
+    }
+
+    // 1e. Round Sconces 3 Pieces Set (TE8265MHDD)
+    if (
+        has('te8265') ||
+        has('sconce', 'sconces', 'arbotante', 'arbotantes', 'wall sconce', 'wall sconces')
+    ) {
+        return 'sconce-set';
     }
 
     // 3. Lamps — check specific tower & pendant lamps FIRST so prose mentioning floor/table never hijacks them
@@ -2423,6 +2437,532 @@ function drawBarLShaped(
     ctx.restore();
 }
 
+// ── Round Sconces 3 Pieces Set (TE8265MHDD) ─────────────────────────────────
+
+export interface SconceDiscLayout {
+    cx: number;
+    cy: number;
+    r: number;
+    diameter: number;
+}
+
+/**
+ * Interprets the three numeric dimension columns (w_cm, h_cm, d_cm) as the
+ * diameters of the 3 circular wall sconces in descending order (e.g. 100, 75, 50 cm).
+ */
+export function extractSconceDiameters(w_cm: number, h_cm: number, d_cm: number): [number, number, number] {
+    const vals = [w_cm, h_cm, d_cm]
+        .filter(v => typeof v === 'number' && Number.isFinite(v) && v > 0)
+        .sort((a, b) => b - a);
+    if (vals.length >= 3) return [vals[0], vals[1], vals[2]];
+    if (vals.length === 2) return [vals[0], vals[1], Math.max(12, Math.round(vals[1] * 0.67))];
+    if (vals.length === 1) return [vals[0], Math.max(15, Math.round(vals[0] * 0.75)), Math.max(12, Math.round(vals[0] * 0.5))];
+    return [100, 75, 50];
+}
+
+/**
+ * Computes non-overlapping 3D wall coordinates for a staggered 3-piece circular sconce cluster:
+ * large disc upper-left, medium disc upper-right, small disc lower-center.
+ * All discs lie on z in [0, D] with composite bounding box [0..W] x [0..H] x [0..D].
+ */
+export function computeSconceSetLayout(
+    d1: number,
+    d2: number,
+    d3: number,
+): { W: number; H: number; D: number; discs: [SconceDiscLayout, SconceDiscLayout, SconceDiscLayout] } {
+    const r1 = d1 / 2;
+    const r2 = d2 / 2;
+    const r3 = d3 / 2;
+    const D = Math.max(6, Math.min(12, Math.round(d1 * 0.08)));
+    const gap = Math.max(8, d1 * 0.14);
+
+    const x1 = r1;
+    const y1Raw = 0;
+
+    // Account for isometric -0.5 * x screen lift so Disc 2 visually sits slightly below Disc 1's top
+    const x2 = d1 + gap + r2;
+    const y2Raw = y1Raw + (r1 - r2) - 0.5 * (x2 - x1) - 0.08 * d1;
+
+    // Lower intersection of circles C1 (radius r1+r3+gap) and C2 (radius r2+r3+gap)
+    const dx12 = x2 - x1;
+    const dy12 = y2Raw - y1Raw;
+    const d12 = Math.hypot(dx12, dy12) || 1;
+    const ux = dx12 / d12;
+    const uy = dy12 / d12;
+    const req13 = r1 + r3 + gap;
+    const req23 = r2 + r3 + gap;
+    const a = (req13 * req13 - req23 * req23 + d12 * d12) / (2 * d12);
+    const hTri = Math.sqrt(Math.max(0, req13 * req13 - a * a));
+    // Pick downward normal (+uy, -ux) so Disc 3 sits tucked underneath C1 and C2
+    const x3 = Math.max(r3, x1 + a * ux + hTri * uy);
+    const y3Raw = y1Raw + a * uy - hTri * ux;
+
+    const minY = Math.min(y1Raw - r1, y2Raw - r2, y3Raw - r3);
+
+    const y1 = y1Raw - minY;
+    const y2 = y2Raw - minY;
+    const y3 = y3Raw - minY;
+
+    const W = Math.max(x1 + r1, x2 + r2, x3 + r3);
+    const H = Math.max(y1 + r1, y2 + r2, y3 + r3);
+
+    return {
+        W,
+        H,
+        D,
+        discs: [
+            { cx: x1, cy: y1, r: r1, diameter: d1 },
+            { cx: x2, cy: y2, r: r2, diameter: d2 },
+            { cx: x3, cy: y3, r: r3, diameter: d3 },
+        ],
+    };
+}
+
+function parseHexRgb(hex: string): [number, number, number] | null {
+    const clean = (hex || '').trim().replace(/^#/, '');
+    if (clean.length !== 6) return null;
+    const n = parseInt(clean, 16);
+    if (Number.isNaN(n)) return null;
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function sampleSconceRgb(
+    helpers: AxoDrawHelpers,
+    normU: number,
+    normV: number,
+    fallbackRgb: [number, number, number],
+): [number, number, number] {
+    const list = helpers.parsedHexList;
+    if (!list || list.length === 0) return fallbackRgb;
+    const cols = helpers.tCols || 60;
+    const rows = helpers.tRows || 60;
+    const fx = Math.max(0, Math.min(cols - 1, normU * (cols - 1)));
+    const fy = Math.max(0, Math.min(rows - 1, normV * (rows - 1)));
+    const c0 = Math.floor(fx);
+    const r0 = Math.floor(fy);
+    const c1 = Math.min(cols - 1, c0 + 1);
+    const r1 = Math.min(rows - 1, r0 + 1);
+    const tx = fx - c0;
+    const ty = fy - r0;
+
+    const read = (c: number, r: number): [number, number, number] => {
+        const raw = list[r * cols + c] || '';
+        const uc = raw.toUpperCase().replace('#', '');
+        if (!uc || uc === 'FFFFFF' || uc === 'FEFEFE' || uc === 'FDFDFD' || uc === 'FCFFFF' || uc === 'FFFFF7') {
+            return fallbackRgb;
+        }
+        return parseHexRgb(raw) ?? fallbackRgb;
+    };
+
+    const p00 = read(c0, r0);
+    const p10 = read(c1, r0);
+    const p01 = read(c0, r1);
+    const p11 = read(c1, r1);
+
+    const w00 = (1 - tx) * (1 - ty);
+    const w10 = tx * (1 - ty);
+    const w01 = (1 - tx) * ty;
+    const w11 = tx * ty;
+
+    return [
+        Math.round(p00[0] * w00 + p10[0] * w10 + p01[0] * w01 + p11[0] * w11),
+        Math.round(p00[1] * w00 + p10[1] * w10 + p01[1] * w01 + p11[1] * w11),
+        Math.round(p00[2] * w00 + p10[2] * w10 + p01[2] * w01 + p11[2] * w11),
+    ];
+}
+
+function sampleSconceColor(
+    helpers: AxoDrawHelpers,
+    normU: number,
+    normV: number,
+    fallback: string,
+): string {
+    const fb = parseHexRgb(fallback) ?? [208, 204, 180];
+    const [r, g, b] = sampleSconceRgb(helpers, normU, normV, fb);
+    return `rgb(${r},${g},${b})`;
+}
+
+/**
+ * Renders a smooth bookmatched stone texture onto a tiny offscreen canvas so the
+ * front disc face uses hardware bilinear filtering with zero grid seams or blocks.
+ */
+function buildBookmatchedDiscTextureCanvas(
+    helpers: AxoDrawHelpers,
+    fallbackHex: string,
+    size = 80,
+): HTMLCanvasElement | null {
+    if (typeof document === 'undefined' || !helpers.parsedHexList?.length) return null;
+    const tex = document.createElement('canvas');
+    tex.width = size;
+    tex.height = size;
+    const tCtx = tex.getContext('2d');
+    if (!tCtx) return null;
+
+    const fb = parseHexRgb(fallbackHex) ?? [208, 204, 180];
+    const imgData = tCtx.createImageData(size, size);
+    const data = imgData.data;
+
+    for (let py = 0; py < size; py++) {
+        const ny = 1 - ((py + 0.5) / size) * 2;
+        for (let px = 0; px < size; px++) {
+            const nx = ((px + 0.5) / size) * 2 - 1;
+            const u = 0.5 + Math.abs(nx) * 0.46;
+            const v = 0.5 - ny * 0.46;
+            const [r, g, b] = sampleSconceRgb(helpers, u, v, fb);
+            const idx = (py * size + px) * 4;
+            data[idx] = r;
+            data[idx + 1] = g;
+            data[idx + 2] = b;
+            data[idx + 3] = 255;
+        }
+    }
+
+    tCtx.putImageData(imgData, 0, 0);
+    return tex;
+}
+
+function getSconceStoneFallback(helpers: AxoDrawHelpers, defaultColor: string): string {
+    const list = helpers.parsedHexList;
+    if (list && list.length > 0) {
+        for (const c of list) {
+            const uc = c.toUpperCase().replace('#', '');
+            if (uc !== 'FFFFFF' && uc !== 'FEFEFE' && uc !== 'FDFDFD' && uc !== 'FCFFFF' && uc !== 'FFFFF7') {
+                return c.startsWith('#') ? c : `#${c}`;
+            }
+        }
+    }
+    return defaultColor;
+}
+
+/**
+ * Renders 3 circular wall-mounted onyx sconces at true proportional diameters,
+ * with thin 3D cylindrical rims, bookmatched stone faces, and soft backlit wall glow.
+ */
+function drawSconceSet(
+    ctx: CanvasRenderingContext2D,
+    _geo: { W: number; H: number; D: number },
+    helpers: AxoDrawHelpers,
+): void {
+    const raw = helpers.rawDimensions;
+    const [d1, d2, d3] = extractSconceDiameters(raw?.w ?? 100, raw?.h ?? 75, raw?.d ?? 50);
+    const { D, discs } = computeSconceSetLayout(d1, d2, d3);
+
+    const stoneFallback = getSconceStoneFallback(helpers, helpers.colorRight || '#D0CCB4');
+    const discTex = !helpers.isWireframe ? buildBookmatchedDiscTextureCanvas(helpers, stoneFallback, 84) : null;
+    // Paint back-to-front: medium (upper-right), large (upper-left), small (lower-center)
+    const drawOrder: ReadonlyArray<SconceDiscLayout> = [discs[1], discs[0], discs[2]];
+    const N = 52;
+    const M = 28;
+    const tStart = Math.PI / 4;
+    const tEnd = (5 * Math.PI) / 4;
+
+    for (const disc of drawOrder) {
+        const { cx, cy, r } = disc;
+
+        // 1. Subtle backlit wall halo behind disc (solid mode only)
+        if (!helpers.isWireframe) {
+            const cBack = toCanvas(helpers, cx, cy, D);
+            const haloR = r * helpers.scale * 1.16;
+            const halo = ctx.createRadialGradient(cBack.x, cBack.y, r * helpers.scale * 0.55, cBack.x, cBack.y, haloR);
+            halo.addColorStop(0, 'rgba(255, 244, 214, 0.42)');
+            halo.addColorStop(1, 'rgba(255, 244, 214, 0)');
+            ctx.save();
+            ctx.fillStyle = halo;
+            ctx.beginPath();
+            ctx.arc(cBack.x, cBack.y, haloR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 2. Thin 3D cylindrical rim (upper-left visible mantle from z = D to z = 0)
+        const backMantlePts: AxoPoint2D[] = [];
+        const frontMantlePts: AxoPoint2D[] = [];
+        for (let i = 0; i <= M; i++) {
+            const t = tStart + (i / M) * (tEnd - tStart);
+            const x = cx + r * Math.cos(t);
+            const y = cy + r * Math.sin(t);
+            backMantlePts.push(toCanvas(helpers, x, y, D));
+            frontMantlePts.push(toCanvas(helpers, x, y, 0));
+        }
+
+        if (helpers.isWireframe) {
+            ctx.beginPath();
+            ctx.moveTo(frontMantlePts[0].x, frontMantlePts[0].y);
+            ctx.lineTo(backMantlePts[0].x, backMantlePts[0].y);
+            for (let i = 1; i <= M; i++) ctx.lineTo(backMantlePts[i].x, backMantlePts[i].y);
+            ctx.lineTo(frontMantlePts[M].x, frontMantlePts[M].y);
+            for (let i = M - 1; i >= 0; i--) ctx.lineTo(frontMantlePts[i].x, frontMantlePts[i].y);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(0,0,0,0)';
+            ctx.fill();
+        } else {
+            for (let i = 0; i < M; i++) {
+                const tMid = tStart + ((i + 0.5) / M) * (tEnd - tStart);
+                const u = 0.5 + 0.44 * Math.cos(tMid);
+                const v = 0.5 - 0.44 * Math.sin(tMid);
+                const col = helpers.parsedHexList?.length
+                    ? sampleSconceColor(helpers, u, v, helpers.colorLeft || stoneFallback)
+                    : (helpers.colorLeft || stoneFallback);
+
+                ctx.beginPath();
+                ctx.moveTo(frontMantlePts[i].x, frontMantlePts[i].y);
+                ctx.lineTo(frontMantlePts[i + 1].x, frontMantlePts[i + 1].y);
+                ctx.lineTo(backMantlePts[i + 1].x, backMantlePts[i + 1].y);
+                ctx.lineTo(backMantlePts[i].x, backMantlePts[i].y);
+                ctx.closePath();
+                ctx.fillStyle = col;
+                ctx.fill();
+            }
+
+            const shGrd = ctx.createLinearGradient(
+                frontMantlePts[M].x,
+                frontMantlePts[M].y,
+                frontMantlePts[0].x,
+                frontMantlePts[0].y,
+            );
+            shGrd.addColorStop(0, 'rgba(0, 0, 0, 0.24)');
+            shGrd.addColorStop(1, 'rgba(255, 255, 255, 0.16)');
+            ctx.beginPath();
+            ctx.moveTo(frontMantlePts[0].x, frontMantlePts[0].y);
+            ctx.lineTo(backMantlePts[0].x, backMantlePts[0].y);
+            for (let i = 1; i <= M; i++) ctx.lineTo(backMantlePts[i].x, backMantlePts[i].y);
+            ctx.lineTo(frontMantlePts[M].x, frontMantlePts[M].y);
+            for (let i = M - 1; i >= 0; i--) ctx.lineTo(frontMantlePts[i].x, frontMantlePts[i].y);
+            ctx.closePath();
+            ctx.fillStyle = shGrd;
+            ctx.fill();
+        }
+
+        // Stroke outer back edge silhouette
+        ctx.beginPath();
+        ctx.moveTo(frontMantlePts[0].x, frontMantlePts[0].y);
+        ctx.lineTo(backMantlePts[0].x, backMantlePts[0].y);
+        for (let i = 1; i <= M; i++) ctx.lineTo(backMantlePts[i].x, backMantlePts[i].y);
+        ctx.lineTo(frontMantlePts[M].x, frontMantlePts[M].y);
+        ctx.stroke();
+
+        // 3. Front circular stone face at z = 0
+        const frontCirclePts: AxoPoint2D[] = [];
+        for (let i = 0; i < N; i++) {
+            const a = (i / N) * Math.PI * 2;
+            frontCirclePts.push(toCanvas(helpers, cx + r * Math.cos(a), cy + r * Math.sin(a), 0));
+        }
+
+        const traceFrontCircle = () => {
+            ctx.beginPath();
+            ctx.moveTo(frontCirclePts[0].x, frontCirclePts[0].y);
+            for (let i = 1; i < N; i++) ctx.lineTo(frontCirclePts[i].x, frontCirclePts[i].y);
+            ctx.closePath();
+        };
+
+        if (helpers.isWireframe) {
+            traceFrontCircle();
+            ctx.fillStyle = 'rgba(0,0,0,0)';
+            ctx.fill();
+            ctx.stroke();
+
+            // Subtle bookmatched vein lines in wireframe mode
+            ctx.save();
+            ctx.globalAlpha = 0.45;
+            ctx.lineWidth = Math.max(1, (helpers.lineWidth ?? 1.8) * 0.65);
+            for (const xOff of [-0.14, 0.14]) {
+                ctx.beginPath();
+                const steps = 10;
+                for (let k = 0; k <= steps; k++) {
+                    const t = k / steps;
+                    const ny = -0.82 + 1.64 * t;
+                    const wave = Math.sin(t * Math.PI * 2.5) * 0.04;
+                    const pt = toCanvas(helpers, cx + r * (xOff + wave), cy + r * ny, 0);
+                    if (k === 0) ctx.moveTo(pt.x, pt.y);
+                    else ctx.lineTo(pt.x, pt.y);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        } else {
+            ctx.save();
+            traceFrontCircle();
+            ctx.clip();
+
+            if (discTex) {
+                const texSize = discTex.width;
+                const pO = toCanvas(helpers, cx - r, cy + r, 0);
+                const pX = toCanvas(helpers, cx + r, cy + r, 0);
+                const pY = toCanvas(helpers, cx - r, cy - r, 0);
+                ctx.save();
+                ctx.transform(
+                    (pX.x - pO.x) / texSize,
+                    (pX.y - pO.y) / texSize,
+                    (pY.x - pO.x) / texSize,
+                    (pY.y - pO.y) / texSize,
+                    pO.x,
+                    pO.y,
+                );
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(discTex, 0, 0);
+                ctx.restore();
+            } else {
+                traceFrontCircle();
+                ctx.fillStyle = helpers.hexPattern ?? helpers.colorRight ?? stoneFallback;
+                ctx.fill();
+            }
+
+            // Central vertical backlit translucent onyx core band
+            const pGlowL = toCanvas(helpers, cx - r * 0.34, cy, 0);
+            const pGlowR = toCanvas(helpers, cx + r * 0.34, cy, 0);
+            const coreGlow = ctx.createLinearGradient(pGlowL.x, pGlowL.y, pGlowR.x, pGlowR.y);
+            coreGlow.addColorStop(0, 'rgba(255, 252, 240, 0)');
+            coreGlow.addColorStop(0.5, 'rgba(255, 252, 240, 0.36)');
+            coreGlow.addColorStop(1, 'rgba(255, 252, 240, 0)');
+            ctx.fillStyle = coreGlow;
+            ctx.fillRect(
+                Math.min(...frontCirclePts.map(p => p.x)) - 2,
+                Math.min(...frontCirclePts.map(p => p.y)) - 2,
+                Math.max(...frontCirclePts.map(p => p.x)) - Math.min(...frontCirclePts.map(p => p.x)) + 4,
+                Math.max(...frontCirclePts.map(p => p.y)) - Math.min(...frontCirclePts.map(p => p.y)) + 4,
+            );
+
+            // Subtle 3D planar face lighting (upper-left warm highlight to lower-right depth shadow)
+            const pTopL = toCanvas(helpers, cx - r * 0.7, cy + r * 0.7, 0);
+            const pBotR = toCanvas(helpers, cx + r * 0.7, cy - r * 0.7, 0);
+            const faceShade = ctx.createLinearGradient(pTopL.x, pTopL.y, pBotR.x, pBotR.y);
+            faceShade.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
+            faceShade.addColorStop(0.6, 'rgba(0, 0, 0, 0)');
+            faceShade.addColorStop(1, 'rgba(0, 0, 0, 0.16)');
+            ctx.fillStyle = faceShade;
+            ctx.fillRect(
+                Math.min(...frontCirclePts.map(p => p.x)) - 2,
+                Math.min(...frontCirclePts.map(p => p.y)) - 2,
+                Math.max(...frontCirclePts.map(p => p.x)) - Math.min(...frontCirclePts.map(p => p.x)) + 4,
+                Math.max(...frontCirclePts.map(p => p.y)) - Math.min(...frontCirclePts.map(p => p.y)) + 4,
+            );
+
+            ctx.restore();
+
+            traceFrontCircle();
+            ctx.stroke();
+        }
+    }
+}
+
+/**
+ * Draws isometric diameter hairlines and Ø diameter callout labels directly on each
+ * sconce disc instead of a misleading W x H x D cuboid frame.
+ */
+export function drawSconceSetDiameterCallouts(
+    ctx: CanvasRenderingContext2D,
+    rawDims: { w: number; h: number; d: number },
+    helpers: {
+        project: (x: number, y: number, z: number) => { u: number; v: number };
+        scale: number;
+        cx: number;
+        cy: number;
+        isDark?: boolean;
+        wireframeColor?: string;
+        pxScale?: number;
+    },
+    options?: {
+        showDimensionLabels?: boolean;
+        showMeasurementTicks?: boolean;
+        hairlineColor?: string;
+        unit?: string;
+    },
+): void {
+    const pxScale = helpers.pxScale ?? 1;
+    const isLight = helpers.wireframeColor === '#000000' || helpers.wireframeColor === 'black' || !helpers.isDark;
+    const frontColor = options?.hairlineColor || (isLight ? 'rgba(30, 41, 59, 0.78)' : 'rgba(255, 255, 255, 0.78)');
+    const tickColor = isLight ? 'rgba(15, 23, 42, 0.90)' : 'rgba(255, 255, 255, 0.92)';
+    const textColor = isLight ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)';
+    const unit = options?.unit || 'cm';
+    const isInch = unit === 'in' || unit === '"' || unit === 'inch';
+
+    const formatDia = (cmVal: number) => {
+        if (!cmVal || isNaN(cmVal)) return `Ø0 ${unit}`;
+        if (isInch) {
+            const inVal = cmVal / 2.54;
+            const rounded = Math.round(inVal * 10) / 10;
+            return `Ø${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)} ${unit}`;
+        }
+        return `Ø${Math.round(cmVal)} ${unit}`;
+    };
+
+    const projectToCanvas = (x: number, y: number, z: number) => {
+        const p = helpers.project(x, y, z);
+        return { x: helpers.cx + p.u * helpers.scale, y: helpers.cy + p.v * helpers.scale };
+    };
+
+    const [d1, d2, d3] = extractSconceDiameters(rawDims.w, rawDims.h, rawDims.d);
+    const { discs } = computeSconceSetLayout(d1, d2, d3);
+
+    const showTicks = options?.showMeasurementTicks !== false;
+    const showLabels = options?.showDimensionLabels !== false;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (const disc of discs) {
+        const { cx, cy, r, diameter } = disc;
+        const pL = projectToCanvas(cx - r, cy, 0);
+        const pR = projectToCanvas(cx + r, cy, 0);
+        const pC = projectToCanvas(cx, cy, 0);
+
+        if (showTicks) {
+            ctx.beginPath();
+            ctx.setLineDash([4 * pxScale, 3 * pxScale]);
+            ctx.lineWidth = 1.5 * pxScale;
+            ctx.strokeStyle = frontColor;
+            ctx.moveTo(pL.x, pL.y);
+            ctx.lineTo(pR.x, pR.y);
+            ctx.stroke();
+
+            ctx.setLineDash([]);
+            ctx.fillStyle = tickColor;
+            for (const pt of [pL, pR]) {
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, 2.1 * pxScale, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Small vertical end ticks perpendicular to horizontal span
+            const tickH = 5.5 * pxScale;
+            ctx.beginPath();
+            ctx.lineWidth = 1.6 * pxScale;
+            ctx.strokeStyle = tickColor;
+            ctx.moveTo(pL.x, pL.y - tickH);
+            ctx.lineTo(pL.x, pL.y + tickH);
+            ctx.moveTo(pR.x, pR.y - tickH);
+            ctx.lineTo(pR.x, pR.y + tickH);
+            ctx.stroke();
+        }
+
+        if (showLabels) {
+            const label = formatDia(diameter);
+            const chordLen = Math.hypot(pR.x - pL.x, pR.y - pL.y);
+            let fontPx = Math.round(21 * pxScale);
+            ctx.font = `700 ${fontPx}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", monospace, system-ui, sans-serif`;
+            const measuredW = ctx.measureText(label).width;
+            if (measuredW > chordLen * 0.84) {
+                fontPx = Math.max(Math.round(14 * pxScale), Math.floor(fontPx * ((chordLen * 0.84) / measuredW)));
+                ctx.font = `700 ${fontPx}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", monospace, system-ui, sans-serif`;
+            }
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.96)' : 'rgba(15, 23, 42, 0.96)';
+            ctx.lineWidth = 5.5 * pxScale;
+            ctx.lineJoin = 'round';
+            const labelY = pC.y + r * helpers.scale * 0.30;
+            ctx.strokeText(label, pC.x, labelY);
+            ctx.fillStyle = textColor;
+            ctx.fillText(label, pC.x, labelY);
+        }
+    }
+
+    ctx.restore();
+}
+
 /**
  * Dispatches drawing of an extra axonometric geometry class onto a 2D canvas.
  * Follows the exact shading, stroke, and projection conventions of axonometric.ts.
@@ -2475,6 +3015,9 @@ export function drawExtra(
             break;
         case 'bar-l-shaped':
             drawBarLShaped(ctx, geo, helpers);
+            break;
+        case 'sconce-set':
+            drawSconceSet(ctx, geo, helpers);
             break;
     }
 

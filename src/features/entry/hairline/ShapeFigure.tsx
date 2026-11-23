@@ -60,6 +60,8 @@ function getShapeColor(typeId: string | null | undefined, family: Geometry, isMi
         typeId === 'pendant' ||
         typeId === 'table-lamp' ||
         typeId === 'floor-lamp' ||
+        typeId === 'sconce-set' ||
+        typeId === 'sconce' ||
         typeId === 'luminary' ||
         typeId === 'tower-lamp'
     ) {

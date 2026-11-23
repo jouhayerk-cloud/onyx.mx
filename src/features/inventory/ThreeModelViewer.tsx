@@ -24,7 +24,7 @@ import {
     type AxoBoundingBoxOptions
 } from '../../lib/axonometric';
 import { resolveStonePaletteRaw } from '../../lib/canonicalColors';
-import { classifyExtra, extractHolesCount, isFreeFormPanel, isPanelPair, PANEL_PAIR_GAP_RATIO } from '../../lib/axoExtra';
+import { classifyExtra, computeSconceSetLayout, extractHolesCount, extractSconceDiameters, isFreeFormPanel, isPanelPair, PANEL_PAIR_GAP_RATIO } from '../../lib/axoExtra';
 import { classifyMirror } from '../../lib/axoMirrors';
 import { classifyGeometry } from '../../lib/geometry';
 import {
@@ -46,6 +46,7 @@ export type Archetype3D =
     | 'tower-lamp'
     | 'table-lamp'
     | 'pendant'
+    | 'sconce-set'
     | 'wall-panel'
     | 'panel-pair'
     | 'painted-wall-panel'
@@ -168,6 +169,8 @@ export function parseItemFor3D(item: any): ParsedItemSpecs {
         archetype = 'table-lamp';
     } else if (extraClass === 'lamp-pendant') {
         archetype = 'pendant';
+    } else if (extraClass === 'sconce-set') {
+        archetype = 'sconce-set';
     } else if (extraClass === 'panel') {
         if (isPanelPair(combinedLower)) {
             archetype = 'panel-pair';
@@ -1866,6 +1869,47 @@ function buildArchetype3DScene(
             break;
         }
 
+        case 'sconce-set': {
+            const [d1, d2, d3] = extractSconceDiameters(specs.widthCm, specs.heightCm, specs.lengthCm);
+            const layout = computeSconceSetLayout(d1, d2, d3);
+            const sScale = 8.0 / Math.max(layout.W, layout.H, layout.D, 1);
+            const discDepth = Math.max(0.18, layout.D * sScale);
+            const sconceMeta = Array.isArray((specs.maskAttractions as any)?.sconce_discs)
+                ? (specs.maskAttractions as any).sconce_discs
+                : [];
+
+            layout.discs.forEach((disc, idx) => {
+                const rScene = disc.r * sScale;
+                const sh = new THREE.Shape();
+                sh.absarc(0, 0, rScene, 0, Math.PI * 2, false);
+                const bv = Math.min(0.03, discDepth * 0.14);
+                const g = new THREE.ExtrudeGeometry(sh, {
+                    depth: discDepth,
+                    bevelEnabled: true,
+                    bevelThickness: bv,
+                    bevelSize: bv,
+                    bevelSegments: 3,
+                    curveSegments: 64,
+                });
+                g.center();
+                const uvBox = Array.isArray(sconceMeta[idx]?.bbox_uv) && sconceMeta[idx].bbox_uv.length === 4
+                    ? sconceMeta[idx].bbox_uv
+                    : [0.04, 0.04, 0.96, 0.96];
+                applyBoxUVsInSubregion(g, uvBox);
+
+                const mesh = new THREE.Mesh(g, stoneMat);
+                const px = (disc.cx - layout.W * 0.5) * sScale;
+                const py = (disc.cy - layout.H * 0.5) * sScale;
+                mesh.position.set(px, py, 0);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                group.add(mesh);
+
+                addWarmLight(px, py, -discDepth * 1.6, 4.8, 16);
+            });
+            break;
+        }
+
         default: {
             const geom = new THREE.BoxGeometry(W, H, D, 8, 8, 8);
             normalizeGeometryUVs(geom);
@@ -2004,18 +2048,42 @@ const H = Math.max(0.05, SPECS.heightCm * s);
 const D = Math.max(0.05, SPECS.lengthCm * s);
 
 let geom;
-if (SPECS.archetype === 'bowl' || SPECS.archetype === 'plate') {
-  const r = (W + D) * 0.25;
-  const pts = [new THREE.Vector2(0.01, 0), new THREE.Vector2(r * 0.45, 0), new THREE.Vector2(r, H), new THREE.Vector2(r * 0.88, H), new THREE.Vector2(0.01, H * 0.18)];
-  geom = new THREE.LatheGeometry(pts, 72);
-  geom.center();
-} else if (SPECS.archetype === 'sphere') {
-  geom = new THREE.SphereGeometry(Math.max(W, H, D) * 0.45, 64, 48);
+if (SPECS.archetype === 'sconce-set') {
+  const ds = [SPECS.widthCm, SPECS.heightCm, SPECS.lengthCm].filter(v => v > 0).sort((a, b) => b - a);
+  const d1 = ds[0] || 100, d2 = ds[1] || 75, d3 = ds[2] || 50;
+  const r1 = d1 * 0.5, r2 = d2 * 0.5, r3 = d3 * 0.5, gap = Math.max(8, d1 * 0.14);
+  const x1 = r1, y1Raw = 0, x2 = d1 + gap + r2, y2Raw = r1 - r2 - 0.10 * d1;
+  const dx12 = x2 - x1, dy12 = y2Raw - y1Raw, d12 = Math.hypot(dx12, dy12) || 1;
+  const ux = dx12 / d12, uy = dy12 / d12, req13 = r1 + r3 + gap, req23 = r2 + r3 + gap;
+  const a = (req13 * req13 - req23 * req23 + d12 * d12) / (2 * d12);
+  const hTri = Math.sqrt(Math.max(0, req13 * req13 - a * a));
+  const x3 = Math.max(r3, x1 + a * ux + hTri * uy), y3Raw = y1Raw + a * uy - hTri * ux;
+  const minY = Math.min(y1Raw - r1, y2Raw - r2, y3Raw - r3);
+  const maxX = Math.max(x1 + r1, x2 + r2, x3 + r3), maxY = Math.max(y1Raw - minY + r1, y2Raw - minY + r2, y3Raw - minY + r3);
+  const sc = 8.0 / Math.max(maxX, maxY, 1);
+  const dep = Math.max(0.18, Math.max(6, Math.round(d1 * 0.08)) * sc);
+  [{ cx: x1 - maxX * 0.5, cy: y1Raw - minY - maxY * 0.5, r: r1 }, { cx: x2 - maxX * 0.5, cy: y2Raw - minY - maxY * 0.5, r: r2 }, { cx: x3 - maxX * 0.5, cy: y3Raw - minY - maxY * 0.5, r: r3 }].forEach(d => {
+    const sh = new THREE.Shape(); sh.absarc(0, 0, d.r * sc, 0, Math.PI * 2, false);
+    const dg = new THREE.ExtrudeGeometry(sh, { depth: dep, bevelEnabled: true, bevelThickness: dep * 0.12, bevelSize: dep * 0.12, bevelSegments: 3, curveSegments: 64 });
+    dg.center();
+    const dm = new THREE.Mesh(dg, mat);
+    dm.position.set(d.cx * sc, d.cy * sc, 0);
+    scene.add(dm);
+  });
 } else {
-  geom = new THREE.BoxGeometry(W, H, D, 12, 12, 12);
+  if (SPECS.archetype === 'bowl' || SPECS.archetype === 'plate') {
+    const r = (W + D) * 0.25;
+    const pts = [new THREE.Vector2(0.01, 0), new THREE.Vector2(r * 0.45, 0), new THREE.Vector2(r, H), new THREE.Vector2(r * 0.88, H), new THREE.Vector2(0.01, H * 0.18)];
+    geom = new THREE.LatheGeometry(pts, 72);
+    geom.center();
+  } else if (SPECS.archetype === 'sphere') {
+    geom = new THREE.SphereGeometry(Math.max(W, H, D) * 0.45, 64, 48);
+  } else {
+    geom = new THREE.BoxGeometry(W, H, D, 12, 12, 12);
+  }
+  const mesh = new THREE.Mesh(geom, mat);
+  scene.add(mesh);
 }
-const mesh = new THREE.Mesh(geom, mat);
-scene.add(mesh);
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.75));
 const keyLight = new THREE.DirectionalLight(0xfff7ed, 2.2);
@@ -2459,6 +2527,9 @@ export const ThreeModelViewer: React.FC<ThreeModelViewerProps> = ({
         });
     }, [onCloseFullscreen]);
 
+    const sconceDiameters = specs.archetype === 'sconce-set'
+        ? extractSconceDiameters(specs.widthCm, specs.heightCm, specs.lengthCm)
+        : null;
     const displayWidthCm =
         specs.archetype === 'panel-pair' && specs.widthCm < specs.heightCm * 0.68
             ? Math.round(specs.widthCm * (2 + PANEL_PAIR_GAP_RATIO))
@@ -2467,11 +2538,15 @@ export const ThreeModelViewer: React.FC<ThreeModelViewerProps> = ({
         (specs.archetype === 'wall-panel' || specs.archetype === 'panel-pair' || specs.archetype === 'painted-wall-panel')
             ? Math.min(specs.lengthCm, 8)
             : specs.lengthCm;
-    const metricDimsStr = `${displayWidthCm} × ${specs.heightCm} × ${displayDepthCm} cm`;
-    const imperialDimsStr = [displayWidthCm, specs.heightCm, displayDepthCm]
-        .map(cm => cmToImperial(cm))
-        .filter(Boolean)
-        .join(' × ');
+    const metricDimsStr = sconceDiameters
+        ? sconceDiameters.map(v => `Ø${Math.round(v)}`).join(' · ') + ' cm (3 discs)'
+        : `${displayWidthCm} × ${specs.heightCm} × ${displayDepthCm} cm`;
+    const imperialDimsStr = sconceDiameters
+        ? sconceDiameters.map(v => `Ø${cmToImperial(v)}`).filter(Boolean).join(' · ')
+        : [displayWidthCm, specs.heightCm, displayDepthCm]
+            .map(cm => cmToImperial(cm))
+            .filter(Boolean)
+            .join(' × ');
     const imperialWeight = specs.weightKg > 0 ? formatWeightImperialOnly(specs.weightKg) : '';
 
     const renderViewerStage = (fullscreenMode: boolean) => (

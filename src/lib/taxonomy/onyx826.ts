@@ -115,6 +115,24 @@ export const ONYX826_TAXONOMY: readonly OnyxTaxonomyEntry[] = [
     openTop: 'required',
     note: 'Tower Lamp is a Floor Lamp (owner rule). Never print "Tower Lamp" on copy.',
   },
+  {
+    id: 'sconce-set',
+    labelEN: 'Sconce Set',
+    labelES: 'Juego de arbotantes',
+    family: 'lamps',
+    aliases: ['sconce set', 'sconces set', 'sconces 3 pieces set', 'sconce 3 pieces set', 'round sconces 3 pieces set', 'round sconce set', '3 pieces sconce set', '3 piece sconce set', 'wall sconce set', 'wall sconces set', 'sconce', 'sconces', 'wall sconce', 'wall sconces', 'arbotante', 'arbotantes', 'juego de arbotantes'],
+    allowedShapes: ['round', 'round 3 pieces set'],
+    hairlineFigure: 'sconce-set',
+    shopifyCategory: 'Home & Garden > Lighting > Lighting Fixtures > Wall Light Fixtures',
+    shopifyProductType: 'Home Decor > Pendant Lights',
+    colourPatternRule: 'lookup-canonical-map',
+    titlePattern: {
+      invoice: '{Colour} {Material} {Shape} Sconces 3 Pieces Set, {Size} cm (diameters)',
+      shopify: '{Colour} {Material} {Shape} Backlit Wall Sconce Set - {Feature}',
+    },
+    openTop: 'not-needed',
+    note: 'Three-piece staggered circular backlit wall sconce set. Width/height/length columns store the three disc diameters (e.g. 100 x 75 x 50 cm).',
+  },
 
   // ---------------- vessels ----------------
   {
@@ -914,7 +932,9 @@ export function buildInvoiceTitle826(item: any): string {
   const l = item.lengthCm ?? item.length_cm;
   let sizeStr = '';
   if (w && h) {
-    if (!l || Number(w) === Number(l)) {
+    if (entry?.id === 'sconce-set' && l) {
+      sizeStr = `${w} x ${h} x ${l}`;
+    } else if (!l || Number(w) === Number(l)) {
       sizeStr = `${w} x ${h}`;
     } else {
       sizeStr = `${w} x ${l} x ${h}`;

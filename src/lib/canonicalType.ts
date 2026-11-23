@@ -14,6 +14,7 @@ export type CanonicalTypeId =
     | 'pendant'
     | 'table-lamp'
     | 'floor-lamp'
+    | 'sconce-set'
     | 'bowl'
     | 'canoe'
     | 'plate'
@@ -39,6 +40,7 @@ export const CANONICAL_TYPES: readonly CanonicalTypeInfo[] = [
     { id: 'pendant', label: 'Pendant' },
     { id: 'table-lamp', label: 'Table Lamp' },
     { id: 'floor-lamp', label: 'Floor Lamp' },
+    { id: 'sconce-set', label: 'Sconce Set' },
     { id: 'bowl', label: 'Bowl' },
     { id: 'canoe', label: 'Canoe' },
     { id: 'plate', label: 'Plate' },
@@ -66,6 +68,7 @@ const ALIASES: ReadonlyArray<readonly [CanonicalTypeId, readonly string[]]> = [
     ['table-lamp', ['table lamp', 'table lamps', 'lamp', 'lamps']],
     // A tower lamp is a floor lamp (owner decision, 11 Oct 2026): the staff used two names for one product.
     ['floor-lamp', ['floor lamp', 'floor lamps', 'tower lamp', 'tower lamps']],
+    ['sconce-set', ['sconce set', 'sconces set', 'sconces 3 pieces set', 'sconce 3 pieces set', 'round sconces 3 pieces set', 'round sconce set', '3 pieces sconce set', '3 piece sconce set', 'wall sconce set', 'wall sconces set', 'sconce', 'sconces', 'wall sconce', 'wall sconces', 'arbotante', 'arbotantes', 'juego de arbotantes']],
     ['bowl', ['bowl', 'bowls']],
     ['canoe', ['canoe', 'canoa']],
     ['plate', ['plate', 'plato', 'tray']],

@@ -1,4 +1,4 @@
-import { classifyExtra, drawExtra, extractHolesCount, isFreeFormPanel, isPanelPair, PANEL_PAIR_GAP_RATIO } from './axoExtra';
+import { classifyExtra, computeSconceSetLayout, drawExtra, drawSconceSetDiameterCallouts, extractHolesCount, extractSconceDiameters, isFreeFormPanel, isPanelPair, PANEL_PAIR_GAP_RATIO } from './axoExtra';
 import { classifyMirror, drawMirror } from './axoMirrors';
 import type { AxoMirrorClass } from './axoMirrors';
 import type { AxoExtraClass } from './axoExtra';
@@ -712,6 +712,8 @@ export interface ResolvedAxoGeometry {
     mirrorClass?: AxoMirrorClass | null;
     /** Wall panels only: single/pair and rect/free outline, which change the drawing at equal W/H/D. */
     panelVariant?: string;
+    /** Sconce 3-piece sets only: individual disc diameters sorted descending. */
+    sconceDiameters?: [number, number, number];
 }
 
 /**
@@ -795,6 +797,7 @@ export function resolveAxoGeometry(
 
     const extra = isDiamondTable ? null : classifyExtra(shapeStr, descStr);
     let panelVariant: string | undefined;
+    let sconceDiameters: [number, number, number] | undefined;
     if (extra === 'tube') {
         D = W;
     } else if (extra === 'panel') {
@@ -817,9 +820,15 @@ export function resolveAxoGeometry(
         if (!d_cm) D = Math.round(W * 0.90);
     } else if (extra === 'bar-l-shaped') {
         if (!h_cm) H = Math.round(Math.min(W, D) * 0.75);
+    } else if (extra === 'sconce-set') {
+        sconceDiameters = extractSconceDiameters(w_cm, h_cm, d_cm);
+        const layout = computeSconceSetLayout(...sconceDiameters);
+        W = layout.W;
+        H = layout.H;
+        D = layout.D;
     }
 
-    return { W, H, D, geom, isMirror, extra, mirrorClass, panelVariant };
+    return { W, H, D, geom, isMirror, extra, mirrorClass, panelVariant, sconceDiameters };
 }
 
 export async function generateAxonometricDataUrl(
@@ -1005,7 +1014,7 @@ export async function generateAxonometricDataUrl(
         ctx.strokeStyle = strokeGradient;
 
         // Render back occluded edges of 3D bounding dimension frame
-        if (shouldDrawBoundingBox) {
+        if (shouldDrawBoundingBox && extra !== 'sconce-set') {
             draw3DBoundingDimensionFrame(
                 ctx,
                 { W, H, D },
@@ -1036,20 +1045,33 @@ export async function generateAxonometricDataUrl(
         }
 
         if (extra) {
+            const sconceWireOutline = extra === 'sconce-set' && isWireframe && asJpeg ? '#1e293b' : strokeGradient;
+            ctx.strokeStyle = sconceWireOutline;
             drawExtra(ctx, extra, { W, H, D }, {
                 project, scale, cx, cy,
-                colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: strokeGradient,
+                colorTop: COLOR_TOP, colorRight: COLOR_RIGHT, colorLeft: COLOR_LEFT, colorOutline: sconceWireOutline,
                 lineWidth: 1.8, holes: extractHolesCount(shapeStr, descStr), isWireframe, hexPattern,
+                parsedHexList, tCols, tRows,
                 shapeText: `${shapeStr} ${descStr}`,
+                rawDimensions: { w: w_cm, h: h_cm, d: d_cm },
             });
             if (shouldDrawBoundingBox) {
-                draw3DBoundingDimensionFrame(
-                    ctx,
-                    { W, H, D },
-                    { project, scale, cx, cy, isDark: !asJpeg, wireframeColor, pxScale },
-                    bboxOpts,
-                    'front'
-                );
+                if (extra === 'sconce-set') {
+                    drawSconceSetDiameterCallouts(
+                        ctx,
+                        { w: w_cm, h: h_cm, d: d_cm },
+                        { project, scale, cx, cy, isDark: !asJpeg, wireframeColor, pxScale },
+                        bboxOpts
+                    );
+                } else {
+                    draw3DBoundingDimensionFrame(
+                        ctx,
+                        { W, H, D },
+                        { project, scale, cx, cy, isDark: !asJpeg, wireframeColor, pxScale },
+                        bboxOpts,
+                        'front'
+                    );
+                }
             }
             resolve(canvas.toDataURL(asJpeg ? 'image/jpeg' : 'image/png', 1.0));
             return;

@@ -618,6 +618,12 @@
     "drive_file_id": "1hn-_J49yNqqCxQhCgIxOmvYMdsztjmRW"
   },
   {
+    "barcode": "RF8265XHL",
+    "archetype": "wall_panel",
+    "artifact_url": "/models/3d/RF8265XHL.html",
+    "drive_file_id": "1GWKXaS57-Z-qKcKbUQkOhxjgJIxj9IJ4"
+  },
+  {
     "barcode": "TE8261OADO",
     "archetype": "wall_panel_pair",
     "artifact_url": "/models/3d/TE8261OADO.html",
@@ -634,5 +640,17 @@
     "archetype": "wall_panel_pair",
     "artifact_url": "/models/3d/TE8263XMAD.html",
     "drive_file_id": "1TFsHS2Ix072gP1E0xoUMnw57z-ikF6-m"
+  },
+  {
+    "barcode": "TE8264XHNA",
+    "archetype": "wall_panel_pair",
+    "artifact_url": "/models/3d/TE8264XHNA.html",
+    "drive_file_id": "1DgBW-uzyjGPVgJktMVoiytxbJ6SkLe0Q"
+  },
+  {
+    "barcode": "TE8265MHDD",
+    "archetype": "sconce_set",
+    "artifact_url": "/models/3d/TE8265MHDD.html",
+    "drive_file_id": "1NJ7Dn1eyZ7ro5chzh7KyqwrRoG-Z12o_"
   }
 ]
