@@ -1,1 +1,0 @@
-function e(t,o,n,u){if(u&&n>=2){const r=2*(t-1)+1;return r<n?r:2*(t-1)}return t-1}console.assert(e(1,2,4,!0)===1&&e(2,2,4,!0)===3&&e(2,2,3,!0)===2&&e(3,3,6,!0)===5&&e(2,2,4,!1)===1&&e(1,1,1,!0)===0,"unitPhotoIndex");export{e as u};
