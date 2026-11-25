@@ -3765,7 +3765,7 @@ async function prepareControlRow(item: CatalogArtifact): Promise<ControlRowImage
     ]);
     const imgs: ControlRowImages = [];
     for (const c of cutouts) if (c && c.dataUrl && c.w && c.h) imgs.push({ dataUrl: c.dataUrl, aspect: c.w / c.h });
-    if (axo) imgs.push({ dataUrl: axo, aspect: 1, axo: true });
+    if (axo) imgs.push({ dataUrl: axo, aspect: 1.2, axo: true }); // wider slot so the enlarged axo fits
     return imgs;
 }
 
@@ -3778,12 +3778,12 @@ async function prepareControlRow(item: CatalogArtifact): Promise<ControlRowImage
  */
 async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIndex: number, perPage: number, PW: number, PH: number, rowImages: ControlRowImages[]) {
     const S1 = 0.8, S2 = 1.8;
-    const TITLE_PT = 7.5, TAG_PT = 8.5;
+    const TITLE_PT = 10, TAG_PT = 11;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
     const { x0: X0, y0: Y0, w: W, h: H } = sharedPrintArea(PW, PH);
     const rowH = H / perPage;
-    const PAD = 1.5;
-    const codeW = 44;
+    const PAD = 1.0;
+    const codeW = 40;
     const divX = X0 + W - codeW;
     const maxPanelW = W * 0.4;
 
@@ -3799,10 +3799,11 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
         // Left: cutouts + axo side by side in one panel as wide as they need (capped), all at the panel's height.
         const imgs = rowImages[i] || [];
         let imgH = rowH - 2 * PAD;
-        const natural = imgs.reduce((sum, im) => sum + imgH * im.aspect, 0) + Math.max(0, imgs.length - 1) * S2;
-        if (natural + 2 * PAD > maxPanelW) imgH *= (maxPanelW - 2 * PAD - Math.max(0, imgs.length - 1) * S2) / (natural - Math.max(0, imgs.length - 1) * S2);
-        const contentW = imgs.reduce((sum, im) => sum + imgH * im.aspect, 0) + Math.max(0, imgs.length - 1) * S2;
-        const panelW = Math.max(rowH * 0.6, contentW + 2 * PAD);
+        const gaps = Math.max(0, imgs.length - 1) * S1;
+        const natural = imgs.reduce((sum, im) => sum + imgH * im.aspect, 0) + gaps;
+        if (natural + 2 * PAD > maxPanelW) imgH *= (maxPanelW - 2 * PAD - gaps) / (natural - gaps);
+        const contentW = imgs.reduce((sum, im) => sum + imgH * im.aspect, 0) + gaps;
+        const panelW = Math.max(rowH * 0.4, contentW + 2 * PAD);
         doc.setFillColor(240, 240, 240);
         doc.rect(X0, top, panelW, rowH, 'F');
         // Payment status rim band on the strip's left edge (New blue, Requested yellow, Paid green)
@@ -3814,15 +3815,15 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
         const iy = top + (rowH - imgH) / 2;
         for (const im of imgs) {
             const iw = imgH * im.aspect;
-            if (im.axo) drawAxoContain(doc, im.dataUrl, ix, iy, iw, imgH, 1);
+            if (im.axo) drawAxoContain(doc, im.dataUrl, ix, iy, iw, imgH, 1.12); // axo PNG carries its own margin
             else doc.addImage(im.dataUrl, 'PNG', ix, iy, iw, imgH);
-            ix += iw + S2;
+            ix += iw + S1;
         }
 
         // Right: horizontal barcode + short tag, centred in the code column
-        const barW = codeW - 2 * S2, barH = Math.min(9, rowH * 0.42);
         const tagCap = TAG_PT * PT * CAP;
-        const blockH = barH + S2 + tagCap;
+        const barW = codeW - 2 * S2, barH = (rowH - 2 * PAD - S1 - tagCap) * 0.75;
+        const blockH = barH + S1 + tagCap;
         const barY = top + (rowH - blockH) / 2;
         try {
             const canvas = document.createElement('canvas');
@@ -3832,16 +3833,20 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(TAG_PT);
         doc.setTextColor(20, 20, 20);
-        doc.text(shortControlTag(barcode), divX + codeW / 2, barY + barH + S2 + tagCap, { align: 'center' });
+        doc.text(shortControlTag(barcode), divX + codeW / 2, barY + barH + S1 + tagCap, { align: 'center' });
 
         // Middle: band to the code column, title
-        const textX = X0 + panelW + PAD + 1.5;
-        const textW = divX - S2 - textX;
+        const textX = X0 + panelW + S2;
+        const textW = divX - S1 - textX;
         drawStoneBand(doc, norm, itemDataObj, X0 + panelW, top, divX - X0 - panelW, S2, 'horizontal');
         const capH = TITLE_PT * PT * CAP, descH = TITLE_PT * PT * DESC;
         const lineH = capH + descH + S1;
-        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj, unitOf(item)), textW, TITLE_PT).slice(0, 3);
-        const firstBaseline = top + S2 + S2 + capH;
+        // As many lines as the space under the band holds, the block centred in it
+        const availH = rowH - S2 - 2 * PAD;
+        const maxLines = Math.max(1, Math.floor((availH + S1) / lineH));
+        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj, unitOf(item)), textW, TITLE_PT).slice(0, maxLines);
+        const blockTitleH = titleLines.length * lineH - S1;
+        const firstBaseline = top + S2 + PAD + (availH - blockTitleH) / 2 + capH;
         drawMeasuredTitle(doc, titleLines, textX, firstBaseline, lineH, TITLE_PT);
     }
 }
