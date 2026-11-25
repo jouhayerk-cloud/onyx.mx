@@ -3750,13 +3750,18 @@ export function shortControlTag(barcode: string): string {
 
 type ControlRowImages = { dataUrl: string; aspect: number; axo?: boolean }[];
 
+// Unit copies of a qty-N item share one data object (expandUnits), so they share one axo render.
+const controlAxoCache = new WeakMap<object, Promise<string | null>>();
+
 /** Loads one control row's cutouts and axo, all in parallel. */
 async function prepareControlRow(item: CatalogArtifact): Promise<ControlRowImages> {
     const itemDataObj = item.data || item;
     const norm = normalizeInventoryData(itemDataObj);
+    let axoP = controlAxoCache.get(itemDataObj);
+    if (!axoP) controlAxoCache.set(itemDataObj, axoP = getAdvancedAxoDataUrl(norm, itemDataObj).catch(() => null));
     const [cutouts, axo] = await Promise.all([
-        Promise.all(labelCutouts(item).map(u => loadImgData(u, 600, true).catch(() => null))),
-        getAdvancedAxoDataUrl(norm, itemDataObj).catch(() => null),
+        Promise.all(labelCutouts(item).map(u => loadImgData(u, 400, true).catch(() => null))),
+        axoP,
     ]);
     const imgs: ControlRowImages = [];
     for (const c of cutouts) if (c && c.dataUrl && c.w && c.h) imgs.push({ dataUrl: c.dataUrl, aspect: c.w / c.h });
@@ -3765,26 +3770,27 @@ async function prepareControlRow(item: CatalogArtifact): Promise<ControlRowImage
 }
 
 /**
- * Control ribbon (Label Print Studio, 2026-11-05): landscape A4, unbranded strips.
+ * Control ribbon (Label Print Studio, 2026-11-05): unbranded strips.
+ *   portrait A4, 12 strips a page, no cut guides or colour bubbles (2026-11-25)
  *   left   a payment status rim band, then one grey panel, width set by its content: the cutout PNG(s) when available, then the upright axo
  *   middle the stone colour band along the top, the title (3 lines max) and the colours
  *   right  a horizontal barcode with the short tag (EM826 104) under it, centred in its column
  */
 async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIndex: number, perPage: number, PW: number, PH: number, rowImages: ControlRowImages[]) {
-    const S1 = 1.5, S2 = 3.0;
-    const TITLE_PT = 12, DETAIL_PT = 9.5, TAG_PT = 14;
+    const S1 = 0.8, S2 = 1.8;
+    const TITLE_PT = 7.5, TAG_PT = 8.5;
     const PT = 0.3528, CAP = 0.72, DESC = 0.21;
     const { x0: X0, y0: Y0, w: W, h: H } = sharedPrintArea(PW, PH);
     const rowH = H / perPage;
-    const PAD = 2.5;
-    const codeW = 70;
+    const PAD = 1.5;
+    const codeW = 44;
     const divX = X0 + W - codeW;
     const maxPanelW = W * 0.4;
 
     const pageItems = items.slice(startIndex, startIndex + perPage);
     for (let i = 0; i < pageItems.length; i++) {
         const item = pageItems[i];
-        const top = Y0 + i * rowH, bottom = top + rowH;
+        const top = Y0 + i * rowH;
         const itemDataObj = item.data || item;
         const norm = normalizeInventoryData(itemDataObj);
         const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
@@ -3814,7 +3820,7 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
         }
 
         // Right: horizontal barcode + short tag, centred in the code column
-        const barW = codeW - 2 * S2, barH = Math.min(18, rowH * 0.45);
+        const barW = codeW - 2 * S2, barH = Math.min(9, rowH * 0.42);
         const tagCap = TAG_PT * PT * CAP;
         const blockH = barH + S2 + tagCap;
         const barY = top + (rowH - blockH) / 2;
@@ -3827,13 +3833,8 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
         doc.setFontSize(TAG_PT);
         doc.setTextColor(20, 20, 20);
         doc.text(shortControlTag(barcode), divX + codeW / 2, barY + barH + S2 + tagCap, { align: 'center' });
-        doc.setDrawColor(148, 163, 184);
-        doc.setLineWidth(0.2);
-        doc.setLineDashPattern([0.6, 1.2], 0);
-        doc.line(divX, top, divX, bottom);
-        doc.setLineDashPattern([], 0);
 
-        // Middle: band to the divider, title, colours
+        // Middle: band to the code column, title
         const textX = X0 + panelW + PAD + 1.5;
         const textW = divX - S2 - textX;
         drawStoneBand(doc, norm, itemDataObj, X0 + panelW, top, divX - X0 - panelW, S2, 'horizontal');
@@ -3842,20 +3843,7 @@ async function drawControlRibbonPage(doc: any, items: CatalogArtifact[], startIn
         const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj, unitOf(item)), textW, TITLE_PT).slice(0, 3);
         const firstBaseline = top + S2 + S2 + capH;
         drawMeasuredTitle(doc, titleLines, textX, firstBaseline, lineH, TITLE_PT);
-        const colors = getItemExtractedColors(norm, itemDataObj);
-        if (colors.length) {
-            const base = firstBaseline + (titleLines.length - 1) * lineH + descH + S2 + DETAIL_PT * PT * CAP * 1.25;
-            drawCompactColorBubbles(doc, colors.slice(0, 4), textX, Math.min(base, bottom - PAD), textW, DETAIL_PT);
-        }
     }
-
-    // Dotted cut guides
-    doc.setDrawColor(148, 163, 184);
-    doc.setLineWidth(0.2);
-    doc.setLineDashPattern([0.6, 1.2], 0);
-    doc.rect(X0, Y0, W, pageItems.length * rowH, 'S');
-    for (let r = 1; r < pageItems.length; r++) doc.line(X0, Y0 + r * rowH, X0 + W, Y0 + r * rowH);
-    doc.setLineDashPattern([], 0);
 }
 
 /**
@@ -4212,7 +4200,7 @@ export async function exportCatalogPdf(
     const isLargeColor = config.method === 'largeColor';
     const isCompactGrid = config.method === 'compactGrid';
     const isCompactMode = config.method === 'compact' || isCompactGrid || isLargeColor;
-    const isLandscape = config.method === 'grid' || isCompactGrid || !!config.control;
+    const isLandscape = config.method === 'grid' || isCompactGrid;
     const PW = isLandscape ? 297 : 210;
     const PH = isLandscape ? 210 : 297;
     const M = 12;
@@ -4350,7 +4338,7 @@ export async function exportCatalogPdf(
 
     /** Compact pages: items fill every page in sorted order (no vendor or type breaks); per-vendor summaries come first. */
     const renderCompactRuns = async (vendorSummaries: boolean) => {
-        const itemsPerPage = isLargeColor ? 4 : isCompactGrid ? 6 : config.control ? 5 : 7;
+        const itemsPerPage = isLargeColor ? 4 : isCompactGrid ? 6 : config.control ? 12 : 7;
         if (vendorSummaries) {
             const byVendor = new Map<string, CatalogArtifact[]>();
             for (const it of results) {

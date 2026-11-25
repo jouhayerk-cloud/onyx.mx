@@ -966,7 +966,8 @@ export const LabelPrintStudio: React.FC = () => {
         setProgress(p => ({ ...p, pdf: 5 }));
         try {
             const results: CatalogArtifact[] = selectedItems.map(item => ({
-                data: item.data,
+                // Same copy count the labels print (Studio quantity override wins)
+                data: { ...item.data, quantity: quantities[String(item.row)] ?? (Number(item.normData?.quantity) || 1) },
                 codes: item.codes,
                 images: collectExportImages(item.normData),
                 exportType: 'catalog' as const,
