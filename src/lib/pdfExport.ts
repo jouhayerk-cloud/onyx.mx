@@ -1546,7 +1546,7 @@ function resolveCleanProductType(norm: any, itemDataObj: any, shapeStr?: string)
 /**
  * Resolves transparent cutout PNG(s) for an item to float in the header:
  * - Single item / single photo: strictly 1 cutout PNG (no duplicates!).
- * - Floor lamps / lamps: uses lights ON rule (photos 2 and 4 in gallery, i.e. angle_1 and angle_3).
+ * - Floor lamps / lamps: uses lights ON rule (photos 1 and 3 in gallery, i.e. angle_0 and angle_2).
  * - Multi-quantity items with multiple photos: shows multiple cutouts (up to quantity).
  * - Prefers cutout of element with lights ON.
  */
@@ -1577,7 +1577,8 @@ export function getItemCutoutPngs(item: any, unit?: { k: number; n: number }): s
     // If item only has 1 photo or qty <= 1, strictly return at most 1 cutout (no duplicates!)
     const maxCutouts = (qty > 1 && totalPhotos > 1) ? Math.min(qty, totalPhotos) : 1;
 
-    const shapeStr = (norm.shape || norm.shortDescription || it.Shape || '').toLowerCase();
+    // shape AND short description: "Squared" + "Table Lamp" must still count as a lamp
+    const shapeStr = `${norm.shape || it.Shape || ''} ${norm.shortDescription || ''}`.toLowerCase();
     const typeStr = (norm.generatedType || norm.canonicalType || norm.type || it.Type || '').toLowerCase();
     const descStr = (norm.description || norm.title || it.Title || '').toLowerCase();
     const isLamp = shapeStr.includes('lamp') || shapeStr.includes('lantern') || shapeStr.includes('pendant') || 
@@ -1633,21 +1634,11 @@ export function getItemCutoutPngs(item: any, unit?: { k: number; n: number }): s
     }
 
     if (isLamp && totalPhotos >= 2) {
-        // Floor lamp / lamps rule: Photo 2 and 4 in gallery have lights ON!
-        // (Photo 2 = angle_1 lights ON; Photo 4 = angle_3 lights ON)
-        const angle1Cutout = getAngleCutout(1); // Lamp 1 lights ON
-        const angle3Cutout = getAngleCutout(3); // Lamp 2 lights ON
-        const angle0Cutout = getAngleCutout(0); // Lamp 1 lights OFF
-        const angle2Cutout = getAngleCutout(2); // Lamp 2 lights OFF
-
-        if (maxCutouts >= 2) {
-            // Pair with multiple quantity: Lamp 1 ON (angle 1) and Lamp 2 ON (angle 3)
-            addCutout(angle1Cutout || angle0Cutout);
-            addCutout(angle3Cutout || angle2Cutout);
-        } else {
-            // Single lamp: prefer Lights ON (angle 1), fallback to angle 0
-            addCutout(angle1Cutout || angle0Cutout);
-        }
+        // Lamps (2026-11-25): photos stored [on, off] per unit, so lights ON is angle_0 (lamp 1) and angle_2 (lamp 2).
+        const on1 = getAngleCutout(0), off1 = getAngleCutout(1);
+        const on2 = getAngleCutout(2), off2 = getAngleCutout(3);
+        addCutout(on1 || off1);
+        if (maxCutouts >= 2) addCutout(on2 || off2);
     } else {
         // Non-lamp items: collect distinct angles up to maxCutouts
         for (let idx = 0; idx < 6 && resolvedCutouts.length < maxCutouts; idx++) {
@@ -1707,7 +1698,7 @@ export function getItemCutoutPng(item: any): string | null {
  * Resolves images for catalogue export:
  * - Clean room studio photos are prioritized as the large HERO image.
  * - Raw uploaded warehouse photos and SVG vectors are STRICTLY EXCLUDED.
- * - For lamps: if 2+ photos exist, photo 2 (lights on) is normalized as Hero.
+ * - For lamps (any shape: tower, squared, cylinder...): photos are stored [on, off] per unit; exported in that order, hero (lights on) first.
  * - For bowls: photo 1 is side view (Hero), photo 2 is top view.
  * - For mirrors/panels: photo 1 is front view lights on (Hero).
  * - Transparent PNG cutouts are placed AFTER studio photos to render as smaller secondary grid images.
@@ -1807,7 +1798,8 @@ export function getItemImages(item: any): string[] {
     addPngCutout(itemDataObj.mask_url);
 
     // 3. Normalize ordering of Clean Room Studio Photos based on product shape / type rules:
-    const shapeStr = (norm.shape || norm.shortDescription || itemDataObj.Shape || '').toLowerCase();
+    // shape AND short description: "Squared" + "Table Lamp" must still count as a lamp
+    const shapeStr = `${norm.shape || itemDataObj.Shape || ''} ${norm.shortDescription || ''}`.toLowerCase();
     const typeStr = (norm.generatedType || norm.canonicalType || norm.type || itemDataObj.Type || '').toLowerCase();
     const descStr = (norm.description || norm.title || itemDataObj.Title || '').toLowerCase();
 
@@ -1821,19 +1813,7 @@ export function getItemImages(item: any): string[] {
     let orderedStudioPhotos = [...studioPhotos];
 
     if (isLamp && orderedStudioPhotos.length >= 2) {
-        if (orderedStudioPhotos.length === 2) {
-            orderedStudioPhotos = [orderedStudioPhotos[1], orderedStudioPhotos[0]];
-        } else if (orderedStudioPhotos.length >= 4) {
-            orderedStudioPhotos = [
-                orderedStudioPhotos[1],
-                orderedStudioPhotos[0],
-                orderedStudioPhotos[3],
-                orderedStudioPhotos[2],
-                ...orderedStudioPhotos.slice(4)
-            ];
-        } else if (orderedStudioPhotos.length === 3) {
-            orderedStudioPhotos = [orderedStudioPhotos[1], orderedStudioPhotos[0], orderedStudioPhotos[2]];
-        }
+        // Natural order (2026-11-25): photos stored [on, off] per unit, so photo 1 (lights on) is the hero, photo 2 lights off
     } else if (isBowl && orderedStudioPhotos.length >= 2) {
         // Natural order: photo0 side view (Hero), photo1 top view
     } else if (isMirrorOrPanel && orderedStudioPhotos.length >= 2) {

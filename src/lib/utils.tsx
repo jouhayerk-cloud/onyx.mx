@@ -2096,10 +2096,10 @@ function extractRawItemHexString(itemData: any): string | undefined {
         }
         if (Array.isArray(sp)) {
             const maps = sp.filter((p: any) => p && (p.type === 'pixel_map' || p.hex_string || p.hexString));
-            // Lamps: photo 2 (index 1) is the lights-on shot, the same rule the PNG cutout export uses.
+            // Lamps: photo 1 (index 0) is the lights-on shot, the same rule the PNG cutout export uses.
             const kind = `${itemData.short_description || itemData.shortDescription || ''} ${itemData.type || itemData.generated_type || itemData.generatedType || ''} ${itemData.shape || ''}`.toLowerCase();
             const isLamp = /lamp|lantern|pendant|sconce|light/.test(kind);
-            const pm = (isLamp && maps.find((p: any) => Number(p.index) === 1)) || maps[0];
+            const pm = (isLamp && maps.find((p: any) => Number(p.index) === 0)) || maps[0];
             if (pm) return pm.hex_string || pm.hexString;
         } else if (typeof sp === 'object' && sp) {
             if (sp.hex_string || sp.hexString) return sp.hex_string || sp.hexString;
