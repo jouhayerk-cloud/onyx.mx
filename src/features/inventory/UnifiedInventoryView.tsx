@@ -91,7 +91,7 @@ const IS_LOCAL_3D_VIEWER_ENABLED = Boolean(
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
 );
 import { canonicalColor } from '../../lib/inventoryTaxonomy';
-import { unitPhotoIndex } from '../../lib/unitPhoto';
+import { unitPhotoIndex, photosPerUnit } from '../../lib/unitPhoto';
 
 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -167,7 +167,7 @@ const StoneBand = ({ data, norm, dir }: { data: any; norm: any; dir: 'h' | 'v' |
 };
 
 // The item's transparent cutout PNGs, by the label rule (unitPhotoIndex): one per unit when the
-// quantity and the photos allow it, else one; lamps take each unit's lights-on photo before its lights-off one.
+// quantity and the photos allow it, else one; lamps take each unit's lights-on photo, canoes each unit's top view.
 // Each cutout comes with its stored black-and-white matte when there is one (see DriveImage `matte`).
 const listCutoutUrls = (data: any, norm: any, photoCount: number): { url: string; matte?: string }[] => {
     let masks = data?.spatial_masks ?? data?.spatialMasks;
@@ -185,7 +185,7 @@ const listCutoutUrls = (data: any, norm: any, photoCount: number): { url: string
     const max = qty > 1 && photoCount > 1 ? Math.min(qty, photoCount, 3) : 1;
     const kind = `${norm.shape || ''} ${norm.shortDescription || ''} ${norm.generatedType || ''}`.toLowerCase();
     const isLamp = /lamp|lantern|pendant|sconce|light/.test(kind);
-    let picks = Array.from({ length: max }, (_, i) => at(unitPhotoIndex(i + 1, qty, photoCount, isLamp)));
+    let picks = Array.from({ length: max }, (_, i) => at(unitPhotoIndex(i + 1, qty, photoCount, photosPerUnit(kind, isLamp))));
     // No cutout at the rule's angles: keep the old behaviour of the first angle that has one.
     if (picks.every(x => !x)) picks = [[0, 1, 2, 3, 4, 5].map(at).find(Boolean)];
     const out: string[] = [];

@@ -5,7 +5,7 @@ import { tr } from '../lib/i18n';
 
 export interface ExportConfig {
     title: string;
-    method: 'grid' | 'single' | 'list' | 'compact' | 'compactGrid' | 'largeColor';
+    method: 'grid' | 'single' | 'list' | 'compact' | 'compactGrid' | 'largeColor' | 'ribbonCanoe' | 'letterCanoe';
     includeImages: boolean;
     includeSummary: boolean;
     notes: string;
@@ -296,6 +296,41 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                         <p className={`text-xs font-black uppercase tracking-wider ${config.method === 'largeColor' ? 'text-white' : 'text-white/70'}`}>{tr("Large Color")}</p>
                                         <p className="text-[10px] font-medium text-white/35 mt-0.5">{tr("Portrait A4 · Large cutout PNG labels · Stone colours, axo & codes")}</p>
                                     </button>
+
+                                    {([
+                                        ['ribbonCanoe', Layers, tr("Ribbon Canoe"), tr("Landscape Letter · 3 angle cutout PNGs per canoe · Barcode & codes")],
+                                        ['letterCanoe', LayoutDashboard, tr("Letter Canoe"), tr("Portrait Letter · Large canoe cutout PNGs · Large text, axo & codes")],
+                                    ] as const).map(([m, Icon, name, desc]) => (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            onClick={() => setConfig({ ...config, method: m })}
+                                            className={`group relative flex flex-col p-4.5 rounded-2xl border transition-all text-left backdrop-blur-xl ${
+                                                config.method === m
+                                                    ? 'bg-(--main-color)/14 border-(--main-color)/50 shadow-[0_0_30px_rgba(var(--main-color),0.22),inset_0_1px_1px_rgba(255,255,255,0.22)]'
+                                                    : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.06]'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between mb-2.5">
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors ${
+                                                    config.method === m
+                                                        ? 'bg-(--main-color)/25 border-(--main-color)/40 text-(--main-color)'
+                                                        : 'bg-white/[0.04] border-white/[0.08] text-white/40'
+                                                }`}>
+                                                    <Icon size={18} />
+                                                </div>
+                                                <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                                                    config.method === m
+                                                        ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
+                                                        : 'bg-white/[0.03] border-white/[0.06] text-white/30'
+                                                }`}>
+                                                    2 Per Page
+                                                </span>
+                                            </div>
+                                            <p className={`text-xs font-black uppercase tracking-wider ${config.method === m ? 'text-white' : 'text-white/70'}`}>{name}</p>
+                                            <p className="text-[10px] font-medium text-white/35 mt-0.5">{desc}</p>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
