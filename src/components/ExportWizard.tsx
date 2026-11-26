@@ -5,7 +5,7 @@ import { tr } from '../lib/i18n';
 
 export interface ExportConfig {
     title: string;
-    method: 'grid' | 'single' | 'list' | 'compact' | 'compactGrid' | 'largeColor' | 'ribbonCanoe' | 'letterCanoe';
+    method: 'grid' | 'single' | 'list' | 'compact' | 'compactGrid' | 'largeColor' | 'ribbonCanoe' | 'letterCanoe' | 'flatRibbon';
     includeImages: boolean;
     includeSummary: boolean;
     notes: string;
@@ -298,9 +298,10 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                     </button>
 
                                     {([
-                                        ['ribbonCanoe', Layers, tr("Ribbon Canoe"), tr("Landscape Letter · 3 angle cutout PNGs per canoe · Barcode & codes")],
-                                        ['letterCanoe', LayoutDashboard, tr("Letter Canoe"), tr("Portrait Letter · Large canoe cutout PNGs · Large text, axo & codes")],
-                                    ] as const).map(([m, Icon, name, desc]) => (
+                                        ['ribbonCanoe', Layers, tr("Ribbon Canoe"), tr("Landscape Letter · 3 angle cutout PNGs per canoe · Barcode & codes"), '2 Per Page'],
+                                        ['letterCanoe', LayoutDashboard, tr("Letter Canoe"), tr("Portrait Letter · Large canoe cutout PNGs · Large text, axo & codes"), '2 Per Page'],
+                                        ['flatRibbon', Layers, tr("Flat Ribbon"), tr("Portrait A4 · Canoe ribbon strips · 3 angle cutout PNGs, axo & codes"), '7 Per Page'],
+                                    ] as const).map(([m, Icon, name, desc, chip]) => (
                                         <button
                                             key={m}
                                             type="button"
@@ -324,7 +325,7 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
                                                         ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white font-bold'
                                                         : 'bg-white/[0.03] border-white/[0.06] text-white/30'
                                                 }`}>
-                                                    2 Per Page
+                                                    {chip}
                                                 </span>
                                             </div>
                                             <p className={`text-xs font-black uppercase tracking-wider ${config.method === m ? 'text-white' : 'text-white/70'}`}>{name}</p>

@@ -754,6 +754,23 @@ export function extractCustomBandShades(item?: any): string[] | null {
     return null;
 }
 
+/**
+ * Canoe colour bars (2026-11-25): canoe hex maps are sampled inside a glossy hollow, so lifted shades print washed
+ * out and dark stone reads grey. Deepen instead of lift: lightness gamma 1.4 (0.2 -> 0.11, 0.5 -> 0.38, 0.9 -> 0.86)
+ * and saturation x1.1, hue unchanged. shortcut: gamma set by eye from one print; tune here.
+ */
+export function deepenCanoeBandColor(hex: string): string {
+    const hsl = toHsl(hex);
+    if (!hsl) return hex;
+    const [h, s, l] = hsl;
+    return fromHsl(h, Math.min(0.75, s * 1.1), Math.pow(l, 1.4));
+}
+console.assert(deepenCanoeBandColor("#333333") < "#333333" && deepenCanoeBandColor("#E6E6E6") > "#D0D0D0", "deepenCanoeBandColor");
+
+/** True for canoes (the bowl rule also catches bowls, platters and vessels). */
+export const isCanoeItem = (item: any): boolean => isBowlItem(item) && /\bcano(e|a)s?\b/i.test(
+    [item?.shape, item?.Shape, item?.type, item?.generated_type, item?.generatedType, item?.short_description, item?.shortDescription, item?.description].filter(Boolean).join(' '));
+
 /** An item's colour-bar shades: custom pinned shades if saved, else its hex-map shades, else its canonical palette, lifted with vibrancy only (never hue-shifted). Shared by the PDF bands and the inventory list. */
 export function itemBandShades(hexMap: readonly string[], item: { color?: string; material?: string; shape?: string; shortDescription?: string; type?: string; [key: string]: any }): string[] {
     const custom = extractCustomBandShades(item);
@@ -766,7 +783,8 @@ export function itemBandShades(hexMap: readonly string[], item: { color?: string
         const palette = resolveStonePaletteRaw(item);
         shades = palette.gradientColors.length ? palette.gradientColors : [palette.primary];
     }
-    return shades.map(h => liftBandColorForItem(h, bowl));
+    // Canoes deepen their raw shades (pass the un-enhanced hex map, see drawStoneBand); everything else lifts.
+    return shades.map(h => isCanoeItem(item) ? deepenCanoeBandColor(h) : liftBandColorForItem(h, bowl));
 }
 
 /**

@@ -2084,7 +2084,7 @@ export function extractItemHexString(itemData: any): string | undefined {
     return enhanceHexMapStringForItem(raw, itemData);
 }
 
-function extractRawItemHexString(itemData: any): string | undefined {
+export function extractRawItemHexString(itemData: any): string | undefined {
     if (!itemData) return undefined;
     if (itemData.hexString) return itemData.hexString;
     if (itemData.hex_string) return itemData.hex_string;

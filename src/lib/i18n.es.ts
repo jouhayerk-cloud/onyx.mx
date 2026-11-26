@@ -229,6 +229,8 @@ export const esCatalog: Record<string, string> = {
   'Per Image': 'Por Imagen',
   'Ribbon Canoe': 'Canoa Ribbon',
   'Letter Canoe': 'Canoa Letter',
+  'Flat Ribbon': 'Ribbon Plano',
+  'Portrait A4 · Canoe ribbon strips · 3 angle cutout PNGs, axo & codes': 'A4 vertical · Tiras ribbon para canoas · 3 PNG recortados, axo y códigos',
   'Landscape Letter · 3 angle cutout PNGs per canoe · Barcode & codes': 'Letter horizontal · 3 PNG recortados por canoa · Código de barras y códigos',
   'Portrait Letter · Large canoe cutout PNGs · Large text, axo & codes': 'Letter vertical · PNG recortados grandes de la canoa · Texto grande, axo y códigos',
   'Generating Manifesto PDF...': 'Generando PDF del Manifiesto...',

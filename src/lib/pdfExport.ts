@@ -1,12 +1,12 @@
 ﻿import { jsPDF } from 'jspdf';
 import { DEFAULT_EXCHANGE_RATE } from './consts';
-import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
+import { calculateCodesAndPrices, toTitleCase, getCleanImageUrl, collectExportImages, collectAllImages, isGoogleHostedUrl, cmToImperial, formatWeightImperialOnly, normalizeInventoryData, extractFileId, fetchImageBatch, extractItemHexString, extractRawItemHexString, trimTransparentCanvas, getProductCategoryAndType, normalizeBrandTerms, isVideoFile, isVideoMime } from './utils';
 import QRCode from 'qrcode';
 import { getVendorColor } from './excelStyles';
 import { unitPhotoIndex, photosPerUnit } from './unitPhoto';
 import JsBarcode from 'jsbarcode';
 import { generateAxonometricDataUrl, resolveItemColor, normalizeHexMapTexture, parseHexMapString, extractItemHexMapString } from './axonometric';
-import { itemBandShades } from './canonicalColors';
+import { itemBandShades, isCanoeItem } from './canonicalColors';
 import { trackDocumentJob } from '../features/print/jobTracking';
 
 // We accept a generalized artifact structure so different modules can use it
@@ -2755,9 +2755,9 @@ export function endImageSession() {
 function catalogWantedImages(
     results: CatalogArtifact[],
     exportType: string,
-    method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor' | 'ribbonCanoe' | 'letterCanoe',
+    method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor' | 'ribbonCanoe' | 'letterCanoe' | 'flatRibbon',
 ): string[] {
-    if (method === 'compact' || method === 'compactGrid' || method === 'largeColor' || method === 'ribbonCanoe' || method === 'letterCanoe') return [];
+    if (method === 'compact' || method === 'compactGrid' || method === 'largeColor' || method === 'ribbonCanoe' || method === 'letterCanoe' || method === 'flatRibbon') return [];
     return results.flatMap(r => {
         const list = getItemImages(r);
         if (exportType === 'catalog') {
@@ -3593,7 +3593,7 @@ function compactTitleChunks(norm: any, itemDataObj: any, unit?: { k: number; n: 
  * (unboosted). A hairline keeps white stones visible on white paper.
  */
 function drawStoneBand(doc: any, norm: any, itemDataObj: any, x: number, y: number, w: number, h: number, dir: 'horizontal' | 'vertical') {
-    const shades = itemBandShades(parseHexMapString(extractItemHexString(itemDataObj) || extractItemHexString(norm)), {
+    const bandItem = {
         ...norm,
         ...itemDataObj,
         color: norm.color || itemDataObj.color,
@@ -3601,7 +3601,10 @@ function drawStoneBand(doc: any, norm: any, itemDataObj: any, x: number, y: numb
         shape: norm.shape || itemDataObj.shape || itemDataObj.Shape,
         shortDescription: norm.shortDescription || itemDataObj.short_description || itemDataObj.description,
         type: norm.generatedType || itemDataObj.generated_type || itemDataObj.type,
-    });
+    };
+    // Canoes take the raw hex map: the bowl lift on read is what washed their bars out (2026-11-25).
+    const hexOf = isCanoeItem(bandItem) ? extractRawItemHexString : extractItemHexString;
+    const shades = itemBandShades(parseHexMapString(hexOf(itemDataObj) || hexOf(norm)), bandItem);
     const step = (dir === 'horizontal' ? w : h) / shades.length;
     shades.forEach((hex, k) => {
         const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -3767,6 +3770,125 @@ async function drawRibbonPage(
     }
 
     // Dotted cut guides: the safe-area border and a line between ribbons, drawn over the colour bands.
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.2);
+    doc.setLineDashPattern([0.6, 1.2], 0);
+    doc.rect(X0, Y0, W, pageItems.length * rowH, 'S');
+    for (let r = 1; r < pageItems.length; r++) doc.line(X0, Y0 + r * rowH, X0 + W, Y0 + r * rowH);
+    doc.setLineDashPattern([], 0);
+}
+
+/**
+ * Flat Ribbon (owner's mockup, 2026-11-25): Ribbon Labels' strip size (7 per portrait A4), everything upright,
+ * left to right: a brand column (QR, Rare Earth Gallery, Art of Decor, MADE IN MEXICO, the tag code, a horizontal
+ * barcode); the axo; a vertical stone colour band; a grey panel with the vertical 3rd cutout beside the 1st and 2nd
+ * stacked; then the title and colours. The horizontal colour band runs from the grey panel to the right edge.
+ */
+async function drawFlatRibbonPage(
+    doc: any, items: CatalogArtifact[], startIndex: number, perPage: number, PW: number, PH: number,
+    logos: { rareEarth: LogoData | null; artOfDecor: LogoData | null },
+) {
+    const S1 = 1.5, S2 = 3.0, G = 0.8;
+    const TITLE_PT = 12, DETAIL_PT = 9.5, MIM_PT = 7.5, TAG_PT = 10;
+    const PT = 0.3528, CAP = 0.72, DESC = 0.21;
+    const { x0: X0, y0: Y0, w: W, h: H } = sharedPrintArea(PW, PH);
+    const rowH = H / perPage;
+    const PAD = 2.0;
+
+    const pageItems = items.slice(startIndex, startIndex + perPage);
+    for (let i = 0; i < pageItems.length; i++) {
+        const item = pageItems[i];
+        const top = Y0 + i * rowH, bottom = top + rowH;
+        const itemDataObj = item.data || item;
+        const norm = normalizeInventoryData(itemDataObj);
+        const codes: Partial<CatalogArtifact['codes']> = item.codes || calculateCodesAndPrices(itemDataObj, DEFAULT_EXCHANGE_RATE, itemDataObj.workbook || '') || {};
+        const barcode = (codes.bookBarcodeDisplay || codes.bookBarcode || codes.bookTagId || norm.itemId || '—').trim();
+        const R = X0 + W;
+
+        // Brand column, top to bottom (owner's sizes, 2026-11-25): QR, the two logos at one width (~22 mm), the tag
+        // code, then the barcode down to the bottom.
+        const colX = X0 + PAD, colW = 36;
+        let y = top + PAD;
+        const qrS = 6.5;
+        try {
+            const qr = await tagQrDataUrl(barcode.replace(/\s+/g, ''), getVendorColor(barcode));
+            if (qr) doc.addImage(qr, 'PNG', colX, y, qrS, qrS);
+        } catch (e) {}
+        y += qrS + G;
+        // Art of Decor 20% narrower than Rare Earth Gallery (2026-11-25).
+        for (const [lg, maxH, logoW] of [[logos.rareEarth, 4.4, 22], [logos.artOfDecor, 4.0, 22 * 0.8]] as [LogoData | null, number, number][]) {
+            if (!lg) continue;
+            let lw = maxH * lg.aspectRatio, lh = maxH;
+            if (lw > logoW) { lw = logoW; lh = logoW / lg.aspectRatio; }
+            doc.addImage(lg.dataUrl, 'PNG', colX, y, lw, lh);
+            y += lh + G;
+        }
+        y += G + TAG_PT * PT * CAP;
+        drawFormattedTagCode(doc, codes, colX, y, TAG_PT, false, itemDataObj, colW, TAG_PT);
+        y += G;
+        try {
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, barcode.replace(/\s+/g, ''), { format: 'CODE128', displayValue: false, margin: 0, height: 40, lineColor: '#141414' });
+            doc.addImage(canvas.toDataURL('image/png'), 'PNG', colX, y, colW, Math.max(4, bottom - PAD - y));
+        } catch (e) {}
+
+        // Beside the column: MADE IN MEXICO (bold) on the bottom, the axo above it.
+        const axoX = colX + colW + S1, zoneW = 24;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(MIM_PT);
+        doc.setTextColor(30, 41, 59);
+        doc.text('MADE IN MEXICO', axoX + zoneW, bottom - PAD, { align: 'right' });
+        const axoBottom = bottom - PAD - MIM_PT * PT * CAP - S1;
+        const axoS = Math.min(zoneW, axoBottom - top - PAD);
+        try {
+            const axo = await getAdvancedAxoDataUrl(norm, itemDataObj);
+            if (axo) drawAxoContain(doc, axo, axoX + (zoneW - axoS) / 2, top + PAD + (axoBottom - top - PAD - axoS) / 2, axoS, axoS, 0.98);
+        } catch (e) {}
+
+        // Vertical colour band right of the axo, the row's full height; then the grey panel, with the horizontal
+        // colour band from the panel to the right edge.
+        const vBandW = 4, vBandX = axoX + zoneW + S1;
+        drawStoneBand(doc, norm, itemDataObj, vBandX, top, vBandW, rowH, 'vertical');
+        const panelX = vBandX + vBandW, panelW = W * 0.27;
+        drawStoneBand(doc, norm, itemDataObj, panelX, top, R - panelX, S2, 'horizontal');
+        const pTop = top + S2, pH = rowH - S2;
+        doc.setFillColor(232, 232, 232);
+        doc.rect(panelX, pTop, panelW, pH, 'F');
+
+        // Cutouts: the vertical 3rd on the left, the 1st and 2nd stacked to its right.
+        const cutouts = await loadCanoeCutouts(item, 600);
+        const third = cutouts[2];
+        const fit = (c: { dataUrl: string; w: number; h: number }, bx: number, by: number, bw: number, bh: number) => {
+            let cw = bw, ch = bw * c.h / c.w;
+            if (ch > bh) { ch = bh; cw = bh * c.w / c.h; }
+            doc.addImage(c.dataUrl, 'PNG', bx + (bw - cw) / 2, by + (bh - ch) / 2, cw, ch);
+        };
+        let sx = panelX + S1;
+        const ih = pH - 2 * S1;
+        if (third) {
+            const w3 = Math.min(ih * third.w / third.h, panelW * 0.35);
+            fit(third, sx, pTop + S1, w3, ih);
+            sx += w3 + S1;
+        }
+        const stack = cutouts.slice(0, 2);
+        const sw = panelX + panelW - S1 - sx, sh = (ih - (stack.length - 1) * S1) / Math.max(1, stack.length);
+        stack.forEach((c, k) => fit(c, sx, pTop + S1 + k * (sh + S1), sw, sh));
+
+        // Title and colours to the right.
+        const textX = panelX + panelW + S2, textW = R - PAD - textX;
+        const capH = TITLE_PT * PT * CAP, descH = TITLE_PT * PT * DESC;
+        const lineH = capH + descH + S1;
+        const titleLines = measureStructuredTitle(doc, compactTitleChunks(norm, itemDataObj, unitOf(item)), textW, TITLE_PT).slice(0, 3);
+        const firstBaseline = top + S2 + S2 + capH;
+        drawMeasuredTitle(doc, titleLines, textX, firstBaseline, lineH, TITLE_PT);
+        const colors = getItemExtractedColors(norm, itemDataObj);
+        if (colors.length) {
+            const base = firstBaseline + (titleLines.length - 1) * lineH + descH + S2 + DETAIL_PT * PT * CAP * 1.25;
+            drawCompactColorBubbles(doc, colors.slice(0, 4), textX, Math.min(base, bottom - PAD), textW, DETAIL_PT);
+        }
+    }
+
+    // Dotted cut guides: the safe-area border and a line between ribbons.
     doc.setDrawColor(148, 163, 184);
     doc.setLineWidth(0.2);
     doc.setLineDashPattern([0.6, 1.2], 0);
@@ -4362,7 +4484,7 @@ function catalogSortKey(item: CatalogArtifact): { vendor: string; book: number; 
 
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
-    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor' | 'ribbonCanoe' | 'letterCanoe'; logo?: string; exportType?: 'regular' | 'catalog'; includeSummary?: boolean; control?: boolean },
+    config: { title: string; method: 'grid' | 'single' | 'compact' | 'compactGrid' | 'largeColor' | 'ribbonCanoe' | 'letterCanoe' | 'flatRibbon'; logo?: string; exportType?: 'regular' | 'catalog'; includeSummary?: boolean; control?: boolean },
     onProgress?: (p: number, s: string) => void,
     output: 'download' | 'blob' = 'download',
     onStats?: (stats: CatalogExportStats) => void,
@@ -4436,7 +4558,8 @@ export async function exportCatalogPdf(
     const isLetterCanoe = config.method === 'letterCanoe';
     const isLetter = isRibbonCanoe || isLetterCanoe;
     const isCompactGrid = config.method === 'compactGrid';
-    const isCompactMode = config.method === 'compact' || isCompactGrid || isLargeColor || isLetter;
+    const isFlatRibbon = config.method === 'flatRibbon'; // Ribbon Labels size (7 per portrait A4), canoe layout
+    const isCompactMode = config.method === 'compact' || isCompactGrid || isLargeColor || isLetter || isFlatRibbon;
     const isLandscape = config.method === 'grid' || isCompactGrid || isRibbonCanoe;
     const PW = isLetter ? (isLandscape ? 279.4 : 215.9) : isLandscape ? 297 : 210;
     const PH = isLetter ? (isLandscape ? 215.9 : 279.4) : isLandscape ? 210 : 297;
@@ -4605,6 +4728,7 @@ export async function exportCatalogPdf(
                 nextPrep = page + 1 < totalPages ? prepPage(page + 1) : null;
                 await drawControlRibbonPage(doc, labels, page * itemsPerPage, itemsPerPage, PW, PH, rows);
             }
+            else if (isFlatRibbon) await drawFlatRibbonPage(doc, labels, page * itemsPerPage, itemsPerPage, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo });
             else if (isRibbonCanoe) await drawRibbonCanoePage(doc, labels, page * itemsPerPage, itemsPerPage, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo });
             else await drawRibbonPage(doc, labels, page * itemsPerPage, itemsPerPage, PW, PH, { rareEarth: rareEarthLogo, artOfDecor: artOfDecorLogo });
         }
