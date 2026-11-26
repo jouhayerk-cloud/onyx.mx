@@ -450,7 +450,7 @@ export function registerResources(server: McpServer, supabase: SupabaseClient): 
           database: "Supabase (PostgreSQL 15) with Row-Level Security",
           offline_sync: "RxDB 16 with IndexedDB (Dexie) replication engine",
           graphics_3d: "Three.js with WebGL PBR parametric profiles and GLTF pipeline",
-          ai_pipeline: "Google Gemini 2.5 Flash, @imgly/background-removal, SVG vector contouring",
+          ai_pipeline: "Google Gemini 4 Hydrogen / 3.5 Flash-Lite / Nano Banana 2.1 / Omni 1.2 Flash, BiRefNet/SAM2 segmentation",
           hardware_iot: "Raspberry Pi Pico W (OnyxChan IoT Robot), ST25R NFC, ESC/POS thermal printers",
           mcp_server: "Node.js Model Context Protocol Server (@modelcontextprotocol/sdk v1.12+)",
         },

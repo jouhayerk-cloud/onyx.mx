@@ -117,7 +117,7 @@ export const OnyxContextModal: React.FC<OnyxContextModalProps> = ({ isOpen, onCl
 
                 {/* Footer */}
                 <div className="p-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between bg-black gap-4">
-                    <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em]">{tr("Active Model: GEMINI-1.5-PRO-ONYX-V1")}</p>
+                    <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em]">{tr("Active Model: GEMINI-4-HYDROGEN-ONYX-V2")}</p>
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         <button 
                             onClick={onClose}

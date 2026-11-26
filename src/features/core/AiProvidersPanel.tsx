@@ -15,7 +15,7 @@ import {
 import { geminiKeyStatus } from '../../lib/ai/keyPrompt';
 import { PROVIDER_INFOS, getProvider } from '../../lib/ai/providers';
 import { COLIBRI_DEFAULT_BASE_URL, COLIBRI_TAILSCALE_URL } from '../../lib/ai/providers/colibri';
-import { COLIBRI_MODELS } from '../../lib/ai/models';
+import { COLIBRI_MODELS, GEMINI_4_HYDROGEN, GEMINI_SELECTABLE_MODELS } from '../../lib/ai/models';
 import type { ProviderConfig, ProviderId } from '../../lib/ai/providers/types';
 import {
     getProviderConfig,
@@ -89,7 +89,7 @@ export const AiProvidersPanel: React.FC = () => {
     }));
 
     const [draftModels, setDraftModels] = useState<Record<ProviderId, string>>(() => ({
-        gemini: '',
+        gemini: getProviderConfig('gemini').model || '',
         anthropic: getProviderConfig('anthropic').model || '',
         openai: getProviderConfig('openai').model || '',
         compat: getProviderConfig('compat').model || '',
@@ -98,7 +98,7 @@ export const AiProvidersPanel: React.FC = () => {
     }));
 
     const [savedModels, setSavedModels] = useState<Record<ProviderId, string>>(() => ({
-        gemini: getProviderConfig('gemini').model || 'gemini-2.5-flash',
+        gemini: getProviderConfig('gemini').model || GEMINI_4_HYDROGEN,
         anthropic: getProviderConfig('anthropic').model || '',
         openai: getProviderConfig('openai').model || '',
         compat: getProviderConfig('compat').model || '',
@@ -116,7 +116,7 @@ export const AiProvidersPanel: React.FC = () => {
     });
 
     const [availableModels, setAvailableModels] = useState<Record<ProviderId, string[]>>({
-        gemini: [],
+        gemini: [...GEMINI_SELECTABLE_MODELS],
         anthropic: ['claude-sonnet-4-5', 'claude-3-7-sonnet-latest', 'claude-3-5-haiku-latest'],
         openai: ['gpt-4o', 'gpt-4o-mini', 'o3-mini'],
         compat: [],
@@ -185,11 +185,13 @@ export const AiProvidersPanel: React.FC = () => {
             colibri: colibriCfg.baseUrl || COLIBRI_DEFAULT_BASE_URL,
         }));
 
+        const geminiCfg = getProviderConfig('gemini');
         const anthropicCfg = getProviderConfig('anthropic');
         const openaiCfg = getProviderConfig('openai');
         const companionCfg = getProviderConfig('companion');
         setDraftModels((prev) => ({
             ...prev,
+            gemini: prev.gemini || geminiCfg.model || '',
             anthropic: prev.anthropic || anthropicCfg.model || '',
             openai: prev.openai || openaiCfg.model || '',
             compat: prev.compat || compatCfg.model || '',
@@ -198,7 +200,7 @@ export const AiProvidersPanel: React.FC = () => {
         }));
 
         setSavedModels({
-            gemini: getProviderConfig('gemini').model || 'gemini-2.5-flash',
+            gemini: getProviderConfig('gemini').model || GEMINI_4_HYDROGEN,
             anthropic: getProviderConfig('anthropic').model || '',
             openai: getProviderConfig('openai').model || '',
             compat: getProviderConfig('compat').model || '',
@@ -224,8 +226,10 @@ export const AiProvidersPanel: React.FC = () => {
         if (info?.needsBaseUrl || id === 'colibri') {
             patch.baseUrl = baseVal || (id === 'colibri' ? COLIBRI_DEFAULT_BASE_URL : '');
         }
-        if (id !== 'gemini') {
-            patch.model = modelVal || (id === 'colibri' ? 'auto' : '');
+        if (id === 'colibri') {
+            patch.model = modelVal || 'auto';
+        } else {
+            patch.model = modelVal;
         }
 
         setProviderConfig(id, patch);
@@ -235,7 +239,7 @@ export const AiProvidersPanel: React.FC = () => {
 
         const savedModelVal =
             id === 'gemini'
-                ? (getProviderConfig('gemini').model || 'gemini-2.5-flash')
+                ? (getProviderConfig('gemini').model || GEMINI_4_HYDROGEN)
                 : id === 'colibri'
                 ? (modelVal || 'auto')
                 : id === 'companion'
@@ -335,7 +339,7 @@ export const AiProvidersPanel: React.FC = () => {
         setSavedModels((prev) => ({
             ...prev,
             [id]: id === 'gemini'
-                ? 'gemini-2.5-flash'
+                ? GEMINI_4_HYDROGEN
                 : id === 'colibri'
                 ? 'auto'
                 : id === 'companion'
@@ -609,7 +613,6 @@ export const AiProvidersPanel: React.FC = () => {
                                             <input
                                                 list={`ap-models-${p.id}`}
                                                 value={modelDraft}
-                                                disabled={p.id === 'gemini'}
                                                 onChange={(e) =>
                                                     setDraftModels((prev) => ({
                                                         ...prev,
@@ -618,7 +621,7 @@ export const AiProvidersPanel: React.FC = () => {
                                                 }
                                                 placeholder={
                                                     p.id === 'gemini'
-                                                        ? tr("gemini-2.5-flash (Auto)")
+                                                        ? tr("gemini-4-hydrogen (Auto)")
                                                         : p.id === 'colibri'
                                                         ? tr("auto (MoE Routing)")
                                                         : tr("Model ID")

@@ -40,7 +40,7 @@ const processOneClip = async (
     });
     const base64Data = b64.split(',')[1];
 
-    onProgress?.(30, `Prompting Gemini Omni Flash${tag}...`);
+    onProgress?.(30, `Prompting Gemini Omni 1.2 Flash${tag}...`);
 
     const prompt = `GENERATE new video of the Item in an empty room. Remove all items in the background and leave ONLY the "${shape} ${description}" (Onyx item) in a completely empty room. Maintain the item's original appearance and scale, but place it in a pristine, empty environment. Ensure the output video resolution is strictly 1080p (1920x1080).`;
 
@@ -233,6 +233,6 @@ export const processVideoWithGemini = async (
         // engine can tell a Stop from a failure.
         if (e instanceof AiError) throw e;
         console.error('Gemini Video Gen Error:', e);
-        throw new Error(e.message || 'Failed to generate video with Gemini Omni Flash');
+        throw new Error(e.message || 'Failed to generate video with Gemini Omni 1.2 Flash');
     }
 };

@@ -88,8 +88,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
     };
 
     const initSession = async () => {
-        // REINSTATED ORIGINAL BETA MODEL AS REQUESTED
-        const model = 'gemini-2.5-flash-native-audio-preview-09-2025';
+        const model = 'gemini-3.8-live';
 
         try {
             sessionRef.current = await clientRef.current!.live.connect({
@@ -134,13 +133,18 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                                     });
                                 }
 
-                                sessionRef.current.sendRealtimeInput({
+                                const toolResponse = {
                                     functionResponses: [{
                                         name: toolName,
                                         response: { result: res },
                                         id: call.functionCall.id
                                     }]
-                                });
+                                };
+                                if (typeof sessionRef.current?.sendToolResponse === 'function') {
+                                    sessionRef.current.sendToolResponse(toolResponse);
+                                } else {
+                                    sessionRef.current?.sendRealtimeInput(toolResponse);
+                                }
                             }
                         }
                     },
@@ -152,7 +156,12 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                     speechConfig: {
                         voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Orus' } }
                     },
-                    tools: [{ functionDeclarations: Object.values(onyxToolHandlers).map(h => (h as any).declaration) }]
+                    tools: [{
+                        functionDeclarations: Object.values(onyxToolHandlers).map(h => ({
+                            ...((h as any).declaration),
+                            behavior: 'BLOCKING',
+                        }) as any)
+                    }]
                 }
             });
         } catch (e: any) {
@@ -184,7 +193,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                 const rms = Math.sqrt(sum / pcmData.length);
                 setAudioActivity(rms);
 
-                sessionRef.current.sendRealtimeInput({ media: createBlob(pcmData) });
+                sessionRef.current.sendRealtimeInput({ audio: createBlob(pcmData) });
             };
 
             sourceNodeRef.current.connect(processorNodeRef.current);
@@ -281,7 +290,7 @@ export const BotOrb: React.FC<BotOrbProps> = ({ isOpen, onClose }) => {
                                 <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 shadow-[0_0_15px_#ef4444]' : 'bg-emerald-500 shadow-[0_0_15px_#10b981]'} transition-all duration-500`} />
                                 <span className="text-[12px] font-black uppercase tracking-[0.5em] text-white/40">{tr("Onyx Neural Link")}</span>
                             </div>
-                            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/10 ml-5">{tr("Core: Gemini 2.5 Flash Native Audio")}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/10 ml-5">{tr("Core: Gemini 3.8 Live")}</span>
                         </div>
 
                         <button 

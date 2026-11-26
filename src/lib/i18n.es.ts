@@ -3706,7 +3706,7 @@ export const esCatalog: Record<string, string> = {
   'No model': 'Sin modelo',
   'Local NVMe / WSS Bridge': 'Puente local NVMe / WSS',
   'iOS A17 Native Bridge': 'Puente nativo iOS A17',
-  'gemini-2.5-flash (Auto)': 'gemini-2.5-flash (Automático)',
+  'gemini-4-hydrogen (Auto)': 'gemini-4-hydrogen (Automático)',
   'auto (MoE Routing)': 'auto (Enrutamiento MoE)',
   'Chat -> GLM-5.2 · Translate -> Qwen-2.5 · Content/JSON -> Kimi-K3': 'Chat -> GLM-5.2 · Traducir -> Qwen-2.5 · Contenido/JSON -> Kimi-K3',
   'Token label (e.g. Cursor, Claude)': 'Etiqueta del token (ej. Cursor, Claude)',
@@ -3920,4 +3920,6 @@ export const esCatalog: Record<string, string> = {
   'Embedding sync interrupted or failed': 'Sincronización de incrustaciones interrumpida o fallida',
   'updated': 'actualizados',
   'up to date': 'al día',
+  'Core: Gemini 3.8 Live': 'Núcleo: Gemini 3.8 Live',
+  'Active Model: GEMINI-4-HYDROGEN-ONYX-V2': 'Modelo Activo: GEMINI-4-HYDROGEN-ONYX-V2',
 };

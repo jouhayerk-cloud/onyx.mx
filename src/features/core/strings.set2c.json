@@ -26,7 +26,7 @@
     ["No model", "Sin modelo"],
     ["Local NVMe / WSS Bridge", "Puente local NVMe / WSS"],
     ["iOS A17 Native Bridge", "Puente nativo iOS A17"],
-    ["gemini-2.5-flash (Auto)", "gemini-2.5-flash (Automático)"],
+    ["gemini-4-hydrogen (Auto)", "gemini-4-hydrogen (Automático)"],
     ["auto (MoE Routing)", "auto (Enrutamiento MoE)"],
     ["Chat -> GLM-5.2 · Translate -> Qwen-2.5 · Content/JSON -> Kimi-K3", "Chat -> GLM-5.2 · Traducir -> Qwen-2.5 · Contenido/JSON -> Kimi-K3"],
     ["Base URL", "URL base"],

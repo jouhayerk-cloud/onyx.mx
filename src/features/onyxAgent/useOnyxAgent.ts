@@ -388,9 +388,9 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
         }));
 
         try {
-            // route model first (user choice), then 2.5 Flash primary, 3.8 Flash fallback; offline provider falls back to Gemini for that turn
+            // route model first (user choice), then Gemini 4 Hydrogen primary, 3.8 Flash / 4 Argon fallbacks; offline provider falls back to Gemini for that turn
             const modelsToTry = effectiveViaGemini
-                ? Array.from(new Set([...(route.model && route.provider === 'gemini' ? [route.model] : []), "gemini-2.5-flash", "gemini-3.8-flash"]))
+                ? Array.from(new Set([...(route.model && route.provider === 'gemini' ? [route.model] : []), "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-4-argon"]))
                 : [];
             let resp = null;
             let usedModel = "";
@@ -462,7 +462,7 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
                             setPhase('thinking');
                             resp = chatSetup?.ok && !effectiveViaGemini
                                 ? await callModel(chatSetup.impl, chatSetup.cfg, contents, allDefinitions, signal)
-                                : await callGemini(apiKey, contents, allDefinitions, usedModel || 'gemini-2.5-flash', signal);
+                                : await callGemini(apiKey, contents, allDefinitions, usedModel || 'gemini-4-hydrogen', signal);
                             continue;
                         } else {
                             modelText = tr("I could not run that.");
@@ -670,10 +670,10 @@ CRITICAL ACTION RULE: Never claim, narrate, or pretend to execute an action or t
                             const providerLabel = chatSetup.impl.info?.label || route.provider;
                             fallbackNotice = `${providerLabel} ${tr('is offline or unreachable. Falling back to Gemini for this turn.')}`;
                             effectiveViaGemini = true;
-                            resp = await callGemini(apiKey, contents, allDefinitions, usedModel || 'gemini-2.5-flash', signal);
+                            resp = await callGemini(apiKey, contents, allDefinitions, usedModel || 'gemini-4-hydrogen', signal);
                         }
                     } else {
-                        resp = await callGemini(apiKey, contents, allDefinitions, usedModel || 'gemini-2.5-flash', signal);
+                        resp = await callGemini(apiKey, contents, allDefinitions, usedModel || 'gemini-4-hydrogen', signal);
                     }
                 }
                 iter++;

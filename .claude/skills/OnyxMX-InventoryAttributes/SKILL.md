@@ -207,7 +207,7 @@ dims: [width_cm, height_cm, length_cm].filter(Boolean).join('×')
 ## 9. AI Processing Pipeline
 
 ### Models
-Job → model map in `src/lib/ai/models.ts` (content, segmentation, translate: `gemini-2.5-flash`; bgReplace: `gemini-3.1-flash-image-preview` with `gemini-2.5-flash-image` fallback). Change models there only.
+Job → model map in `src/lib/ai/models.ts` (`content`, `segmentation`: `gemini-4-hydrogen` with `gemini-3.8-flash`/`gemini-4-argon` fallbacks; `translate`, `triage`: `gemini-3.5-flash-lite`; `bgReplace`: `gemini-nano-banana-2.1` with `gemini-3.1-flash-lite-image`/`gemini-3-pro-image` fallbacks; `video`: `gemini-omni-1.2-flash`). Change models there only.
 
 ### Cutout pipeline (Catalog Hub and Add Entry Generate)
 1. **Local**: background removal (`@imgly/background-removal`) → mask

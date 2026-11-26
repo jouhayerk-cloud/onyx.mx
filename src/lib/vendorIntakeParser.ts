@@ -1,5 +1,37 @@
 import * as XLSX from 'xlsx';
 import { getGeminiKey } from './ai/keys';
+import { modelChain } from './ai/models';
+
+async function postGeminiIntakeJson(key: string, parts: Record<string, unknown>[]): Promise<any> {
+    const models = modelChain('content');
+    let lastStatusText = 'Unknown error';
+    for (let i = 0; i < models.length; i++) {
+        const model = models[i];
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+            body: JSON.stringify({
+                contents: [{ parts }],
+                generationConfig: {
+                    responseMimeType: 'application/json',
+                    thinkingConfig: { thinkingLevel: 'low' },
+                },
+            }),
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+            return JSON.parse(textOut);
+        }
+        lastStatusText = res.statusText || `HTTP ${res.status}`;
+        if ((res.status === 400 || res.status === 404) && i < models.length - 1) {
+            continue;
+        }
+        throw new Error(`Gemini OCR API error: ${lastStatusText}`);
+    }
+    throw new Error(`Gemini OCR API error: ${lastStatusText}`);
+}
 
 export interface ParsedVendorItem {
     code: string;
@@ -405,32 +437,10 @@ Return ONLY valid JSON matching this schema:
   ]
 }`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
-    const payload = {
-        contents: [
-            {
-                parts: [
-                    { text: prompt },
-                    { inlineData: { mimeType, data: base64 } }
-                ]
-            }
-        ],
-        generationConfig: {
-            responseMimeType: 'application/json'
-        }
-    };
-
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) throw new Error(`Gemini OCR API error: ${res.statusText}`);
-
-    const data = await res.json();
-    const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const parsed = JSON.parse(textOut);
+    const parsed = await postGeminiIntakeJson(key, [
+        { text: prompt },
+        { inlineData: { mimeType, data: base64 } },
+    ]);
 
     return {
         vendor: parsed.vendor || vendorHint,
@@ -449,19 +459,7 @@ async function structureTextWithFreeAI(fullText: string, vendorHint: string): Pr
     const prompt = `Extract all stone/craft catalog items from this raw text into a clean JSON array with: code, quantity, description, shape, type, material, color, length_cm, width_cm, height_cm, cost_mxn:
 ${fullText.slice(0, 15000)}`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: 'application/json' }
-        })
-    });
-
-    const data = await res.json();
-    const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const parsed = JSON.parse(textOut);
+    const parsed = await postGeminiIntakeJson(key, [{ text: prompt }]);
 
     return {
         vendor: vendorHint,

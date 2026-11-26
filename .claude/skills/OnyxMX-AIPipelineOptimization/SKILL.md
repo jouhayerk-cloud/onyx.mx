@@ -11,9 +11,9 @@ Every inventory AI feature (Catalog Hub, Add/Edit Entry Generate, Batch Create h
 
 | File | Role |
 |------|------|
-| `models.ts` | Job → model map (content, segmentation, translate, bgReplace, video). The only place a model id is written. |
+| `models.ts` | Job → model map (`content`, `segmentation`, `translate`, `triage`, `bgReplace`, `video`). The only place pipeline model IDs (`gemini-4-hydrogen`, `gemini-3.5-flash-lite`, `gemini-nano-banana-2.1`, `gemini-omni-1.2-flash`) and `thinkingLevel` configs are written. |
 | `keys.ts` | The one Gemini key resolver (saved key, legacy chat key, then build-time `VITE_GEMINI_API_KEY`). |
-| `client.ts` | The only Gemini caller: REST, `x-goog-api-key` header, JSON schema output, timeout, retry/backoff. `generateText` / `generateJson`. |
+| `client.ts` | The only Gemini caller: REST, `x-goog-api-key` header, JSON schema output, `thinkingLevel` config on Gemini 3/4 (omitting deprecated `thinkingBudget`/custom `temperature`), timeout, retry/backoff, and `modelChain` fallback cascade. `generateText` / `generateJson`. |
 | `limiter.ts` | Concurrency per job class (text / image / video). |
 | `prompts.ts` + `vocabulary.ts` | Every prompt and schema: `buildContentPrompt`, `buildSegmentationPrompt`, `buildTranslatePrompt`, detection and mask prompts. |
 | `item.ts` / `finalize.ts` | Row → pipeline item; post-processing of model output. |
@@ -21,7 +21,7 @@ Every inventory AI feature (Catalog Hub, Add/Edit Entry Generate, Batch Create h
 | `persist.ts` | `buildAiPatch` / `saveAiPatch`: the one writer. Merges `processed_media_urls` and `spatial_masks`, never rebuilds them. |
 | `errors.ts` | User-facing error text (through `tr()`). |
 
-Documented exceptions: background replacement (`src/lib/bgReplace.ts`) and video (`videoAI.ts`) still call the SDK directly; OnyxChat and SceneComposer are outside this pipeline.
+Documented exceptions: background replacement (`src/lib/bgReplace.ts`), `SceneComposerView`, and video (`src/lib/videoAI.ts` via `/v1beta/interactions`) consume `AI_MODELS` / `modelChain` from `src/lib/ai/models.ts`; `OnyxChat`, `useOnyxAgent` (Gemini 4 Hydrogen / 3.8 Flash / 4 Argon), and `BotOrb` (`gemini-3.8-live`) handle conversational and Live audio flows.
 
 ## Process ids
 
@@ -49,4 +49,5 @@ Never overwrite the vendor's own `description` (vendor text), `short_description
 - JSON output always goes through a schema in `prompts.ts` and `generateJson`.
 - Keep AI optional: every AI field has a manual fallback, and a failed call never blocks saving.
 - Calls bill the owner's Gemini key: no duplicate calls on retry; reuse results already in the run.
+- For Gemini 3.x/4.x models (`gemini-4-*`, `gemini-3.8-*`, `gemini-3.5-*`), always use `thinkingConfig.thinkingLevel` (`low` | `medium` | `high`) and omit `thinkingBudget` and custom `temperature`/`topP`/`topK`.
 - The key moves to a server proxy later; `keys.ts` is the only file that should change then.

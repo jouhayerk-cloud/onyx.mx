@@ -138,7 +138,7 @@ Write-Host "--- [4] onyx-ai (Gemini Assistant) ---" -ForegroundColor Yellow
 Record-Result (Invoke-Probe -Name "onyx-ai (No Auth)" -Method "POST" -Url "$baseUrl/onyx-ai" -Headers @{"Content-Type"="application/json"} -ExpectedStatuses @(401))
 # Authenticated POST
 if (-not [string]::IsNullOrWhiteSpace($jwt)) {
-    Record-Result (Invoke-Probe -Name "onyx-ai (Auth JWT)" -Method "POST" -Url "$baseUrl/onyx-ai" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"messages":[{"role":"user","parts":[{"text":"Say OK"}]}],"model":"gemini-2.5-flash"}' -ExpectedStatuses @(200))
+    Record-Result (Invoke-Probe -Name "onyx-ai (Auth JWT)" -Method "POST" -Url "$baseUrl/onyx-ai" -Headers @{"Authorization"="Bearer $jwt"; "Content-Type"="application/json"} -Body '{"messages":[{"role":"user","parts":[{"text":"Say OK"}]}],"model":"gemini-4-hydrogen"}' -ExpectedStatuses @(200))
 }
 
 Write-Host ""

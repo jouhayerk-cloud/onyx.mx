@@ -2,6 +2,7 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
 import { ai } from "../../lib/ai";
+import { modelChain } from "../../lib/ai/models";
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import toast from '../onyxIsland/notify/toast';
@@ -183,13 +184,32 @@ export const SceneComposerView = () => {
 
             const prompt = `Place the product image into the scene image at approximately ${xPercent.toFixed(0)}% from the left and ${yPercent.toFixed(0)}% from the top. The product is a "${draggedProduct.data.shape} made of ${draggedProduct.data.material}". Realistically integrate it by adjusting lighting, scale, and adding shadows. The final image should have the same dimensions as the original scene.`;
             
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
-                contents: { parts: [{ inlineData: { mimeType: 'image/png', data: productImageUrl.split(',')[1] } }, { inlineData: { mimeType: sceneImage.type, data: sceneDataUrl.split(',')[1] } }, { text: prompt }] },
-                config: {
-                    responseModalities: [Modality.IMAGE],
-                },
-            });
+            const models = modelChain('bgReplace');
+            let response: Awaited<ReturnType<typeof ai.models.generateContent>> | undefined;
+            let lastModelErr: unknown;
+            for (let i = 0; i < models.length; i++) {
+                const model = models[i];
+                try {
+                    response = await ai.models.generateContent({
+                        model,
+                        contents: { parts: [{ inlineData: { mimeType: 'image/png', data: productImageUrl.split(',')[1] } }, { inlineData: { mimeType: sceneImage.type, data: sceneDataUrl.split(',')[1] } }, { text: prompt }] },
+                        config: {
+                            responseModalities: [Modality.IMAGE],
+                        },
+                    });
+                    break;
+                } catch (err) {
+                    lastModelErr = err;
+                    const errInfo = `${String((err as any)?.status ?? '')} ${err instanceof Error ? err.message : String(err)}`;
+                    const fallbackable = /\b(400|404)\b|not found|unsupported|not supported|invalid argument/i.test(errInfo);
+                    if (i < models.length - 1 && fallbackable) {
+                        console.warn(`[scene-composer] ${model} rejected, falling back to ${models[i + 1]}`, err);
+                        continue;
+                    }
+                    throw err;
+                }
+            }
+            if (!response) throw lastModelErr instanceof Error ? lastModelErr : new Error('Failed to generate image.');
 
             const imagePart = response.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
             if (!imagePart?.inlineData) throw new Error("AI did not return an image.");

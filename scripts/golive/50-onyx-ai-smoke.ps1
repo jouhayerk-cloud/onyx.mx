@@ -64,7 +64,7 @@ $r = Call "GET" "$base/onyx-ai" $jwt $null
 Record ($r.Code -eq 405) "onyx-ai GET method is refused" ("HTTP {0}" -f $r.Code)
 
 # 3. Missing messages parameter (must be rejected with 400)
-$r = Call "POST" "$base/onyx-ai" $jwt @{ model = "gemini-2.5-flash" }
+$r = Call "POST" "$base/onyx-ai" $jwt @{ model = "gemini-4-hydrogen" }
 $err3 = Prop (Prop $r.Json "error") "message"
 Record ($r.Code -eq 400 -and $null -ne $err3 -and $err3 -like "*Missing messages*") "onyx-ai rejects missing messages" ("HTTP {0}, msg: {1}" -f $r.Code, $(if ($null -ne $err3) { $err3 } else { "none" }))
 
@@ -80,7 +80,7 @@ $err5 = Prop (Prop $r.Json "error") "message"
 Record ($r.Code -eq 413 -and $null -ne $err5 -and $err5 -like "*Payload too large*") "onyx-ai refuses oversized payload (>200KB)" ("HTTP {0}, msg: {1}" -f $r.Code, $(if ($null -ne $err5) { $err5 } else { "none" }))
 
 # 6. Authorised cheap call with tiny prompt and valid model, verifying response shape
-$r = Call "POST" "$base/onyx-ai" $jwt @{ messages = @( @{ role = "user"; parts = @( @{ text = "Say OK" } ) } ); model = "gemini-2.5-flash" }
+$r = Call "POST" "$base/onyx-ai" $jwt @{ messages = @( @{ role = "user"; parts = @( @{ text = "Say OK" } ) } ); model = "gemini-4-hydrogen" }
 if ($r.Code -eq 403) {
     Write-Host "      [Note] Caller was rejected with 403 Forbidden. Verify caller role in app_users is Developer, Admin, or ClientBoss." -ForegroundColor Yellow
 }

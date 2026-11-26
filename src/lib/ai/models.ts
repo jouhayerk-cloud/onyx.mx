@@ -18,19 +18,34 @@ export type AiJob =
 /** Concurrency class a job counts against; see limiter.ts. */
 export type AiJobClass = 'text' | 'image' | 'video';
 
-/** Known API IDs configured per RS_AI_INTEGRATOR.md (no invented IDs). */
-export const GEMINI_2_5_FLASH = 'gemini-2.5-flash';
+/** Current Google Gemini API model IDs (Gemini 4 / 3.8 / 3.5 / Nano Banana / Omni / Live). */
+export const GEMINI_4_HYDROGEN = 'gemini-4-hydrogen';
+export const GEMINI_4_ARGON = 'gemini-4-argon';
+export const GEMINI_4_NEON = 'gemini-4-neon';
+export const GEMINI_4_CARBON = 'gemini-4-carbon';
 export const GEMINI_3_8_FLASH = 'gemini-3.8-flash';
-/** TODO: gemini-4-argon id is unverified; keep behind a TODO constant, not used by default. */
-export const TODO_GEMINI_4_ARGON = 'gemini-4-argon';
-export const GEMINI_4_ARGON = TODO_GEMINI_4_ARGON;
+export const GEMINI_3_5_FLASH_LITE = 'gemini-3.5-flash-lite';
+export const GEMINI_NANO_BANANA_2_1 = 'gemini-nano-banana-2.1';
+export const GEMINI_3_1_FLASH_LITE_IMAGE = 'gemini-3.1-flash-lite-image';
+export const GEMINI_3_PRO_IMAGE = 'gemini-3-pro-image';
+export const GEMINI_OMNI_1_2_FLASH = 'gemini-omni-1.2-flash';
+export const GEMINI_3_8_LIVE = 'gemini-3.8-live';
+
+/** Deprecated compatibility aliases mapped to modern Gemini 4 / 3.8 models. */
+export const GEMINI_2_5_FLASH = GEMINI_4_HYDROGEN;
+export const TODO_GEMINI_4_ARGON = GEMINI_4_ARGON;
 
 /** Selectable Gemini models for routing and manual selection. */
 export const GEMINI_SELECTABLE_MODELS = [
-    GEMINI_2_5_FLASH,
+    GEMINI_4_HYDROGEN,
     GEMINI_3_8_FLASH,
-    TODO_GEMINI_4_ARGON,
+    GEMINI_4_ARGON,
+    GEMINI_4_NEON,
+    GEMINI_4_CARBON,
+    GEMINI_3_5_FLASH_LITE,
 ] as const;
+
+export type GeminiThinkingLevel = 'low' | 'medium' | 'high' | 'xhigh';
 
 export interface AiModelSpec {
     /** Tried first. */
@@ -38,9 +53,12 @@ export interface AiModelSpec {
     /** Tried in order when the model above rejects the request outright. */
     fallbacks?: readonly string[];
     /**
-     * Gemini thinking budget in tokens. Omitted = the model's default.
-     * 0 turns thinking off, which Google recommends for spatial (box/polygon)
-     * work and which keeps short structured calls fast.
+     * Gemini 3/4 thinking level ('low' | 'medium' | 'high' | 'xhigh').
+     * Replaces legacy numeric thinkingBudget on modern Gemini models.
+     */
+    thinkingLevel?: GeminiThinkingLevel;
+    /**
+     * Legacy Gemini thinking budget in tokens (used only by non-Gemini-3/4 fallbacks).
      */
     thinkingBudget?: number;
     /** Default request timeout. */
@@ -49,41 +67,43 @@ export interface AiModelSpec {
 }
 
 export const AI_MODELS: Record<AiJob, AiModelSpec> = {
-    // Title, marketing HTML, colours and type. Defaults to Gemini 2.5 Flash as before wave 1.
+    // Title, marketing HTML, colours and type. Uses Gemini 4 Hydrogen with 3.8 Flash / 4 Argon fallbacks.
     content: {
-        model: GEMINI_2_5_FLASH,
-        timeoutMs: 60000,
+        model: GEMINI_4_HYDROGEN,
+        fallbacks: [GEMINI_3_8_FLASH, GEMINI_4_ARGON],
+        thinkingLevel: 'medium',
+        timeoutMs: 90000,
         jobClass: 'text',
     },
-    // Spatial (box/polygon) work: thinking turned off for speed and precision.
+    // Spatial (box/polygon) work: low thinking for speed and coordinate precision.
     segmentation: {
-        model: GEMINI_2_5_FLASH,
-        thinkingBudget: 0,
-        timeoutMs: 40000,
+        model: GEMINI_4_HYDROGEN,
+        fallbacks: [GEMINI_3_8_FLASH],
+        thinkingLevel: 'low',
+        timeoutMs: 45000,
         jobClass: 'text',
     },
-    // Fast translation notes.
+    // Fast translation notes via Gemini 3.5 Flash-Lite.
     translate: {
-        model: GEMINI_2_5_FLASH,
-        thinkingBudget: 0,
+        model: GEMINI_3_5_FLASH_LITE,
+        fallbacks: [GEMINI_4_HYDROGEN, GEMINI_3_8_FLASH],
+        thinkingLevel: 'low',
         timeoutMs: 30000,
         jobClass: 'text',
     },
-    // Background replacement. Nano Banana 2.1 is the newest image edit model (the 3.1 preview id was scheduled off on
-    // 2026-06-25, so it is gone from the chain). Whether generateContent with imageConfig behaves the same on 2.1 is NOT
-    // proven (its docs show the Interactions API): the fallbacks keep the old proven path, so a rejection costs one failed
-    // call per item, not the batch. 2.5 already proved it works against our key. Check a run log after the change.
+    // Background replacement and scene composition via Nano Banana 2.1 + current image fallbacks.
     bgReplace: {
-        model: 'gemini-nano-banana-2.1',
-        fallbacks: ['gemini-3.1-flash-image', 'gemini-2.5-flash-image'],
+        model: GEMINI_NANO_BANANA_2_1,
+        fallbacks: [GEMINI_3_1_FLASH_LITE_IMAGE, GEMINI_3_PRO_IMAGE],
         timeoutMs: 180000,
         jobClass: 'image',
     },
-    video: { model: 'models/gemini-omni-flash-preview', timeoutMs: 300000, jobClass: 'video' },
-    // Fast decision / intent triage
+    video: { model: GEMINI_OMNI_1_2_FLASH, timeoutMs: 300000, jobClass: 'video' },
+    // Fast decision / intent triage via Gemini 3.5 Flash-Lite.
     triage: {
-        model: GEMINI_2_5_FLASH,
-        thinkingBudget: 0,
+        model: GEMINI_3_5_FLASH_LITE,
+        fallbacks: [GEMINI_4_HYDROGEN, GEMINI_3_8_FLASH],
+        thinkingLevel: 'low',
         timeoutMs: 15000,
         jobClass: 'text',
     },

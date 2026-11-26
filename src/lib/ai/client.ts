@@ -22,7 +22,7 @@
  */
 import { GoogleGenAI } from '@google/genai';
 import { getGeminiKey } from './keys';
-import { AI_MODELS, type AiJob, type AiModelSpec } from './models';
+import { AI_MODELS, modelChain, type AiJob, type AiModelSpec } from './models';
 import { withAiSlot } from './limiter';
 import {
     AiCancelledError,
@@ -192,17 +192,30 @@ async function post(job: AiJob, model: string, body: unknown, timeoutMs: number,
     return withAiSlot(AI_MODELS[job].jobClass, () => runWithRetry(() => postOnce(model, body, timeoutMs, signal), signal), signal);
 }
 
-function buildBody(opts: GenerateOptions, schema?: object) {
+const MODERN_GEMINI_MODEL_RE = /^gemini-[34]/i;
+const isModernGeminiModel = (model: string): boolean =>
+    MODERN_GEMINI_MODEL_RE.test(model.replace(/^models\//, ''));
+
+function buildBody(opts: GenerateOptions, schema?: object, model?: string) {
     const spec = AI_MODELS[opts.job];
+    const resolvedModel = model || opts.model || spec.model;
+    const isModern = isModernGeminiModel(resolvedModel);
     const generationConfig: Record<string, unknown> = {};
     if (schema) {
         generationConfig.responseMimeType = 'application/json';
         generationConfig.responseSchema = schema;
     }
-    if (spec.thinkingBudget !== undefined) {
-        generationConfig.thinkingConfig = { thinkingBudget: spec.thinkingBudget };
+    if (isModern) {
+        const level = spec.thinkingLevel ?? (spec.thinkingBudget === 0 ? 'low' : undefined);
+        if (level) {
+            generationConfig.thinkingConfig = { thinkingLevel: level };
+        }
+    } else {
+        if (spec.thinkingBudget !== undefined) {
+            generationConfig.thinkingConfig = { thinkingBudget: spec.thinkingBudget };
+        }
+        if (opts.temperature !== undefined) generationConfig.temperature = opts.temperature;
     }
-    if (opts.temperature !== undefined) generationConfig.temperature = opts.temperature;
 
     return {
         // Image first, then the instruction: Google's guidance for single-image
@@ -400,6 +413,43 @@ async function callProviderJson<T>(
     );
 }
 
+const isFallbackableModelError = (err: unknown): boolean => {
+    if (err instanceof AiCancelledError || err instanceof AiKeyMissingError || err instanceof AiQuotaError) {
+        return false;
+    }
+    return err instanceof AiResponseError && (err.status === 400 || err.status === 404);
+};
+
+async function postGeminiWithFallback(
+    opts: GenerateOptions,
+    explicitModel: string | undefined,
+    schema?: object,
+): Promise<any> {
+    const spec = AI_MODELS[opts.job];
+    const candidates = explicitModel ? [explicitModel] : modelChain(opts.job);
+    let lastErr: unknown;
+    for (let i = 0; i < candidates.length; i++) {
+        const candidate = candidates[i];
+        try {
+            return await post(
+                opts.job,
+                candidate,
+                buildBody(opts, schema, candidate),
+                opts.timeoutMs ?? spec.timeoutMs,
+                opts.signal,
+            );
+        } catch (err) {
+            lastErr = err;
+            if (i < candidates.length - 1 && isFallbackableModelError(err)) {
+                console.warn(`[ai] ${candidate} rejected (${(err as AiResponseError).status}), falling back to ${candidates[i + 1]}`);
+                continue;
+            }
+            throw err;
+        }
+    }
+    throw lastErr;
+}
+
 export async function generateText(opts: GenerateOptions): Promise<string> {
     const spec = AI_MODELS[opts.job];
     const isRoutable = ROUTABLE_JOBS.includes(opts.job as RouteJob);
@@ -440,8 +490,8 @@ export async function generateText(opts: GenerateOptions): Promise<string> {
         // Tier 3: Cloud API (Gemini)
     }
 
-    const model = opts.model || (isRoutable && effectiveRoute.provider === 'gemini' ? effectiveRoute.model : undefined) || spec.model;
-    const data = await post(opts.job, model, buildBody(opts), opts.timeoutMs ?? spec.timeoutMs, opts.signal);
+    const explicitModel = opts.model || (isRoutable && effectiveRoute.provider === 'gemini' ? effectiveRoute.model : undefined);
+    const data = await postGeminiWithFallback(opts, explicitModel);
     return extractText(data);
 }
 
@@ -485,8 +535,8 @@ export async function generateJson<T = unknown>(opts: GenerateJsonOptions): Prom
         // Tier 3: Cloud API (Gemini)
     }
 
-    const model = opts.model || (isRoutable && effectiveRoute.provider === 'gemini' ? effectiveRoute.model : undefined) || spec.model;
-    const data = await post(opts.job, model, buildBody(opts, opts.schema), opts.timeoutMs ?? spec.timeoutMs, opts.signal);
+    const explicitModel = opts.model || (isRoutable && effectiveRoute.provider === 'gemini' ? effectiveRoute.model : undefined);
+    const data = await postGeminiWithFallback(opts, explicitModel, opts.schema);
     let text = extractText(data);
     // JSON mode should make fences impossible; older models occasionally add
     // them anyway, and stripping costs nothing.

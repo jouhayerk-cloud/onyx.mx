@@ -4,8 +4,11 @@
 
 | Model | Use Case | Location |
 |-------|----------|----------|
-| `gemini-2.5-flash` | Short descriptions, color classification, type categorization | `BatchProcessingWizard.tsx` |
-| `gemini-2.5-pro` | Marketing descriptions, spatial segmentation refinement | `BatchProcessingWizard.tsx` |
+| `gemini-4-hydrogen` (fallbacks: `gemini-3.8-flash`, `gemini-4-argon`) | Book 826 titles, marketing descriptions, color classification, type categorization, spatial segmentation, `character_ai` | `src/lib/ai/models.ts` (`content`, `segmentation`), `BatchProcessingWizard.tsx` |
+| `gemini-3.5-flash-lite` (fallbacks: `gemini-4-hydrogen`, `gemini-3.8-flash`) | Fast translation notes and intent triage | `src/lib/ai/models.ts` (`translate`, `triage`) |
+| `gemini-nano-banana-2.1` (fallbacks: `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`) | Background replacement and Scene Composer | `src/lib/ai/models.ts` (`bgReplace`), `SceneComposerView.tsx` |
+| `gemini-omni-1.2-flash` | Video background removal via `/v1beta/interactions` | `src/lib/ai/models.ts` (`video`), `videoAI.ts` |
+| `gemini-3.8-live` | Live audio voice orb | `src/features/onyx/BotOrb.tsx` |
 
 ## 4-Step Hybrid Processing Pipeline
 
@@ -20,7 +23,7 @@
 - Generates SVG path data
 - Used for high-quality cutout edges
 
-### Step 3: Cloud AI Refinement (Gemini 2.5 Pro)
+### Step 3: Cloud AI Refinement (Gemini 4 Hydrogen — `thinkingLevel: low`)
 - Sends image + initial mask to Gemini
 - Refines layer detection for complex geometries
 - Special handling:
@@ -69,13 +72,13 @@ Outdoor Decor > Fountains
 
 ## Description Generation Rules
 
-### Short Description (Gemini 2.5 Flash)
+### Short Description & Book 826 Copy (Gemini 4 Hydrogen — `thinkingLevel: medium`)
 - Single sentence, concise
 - No articles ("a", "the")
 - Based on: shape, material, dimensions
 - Strict JSON output format
 
-### Detailed Description / Marketing Copy (Gemini 2.5 Pro)
+### Detailed Description / Marketing Copy (Gemini 4 Hydrogen)
 - Length: 1000-1200 characters
 - Format: HTML (`<p>`, `<ul>`, `<li>`)
 - Tone: Premium, artisanal, luxury

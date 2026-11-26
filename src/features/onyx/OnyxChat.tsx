@@ -248,11 +248,11 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
             }));
             contents.push({ role: 'user', parts: [{ text: finalInput }] });
 
-            // Explicit chat models only: the old filter over every discovered model could pick an image, tts or audio id first,
-            // and 2.0 and 1.5 are shut down.
+            // Explicit modern chat models only; legacy 2.5, 2.0, and 1.5 are deprecated/shut down.
             const modelsToTry = [
-                "gemini-2.5-flash",
-                "gemini-3.8-flash"
+                "gemini-4-hydrogen",
+                "gemini-3.8-flash",
+                "gemini-4-argon"
             ];
             const uniqueModels = Array.from(new Set(modelsToTry));
             
@@ -338,7 +338,13 @@ Real items (Fluorite) = 65. Deploy artifacts for all inventory lookups.`;
                 const resps = [];
                 for (const c of calls) {
                     const res = await (onyxToolHandlers as any)[c.functionCall.name]?.(c.functionCall.args);
-                    resps.push({ functionResponse: { name: c.functionCall.name, response: { content: res } } });
+                    resps.push({
+                        functionResponse: {
+                            ...(c.functionCall.id ? { id: c.functionCall.id } : {}),
+                            name: c.functionCall.name,
+                            response: { content: res }
+                        }
+                    });
                 }
                 contents.push({ role: 'function', parts: resps });
                 for (const r of resps) {

@@ -14,12 +14,16 @@ const corsHeaders = {
 
 const ALLOWED_ROLES = ["Developer", "Admin", "ClientBoss"];
 const ALLOWED_MODELS = [
+  "gemini-4-hydrogen",
+  "gemini-4-argon",
+  "gemini-4-neon",
+  "gemini-4-carbon",
   "gemini-3.8-flash",
   "gemini-3.7-flash",
   "gemini-3.6-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
   "gemini-3.1-pro-preview",
-  "gemini-2.5-flash",
-  "gemini-2.5-pro"
 ];
 
 async function authenticateCaller(req: Request) {
@@ -93,7 +97,7 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: { code: 400, message: "Missing messages parameter" } }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  let targetModel = model || "gemini-2.5-flash";
+  let targetModel = model || "gemini-4-hydrogen";
   if (targetModel.startsWith("models/")) {
     targetModel = targetModel.replace("models/", "");
   }
@@ -122,23 +126,28 @@ serve(async (req: Request) => {
   for (const k of ["systemInstruction", "system_instruction", "tools", "toolConfig", "tool_config"]) {
     if (src[k] !== undefined) payload[k] = src[k];
   }
+  const isModernGemini = /^gemini-[34]/i.test(targetModel.replace(/^models\//, ""));
   const gcIn = (src.generationConfig ?? src.generation_config ?? {}) as Record<string, any>;
   const gc: Record<string, unknown> = {
     maxOutputTokens: clamp(gcIn.maxOutputTokens, 1, MAX_OUTPUT_TOKENS) ?? MAX_OUTPUT_TOKENS,
   };
-  const temperature = clamp(gcIn.temperature, 0, 2);
-  if (temperature !== undefined) gc.temperature = temperature;
-  const topP = clamp(gcIn.topP, 0, 1);
-  if (topP !== undefined) gc.topP = topP;
-  const topK = clamp(gcIn.topK, 1, 100);
-  if (topK !== undefined) gc.topK = topK;
+  if (!isModernGemini) {
+    const temperature = clamp(gcIn.temperature, 0, 2);
+    if (temperature !== undefined) gc.temperature = temperature;
+    const topP = clamp(gcIn.topP, 0, 1);
+    if (topP !== undefined) gc.topP = topP;
+    const topK = clamp(gcIn.topK, 1, 100);
+    if (topK !== undefined) gc.topK = topK;
+    const budget = clamp(gcIn.thinkingConfig?.thinkingBudget, -1, MAX_OUTPUT_TOKENS);
+    if (budget !== undefined) gc.thinkingConfig = { thinkingBudget: budget };
+  }
   if (gcIn.responseMimeType === "application/json" || gcIn.responseMimeType === "text/plain") gc.responseMimeType = gcIn.responseMimeType;
   if (gcIn.responseSchema !== undefined && typeof gcIn.responseSchema === "object") gc.responseSchema = gcIn.responseSchema;
-  const budget = clamp(gcIn.thinkingConfig?.thinkingBudget, -1, MAX_OUTPUT_TOKENS);
-  if (budget !== undefined) gc.thinkingConfig = { thinkingBudget: budget };
-  // Gemini 3.x uses a level instead of a budget
+  // Gemini 3.x/4.x uses thinkingLevel instead of thinkingBudget
   const level = gcIn.thinkingConfig?.thinkingLevel;
-  if (level === "low" || level === "medium" || level === "high") gc.thinkingConfig = { ...(gc.thinkingConfig ?? {}), thinkingLevel: level };
+  if (level === "low" || level === "medium" || level === "high" || level === "xhigh") {
+    gc.thinkingConfig = { ...(gc.thinkingConfig ?? {}), thinkingLevel: level };
+  }
   payload.generationConfig = gc;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent`;

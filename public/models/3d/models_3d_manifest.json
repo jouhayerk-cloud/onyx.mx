@@ -18,10 +18,64 @@
     "drive_file_id": "154fBwcFg98ZemBUoM04MnGOAhftUmBBI"
   },
   {
+    "barcode": "EM826100XHE",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM826100XHE.html",
+    "drive_file_id": "125RRpmHymalp1dmKWH5r4Iy-o3zgqZfc"
+  },
+  {
+    "barcode": "EM826101ODX",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM826101ODX.html",
+    "drive_file_id": "1jnKAoDQ4koRPwvfUuOiZ024ATGlZ9wj-"
+  },
+  {
+    "barcode": "EM826102XDL",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM826102XDL.html",
+    "drive_file_id": "1SH3D_ssxnJp1nHIPHOYq721jBaQCYaqt"
+  },
+  {
+    "barcode": "EM826103ONX",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM826103ONX.html",
+    "drive_file_id": "1_E-BDxMz4NJssLriNb-QKLkIZf3a1hIi"
+  },
+  {
+    "barcode": "EM826105HLA",
+    "archetype": "wall_panel",
+    "artifact_url": "/models/3d/EM826105HLA.html",
+    "drive_file_id": "1Ns8UzVO0CU1NjuZvuhP7ncDaOXpsMtiW"
+  },
+  {
+    "barcode": "EM826108OLX",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM826108OLX.html",
+    "drive_file_id": "1g_aLgG6kcF7HFAc93raG8_-aTlllLh5I"
+  },
+  {
+    "barcode": "EM826109OLX",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM826109OLX.html",
+    "drive_file_id": "1Jci8xPk_stOWOTSFnA9x2YvcK_tWy0WA"
+  },
+  {
     "barcode": "EM82610EHH",
     "archetype": "mirror",
     "artifact_url": "/models/3d/EM82610EHH.html",
     "drive_file_id": "1Mjvo3IrzpVvnCptABilKG7-8HflMRo9u"
+  },
+  {
+    "barcode": "EM826110MHH",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM826110MHH.html",
+    "drive_file_id": "1TKWFLn8pJToABKxs62IR2vzYXN6Xqxbe"
+  },
+  {
+    "barcode": "EM826111MLF",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM826111MLF.html",
+    "drive_file_id": "14mqEZUZqbHZzUweDF8eKv02B75kkTZl1"
   },
   {
     "barcode": "EM82611EHH",
@@ -261,7 +315,7 @@
     "barcode": "EM82647OEH",
     "archetype": "canoe",
     "artifact_url": "/models/3d/EM82647OEH.html",
-    "drive_file_id": "1by3HvAT3CSNb_VoRrvkMKpmhFZUIxg-F"
+    "drive_file_id": "1m3yshj-eqEzidki0OQDeF68IEfyodYMn"
   },
   {
     "barcode": "EM82648OEH",
@@ -354,10 +408,58 @@
     "drive_file_id": "1Rp2Ga0swnr2cjkKbSjMCWRYFIIfNodHp"
   },
   {
+    "barcode": "EM82661XDH",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM82661XDH.html",
+    "drive_file_id": "1yCHOYDA2kkId_zCK0X5cd3kCwNIEoMMi"
+  },
+  {
+    "barcode": "EM82662OFF",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM82662OFF.html",
+    "drive_file_id": "1BBo73cuf6e-DHZIgd-lACcQqz1-E-fhW"
+  },
+  {
     "barcode": "EM82663NAAO",
     "archetype": "wall_panel",
     "artifact_url": "/models/3d/EM82663NAAO.html",
     "drive_file_id": "1CjAkqqe_9aIZxkgNuyQ7-eYOwmcPNNdh"
+  },
+  {
+    "barcode": "EM82664OLX",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM82664OLX.html",
+    "drive_file_id": "1xRiqj6kryufQJKAHNMylUmWcy62aK0G1"
+  },
+  {
+    "barcode": "EM82665OXN",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM82665OXN.html",
+    "drive_file_id": "1VogTneLrk23xjdd1pcn6Z3g-EXg7AFHn"
+  },
+  {
+    "barcode": "EM82666OME",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM82666OME.html",
+    "drive_file_id": "1QegF5MSuQWJIIbJU9r3W5_j54Ga-BTSz"
+  },
+  {
+    "barcode": "EM82667MNM",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM82667MNM.html",
+    "drive_file_id": "19bSSvDatmDjV9w5mbF-km9pabs4XQKv_"
+  },
+  {
+    "barcode": "EM82668MLF",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM82668MLF.html",
+    "drive_file_id": "1j7CFP3zTwy_yAb3TNmkCMzIwkPW3Pzym"
+  },
+  {
+    "barcode": "EM82669MHH",
+    "archetype": "canoe",
+    "artifact_url": "/models/3d/EM82669MHH.html",
+    "drive_file_id": "1hoEjoRPIqrhpR2oBClNvu6JXP6xI3s-M"
   },
   {
     "barcode": "EM8266OFHF",
@@ -366,16 +468,148 @@
     "drive_file_id": "1POEND65_FmIOVhX98_-YVJgkos8JJRnX"
   },
   {
+    "barcode": "EM82676MLN",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82676MLN.html",
+    "drive_file_id": "14DJ1BhhEdiRXp2nWk1-TCMj4uFQH8tZf"
+  },
+  {
+    "barcode": "EM82677XMD",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82677XMD.html",
+    "drive_file_id": "16MuTaw6Of3O5oevazmbQztPpWdf65wqb"
+  },
+  {
+    "barcode": "EM82678XXF",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82678XXF.html",
+    "drive_file_id": "11WGeIro7MspKqAmCGFM1of3um4N4ecxy"
+  },
+  {
+    "barcode": "EM82679OAN",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82679OAN.html",
+    "drive_file_id": "1dJRY3OTD7hWSPUkYkT5VHDI8UDxS579O"
+  },
+  {
     "barcode": "EM8267FDA",
     "archetype": "mirror",
     "artifact_url": "/models/3d/EM8267FDA.html",
     "drive_file_id": "1aBZ6k9FOk5ckU1_RvCoG9ePWERun0cty"
   },
   {
+    "barcode": "EM82681OAN",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82681OAN.html",
+    "drive_file_id": "1o1t4EmGmBMTi9gI_JejGAKG3ak8wa5Eu"
+  },
+  {
+    "barcode": "EM82682ODD",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82682ODD.html",
+    "drive_file_id": "13CUwrCzJEUYcTCjgEg8kAnwl9moGPiKD"
+  },
+  {
+    "barcode": "EM82683MLX",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82683MLX.html",
+    "drive_file_id": "1kfoOfn8RLjAPqzeIXntfO-1NzyqIzW5l"
+  },
+  {
+    "barcode": "EM82684MFO",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82684MFO.html",
+    "drive_file_id": "1gFwCXRavLOYLvpcKsVMBn3xebRgmruy7"
+  },
+  {
+    "barcode": "EM82685MEM",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82685MEM.html",
+    "drive_file_id": "1k-Ld7pg-Jj9ejoUHrYDjp-6VbRiLEv0J"
+  },
+  {
+    "barcode": "EM82686OMX",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82686OMX.html",
+    "drive_file_id": "1EXypRjYdFMetO0-qJEA8e2j_HQ5l_2_f"
+  },
+  {
+    "barcode": "EM82687MXE",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82687MXE.html",
+    "drive_file_id": "1foc4ir2-kMhZFRuAymNser7vBhmGPX6o"
+  },
+  {
+    "barcode": "EM82689XOD",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82689XOD.html",
+    "drive_file_id": "1irtPQ8e_DgZYZkUvqTUZINzG7KrFu93N"
+  },
+  {
     "barcode": "EM8268EHH",
     "archetype": "mirror",
     "artifact_url": "/models/3d/EM8268EHH.html",
     "drive_file_id": "1nuR6Aa8QFT0u7YAgPOpquG0sljFzuhFw"
+  },
+  {
+    "barcode": "EM82690MAO",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82690MAO.html",
+    "drive_file_id": "1Cjm-PaeB18ErTWEqQxBPmAgH3G0qadV-"
+  },
+  {
+    "barcode": "EM82691OOO",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82691OOO.html",
+    "drive_file_id": "12WYQhUUv1If0HOjwz1PvFwkMlWFxxbpC"
+  },
+  {
+    "barcode": "EM82692XEH",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82692XEH.html",
+    "drive_file_id": "156koLmt8SvZmFexfhfuTSorKQ6MZ5tNa"
+  },
+  {
+    "barcode": "EM82693MNE",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82693MNE.html",
+    "drive_file_id": "1Fwvc1qOZDOBgWge8ggpxNJXlT8qCkw16"
+  },
+  {
+    "barcode": "EM82694OHF",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82694OHF.html",
+    "drive_file_id": "1PnA70hg9kqdtdYs8a3hf3_ncf3PXzRZy"
+  },
+  {
+    "barcode": "EM82695OHO",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82695OHO.html",
+    "drive_file_id": "1MQNM7uuu4uLQZ4OLX1-KwSnwVhAStDUI"
+  },
+  {
+    "barcode": "EM82696OXA",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82696OXA.html",
+    "drive_file_id": "10-Y5r6fgV94Pb1K82QeLFXIbp0dRNKCy"
+  },
+  {
+    "barcode": "EM82697OHN",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82697OHN.html",
+    "drive_file_id": "1QMtBOj8F5JltchkXdpql52P9CJgyAn8R"
+  },
+  {
+    "barcode": "EM82698OFE",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82698OFE.html",
+    "drive_file_id": "1B3dUjU7Q8YPpWAdJmKQUU-H4Gnp8dmVu"
+  },
+  {
+    "barcode": "EM82699MEL",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/EM82699MEL.html",
+    "drive_file_id": "1wZDchxjAovgnLc_3h9HJRnv0tGxRDe0M"
   },
   {
     "barcode": "EM8269HDE",
@@ -624,16 +858,148 @@
     "drive_file_id": "1GWKXaS57-Z-qKcKbUQkOhxjgJIxj9IJ4"
   },
   {
+    "barcode": "TE82610MONL",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82610MONL.html",
+    "drive_file_id": "1AHL9reVZnv7pN0BM6Mqht0krMwXvBZO9"
+  },
+  {
+    "barcode": "TE82611MOHE",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82611MOHE.html",
+    "drive_file_id": "1lgmD2uyPQhIS4oj2rLYxY0cHzBybiKdS"
+  },
+  {
+    "barcode": "TE82612MMEN",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82612MMEN.html",
+    "drive_file_id": "1iN1TlvWSIkKIXbgxDC5CcyNXZGOaFkzA"
+  },
+  {
+    "barcode": "TE82613MDNM",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82613MDNM.html",
+    "drive_file_id": "1R2bGh6IiK1trcth8B4j1bhj6xq1tDx2j"
+  },
+  {
+    "barcode": "TE82614NEE",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82614NEE.html",
+    "drive_file_id": "1N9lfesUCxkH3cvonJoY8wkBpLTtLGDxg"
+  },
+  {
+    "barcode": "TE82615FAH",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82615FAH.html",
+    "drive_file_id": "1tDDfli7uc-VsWnqN8lP3DLAiktinEHJI"
+  },
+  {
+    "barcode": "TE82616LHA",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82616LHA.html",
+    "drive_file_id": "1JOJS5sm-aU7cZ05sc6t6GkxU3XyHZYEW"
+  },
+  {
+    "barcode": "TE82617EAD",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82617EAD.html",
+    "drive_file_id": "1TT20mvrWKSdKSKcX3snGyntA5fdk1VPJ"
+  },
+  {
+    "barcode": "TE82618ADM",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82618ADM.html",
+    "drive_file_id": "1uIXNZ_647umqOYh7-6mI0J5Bwfo1UZyP"
+  },
+  {
+    "barcode": "TE82619FML",
+    "archetype": "wall_panel_pair",
+    "artifact_url": "/models/3d/TE82619FML.html",
+    "drive_file_id": "1AXcKjFc4qicrHNWdFdo2tKnqF1uMdhcl"
+  },
+  {
     "barcode": "TE8261OADO",
     "archetype": "wall_panel_pair",
     "artifact_url": "/models/3d/TE8261OADO.html",
     "drive_file_id": "1bc63kwycBWxWTqXVF4LhaP5ITCgCVKBL"
   },
   {
+    "barcode": "TE82620MEMF",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82620MEMF.html",
+    "drive_file_id": "1Qd3zQIGEBQ3I5cProxDrM1GUN5fqk0h9"
+  },
+  {
+    "barcode": "TE82621MHAX",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82621MHAX.html",
+    "drive_file_id": "1Jhl_6L642cI0PNfHejO91PXYQPMbwNzf"
+  },
+  {
+    "barcode": "TE82622MHLL",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82622MHLL.html",
+    "drive_file_id": "126C0qXRDQn6lvD4GxtcZ7a8D26sf0gqQ"
+  },
+  {
+    "barcode": "TE82623MXHF",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82623MXHF.html",
+    "drive_file_id": "1VBYcYqltdmvrySJH-EULI0bPCw9_ZhGL"
+  },
+  {
+    "barcode": "TE82624MMNX",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82624MMNX.html",
+    "drive_file_id": "1f6-JJrhVxJZOpyl4xIZNxMsCGNNFDzTl"
+  },
+  {
+    "barcode": "TE82625MXLH",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82625MXLH.html",
+    "drive_file_id": "1mmbpAW4v6paLP9Hv5KQmWnVOHaCoqFSI"
+  },
+  {
+    "barcode": "TE82626MOOF",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82626MOOF.html",
+    "drive_file_id": "17Enmjqq9PWHjrIZmfJ4QvbDKean2uB8E"
+  },
+  {
+    "barcode": "TE82627ELX",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82627ELX.html",
+    "drive_file_id": "1B9sFtwVjTqKZCsGYrqNqjMgysu85ypY_"
+  },
+  {
+    "barcode": "TE82628EON",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82628EON.html",
+    "drive_file_id": "12QBLtYP3Mb7A6fCboNgmeo6m31-xKHah"
+  },
+  {
+    "barcode": "TE82629EON",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82629EON.html",
+    "drive_file_id": "1Qwx_hmEd5uUlF9tOaevdnSGB6AjK38JZ"
+  },
+  {
     "barcode": "TE8262MMFN",
     "archetype": "wall_panel_pair",
     "artifact_url": "/models/3d/TE8262MMFN.html",
     "drive_file_id": "1uNzyYqLIDX2TdCVYdV-Dg0UvRvjh7cD9"
+  },
+  {
+    "barcode": "TE82630HFF",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE82630HFF.html",
+    "drive_file_id": "1j6sEpyZQQYdFJIOm8uAHfutxYvRgjV4i"
+  },
+  {
+    "barcode": "TE82631MNOX",
+    "archetype": "bowl",
+    "artifact_url": "/models/3d/TE82631MNOX.html",
+    "drive_file_id": "11ICcXZjXFTxjvU-f6GbXJJa6M3GAntgN"
   },
   {
     "barcode": "TE8263XMAD",
@@ -652,5 +1018,29 @@
     "archetype": "sconce_set",
     "artifact_url": "/models/3d/TE8265MHDD.html",
     "drive_file_id": "1NJ7Dn1eyZ7ro5chzh7KyqwrRoG-Z12o_"
+  },
+  {
+    "barcode": "TE8266MEMF",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE8266MEMF.html",
+    "drive_file_id": "1ZeyONPwNRDXvf08lGXEtRn5FFH9u85qw"
+  },
+  {
+    "barcode": "TE8267MXAM",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE8267MXAM.html",
+    "drive_file_id": "1O0kP72hi3GihSTFgrwptmn8ixgMCLzD7"
+  },
+  {
+    "barcode": "TE8268MXLH",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE8268MXLH.html",
+    "drive_file_id": "15ky7ZY1jmbbMzGqqvZSX1RvAI5Dor1LB"
+  },
+  {
+    "barcode": "TE8269MOFN",
+    "archetype": "floor_lamp",
+    "artifact_url": "/models/3d/TE8269MOFN.html",
+    "drive_file_id": "1xIrhhx_AfKZtBSZN9sBAySzVwxYNiG0l"
   }
 ]
